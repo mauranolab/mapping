@@ -282,10 +282,16 @@ date
 
 echo
 echo "Mean quality by cycle"
+#BUGBUG performs badly for SRR jobs -- some assumption not met?
 java -Xmx3g -jar /cm/shared/apps/picard/1.140/picard.jar MeanQualityByCycle INPUT=$sample.$strain.bam OUTPUT=$TMPDIR/$sample.baseQ.txt CHART_OUTPUT=$TMPDIR/$sample.baseQ.pdf VALIDATION_STRINGENCY=LENIENT
 
-#BUGBUG slow
-instrument=`samtools view $sample.$strain.bam | cut -f1 | cut -d ":" -f1 | uniq | sort | uniq | perl -pe 's/\n$//g;' | perl -pe 's/\n/;/g;'`
+if samtools view $sample.C57B6.bam | cut -f1 | head -10 | grep -q -e "^SRR"; then
+       #Hack to deal with read names from SRA
+       instrument="SRA"
+else
+       #BUGBUG slow
+       instrument=`samtools view $sample.C57B6.bam | cut -f1 | cut -d ":" -f1 | uniq | sort | uniq | perl -pe 's/\n/;/g;' | perl -pe 's/;$//g;'`
+fi
 awk -v instrument=$instrument -v fc=$fc -v sample=$sample -v ds=$DS -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $0!="" {if($1=="CYCLE") {$0=tolower($0); $(NF+1)="instrument\tfc\tsample\tDS"} else {$(NF+1)=instrument "\t" fc "\t" sample "\t" ds;} print}' $TMPDIR/$sample.baseQ.txt > $sample.baseQ.txt
 
 
