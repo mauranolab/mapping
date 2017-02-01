@@ -99,6 +99,7 @@ PFalignments=`cat $TMPDIR/$sample.flagstat.txt | grep "in total" | awk '{print $
 uniqMappedTags=`cat $TMPDIR/$sample.flagstat.txt | grep "mapped (" | awk '{print $1}'`
 numMappedTagsMitochondria=`samtools view -F 512 $sample.bam chrM | wc -l`
 propMappedTagsMitochondria=`echo $numMappedTagsMitochondria/$uniqMappedTags*100 | bc -l -q`
+#BUGBUG probably exclude chrM reads in duplicate counts
 dupTags=`cat $TMPDIR/$sample.flagstat.txt | grep "duplicates" | awk '{print $1}'`
 nonredundantTags=`unstarch --elements $sample.tags.starch`
 pctPFalignments=`echo $PFalignments/$sequencedTags*100 | bc -l -q`
@@ -307,10 +308,12 @@ echo "Tag lengths:"
 samtools view $samflags $sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} {print length($10)}' | sort -g | uniq -c | sort -k1,1g 
 
 
-echo
-echo "Tag count by sequencing instrument"
-samtools view $samflags $sample.bam | cut -f1 | cut -d ":" -f1 | sort -g | uniq -c | sort -k1,1g
-
+#Hack to deal with read names from SRA
+if samtools view $sample.bam | cut -f1 | head -10 | grep -v -q -e "^SRR"; then
+       echo
+       echo "Tag count by sequencing instrument"
+       samtools view $samflags $sample.bam | cut -f1 | cut -d ":" -f1 | sort | uniq -c | sort -k1,1g
+fi
 
 echo
 echo -e "\nDone!"
