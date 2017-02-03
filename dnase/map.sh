@@ -63,7 +63,10 @@ echo "Trimming"
 #Trimmomatic options
 #TODO Probably need different sequences per barcode. Note this fa file has 2 ident copies of left adapter and none of right adapter (with barcode).
 #illuminaAdapters=/net/glados/solexa_data/rsandstrom/mapping/TF-smallfragments-proj/util/Trimmomatic-0.30/adapters/IlluminaPEsSymmetrical.fa
+#Regular illumina dsDNA protocol
 illuminaAdapters=/cm/shared/apps/trimmomatic/0.33/adapters/TruSeq3-PE-2.fa
+#ATAC-seq
+#illuminaAdapters=/cm/shared/apps/trimmomatic/0.33/adapters/NexteraPE-PE.fa
 seedmis=2
 #Pretty much anything below 10 works
 PEthresh=5
