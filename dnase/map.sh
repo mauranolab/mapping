@@ -257,7 +257,7 @@ for curStrain in $strainsToMap; do
        #TODO prob better to do NSLOTS/2 or so
        #samtools view -@ $NSLOTS -S -u - | 
        samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${sample}.sortbyname -l 1 -n - |
-       /vol/isg/encode/dnase/src/filter_reads.py --max_mismatches $permittedMismatches - - |
+       /vol/isg/encode/dnase/src/dnase/filter_reads.py --max_mismatches $permittedMismatches - - |
        samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${sample}.sort -l 1 - |
        #Add MC tag containing mate CIGAR for duplicate calling
        java -Xmx2g -jar /cm/shared/apps/picard/1.140/picard.jar FixMateInformation INPUT=/dev/stdin OUTPUT=$sample.$curStrain.bam VERBOSITY=ERROR QUIET=TRUE COMPRESSION_LEVEL=1
