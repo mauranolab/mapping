@@ -109,7 +109,7 @@ _RANDIR_ = $outdir
 ## If there are any regions from which tags should be automatically
 ## omitted, include those here (only if you use run_badspot). May be
 ## left blank.
-_OMIT_REGIONS_: "/vol/isg/annotation/bed/%(_GENOME_)s/repeat_masker/Satellite.bed /vol/mauranolab/mapped/src/dnase/hotspots.omit.chrM.bed"
+_OMIT_REGIONS_: "/vol/isg/annotation/bed/%(_GENOME_)s/repeat_masker/Satellite.bed /vol/mauranolab/mapped/src/hotspots.omit.chrM.bed"
 
 ## Set to T if you want scripts to skip steps that have already been done.
 _CHECK_ = T
