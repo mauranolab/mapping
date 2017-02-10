@@ -81,7 +81,7 @@ def getDS(inputmetadata):
                 print(DSidOut)
 
             elif regexp.search(str(output)) is None:
-                DSidOut = SampleName, output['dataset'].split('/')[2]
+                DSidOut = SampleName, output['replicate']['library']['biosample'].split('/')[2]
                 print(DSidOut)
                 
                 
