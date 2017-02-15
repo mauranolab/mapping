@@ -1,12 +1,9 @@
 #!/bin/bash
 set -e -o pipefail
 
-strain=$1
-celltype=$2
-DS=$3
-mappedgenome=$4
-
-name=${celltype}-${DS}.${mappedgenome}
+name=$1
+DS=$2
+genome=$3
 
 echo "output name $name"
 date
@@ -41,7 +38,7 @@ for f1 in `grep $DS inputs.txt | grep -v R2`; do
        fi
        
        curOutputFile=`basename $f1 .fastq.gz`
-       curOutputFile="${fc}${curOutputFile}.$mappedgenome.bam"
+       curOutputFile="${fc}${curOutputFile}.$genome.bam"
        
        #echo "cur $files"
        
@@ -49,7 +46,7 @@ for f1 in `grep $DS inputs.txt | grep -v R2`; do
               files="$files ${curOutputFile}"
               numfiles=$((numfiles+1))
        else
-              echo  "Error: $curOutputFile doesn't exist!"
+              echo "Error: $curOutputFile doesn't exist!"
               #Don't die to work around weirdness in pipeline FQ files
               #exit 1
        fi
@@ -101,25 +98,7 @@ date
 samtools index $name.bam
 
 
-#no longer needed
-#echo "byread"
-#NB mainly to get rid of chrM for now (everything else is already flagged)
-#allAutosomalChroms=`samtools view -H $name.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1=="@SQ" {print substr($2, 4)}' | grep -v random | grep -v chrUn | grep -v _hap | grep -v chrM`
-
-#samflags="-q 30 -F 1548"
-#samtools view $samflags -h -b $name.bam $allAutosomalChroms |
-#samtools sort -n -@ $NSLOTS -l 9 - $name.byread
-
-
 rm -f $files
-
-echo
-echo "Done with merge"
-date
-
-
-echo
-/vol/mauranolab/mapped/src/makeTracks.sh $name $DS $mappedgenome
 
 
 echo
