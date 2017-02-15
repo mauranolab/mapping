@@ -13,14 +13,14 @@ set -e -o pipefail
 
 date
 
-permittedMismatches=3
+permittedMismatches=2
 
 
 #celltype is called sample in BWAmerge and submitBWA
 celltype=$1
 DS=$2
-strain=$3
-echo "celltype: $celltype, DS: $DS, Genome: $strain"
+genome=$3
+echo "celltype: $celltype, DS: $DS, Genome: $genome"
 shift
 shift
 shift
@@ -176,16 +176,16 @@ bwaAlnOpts="-n $permittedMismatches -l 32 $userAlnOptions -t $NSLOTS -Y"
 #http://seqanswers.com/forums/showthread.php?t=6251
 
 
-strainsToMap="$strain"
-echo "Will map to strains $strainsToMap"
+genomesToMap="$genome"
+echo "Will map to genomes $genomesToMap"
 
 
 #NB am losing about 15" to load index when submit multiple jobs
 bwaIndexBase=/vol/isg/annotation/bwaIndex
-for curStrain in $strainsToMap; do
+for curGenome in $genomesToMap; do
        echo
-       echo "Mapping to genome for strain $curStrain"
-       case "$curStrain" in
+       echo "Mapping to genome for genome $curGenome"
+       case "$curGenome" in
        hg19)
               bwaIndex=$bwaIndexBase/hg19all/hg19all;;
        hg38)
@@ -193,12 +193,12 @@ for curStrain in $strainsToMap; do
        mm10)
               bwaIndex=$bwaIndexBase/mm10all/mm10all;;
        *)
-              echo "Don't recognize strain $curStrain";
+              echo "Don't recognize genome $curGenome";
               exit 3;;
        esac
        
        echo "bwa aln $bwaAlnOpts $bwaIndex ..."
-       bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample1.fastq > $TMPDIR/$sample1.$curStrain.sai
+       bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample1.fastq > $TMPDIR/$sample1.$curGenome.sai
 
        date
 
@@ -210,27 +210,27 @@ for curStrain in $strainsToMap; do
        bwaExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
        if [[ "$PErun" == "TRUE" ]] ; then
               echo -e "\nMapping R2 $reads2fq for $sample2"
-              bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample2.fastq > $TMPDIR/$sample2.$curStrain.sai
+              bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample2.fastq > $TMPDIR/$sample2.$curGenome.sai
               date
               
               #-P didn't have a major effect, but some jobs were ~10-40% faster but takes ~16GB RAM instead of 4GB
-              extractcmd="sampe $bwaExtractOpts -a 500 $bwaIndex $TMPDIR/$sample1.$curStrain.sai $TMPDIR/$sample2.$curStrain.sai $TMPDIR/$sample1.fastq $TMPDIR/$sample2.fastq"
+              extractcmd="sampe $bwaExtractOpts -a 500 $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample2.$curGenome.sai $TMPDIR/$sample1.fastq $TMPDIR/$sample2.fastq"
               
               
               #BUGBUG doesn't test if empty
               echo -e "\nMapping unpaired $sample.unpaired.fastq for $sample1"
-              bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample.unpaired.fastq > $TMPDIR/$sample.unpaired.$curStrain.sai
+              bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample.unpaired.fastq > $TMPDIR/$sample.unpaired.$curGenome.sai
               date
               
               echo
               echo "Extracting unpaired reads"
-              unpairedReadsSam="$TMPDIR/$sample.$curStrain.unpaired.sam"
-              unpairedExtractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample.unpaired.$curStrain.sai $TMPDIR/$sample.unpaired.fastq"
+              unpairedReadsSam="$TMPDIR/$sample.$curGenome.unpaired.sam"
+              unpairedExtractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample.unpaired.$curGenome.sai $TMPDIR/$sample.unpaired.fastq"
               echo -e "unpairedExtractcmd=bwa $unpairedExtractcmd | (...)"
               bwa $unpairedExtractcmd | grep -v "^@" > $unpairedReadsSam
               #TODO merge headers instead of dropping
        else
-              extractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample1.$curStrain.sai $TMPDIR/$sample1.fastq"
+              extractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample1.fastq"
               unpairedReadsSam=""
        fi
        
@@ -251,7 +251,7 @@ for curStrain in $strainsToMap; do
        #Fix NM/MD. Appears not to affect mpileup, but still worth it for ease of use (bwa still seems to set NM/MD wrong sporadically)
        #used to precalculate BAQ with samtools calmd -S -Abr -E, see http://www.biostars.org/p/1268
        #NB redirecting stderr since calmd is noisy, but you won't see real errors
-       #samtools calmd -S -u - $fa 2> $TMPDIR/$sample.$curStrain.calmd.log |
+       #samtools calmd -S -u - $fa 2> $TMPDIR/$sample.$curGenome.calmd.log |
        \
        #Use view instead of calmd
        #TODO prob better to do NSLOTS/2 or so
@@ -260,21 +260,21 @@ for curStrain in $strainsToMap; do
        /vol/isg/encode/dnase/src/dnase/filter_reads.py --max_mismatches $permittedMismatches - - |
        samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${sample}.sort -l 1 - |
        #Add MC tag containing mate CIGAR for duplicate calling
-       java -Xmx2g -jar /cm/shared/apps/picard/1.140/picard.jar FixMateInformation INPUT=/dev/stdin OUTPUT=$sample.$curStrain.bam VERBOSITY=ERROR QUIET=TRUE COMPRESSION_LEVEL=1
+       java -Xmx2g -jar /cm/shared/apps/picard/1.140/picard.jar FixMateInformation INPUT=/dev/stdin OUTPUT=$sample.$curGenome.bam VERBOSITY=ERROR QUIET=TRUE COMPRESSION_LEVEL=1
        
 #       echo
 #       echo "Cleanup"
 #       date
-#       cp $sample.$curStrain.bam $TMPDIR/$sample.$curStrain.unclean.bam
+#       cp $sample.$curGenome.bam $TMPDIR/$sample.$curGenome.unclean.bam
 #       #BUGBUG Should fix the ERROR... read errors, but doesn't do anything to first 100000 lines of test case except increment version to 1.4 "@HD   VN:1.4"
-#       java -Xmx2g -jar /cm/shared/apps/picard/1.140/picard.jar/ CleanSam INPUT=$sample.$curStrain.bam OUTPUT=$sample.$curStrain.clean.bam COMPRESSION_LEVEL=1 && mv $sample.$curStrain.clean.bam $sample.$curStrain.bam
+#       java -Xmx2g -jar /cm/shared/apps/picard/1.140/picard.jar/ CleanSam INPUT=$sample.$curGenome.bam OUTPUT=$sample.$curGenome.clean.bam COMPRESSION_LEVEL=1 && mv $sample.$curGenome.clean.bam $sample.$curGenome.bam
 #
 #rearranges flag order but doesn't fix problem either
-#       java -Xmx2g -jar /cm/shared/apps/picard/1.140/picard.jar FixMateInformation INPUT=$sample.$curStrain.bam OUTPUT=$sample.$curStrain.clean.bam COMPRESSION_LEVEL=1 VALIDATION_STRINGENCY=LENIENT && mv $sample.$curStrain.clean.bam $sample.$curStrain.bam
+#       java -Xmx2g -jar /cm/shared/apps/picard/1.140/picard.jar FixMateInformation INPUT=$sample.$curGenome.bam OUTPUT=$sample.$curGenome.clean.bam COMPRESSION_LEVEL=1 VALIDATION_STRINGENCY=LENIENT && mv $sample.$curGenome.clean.bam $sample.$curGenome.bam
        
        echo
-       echo "SAMtools statistics for strain $strain"
-       samtools flagstat $sample.$curStrain.bam
+       echo "SAMtools statistics for genome $genome"
+       samtools flagstat $sample.$curGenome.bam
 done
 
 
@@ -286,7 +286,7 @@ date
 echo
 echo "Mean quality by cycle"
 #BUGBUG performs badly for SRR jobs -- some assumption not met?
-java -Xmx3g -jar /cm/shared/apps/picard/1.140/picard.jar MeanQualityByCycle INPUT=$sample.$strain.bam OUTPUT=$TMPDIR/$sample.baseQ.txt CHART_OUTPUT=$TMPDIR/$sample.baseQ.pdf VALIDATION_STRINGENCY=LENIENT
+java -Xmx3g -jar /cm/shared/apps/picard/1.140/picard.jar MeanQualityByCycle INPUT=$sample.$curGenome.bam OUTPUT=$TMPDIR/$sample.baseQ.txt CHART_OUTPUT=$TMPDIR/$sample.baseQ.pdf VALIDATION_STRINGENCY=LENIENT
 
 if samtools view $sample.bam | cut -f1 | head -10 | grep -q -e "^SRR"; then
        #Hack to deal with read names from SRA
@@ -304,7 +304,7 @@ echo -n -e "Histogram of mismatches to reference in 36 bases:\t$instrument\t$fc\
 samflags="-q 30 -F 1548"
 
 #BUGBUG flag 2 not working?
-samtools view $samflags $sample.$strain.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
+samtools view $samflags $sample.$curGenome.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
       readlength = length($10); \
       if (and($2, 16)) { \
             strand="-"; \
