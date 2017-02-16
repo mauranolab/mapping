@@ -44,13 +44,15 @@ mappedgenome=$3
 
 echo "Making tracks for sample $sample ($DS) against genome $mappedgenome"
 
+#TODO parameterize
+base="/vol/mauranolab/mapped/src/"
+
 
 #TMPDIR=`pwd`/tmp.makeTracks.$sample
 #mkdir -p $TMPDIR
 echo "using $TMPDIR as TMPDIR"
 
 
-#samflags="-q 30 -F 1548"
 samflags="-q 20 -F 524"
 #NB chrM being considered in most downstream analyses
 
@@ -81,7 +83,7 @@ samtools view $samflags $sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
 #      print $3, chromStart, chromEnd, tagSequence, editdistance, strand, 0, 0, colorString ; \
       print $3, chromStart, chromEnd, insertlength ; \
 }' \
-| sort-bed - | 
+| sort-bed --max-mem 5G - | 
 #tee $TMPDIR/$sample.tags.bed |
 starch - > $sample.tags.starch
 
@@ -97,10 +99,11 @@ sequencedTags=`cat inputs.txt | grep $DS | sort | uniq | xargs zcat | awk 'END {
 PFalignments=`cat $TMPDIR/$sample.flagstat.txt | grep "in total" | awk '{print $1+$3}'`
 #NB used to count both columns of flagstat output ($1 + $3) for remaining metrics but it gives no guarantee of 1 line per tag
 uniqMappedTags=`cat $TMPDIR/$sample.flagstat.txt | grep "mapped (" | awk '{print $1}'`
-numMappedTagsMitochondria=`samtools view -F 512 $sample.bam chrM | wc -l`
+numMappedTagsMitochondria=`samtools view -c -F 512 $sample.bam chrM`
 propMappedTagsMitochondria=`echo $numMappedTagsMitochondria/$uniqMappedTags*100 | bc -l -q`
-#BUGBUG probably exclude chrM reads in duplicate counts
-dupTags=`cat $TMPDIR/$sample.flagstat.txt | grep "duplicates" | awk '{print $1}'`
+#NB now excludes chrM reads in duplicate counts
+dupTags=`samtools view -c -F 512 -f 1024 $sample.bam | awk -F "\t" '$3!="chrM" {count+=1} END {print count}'`
+#dupTags=`cat $TMPDIR/$sample.flagstat.txt | grep "duplicates" | awk '{print $1}'`
 nonredundantTags=`unstarch --elements $sample.tags.starch`
 pctPFalignments=`echo $PFalignments/$sequencedTags*100 | bc -l -q`
 pctUniqMappedTags=`echo $uniqMappedTags/$sequencedTags*100 | bc -l -q`
@@ -109,7 +112,7 @@ pctNonredundantTags=`echo $nonredundantTags/$sequencedTags*100 | bc -l -q`
 
 #Tally how many reads were recovered from unpaired/SE reads (NB many of these may not even be PF, so are unrepresented)
 PFalignmentsSE=`samtools view -F 1 $sample.bam | wc -l`
-uniqMappedTagsSE=`samtools view -q 30 -F 1549 $sample.bam | wc -l`
+uniqMappedTagsSE=`samtools view -q 20 -F 525 $sample.bam | wc -l`
 pctUniqMappedTagsSE=`echo $uniqMappedTagsSE/$PFalignmentsSE*100 | bc -l -q`
 
 
@@ -188,7 +191,7 @@ samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags 
 cd hotspots/$sample
 
 #qsub -cwd -V -N ${sample}.hotspots -S /bin/bash -j y -b y
-/vol/mauranolab/mapped/src/callHotspots.sh $hotspotBAM $hotspotDens $base/hotspots/$sample > $base/hotspots/$sample.hotspots.log 2>&1
+$base/callHotspots.sh $hotspotBAM $hotspotDens $base/hotspots/$sample > $base/hotspots/$sample.hotspots.log 2>&1
 
 cd ../..
 
@@ -224,7 +227,7 @@ if [ $uniqMappedTags -gt 10000000 ]; then
        cd $TMPDIR/$sample.hotspots.10Mtags
        
        #NB dens track doesn't exist
-       /vol/mauranolab/mapped/src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $base/hotspots/$sample.hotspots.10Mtags.log 2>&1
+       $base/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $base/hotspots/$sample.hotspots.10Mtags.log 2>&1
        
        cd - #NB prints pwd
        
