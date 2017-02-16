@@ -46,6 +46,7 @@ echo "Making tracks for sample $sample ($DS) against genome $mappedgenome"
 
 #TODO parameterize
 base="/vol/mauranolab/mapped/src/"
+chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
 
 
 #TMPDIR=`pwd`/tmp.makeTracks.$sample
@@ -104,11 +105,11 @@ propMappedTagsMitochondria=`echo $numMappedTagsMitochondria/$uniqMappedTags*100 
 #NB now excludes chrM reads in duplicate counts
 dupTags=`samtools view -c -F 512 -f 1024 $sample.bam | awk -F "\t" '$3!="chrM" {count+=1} END {print count}'`
 #dupTags=`cat $TMPDIR/$sample.flagstat.txt | grep "duplicates" | awk '{print $1}'`
-nonredundantTags=`unstarch --elements $sample.tags.starch`
+analyzedTags=`unstarch --elements $sample.tags.starch`
 pctPFalignments=`echo $PFalignments/$sequencedTags*100 | bc -l -q`
 pctUniqMappedTags=`echo $uniqMappedTags/$sequencedTags*100 | bc -l -q`
 pctDupTags=`echo $dupTags/$uniqMappedTags*100 | bc -l -q`
-pctNonredundantTags=`echo $nonredundantTags/$sequencedTags*100 | bc -l -q`
+pctAnalyzedTags=`echo $analyzedTags/$sequencedTags*100 | bc -l -q`
 
 #Tally how many reads were recovered from unpaired/SE reads (NB many of these may not even be PF, so are unrepresented)
 PFalignmentsSE=`samtools view -F 1 $sample.bam | wc -l`
@@ -122,41 +123,41 @@ echo "Making density track"
 #Normalizes the density to 1M tags, ignores enrichment for now
 #Note the last awk statement makes the exact intervals conform to Richard's convention that the counts are reported in 20bp windows including tags +/-75 from the center of that window
 #Remember wig is 1-indexed (groan)
-cat /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes | 
+cat $chromsizes | 
 grep -v random | grep -v _hap | grep -v chrM | grep -v _alt|grep -v Un|
 awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk 'BEGIN {OFS="\t"} {for(i=0; i<=$2-150; i+=20) {print $1, i, i+150} }' | 
 bedmap --bp-ovr 1 --echo --count - $sample.tags.starch | perl -pe 's/\|/\t\t/g;' | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' |
 awk -F "\t" 'BEGIN {OFS="\t"} {$2+=65; $3-=65; print}' |
-awk -v nonredundantTags=$nonredundantTags -F "\t" 'BEGIN {OFS="\t"} {$5=$5/nonredundantTags*1000000; print}' |
+awk -v analyzedTags=$analyzedTags -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedTags*1000000; print}' |
 tee $TMPDIR/$sample.density.bed |
 awk 'lastChr!=$1 {print "fixedStep chrom=" $1 " start=" $2+1 " step=" $3-$2 " span=" $3-$2; lastChr=$1} {print $5}' > $TMPDIR/$sample.wig
 
 starch $TMPDIR/$sample.density.bed > $sample.density.starch
 
-wigToBigWig $TMPDIR/$sample.wig /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes $sample.bw
+wigToBigWig $TMPDIR/$sample.wig $chromsizes $sample.bw
 
 trackcolor=$(getcolor $sample)
 
-nonredundantTagsM=`echo $nonredundantTags/1000000 | bc -l -q` 
-nonredundantTagsM=$(round $nonredundantTagsM 1)
+analyzedTagsM=`echo $analyzedTags/1000000 | bc -l -q` 
+analyzedTagsM=$(round $analyzedTagsM 1)
 
 #can't find a way to force autoscale=off. http://genome.ucsc.edu/goldenPath/help/bigWig.html implies it's not a parameter in this context
-echo "track name=$sample description=\"$sample DNase Density (${nonredundantTagsM}M nonredundant tags; normalized to 1M)- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sample.bw"
+echo "track name=$sample description=\"$sample DNase Density (${analyzedTagsM}M analyzed tags; normalized to 1M)- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sample.bw"
 
 echo "Making cut count track"
 samtools view $samflags $sample.bam | sam2bed --do-not-sort | 
 awk '{if($6=="+"){s=$2; e=$2+1}else{s=$3; e=$3+1} print $1 "\t"s"\t"e"\tid\t1\t"$6 }' | sort-bed - | tee $TMPDIR/$sample.cuts.bed | 
 bedops --chop 1 - | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' > $TMPDIR/$sample.cuts.loc.bed
 bedmap --delim '\t' --echo --count $TMPDIR/$sample.cuts.loc.bed $TMPDIR/$sample.cuts.bed | 
-awk -v nonredundantTags=$nonredundantTags -F "\t" 'BEGIN {OFS="\t"} {$5=$5/nonredundantTags*100000000; print}' |
+awk -v analyzedTags=$analyzedTags -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedTags*100000000; print}' |
 starch - > $sample.perBase.starch
 
 #Skip chrM since UCSC doesn't like the cut count to the right of the last bp in a chromosome
 gcat $sample.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM"' > $TMPDIR/$sample.perBase.bedGraph
 
-bedGraphToBigWig $TMPDIR/$sample.perBase.bedGraph /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes $sample.perBase.bw
+bedGraphToBigWig $TMPDIR/$sample.perBase.bedGraph $chromsizes $sample.perBase.bw
 
-echo "track name=$sample description=\"$sample cut counts (${nonredundantTagsM}M nonredundant tags- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sample.perBase.bw"
+echo "track name=$sample description=\"$sample cut counts (${analyzedTagsM}M analyzed tags- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sample.perBase.bw"
 
 
 #echo "Making fragment coverage track"
@@ -200,7 +201,7 @@ hotspotfile=hotspots/${sample}/${sample}-final/${sample}.fdr0.01.hot.bed
 echo "Hotspots for UCSC browser"
 if [ -f "$hotspotfile" ]; then
        cut -f1-3 $hotspotfile > $TMPDIR/${sample}.fdr0.01.hot.bed
-       bedToBigBed -type=bed3 $TMPDIR/${sample}.fdr0.01.hot.bed /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes hotspots/${sample}/${sample}.fdr0.01.hot.bb
+       bedToBigBed -type=bed3 $TMPDIR/${sample}.fdr0.01.hot.bed $chromsizes hotspots/${sample}/${sample}.fdr0.01.hot.bb
 else
        echo "Can't find $hotspotfile to make bigBed"
 fi
@@ -208,7 +209,7 @@ fi
 peakfile=hotspots/${sample}/${sample}-final/${sample}.fdr0.01.pks.bed
 if [ -f "$peakfile" ]; then
        cut -f1-3 $peakfile > $TMPDIR/${sample}.fdr0.01.pks.bed
-       bedToBigBed -type=bed3 $TMPDIR/${sample}.fdr0.01.pks.bed /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes hotspots/${sample}/${sample}.fdr0.01.pks.bb
+       bedToBigBed -type=bed3 $TMPDIR/${sample}.fdr0.01.pks.bed $chromsizes hotspots/${sample}/${sample}.fdr0.01.pks.bb
 else
        echo "Can't find $peakfile to make bigBed"
 fi
@@ -244,7 +245,7 @@ printf "Num_pass_filter_alignments\t$PFalignments\t%.1f%%\t%s\n" "$pctPFalignmen
 printf "Num_uniquely_mapped_tags\t$uniqMappedTags\t%.1f%%\t%s\n" "$pctUniqMappedTags" "$sample"
 printf "Num_mitochondria_tags\t$numMappedTagsMitochondria\t%.1f%%\t%s\n" "$propMappedTagsMitochondria" "$sample"
 printf "Num_duplicate_tags\t$dupTags\t%.1f%%\t%s\n" "$pctDupTags" "$sample"
-printf "Num_nonredundant_tags\t$nonredundantTags\t%.1f%%\t%s\n" "$pctNonredundantTags" "$sample"
+printf "Num_analyzed_tags\t$analyzedTags\t%.1f%%\t%s\n" "$pctAnalyzedTags" "$sample"
 
 #Don't have denominator of unpaired tags we tried to map, so don't compute % for first
 printf "Num_SE_pass_filter_alignments\t$PFalignmentsSE\t\t%s\n" "$sample"
