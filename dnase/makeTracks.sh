@@ -138,7 +138,7 @@ nonredundantTagsM=`echo $nonredundantTags/1000000 | bc -l -q`
 nonredundantTagsM=$(round $nonredundantTagsM 1)
 
 #can't find a way to force autoscale=off. http://genome.ucsc.edu/goldenPath/help/bigWig.html implies it's not a parameter in this context
-echo "track name=$sample description=\"$sample DNase Density (${nonredundantTagsM}M nonredundant tags; normalized to 1M)- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://***REMOVED***@cascade.isg.med.nyu.edu/~mauram01/mapped/FC/$sample.bw"
+echo "track name=$sample description=\"$sample DNase Density (${nonredundantTagsM}M nonredundant tags; normalized to 1M)- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sample.bw"
 
 echo "Making cut count track"
 samtools view $samflags $sample.bam | sam2bed --do-not-sort | 
@@ -153,7 +153,7 @@ gcat $sample.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="c
 
 bedGraphToBigWig $TMPDIR/$sample.perBase.bedGraph /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes $sample.perBase.bw
 
-echo "track name=$sample description=\"$sample cut counts (${nonredundantTagsM}M nonredundant tags- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://***REMOVED***@cascade.isg.med.nyu.edu/~mauram01/mapped/FC/$sample.perBase.bw"
+echo "track name=$sample description=\"$sample cut counts (${nonredundantTagsM}M nonredundant tags- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sample.perBase.bw"
 
 
 #echo "Making fragment coverage track"
