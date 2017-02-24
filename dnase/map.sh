@@ -156,6 +156,9 @@ else
        fi
 fi
 
+sampleOutdir=$celltype-$DS.$genome
+
+mkdir -p $sampleOutdir
 
 date
 
@@ -257,10 +260,10 @@ for curGenome in $genomesToMap; do
        #TODO prob better to do NSLOTS/2 or so
        #samtools view -@ $NSLOTS -S -u - | 
        samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${sample}.sortbyname -l 1 -n - |
-       /vol/isg/encode/dnase/src/dnase/filter_reads.py --max_mismatches $permittedMismatches - - |
+       /vol/isg/encode/dnase/src/filter_reads.py --max_mismatches $permittedMismatches - - |
        samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${sample}.sort -l 1 - |
        #Add MC tag containing mate CIGAR for duplicate calling
-       java -Xmx2g -jar /cm/shared/apps/picard/1.140/picard.jar FixMateInformation INPUT=/dev/stdin OUTPUT=$sample.$curGenome.bam VERBOSITY=ERROR QUIET=TRUE COMPRESSION_LEVEL=1
+       java -Xmx2g -jar /cm/shared/apps/picard/1.140/picard.jar FixMateInformation INPUT=/dev/stdin OUTPUT= $sampleOutdir/$sample.$curGenome.bam VERBOSITY=ERROR QUIET=TRUE COMPRESSION_LEVEL=1
        
 #       echo
 #       echo "Cleanup"
@@ -274,7 +277,7 @@ for curGenome in $genomesToMap; do
        
        echo
        echo "SAMtools statistics for genome $genome"
-       samtools flagstat $sample.$curGenome.bam
+       samtools flagstat  $sampleOutdir/$sample.$curGenome.bam
 done
 
 
@@ -286,14 +289,14 @@ date
 echo
 echo "Mean quality by cycle"
 #BUGBUG performs badly for SRR jobs -- some assumption not met?
-java -Xmx3g -jar /cm/shared/apps/picard/1.140/picard.jar MeanQualityByCycle INPUT=$sample.$curGenome.bam OUTPUT=$TMPDIR/$sample.baseQ.txt CHART_OUTPUT=$TMPDIR/$sample.baseQ.pdf VALIDATION_STRINGENCY=LENIENT
+java -Xmx3g -jar /cm/shared/apps/picard/1.140/picard.jar MeanQualityByCycle INPUT= $sampleOutdir/$sample.$curGenome.bam OUTPUT=$TMPDIR/$sample.baseQ.txt CHART_OUTPUT=$TMPDIR/$sample.baseQ.pdf VALIDATION_STRINGENCY=LENIENT
 
-if samtools view $sample.bam | cut -f1 | head -10 | grep -q -e "^SRR"; then
+if samtools view  $sampleOutdir/$sample.$curGenome.bam | cut -f1 | head -10 | grep -q -e "^SRR"; then
        #Hack to deal with read names from SRA
        instrument="SRA"
 else
        #BUGBUG slow
-       instrument=`samtools view $sample.bam | cut -f1 | cut -d ":" -f1 | uniq | sort | uniq | perl -pe 's/\n/;/g;' | perl -pe 's/;$//g;'`
+       instrument=`samtools view  $sampleOutdir/$sample.$curGenome.bam | cut -f1 | cut -d ":" -f1 | uniq | sort | uniq | perl -pe 's/\n/;/g;' | perl -pe 's/;$//g;'`
 fi
 awk -v instrument=$instrument -v fc=$fc -v sample=$sample -v ds=$DS -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $0!="" {if($1=="CYCLE") {$0=tolower($0); $(NF+1)="instrument\tfc\tsample\tDS"} else {$(NF+1)=instrument "\t" fc "\t" sample "\t" ds;} print}' $TMPDIR/$sample.baseQ.txt > $sample.baseQ.txt
 
@@ -304,7 +307,7 @@ echo -n -e "Histogram of mismatches to reference in 36 bases:\t$instrument\t$fc\
 samflags="-q 30 -F 1548"
 
 #BUGBUG flag 2 not working?
-samtools view $samflags $sample.$curGenome.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
+samtools view $samflags  $sampleOutdir/$sample.$curGenome.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
       readlength = length($10); \
       if (and($2, 16)) { \
             strand="-"; \

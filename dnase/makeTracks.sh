@@ -41,7 +41,7 @@ getcolor () {
 sample=$1
 DS=$2
 mappedgenome=$3
-
+sampleOutdir=$sample
 echo "Making tracks for sample $sample ($DS) against genome $mappedgenome"
 
 #TODO parameterize
@@ -59,7 +59,7 @@ samflags="-q 20 -F 524"
 
 date
 echo "Making bed file"
-samtools view $samflags $sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
+samtools view $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
       readlength = length($10); \
       insertlength = $9; \
 #      tagSequence = $10; \
@@ -86,13 +86,13 @@ samtools view $samflags $sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
 }' \
 | sort-bed --max-mem 5G - | 
 #tee $TMPDIR/$sample.tags.bed |
-starch - > $sample.tags.starch
+starch - > $sampleOutdir/$sample.tags.starch
 
 
 echo
 echo "Calculating tag counts"
 echo "SAMtools statistics"
-samtools flagstat $sample.bam > $TMPDIR/$sample.flagstat.txt
+samtools flagstat $sampleOutdir/$sample.bam > $TMPDIR/$sample.flagstat.txt
 cat $TMPDIR/$sample.flagstat.txt
 
 #BUGBUG breaks for DSall or encode reps
@@ -100,20 +100,20 @@ sequencedTags=`cat inputs.txt | grep $DS | sort | uniq | xargs zcat | awk 'END {
 PFalignments=`cat $TMPDIR/$sample.flagstat.txt | grep "in total" | awk '{print $1+$3}'`
 #NB used to count both columns of flagstat output ($1 + $3) for remaining metrics but it gives no guarantee of 1 line per tag
 uniqMappedTags=`cat $TMPDIR/$sample.flagstat.txt | grep "mapped (" | awk '{print $1}'`
-numMappedTagsMitochondria=`samtools view -c -F 512 $sample.bam chrM`
+numMappedTagsMitochondria=`samtools view -c -F 512 $sampleOutdir/$sample.bam chrM`
 propMappedTagsMitochondria=`echo $numMappedTagsMitochondria/$uniqMappedTags*100 | bc -l -q`
 #NB now excludes chrM reads in duplicate counts
-dupTags=`samtools view -c -F 512 -f 1024 $sample.bam | awk -F "\t" '$3!="chrM" {count+=1} END {print count}'`
+dupTags=`samtools view -c -F 512 -f 1024 $sampleOutdir/$sample.bam | awk -F "\t" '$3!="chrM" {count+=1} END {print count}'`
 #dupTags=`cat $TMPDIR/$sample.flagstat.txt | grep "duplicates" | awk '{print $1}'`
-analyzedTags=`unstarch --elements $sample.tags.starch`
+analyzedTags=`unstarch --elements $sampleOutdir/$sample.tags.starch`
 pctPFalignments=`echo $PFalignments/$sequencedTags*100 | bc -l -q`
 pctUniqMappedTags=`echo $uniqMappedTags/$sequencedTags*100 | bc -l -q`
 pctDupTags=`echo $dupTags/$uniqMappedTags*100 | bc -l -q`
 pctAnalyzedTags=`echo $analyzedTags/$sequencedTags*100 | bc -l -q`
 
 #Tally how many reads were recovered from unpaired/SE reads (NB many of these may not even be PF, so are unrepresented)
-PFalignmentsSE=`samtools view -F 1 $sample.bam | wc -l`
-uniqMappedTagsSE=`samtools view -q 20 -F 525 $sample.bam | wc -l`
+PFalignmentsSE=`samtools view -F 1 $sampleOutdir/$sample.bam | wc -l`
+uniqMappedTagsSE=`samtools view -q 20 -F 525 $sampleOutdir/$sample.bam | wc -l`
 pctUniqMappedTagsSE=`echo $uniqMappedTagsSE/$PFalignmentsSE*100 | bc -l -q`
 
 
@@ -126,15 +126,15 @@ echo "Making density track"
 cat $chromsizes | 
 grep -v random | grep -v _hap | grep -v chrM | grep -v _alt|grep -v Un|
 awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk 'BEGIN {OFS="\t"} {for(i=0; i<=$2-150; i+=20) {print $1, i, i+150} }' | 
-bedmap --bp-ovr 1 --echo --count - $sample.tags.starch | perl -pe 's/\|/\t\t/g;' | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' |
+bedmap --bp-ovr 1 --echo --count - $sampleOutdir/$sample.tags.starch | perl -pe 's/\|/\t\t/g;' | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' |
 awk -F "\t" 'BEGIN {OFS="\t"} {$2+=65; $3-=65; print}' |
 awk -v analyzedTags=$analyzedTags -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedTags*1000000; print}' |
 tee $TMPDIR/$sample.density.bed |
 awk 'lastChr!=$1 {print "fixedStep chrom=" $1 " start=" $2+1 " step=" $3-$2 " span=" $3-$2; lastChr=$1} {print $5}' > $TMPDIR/$sample.wig
 
-starch $TMPDIR/$sample.density.bed > $sample.density.starch
+starch $TMPDIR/$sample.density.bed > $sampleOutdir/$sample.density.starch
 
-wigToBigWig $TMPDIR/$sample.wig $chromsizes $sample.bw
+wigToBigWig $TMPDIR/$sample.wig $chromsizes $sampleOutdir/$sample.bw
 
 trackcolor=$(getcolor $sample)
 
@@ -142,22 +142,22 @@ analyzedTagsM=`echo $analyzedTags/1000000 | bc -l -q`
 analyzedTagsM=$(round $analyzedTagsM 1)
 
 #can't find a way to force autoscale=off. http://genome.ucsc.edu/goldenPath/help/bigWig.html implies it's not a parameter in this context
-echo "track name=$sample description=\"$sample DNase Density (${analyzedTagsM}M analyzed tags; normalized to 1M)- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sample.bw"
+echo "track name=$sample description=\"$sample DNase Density (${analyzedTagsM}M analyzed tags; normalized to 1M)- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sampleOutdir/$sample.bw"
 
 echo "Making cut count track"
-samtools view $samflags $sample.bam | sam2bed --do-not-sort | 
+samtools view $samflags $sampleOutdir/$sample.bam | sam2bed --do-not-sort | 
 awk '{if($6=="+"){s=$2; e=$2+1}else{s=$3; e=$3+1} print $1 "\t"s"\t"e"\tid\t1\t"$6 }' | sort-bed - | tee $TMPDIR/$sample.cuts.bed | 
 bedops --chop 1 - | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' > $TMPDIR/$sample.cuts.loc.bed
 bedmap --delim '\t' --echo --count $TMPDIR/$sample.cuts.loc.bed $TMPDIR/$sample.cuts.bed | 
 awk -v analyzedTags=$analyzedTags -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedTags*100000000; print}' |
-starch - > $sample.perBase.starch
+starch - > $sampleOutdir/$sample.perBase.starch
 
 #Skip chrM since UCSC doesn't like the cut count to the right of the last bp in a chromosome
-gcat $sample.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM"' > $TMPDIR/$sample.perBase.bedGraph
+gcat $sampleOutdir/$sample.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM"' > $TMPDIR/$sample.perBase.bedGraph
 
-bedGraphToBigWig $TMPDIR/$sample.perBase.bedGraph $chromsizes $sample.perBase.bw
+bedGraphToBigWig $TMPDIR/$sample.perBase.bedGraph $chromsizes $sampleOutdir/$sample.perBase.bw
 
-echo "track name=$sample description=\"$sample cut counts (${analyzedTagsM}M analyzed tags- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sample.perBase.bw"
+echo "track name=$sample description=\"$sample cut counts (${analyzedTagsM}M analyzed tags- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sampleOutdir/$sample.perBase.bw"
 
 
 #echo "Making fragment coverage track"
@@ -187,12 +187,12 @@ else
        sampleAsProportionOfUniqMappedTags=1
 fi
 
-samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags $sample.bam > $hotspotBAM
+samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags $sampleOutdir/$sample.bam > $hotspotBAM
 
 cd hotspots/$sample
 
 #qsub -cwd -V -N ${sample}.hotspots -S /bin/bash -j y -b y
-$base/callHotspots.sh $hotspotBAM $hotspotDens $base/hotspots/$sample > $base/hotspots/$sample.hotspots.log 2>&1
+/vol/isg/encode/dnase/src/callHotspots.sh $hotspotBAM $hotspotDens $base/hotspots/$sample > $base/hotspots/$sample.hotspots.log 2>&1
 
 cd ../..
 
@@ -228,7 +228,7 @@ if [ $uniqMappedTags -gt 10000000 ]; then
        cd $TMPDIR/$sample.hotspots.10Mtags
        
        #NB dens track doesn't exist
-       $base/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $base/hotspots/$sample.hotspots.10Mtags.log 2>&1
+       /vol/isg/encode/dnase/src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $base/hotspots/$sample.hotspots.10Mtags.log 2>&1
        
        cd - #NB prints pwd
        
@@ -271,7 +271,7 @@ echo -e "SPOT\t$spot\t\t$sample"
 
 echo
 echo "Histogram of mismatches"
-samtools view $samflags $sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
+samtools view $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
        for(i=12; i<=NF; i++) { \
             if(match($i, /NM:i:/)) { \
                   print substr($i, 6); \
@@ -283,7 +283,7 @@ samtools view $samflags $sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
 #NB XA tags are computed for the unpaired tags, while MAPQ reflects the final PE location
 echo
 echo "Histogram of number of best alignments"
-samtools view  $samflags $sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
+samtools view  $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
        tag="NA"; \
        for(i=12; i<=NF; i++) { \
             if(match($i, /X0:i:/)) { \
@@ -302,21 +302,21 @@ PEtags=`cat $TMPDIR/$sample.flagstat.txt | grep "paired in sequencing" | awk '{p
 if [ $PEtags -gt 0 ]; then
        echo
        echo "Template lengths"
-       samtools view $samflags $sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrM"' | awk -v sample=$sample -F "\t" 'BEGIN {OFS="\t"} $9>0 {print sample, $9}' | sort -k2,2n | tee $sample.insertlengths.txt | cut -f2 |
+       samtools view $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrM"' | awk -v sample=$sample -F "\t" 'BEGIN {OFS="\t"} $9>0 {print sample, $9}' | sort -k2,2n | tee $sampleOutdir/$sample.insertlengths.txt | cut -f2 |
        awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {print "Minimum: " $0} {cum+=$0; lengths[NR]=$0; if($0<125) {lastLineUnder125=NR}} END {print "Number of tags: " NR; print "25th percentile: " lengths[int(NR*0.25)]; print "50th percentile: " lengths[int(NR*0.5)]; print "75th percentile: " lengths[int(NR*0.75)]; print "95th percentile: " lengths[int(NR*0.95)]; print "99th percentile: " lengths[int(NR*0.99)]; print "Maximum: " $0; print "Mean: " cum/NR; print "Prop. tags under 125 bp: " lastLineUnder125/NR}'
-       gzip -f $sample.insertlengths.txt
+       gzip -f $sampleOutdir/$sample.insertlengths.txt
 fi
 
 echo
 echo "Tag lengths:"
-samtools view $samflags $sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} {print length($10)}' | sort -g | uniq -c | sort -k1,1g 
+samtools view $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} {print length($10)}' | sort -g | uniq -c | sort -k1,1g 
 
 
 #Hack to deal with read names from SRA
 if samtools view $sample.bam | cut -f1 | head -10 | grep -v -q -e "^SRR"; then
        echo
        echo "Tag count by sequencing instrument"
-       samtools view $samflags $sample.bam | cut -f1 | cut -d ":" -f1 | sort | uniq -c | sort -k1,1g
+       samtools view $samflags $sampleOutdir/$sample.bam | cut -f1 | cut -d ":" -f1 | sort | uniq -c | sort -k1,1g
 fi
 
 echo
