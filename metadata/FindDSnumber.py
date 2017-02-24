@@ -50,38 +50,38 @@ def getDS(inputmetadata):
             data=open(args.jsonD+SampleName).read()
             output = json.loads(data)
             #keyword = 'human '
+            regexp = re.compile(r'DS[0-9]{5}|DS[0-9]{4}')
             befor_keyowrd, keyword, after_keyword = output['replicate']['experiment']['description'].partition('human ')
-            cellType = after_keyword.split(' ')[0].replace(' ', '_').replace('-','_')
+            cellType = after_keyword.split(' ')[0].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
             if not cellType and regexp.search(str(output)) is not None:
             	if len(output['replicate']['experiment']['biosample_synonyms'])>=1:
-            		cellType=output['replicate']['experiment']['biosample_synonyms'][0].replace(' ', '_').replace('-','_')
+            		cellType=output['replicate']['experiment']['biosample_synonyms'][0].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
             	elif len(output['replicate']['experiment']['biosample_synonyms'])==0:
-            		cellType = line.split('\t')[6].replace(' ', '_').replace('-','_')
+            		cellType = line.split('\t')[6].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
             elif not cellType and regexp.search(str(output)) is None:
-            	cellType = line.split('\t')[6].replace(' ', '_').replace('-','_')
+            	cellType = line.split('\t')[6].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
             #output['replicate']['experiment']['description']
-            regexp = re.compile(r'DS[0-9]{5}|DS[0-9]{4}')
             #print(output['replicate']['experiment']['description'])
             # submitted_file_name DS number is here
              #replicate/library/aliases OR in aliases
             if regexp.search(str(output['replicate']['library']['aliases'])) is not None:
                 m=re.search(regexp, str(output['replicate']['library']['aliases']))
                 DSid = DSid=m.group(0)
-                DSidOut = SampleName, DSid
+                DSidOut = SampleName, DSid,output['replicate']['library']['@id'].split('/')[2]
                 print(DSidOut)
             elif regexp.search(str(output['aliases'])) is not None:
                 m=re.search(regexp, str(output['aliases']))
                 DSid=m.group(0)
-                DSidOut = SampleName, DSid 
+                DSidOut = SampleName, DSid ,output['replicate']['library']['@id'].split('/')[2]
                 print(DSidOut)
             elif regexp.search(str(output['submitted_file_name'])) is not None:
                 m=re.search(regexp, str(output['submitted_file_name']))
                 DSid=m.group(0)
-                DSidOut = SampleName, DSid
+                DSidOut = SampleName, DSid,output['replicate']['library']['@id'].split('/')[2]
                 print(DSidOut)
 
             elif regexp.search(str(output)) is None:
-                DSidOut = SampleName, output['replicate']['library']['biosample'].split('/')[2]
+                DSidOut = SampleName,  output['replicate']['library']['@id'].split('/')[2]
                 print(DSidOut)
                 
                 

@@ -8,6 +8,7 @@ genome=$3
 echo "output name $name"
 date
 
+sampleOutdir=$name
 
 #Here we generate a list of expected filenames
 files=""
@@ -38,7 +39,7 @@ for f1 in `grep $DS inputs.txt | grep -v R2`; do
        fi
        
        curOutputFile=`basename $f1 .fastq.gz`
-       curOutputFile="${fc}${curOutputFile}.$genome.bam"
+       curOutputFile="$sampleOutdir/${fc}${curOutputFile}.$genome.bam"
        
        #echo "cur $files"
        
@@ -63,13 +64,13 @@ echo "Will merge $files"
 
 if [[ "$numfiles" -eq 1 ]]; then
        echo "copying file"
-       cp $files $name.bam
+       cp $files $sampleOutdir/$name.bam
 else
        echo "merging files"
-       samtools merge -l 1 -@ $NSLOTS $name.bam $files
+       samtools merge -l 1 -@ $NSLOTS $sampleOutdir/$name.bam $files
 fi
 
-echo "Processing $name.bam"
+echo "Processing $sampleOutdir/$name.bam"
 #TODO AddOrReplaceReadGroups or do bwa -r ""
 
 
@@ -86,16 +87,16 @@ date
 #java -Xmx6g -jar /home/maurano/bin/picard-tools/MarkDuplicates.jar INPUT=$name.bam OUTPUT=$name.markedDups.bam METRICS_FILE=$TMPDIR/$name.picardDups.txt QUIET=TRUE VERBOSITY=ERROR COMPRESSION_LEVEL=9 ASSUME_SORTED=TRUE VALIDATION_STRINGENCY=LENIENT && mv $name.markedDups.bam $name.bam
 
 ###Samblaster is faster
-samtools sort -@ $NSLOTS -O sam -T $TMPDIR/${name}.sortbyname -l 1 -n $name.bam |
+samtools sort -@ $NSLOTS -O sam -T $TMPDIR/${name}.sortbyname -l 1 -n $sampleOutdir/$name.bam |
 samblaster |
 samtools view -Sb - |
-samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${name}.sort -l 9 - > $name.markedDups.bam && mv $name.markedDups.bam $name.bam
+samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${name}.sort -l 9 - > $sampleOutdir/$name.markedDups.bam && mv $sampleOutdir/$name.markedDups.bam $sampleOutdir/$name.bam
 
 
 echo
 echo "Indexing"
 date
-samtools index $name.bam
+samtools index $sampleOutdir/$name.bam
 
 
 rm -f $files
