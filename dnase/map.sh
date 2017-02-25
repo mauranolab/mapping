@@ -156,7 +156,7 @@ else
        fi
 fi
 
-sampleOutdir=$celltype-$DS.$genome
+sampleOutdir=${celltype}-${DS}.${genome}
 
 mkdir -p $sampleOutdir
 
@@ -298,7 +298,7 @@ else
        #BUGBUG slow
        instrument=`samtools view  $sampleOutdir/$sample.$curGenome.bam | cut -f1 | cut -d ":" -f1 | uniq | sort | uniq | perl -pe 's/\n/;/g;' | perl -pe 's/;$//g;'`
 fi
-awk -v instrument=$instrument -v fc=$fc -v sample=$sample -v ds=$DS -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $0!="" {if($1=="CYCLE") {$0=tolower($0); $(NF+1)="instrument\tfc\tsample\tDS"} else {$(NF+1)=instrument "\t" fc "\t" sample "\t" ds;} print}' $TMPDIR/$sample.baseQ.txt > $sample.baseQ.txt
+awk -v instrument=$instrument -v fc=$fc -v sample=$sample -v ds=$DS -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $0!="" {if($1=="CYCLE") {$0=tolower($0); $(NF+1)="instrument\tfc\tsample\tDS"} else {$(NF+1)=instrument "\t" fc "\t" sample "\t" ds;} print}' $TMPDIR/$sample.baseQ.txt > $sampleOutdir/$sample.baseQ.txt
 
 
 echo
@@ -307,7 +307,7 @@ echo -n -e "Histogram of mismatches to reference in 36 bases:\t$instrument\t$fc\
 samflags="-q 30 -F 1548"
 
 #BUGBUG flag 2 not working?
-samtools view $samflags  $sampleOutdir/$sample.$curGenome.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
+samtools view $samflags $sampleOutdir/$sample.$curGenome.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
       readlength = length($10); \
       if (and($2, 16)) { \
             strand="-"; \
