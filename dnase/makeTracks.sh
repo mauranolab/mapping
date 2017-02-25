@@ -169,12 +169,12 @@ echo "track name=$sample description=\"$sample cut counts (${analyzedTagsM}M ana
 
 echo
 echo "Calling hotspots"
-base=`pwd`
-mkdir -p hotspots/$sample
+outbase=`pwd`
+mkdir -p $sampleOutdir/hotspots
 
 
 #Force creation of new density file (ours is normalized)
-hotspotDens=$base/hotspots/$sample/$sample.density.starch
+hotspotDens=$outbase/$sampleOutdir/hotspots/$sample.density.starch
 hotspotBAM=$TMPDIR/${sample}.bam
 #250M is too much, 150M takes 12-24 hrs
 if [ $uniqMappedTags -gt 100000000 ]; then
@@ -189,10 +189,10 @@ fi
 
 samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags $sampleOutdir/$sample.bam > $hotspotBAM
 
-cd hotspots/$sample
+cd $sampleOutdir/hotspots
 
 #qsub -cwd -V -N ${sample}.hotspots -S /bin/bash -j y -b y
-/vol/isg/encode/dnase/src/callHotspots.sh $hotspotBAM $hotspotDens $base/hotspots/$sample > $base/hotspots/$sample.hotspots.log 2>&1
+/vol/isg/encode/dnase/src/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots > $outbase/$sampleOutdir/hotspots/$sample.log 2>&1
 
 cd ../..
 
@@ -228,7 +228,7 @@ if [ $uniqMappedTags -gt 10000000 ]; then
        cd $TMPDIR/$sample.hotspots.10Mtags
        
        #NB dens track doesn't exist
-       /vol/isg/encode/dnase/src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $base/hotspots/$sample.hotspots.10Mtags.log 2>&1
+       /vol/isg/encode/dnase/src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $outbase/$sampleOutdir/hotspots/$sample.10Mtags.log 2>&1
        
        cd - #NB prints pwd
        
