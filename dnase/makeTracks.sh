@@ -313,7 +313,7 @@ samtools view $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"
 
 
 #Hack to deal with read names from SRA
-if samtools view $sample.bam | cut -f1 | head -10 | grep -v -q -e "^SRR"; then
+if samtools view $sampleOutdir/$sample.bam | cut -f1 | head -10 | grep -v -q -e "^SRR"; then
        echo
        echo "Tag count by sequencing instrument"
        samtools view $samflags $sampleOutdir/$sample.bam | cut -f1 | cut -d ":" -f1 | sort | uniq -c | sort -k1,1g
