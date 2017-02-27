@@ -2,6 +2,7 @@
 set -e # -o pipefail
 
 
+###Parameters
 sample=$1
 DS=$2
 mappedgenome=$3
@@ -12,22 +13,20 @@ echo "Making tracks for sample $sample ($DS) against genome $mappedgenome"
 base="/vol/isg/encode/dnase/src"
 chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
 
-
 #TMPDIR=`pwd`/tmp.makeTracks.$sample
 #mkdir -p $TMPDIR
 echo "using $TMPDIR as TMPDIR"
 
-
 samflags="-q 20 -F 524"
 #NB chrM being considered in most downstream analyses
 
-alias bedmap='bedmap --ec --sweep-all'
 
-
+###Setup
 if [ -z "$NSLOTS" ]; then
        export NSLOTS=1
 fi
 
+alias bedmap='bedmap --ec --sweep-all'
 
 # the function "round()" was taken from 
 # http://stempell.com/2009/08/rechnen-in-bash/
@@ -37,7 +36,6 @@ round()
 {
 echo $(printf %.$2f $(echo "scale=$2;(((10^$2)*$1)+0.5)/(10^$2)" | bc))
 };
-
 
 getcolor () {
        case "$1" in
@@ -58,6 +56,7 @@ getcolor () {
 }
 
 
+###Analysis
 date
 echo "Making bed file"
 samtools view $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
@@ -192,6 +191,7 @@ samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags 
 
 cd $sampleOutdir/hotspots
 
+#BUGBUG I think hotspot1 can use >40GB memory for some large datasets
 $base/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots > $outbase/$sampleOutdir/hotspots/$sample.log 2>&1
 
 cd ../..
