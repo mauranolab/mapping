@@ -1,6 +1,26 @@
 #!/bin/bash
 set -e # -o pipefail
 
+
+sample=$1
+DS=$2
+mappedgenome=$3
+sampleOutdir=$sample
+echo "Making tracks for sample $sample ($DS) against genome $mappedgenome"
+
+#TODO parameterize
+base="/vol/isg/encode/dnase/src"
+chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
+
+
+#TMPDIR=`pwd`/tmp.makeTracks.$sample
+#mkdir -p $TMPDIR
+echo "using $TMPDIR as TMPDIR"
+
+
+samflags="-q 20 -F 524"
+#NB chrM being considered in most downstream analyses
+
 alias bedmap='bedmap --ec --sweep-all'
 
 
@@ -37,25 +57,6 @@ getcolor () {
        echo $trackcolor
 }
 
-
-sample=$1
-DS=$2
-mappedgenome=$3
-sampleOutdir=$sample
-echo "Making tracks for sample $sample ($DS) against genome $mappedgenome"
-
-#TODO parameterize
-base="/vol/mauranolab/mapped/src/"
-chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
-
-
-#TMPDIR=`pwd`/tmp.makeTracks.$sample
-#mkdir -p $TMPDIR
-echo "using $TMPDIR as TMPDIR"
-
-
-samflags="-q 20 -F 524"
-#NB chrM being considered in most downstream analyses
 
 date
 echo "Making bed file"
@@ -191,8 +192,7 @@ samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags 
 
 cd $sampleOutdir/hotspots
 
-#qsub -cwd -V -N ${sample}.hotspots -S /bin/bash -j y -b y
-/vol/isg/encode/dnase/src/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots > $outbase/$sampleOutdir/hotspots/$sample.log 2>&1
+$base/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots > $outbase/$sampleOutdir/hotspots/$sample.log 2>&1
 
 cd ../..
 
@@ -228,9 +228,10 @@ if [ $uniqMappedTags -gt 10000000 ]; then
        cd $TMPDIR/$sample.hotspots.10Mtags
        
        #NB dens track doesn't exist
-       /vol/isg/encode/dnase/src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $outbase/$sampleOutdir/hotspots/$sample.10Mtags.log 2>&1
+       $base/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $outbase/$sampleOutdir/hotspots/$sample.10Mtags.log 2>&1
        
-       cd - #NB prints pwd
+       #NB otherwise prints pwd
+       cd - > /dev/null
        
        spotout=$TMPDIR/${sample}.hotspots.10Mtags/${sample}.10Mtags.spot.out
 fi
