@@ -6,12 +6,12 @@ set -e # -o pipefail
 sample=$1
 DS=$2
 mappedgenome=$3
+src=$4
+
+chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
+
 sampleOutdir=$sample
 echo "Making tracks for sample $sample ($DS) against genome $mappedgenome"
-
-#TODO parameterize
-base="/vol/isg/encode/dnase/src"
-chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
 
 #TMPDIR=`pwd`/tmp.makeTracks.$sample
 #mkdir -p $TMPDIR
@@ -150,7 +150,8 @@ awk '{if($6=="+"){s=$2; e=$2+1}else{s=$3; e=$3+1} print $1 "\t"s"\t"e"\tid\t1\t"
 bedops --chop 1 - | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' > $TMPDIR/$sample.cuts.loc.bed
 bedmap --delim '\t' --echo --count $TMPDIR/$sample.cuts.loc.bed $TMPDIR/$sample.cuts.bed | 
 awk -v analyzedTags=$analyzedTags -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedTags*100000000; print}' |
-starch - > $sampleOutdir/$sample.perBase.starch
+starch - > $sampleOutdir/$sample.per
+.starch
 
 #Skip chrM since UCSC doesn't like the cut count to the right of the last bp in a chromosome
 gcat $sampleOutdir/$sample.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM"' > $TMPDIR/$sample.perBase.bedGraph
@@ -192,7 +193,7 @@ samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags 
 cd $sampleOutdir/hotspots
 
 #BUGBUG I think hotspot1 can use >40GB memory for some large datasets
-$base/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots > $outbase/$sampleOutdir/hotspots/$sample.log 2>&1
+$src/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots > $outbase/$sampleOutdir/hotspots/$sample.log 2>&1
 
 cd ../..
 
@@ -228,7 +229,7 @@ if [ $uniqMappedTags -gt 10000000 ]; then
        cd $TMPDIR/$sample.hotspots.10Mtags
        
        #NB dens track doesn't exist
-       $base/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $outbase/$sampleOutdir/hotspots/$sample.10Mtags.log 2>&1
+       $src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $outbase/$sampleOutdir/hotspots/$sample.10Mtags.log 2>&1
        
        #NB otherwise prints pwd
        cd - > /dev/null
