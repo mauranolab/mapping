@@ -20,6 +20,7 @@ permittedMismatches=2
 celltype=$1
 DS=$2
 genome=$3
+src=$4
 echo "celltype: $celltype, DS: $DS, Genome: $genome"
 shift
 shift
@@ -48,7 +49,7 @@ if [[ "$sample1" =~ "_R2" ]]; then
 fi
 
 
-#NB needs to be on NFS for fastqc job
+#NB needs to be on NFS if you want to run fastqc in separate job
 #note sample1 is not unique (doesn't contain FC)
 #TMPDIR=tmp/$sample1.$jobid
 #mkdir -p $TMPDIR
@@ -62,11 +63,10 @@ echo "Trimming"
 
 #Trimmomatic options
 #TODO Probably need different sequences per barcode. Note this fa file has 2 ident copies of left adapter and none of right adapter (with barcode).
-#illuminaAdapters=/net/glados/solexa_data/rsandstrom/mapping/TF-smallfragments-proj/util/Trimmomatic-0.30/adapters/IlluminaPEsSymmetrical.fa
 #Regular illumina dsDNA protocol
-illuminaAdapters=/cm/shared/apps/trimmomatic/0.33/adapters/TruSeq3-PE-2.fa
+illuminaAdapters=/cm/shared/apps/trimmomatic/0.35/adapters/TruSeq3-PE-2.fa
 #ATAC-seq
-#illuminaAdapters=/cm/shared/apps/trimmomatic/0.33/adapters/NexteraPE-PE.fa
+#illuminaAdapters=/cm/shared/apps/trimmomatic/0.35/adapters/NexteraPE-PE.fa
 seedmis=2
 #Pretty much anything below 10 works
 PEthresh=5
@@ -110,31 +110,34 @@ if echo $sample1 | grep -q R1 && echo $sample2 | grep -q R2 && grep $sample2 inp
        fi
        
        echo "Will process reads file $reads2fq"
-#       cp $reads2fq $TMPDIR/$sample2.fq.gz
        
        PErun="TRUE"
        #NB provisional -- sample will be updated later with FC name
        sample=`echo $sample1 | perl -pe 's/_R1(_\d+)?/_R1R2\1/g;'`
        sample="${fc}$sample"
        
-       java org.usadellab.trimmomatic.TrimmomaticPE $trimmomaticBaseOpts $readsFq $reads2fq $TMPDIR/$sample1.fastq $TMPDIR/$sample1.unpaired.fastq $TMPDIR/$sample2.fastq $TMPDIR/$sample2.unpaired.fastq $trimmomaticSteps
+       java org.usadellab.trimmomatic.TrimmomaticPE $trimmomaticBaseOpts $readsFq $reads2fq $TMPDIR/$sample1.fastq.gz $TMPDIR/$sample1.unpaired.fastq.gz $TMPDIR/$sample2.fastq.gz $TMPDIR/$sample2.unpaired.fastq.gz $trimmomaticSteps
        
        echo -n "Unpaired reads:"
        #Merge anything unpaired from either R1 or R2
-       cat $TMPDIR/$sample1.unpaired.fastq $TMPDIR/$sample2.unpaired.fastq | tee $TMPDIR/$sample.unpaired.fastq | wc -l
+       zcat $TMPDIR/$sample1.unpaired.fastq $TMPDIR/$sample2.unpaired.fastq.gz | gzip -c > $TMPDIR/$sample.unpaired.fastq.gz
+       zcat $TMPDIR/$sample.unpaired.fastq.gz | wc -l
+       
        
        mkdir -p fastqc
        fastQcOutdir="fastqc/${fc}${sample1}_qc"
        if [ ! -d "$fastQcOutdir" ]; then
-              qsub -cwd -V -N ${sample1}.qc -o fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p $fastQcOutdir; fastqc --outdir $fastQcOutdir $TMPDIR/$sample1.fastq"
+              mkdir -p $fastQcOutdir
+              fastqc --outdir $fastQcOutdir $TMPDIR/$sample1.fastq.gz
        fi
        
        fastQcOutdir="fastqc/${fc}${sample2}_qc"
        if [ ! -d "$fastQcOutdir" ]; then
-              qsub -cwd -V -N ${sample2}.qc -o fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p $fastQcOutdir; fastqc --outdir $fastQcOutdir $TMPDIR/$sample2.fastq"
+              mkdir -p $fastQcOutdir
+              fastqc --outdir $fastQcOutdir $TMPDIR/$sample2.fastq.gz
        fi
        
-       if [ ! -s "$TMPDIR/$sample1.fastq" ] && [ ! -s "$TMPDIR/$sample2.fastq" ]; then
+       if [ ! -s "$TMPDIR/$sample1.fastq.gz" ] && [ ! -s "$TMPDIR/$sample2.fastq.gz" ]; then
               echo "No tags passed filtering, quitting successfully"
               exit 0
        fi
@@ -142,15 +145,16 @@ else
        PErun="FALSE"
        sample="${fc}$sample1"
        
-       #BUGBUG wrong adapter files
-       java org.usadellab.trimmomatic.TrimmomaticSE $trimmomaticBaseOpts $readsFq $TMPDIR/$sample1.fastq $trimmomaticSteps
+       #BUGBUG wrong adapter files for SE
+       java org.usadellab.trimmomatic.TrimmomaticSE $trimmomaticBaseOpts $readsFq $TMPDIR/$sample1.fastq.gz $trimmomaticSteps
        mkdir -p fastqc
        fastQcOutdir="fastqc/${fc}${sample1}_qc"
        if [ ! -d "$fastQcOutdir" ]; then
-              qsub -cwd -V -N ${sample1}.qc -o fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p $fastQcOutdir; fastqc --outdir $fastQcOutdir $TMPDIR/$sample1.fastq"
+              mkdir -p $fastQcOutdir
+              fastqc --outdir $fastQcOutdir $TMPDIR/$sample1.fastq.gz
        fi
        
-       if [ ! -s "$TMPDIR/$sample1.fastq" ]; then
+       if [ ! -s "$TMPDIR/$sample1.fastq.gz" ]; then
               echo "No tags passed filtering, quitting successfully"
               exit 0
        fi
@@ -201,7 +205,7 @@ for curGenome in $genomesToMap; do
        esac
        
        echo "bwa aln $bwaAlnOpts $bwaIndex ..."
-       bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample1.fastq > $TMPDIR/$sample1.$curGenome.sai
+       bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample1.fastq.gz > $TMPDIR/$sample1.$curGenome.sai
 
        date
 
@@ -213,27 +217,27 @@ for curGenome in $genomesToMap; do
        bwaExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
        if [[ "$PErun" == "TRUE" ]] ; then
               echo -e "\nMapping R2 $reads2fq for $sample2"
-              bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample2.fastq > $TMPDIR/$sample2.$curGenome.sai
+              bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample2.fastq.gz > $TMPDIR/$sample2.$curGenome.sai
               date
               
               #-P didn't have a major effect, but some jobs were ~10-40% faster but takes ~16GB RAM instead of 4GB
-              extractcmd="sampe $bwaExtractOpts -a 500 $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample2.$curGenome.sai $TMPDIR/$sample1.fastq $TMPDIR/$sample2.fastq"
+              extractcmd="sampe $bwaExtractOpts -a 500 $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample2.$curGenome.sai $TMPDIR/$sample1.fastq.gz $TMPDIR/$sample2.fastq.gz"
               
               
               #BUGBUG doesn't test if empty
               echo -e "\nMapping unpaired $sample.unpaired.fastq for $sample1"
-              bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample.unpaired.fastq > $TMPDIR/$sample.unpaired.$curGenome.sai
+              bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample.unpaired.fastq.gz > $TMPDIR/$sample.unpaired.$curGenome.sai
               date
               
               echo
               echo "Extracting unpaired reads"
               unpairedReadsSam="$TMPDIR/$sample.$curGenome.unpaired.sam"
-              unpairedExtractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample.unpaired.$curGenome.sai $TMPDIR/$sample.unpaired.fastq"
+              unpairedExtractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample.unpaired.$curGenome.sai $TMPDIR/$sample.unpaired.fastq.gz"
               echo -e "unpairedExtractcmd=bwa $unpairedExtractcmd | (...)"
               bwa $unpairedExtractcmd | grep -v "^@" > $unpairedReadsSam
               #TODO merge headers instead of dropping
        else
-              extractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample1.fastq"
+              extractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample1.fastq.gz"
               unpairedReadsSam=""
        fi
        
@@ -260,7 +264,7 @@ for curGenome in $genomesToMap; do
        #TODO prob better to do NSLOTS/2 or so
        #samtools view -@ $NSLOTS -S -u - | 
        samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${sample}.sortbyname -l 1 -n - |
-       /vol/isg/encode/dnase/src/filter_reads.py --max_mismatches $permittedMismatches - - |
+       $src/filter_reads.py --max_mismatches $permittedMismatches - - |
        samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${sample}.sort -l 1 - |
        #Add MC tag containing mate CIGAR for duplicate calling
        java -Xmx2g -jar /cm/shared/apps/picard/1.140/picard.jar FixMateInformation INPUT=/dev/stdin OUTPUT= $sampleOutdir/$sample.$curGenome.bam VERBOSITY=ERROR QUIET=TRUE COMPRESSION_LEVEL=1
