@@ -25,6 +25,7 @@ echo "celltype: $celltype, DS: $DS, Genome: $genome"
 shift
 shift
 shift
+shift
 userAlnOptions=$@
 
 
