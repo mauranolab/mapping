@@ -250,8 +250,11 @@ for curGenome in $genomesToMap; do
        
        #BUGBUG wasting cores?
        #TODO use fork/wait
-       bwa $extractcmd |
-       cat - $unpairedReadsSam |
+       bwa $extractcmd | gzip -1 -c - > $TMPDIR/$sample.extractBWA.sam.gz
+       echo 
+       echo
+       echo "Sorting, filtering, and picard"
+       zcat -f $TMPDIR/$sample.extractBWA.sam.gz $unpairedReadsSam |
        \
        #calmd
        #Necessary?
@@ -264,9 +267,9 @@ for curGenome in $genomesToMap; do
        #Use view instead of calmd
        #TODO prob better to do NSLOTS/2 or so
        #samtools view -@ $NSLOTS -S -u - | 
-       samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${sample}.sortbyname -l 1 -n - |
+       samtools sort -@ $NSLOTS -m 1500M  -O bam -T $TMPDIR/${sample}.sortbyname -l 1 -n - |
        $src/filter_reads.py --max_mismatches $permittedMismatches - - |
-       samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${sample}.sort -l 1 - |
+       samtools sort -@ $NSLOTS -m 1500M -O bam -T $TMPDIR/${sample}.sort -l 1 - |
        #Add MC tag containing mate CIGAR for duplicate calling
        java -Xmx2g -jar /cm/shared/apps/picard/1.140/picard.jar FixMateInformation INPUT=/dev/stdin OUTPUT= $sampleOutdir/$sample.$curGenome.bam VERBOSITY=ERROR QUIET=TRUE COMPRESSION_LEVEL=1
        
