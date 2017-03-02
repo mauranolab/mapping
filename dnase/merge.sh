@@ -87,6 +87,7 @@ date
 #java -Xmx6g -jar /home/maurano/bin/picard-tools/MarkDuplicates.jar INPUT=$name.bam OUTPUT=$name.markedDups.bam METRICS_FILE=$TMPDIR/$name.picardDups.txt QUIET=TRUE VERBOSITY=ERROR COMPRESSION_LEVEL=9 ASSUME_SORTED=TRUE VALIDATION_STRINGENCY=LENIENT && mv $name.markedDups.bam $name.bam
 
 ###Samblaster is faster
+#samblaster used an average of 1GB memory mapping ENCODE DNase data to hg38. 10/889 jobs used >5GB.
 samtools sort -@ $NSLOTS -O sam -T $TMPDIR/${name}.sortbyname -l 1 -n $sampleOutdir/$name.bam |
 samblaster |
 samtools view -Sb - |
