@@ -88,10 +88,10 @@ date
 
 ###Samblaster is faster
 #samblaster used an average of 1GB memory mapping ENCODE DNase data to hg38. 10/889 jobs used >5GB.
-samtools sort -@ $NSLOTS -O sam -T $TMPDIR/${name}.sortbyname -l 1 -n $sampleOutdir/$name.bam |
+samtools sort -@ $NSLOTS -O sam -m 1250M -T $TMPDIR/${name}.sortbyname -l 1 -n $sampleOutdir/$name.bam |
 samblaster |
 samtools view -Sb - |
-samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${name}.sort -l 9 - > $sampleOutdir/$name.markedDups.bam && mv $sampleOutdir/$name.markedDups.bam $sampleOutdir/$name.bam
+samtools sort -@ $NSLOTS -O bam -m 1250M -T $TMPDIR/${name}.sort -l 9 - > $sampleOutdir/$name.markedDups.bam && mv $sampleOutdir/$name.markedDups.bam $sampleOutdir/$name.bam
 
 
 echo
