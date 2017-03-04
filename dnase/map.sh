@@ -74,7 +74,7 @@ PEthresh=5
 SEthresh=5
 mintrim=1
 keepReverseReads=true
-trimmomaticBaseOpts="-threads $NSLOTS -trimlog $TMPDIR/${sample1}.trim.log.txt"
+trimmomaticBaseOpts="-threads $NSLOTS"
 trimmomaticSteps="CROP:36 TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:27"
 #MAXINFO:27:0.95 TRAILING:20
 
