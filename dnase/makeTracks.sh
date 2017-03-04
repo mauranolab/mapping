@@ -129,12 +129,16 @@ awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk 'BEGIN {OFS=
 bedmap --bp-ovr 1 --echo --count - $sampleOutdir/$sample.tags.starch | perl -pe 's/\|/\t\t/g;' | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' |
 awk -F "\t" 'BEGIN {OFS="\t"} {$2+=65; $3-=65; print}' |
 awk -v analyzedTags=$analyzedTags -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedTags*1000000; print}' |
-tee $TMPDIR/$sample.density.bed |
+starch - > $sampleOutdir/$sample.density.starch
+
+
+unstarch $sampleOutdir/$sample.density.starch |
 awk 'lastChr!=$1 {print "fixedStep chrom=" $1 " start=" $2+1 " step=" $3-$2 " span=" $3-$2; lastChr=$1} {print $5}' > $TMPDIR/$sample.wig
 
-starch $TMPDIR/$sample.density.bed > $sampleOutdir/$sample.density.starch
-
+#Kent tools can't use STDIN
 wigToBigWig $TMPDIR/$sample.wig $chromsizes $sampleOutdir/$sample.bw
+rm -f $TMPDIR/$sample.wig
+
 
 trackcolor=$(getcolor $sample)
 
@@ -151,11 +155,14 @@ bedops --chop 1 - | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' > $TMPDI
 bedmap --delim '\t' --echo --count $TMPDIR/$sample.cuts.loc.bed $TMPDIR/$sample.cuts.bed | 
 awk -v analyzedTags=$analyzedTags -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedTags*100000000; print}' |
 starch - > $sampleOutdir/$sample.perBase.starch
+rm -f $TMPDIR/$sample.cuts.loc.bed $TMPDIR/$sample.cuts.bed
 
 #Skip chrM since UCSC doesn't like the cut count to the right of the last bp in a chromosome
 gcat $sampleOutdir/$sample.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM"' > $TMPDIR/$sample.perBase.bedGraph
 
+#Kent tools can't use STDIN
 bedGraphToBigWig $TMPDIR/$sample.perBase.bedGraph $chromsizes $sampleOutdir/$sample.perBase.bw
+rm -f $TMPDIR/$sample.perBase.bedGraph
 
 echo "track name=$sample description=\"$sample cut counts (${analyzedTagsM}M analyzed tags- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sampleOutdir/$sample.perBase.bw"
 
