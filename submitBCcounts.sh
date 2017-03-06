@@ -11,6 +11,7 @@ floor()
        echo $(printf %.$2f $(echo "scale=0;$1/1" | bc))
 };
 
+src=/home/maagj01/scratch/transposon/src
 
 sample=$1
 amplicon=$2
@@ -19,6 +20,7 @@ R1trim=$3
 R2trim=$4
 bclen=$5
 bcread=$6
+sequence=$7
 
 shift 6
 basedir=$@
@@ -83,7 +85,7 @@ gzip -9 -c $TMPDIR/${sample}.umi.log > $OUTDIR/${sample}.umi.log.gz
 
 echo
 echo "Filtering out reads with >75% G content"
-python /home/maagj01/scratch/transposon/src/filterNextSeqReadsForPolyG.py --inputR1 $TMPDIR/${sample}.R1.fastq.gz --inputR2 $TMPDIR/${sample}.R2.fastq.gz --maxPolyG 75 --outputR1 $OUTDIR/${sample}.R1.fastq.gz --outputR2 $OUTDIR/${sample}.R2.fastq.gz
+$src/filterNextSeqReadsForPolyG.py --inputR1 $TMPDIR/${sample}.R1.fastq.gz --inputR2 $TMPDIR/${sample}.R2.fastq.gz --maxPolyG 75 --outputR1 $OUTDIR/${sample}.R1.fastq.gz --outputR2 $OUTDIR/${sample}.R2.fastq.gz
 
 
 echo
@@ -119,23 +121,32 @@ trimmomaticBaseOpts="-threads $NSLOTS"
 trimmomaticSteps="TOPHRED33"
 #AVGQUAL:25 TRAILING:20 MINLEN:27
 
-java org.usadellab.trimmomatic.TrimmomaticSE $trimmomaticBaseOpts $OUTDIR/${sample}.$bcread.fastq.gz $OUTDIR/${sample}.trimmed.$bcread.fastq.gz $trimmomaticSteps
+java org.usadellab.trimmomatic.TrimmomaticSE $trimmomaticBaseOpts $OUTDIR/${sample}.$bcread.fastq.gz $OUTDIR/${sample}.trimmed.BC.fastq.gz $trimmomaticSteps
+
+
+#Change name of fastq files to reflect Barcode or Genome fastq. Dependent on $bcread for RNA and DNA
+if [[ $bcread == R1 ]]
+then
+       mv $OUTDIR/${sample}.R2.fastq.gz $OUTDIR/${sample}.plasmid.fastq.gz
+else
+       mv $OUTDIR/${sample}.R1.fastq.gz $OUTDIR/${sample}.plasmid.fastq.gz
+fi
 
 ###Weblogo of processed reads
 echo "Weblogo of processed reads"
-zcat -f $OUTDIR/${sample}.R1.fastq.gz |awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2'| shuf -n 1000000| awk '{print ">id-" NR; print}' |
-weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R2 processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R1.processed.eps
-convert $TMPDIR/${sample}.R1.processed.eps $OUTDIR/${sample}.R1.processed.png
+zcat -f $OUTDIR/${sample}.trimmed.BC.fastq.gz |awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2'| shuf -n 1000000| awk '{print ">id-" NR; print}' |
+weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R2 processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.BC.processed.eps
+convert $TMPDIR/${sample}.BC.processed.eps $OUTDIR/${sample}.BC.processed.png
 
-zcat -f $OUTDIR/${sample}.R2.fastq.gz |awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2'| shuf -n 1000000| awk '{print ">id-" NR; print}' |
-weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R2 processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R2.processed.eps
-convert $TMPDIR/${sample}.R2.processed.eps $OUTDIR/${sample}.R2.processed.png
+zcat -f $OUTDIR/${sample}.plasmid.fastq.gz |awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2'| shuf -n 1000000| awk '{print ">id-" NR; print}' |
+weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R2 processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.plasmid.processed.eps
+convert $TMPDIR/${sample}.plasmid.processed.eps $OUTDIR/${sample}.plasmid.processed.png
 
 
 
 
 #Finally submit jobs
-numlines=`zcat $OUTDIR/${sample}.trimmed.$bcread.fastq.gz | wc -l`
+numlines=`zcat $OUTDIR/${sample}.trimmed.BC.fastq.gz | wc -l`
 chunksize=2000000 #Split fastq into 500,000 reads for deduplication (500,000 x 4)
 numjobs=`echo "$numlines / $chunksize" | bc -l -q`
 numjobs=$(floor $numjobs)
@@ -145,7 +156,7 @@ echo "$numlines lines to process in chunks of $chunksize"
 
 echo
 echo "Submitting $numjobs jobs"
-qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N extract.${sample} -o ${sample} -b y "~/scratch/transposon/src/extractBCcounts.sh ${sample} $amplicon $bclen $bcread $chunksize" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
+qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N extract.${sample} -o ${sample} -b y "$src/extractBCcounts.sh ${sample} $amplicon $bclen $chunksize $sequence" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
 echo "Will merge $numjobs files"
 bcfiles=`seq 1 $numjobs | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt "`
 echo -e "Will merge barcode files: $bcfiles\n"
@@ -156,7 +167,7 @@ echo Merging barcodes
 cat $bcfiles > $OUTDIR/$sample.barcodes.preFilter.txt
 #rm -f $bcfiles
 
-~/scratch/transposon/src/analyzeBCcounts.sh ${sample}
+$src/analyzeBCcounts.sh ${sample}
 EOF
 
 

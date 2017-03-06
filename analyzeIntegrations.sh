@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e # -o pipefail
 
+src=/home/maagj01/scratch/transposon/src
+
 sample=$1
 
 OUTDIR=$sample
@@ -71,7 +73,7 @@ awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"; groupnum=1} \
               split($0, last); \
        }' |
 #NB no need to sort
-python ~maagj01/scratch/transposon/src/DeDup_adjacencyOutput_Loop_ListComp_ReverseCountnoEqual_AlphabeticalOrder.py --col 6 --groupcol 8 -o - - |
+$src/AdjacencyDeDup.py --col 6 --groupcol 8 -o - - |
 cut -f1-7 > $OUTDIR/$sample.barcodes.readnames.coords.bed
 #NB Barcodes are now out of sync with those from analyzeBCcounts.sh
 
@@ -160,16 +162,16 @@ cat $OUTDIR/$sample.barcodes.coords.bed | cut -f5 | awk -v cutoff=10 '{if($0>=cu
 
 
 
-uniqueIntervals=$(tail -n +2 /vol/isg/encode/dnase/mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed| paste /vol/isg/encode/dnase/mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed -| awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}'| sed \$d| awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}'| bedtools intersect -wa -a - -b $OUTDIR/$sample.barcodes.coords.bed|sort|uniq| wc -l|awk '{print $1}')
-allIntervals=$(wc -l /vol/isg/encode/dnase/mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed|awk '{print $1}')
+uniqueIntervals=$(tail -n +2 /vol/isg/encode/dnase/bak.mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed| paste /vol/isg/encode/dnase/bak.mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed -| awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}'| sed \$d| awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}'| bedtools intersect -wa -a - -b $OUTDIR/$sample.barcodes.coords.bed|sort|uniq| wc -l|awk '{print $1}')
+allIntervals=$(wc -l /vol/isg/encode/dnase/bak.mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed|awk '{print $1}')
 zeroInsertions=`echo $allIntervals-$uniqueIntervals|bc -l`
 
 echo
 echo "Histogram of number of insertions between two neighboring DNase sites"
 echo " "$zeroInsertions 0
 
-tail -n +2 /vol/isg/encode/dnase/mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed|
-paste /vol/isg/encode/dnase/mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed -|
+tail -n +2 /vol/isg/encode/dnase/bak.mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed|
+paste /vol/isg/encode/dnase/bak.mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed -|
 awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}'|
 sed \$d|
 awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}'|

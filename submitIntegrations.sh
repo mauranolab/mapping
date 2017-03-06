@@ -2,11 +2,7 @@
 #BUGBUG weblogo breaking pipefail
 set -e # -o pipefail
 
-
-#BUGBUG change ~, /home/maagj01/scratch/transposon/src to $src
-
-module load trimmomatic/0.36 weblogo/3.5.0 ImageMagick picard/1.140 FastQC/0.11.4
-module load samtools/1.3.1 bwa/0.7.15
+module load trimmomatic/0.36 weblogo/3.5.0 ImageMagick picard/1.140 FastQC/0.11.4 samtools/1.3.1 bwa/0.7.15
 
 # the function "round()" was taken from 
 # https://stempell.com/2009/08/rechnen-in-bash/
@@ -15,6 +11,7 @@ floor()
        echo $(printf %.$2f $(echo "scale=0;$1/1" | bc))
 };
 
+src=/home/maagj01/scratch/transposon/src
 
 sample=$1
 amplicon=$2
@@ -22,6 +19,7 @@ amplicon=$2
 R1trim=$3
 R2trim=$4
 bclen=$5
+sequence=$6
 
 shift 5
 basedir=$@
@@ -78,7 +76,7 @@ gzip -9 -c $TMPDIR/${sample}.umi.log > $OUTDIR/${sample}.umi.log.gz
 
 echo
 echo "Filtering out reads with >75% G content"
-/home/maagj01/scratch/transposon/src/filterNextSeqReadsForPolyG.py --inputR1 $TMPDIR/${sample}.R1.fastq.gz --inputR2 $TMPDIR/${sample}.R2.fastq.gz --maxPolyG 75 --outputR1 $OUTDIR/${sample}.R1.fastq.gz --outputR2 $OUTDIR/${sample}.R2.fastq.gz
+$src/filterNextSeqReadsForPolyG.py --inputR1 $TMPDIR/${sample}.R1.fastq.gz --inputR2 $TMPDIR/${sample}.R2.fastq.gz --maxPolyG 75 --outputR1 $OUTDIR/${sample}.R1.fastq.gz --outputR2 $OUTDIR/${sample}.R2.fastq.gz
 
 
 echo
@@ -92,16 +90,8 @@ echo
 echo "FASTQC"
 fastqc --outdir $OUTDIR $OUTDIR/${sample}.R1.fastq.gz
 echo
-fastqc --outdir $OUTDIR $TMPDIR/${sample}.R2.out.fastq
+fastqc --outdir $OUTDIR $TMPDIR/${sample}.R2.fastq
 
-
-#TODO move to analyzeIntegration
-#Trim primer before mapping to genome
-R2primerlen=18
-echo "Trimming $R2primerlen bp primer from R2"
-zcat -f $TMPDIR/${sample}.R2.out.fastq | 
-awk -F "\t" 'BEGIN {OFS="\t"} {if(NR % 4==1 ) {split($0, name, "_"); print name[1]} else {print}}' |
-awk -v trim=$R2primerlen '{if(NR % 4==2 || NR % 4==0) {print substr($0, trim+1)} else if (NR % 4==1) {print $1} else {print}}' | gzip -9 -c > $OUTDIR/${sample}.R2.fastq.gz
 
 
 echo
@@ -114,23 +104,25 @@ if [[ ${#UMIlength} > "0" ]]; then
 fi
 
 echo
+
+echo
 echo "Trimmomatic"
 trimmomaticBaseOpts="-threads $NSLOTS"
 trimmomaticSteps="TOPHRED33"
 #AVGQUAL:25 TRAILING:20 MINLEN:27
 
-java org.usadellab.trimmomatic.TrimmomaticPE $trimmomaticBaseOpts $OUTDIR/${sample}.R1.fastq.gz $OUTDIR/${sample}.R2.fastq.gz $OUTDIR/${sample}.trimmed.R1.fastq.gz $OUTDIR/${sample}.trimmed.R1.unpaired.fastq.gz $OUTDIR/${sample}.trimmed.R2.fastq.gz $OUTDIR/${sample}.trimmed.R2.unpaired.fastq.gz $trimmomaticSteps
+java org.usadellab.trimmomatic.TrimmomaticPE $trimmomaticBaseOpts $OUTDIR/${sample}.R1.fastq.gz $OUTDIR/${sample}.R2.fastq.gz $OUTDIR/${sample}.trimmed.BC.fastq.gz $OUTDIR/${sample}.trimmed.BC.unpaired.fastq.gz $OUTDIR/${sample}.plasmid.fastq.gz $OUTDIR/${sample}.plasmid.unpaired.fastq.gz $trimmomaticSteps
 
 
 ###Weblogo of processed reads
 echo "Weblogo of processed reads"
-zcat -f $OUTDIR/${sample}.R1.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2'| shuf -n 1000000| awk '{print ">id-" NR; print}' |
-weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R2 processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R1.processed.eps
-convert $TMPDIR/${sample}.R1.processed.eps $OUTDIR/${sample}.R1.processed.png
+zcat -f $OUTDIR/${sample}.trimmed.BC.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2'| shuf -n 1000000| awk '{print ">id-" NR; print}' |
+weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R2 processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.BC.processed.eps
+convert $TMPDIR/${sample}.BC.processed.eps $OUTDIR/${sample}.BC.processed.png
 
-zcat -f $OUTDIR/${sample}.R2.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2'| shuf -n 1000000| awk '{print ">id-" NR; print}' |
-weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R2 processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R2.processed.eps
-convert $TMPDIR/${sample}.R2.processed.eps $OUTDIR/${sample}.R2.processed.png
+zcat -f $OUTDIR/${sample}.plasmid.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2'| shuf -n 1000000| awk '{print ">id-" NR; print}' |
+weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R2 processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.plasmid.processed.eps
+convert $TMPDIR/${sample}.plasmid.processed.eps $OUTDIR/${sample}.R2.processed.png
 
 
 
@@ -145,7 +137,7 @@ echo "$numlines lines to process in chunks of $chunksize"
 
 echo
 echo "Submitting $numjobs jobs"
-qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N map.${sample} -o ${sample} -b y "~/scratch/transposon/src/mapIntegrations.sh ${sample} $amplicon $bclen $chunksize" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
+qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N map.${sample} -o ${sample} -b y "$src/mapIntegrations.sh ${sample} $amplicon $bclen $chunksize $sequence" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
 
 echo "Will merge $numjobs files"
 bcfiles=`seq 1 $numjobs | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt "`
@@ -164,7 +156,7 @@ samtools merge -f -l 9 $OUTDIR/$sample.bam $bamfiles
 #samtools index $OUTDIR/$sample.bam
 #rm -f $bamfiles
 
-~/scratch/transposon/src/analyzeIntegrations.sh ${sample}
+$src/analyzeIntegrations.sh ${sample}
 EOF
 
 rm -f sgeid.map.${sample}

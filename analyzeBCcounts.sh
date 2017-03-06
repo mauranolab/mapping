@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e # -o pipefail
 
+src=/home/maagj01/scratch/transposon/src
+
 sample=$1
 
 OUTDIR=$sample
@@ -11,7 +13,7 @@ OUTDIR=$sample
 
 echo "Analyzing data for $sample"
 
-~/scratch/transposon/src/removeOverrepresentedBCs.py  --col 1 --freq 0.01 -o $OUTDIR/$sample.barcodes.txt $OUTDIR/$sample.barcodes.preFilter.txt 
+$src/removeOverrepresentedBCs.py  --col 1 --freq 0.01 -o $OUTDIR/$sample.barcodes.txt $OUTDIR/$sample.barcodes.preFilter.txt 
 
 
 ###Overall summary statistics

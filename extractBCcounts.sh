@@ -1,19 +1,17 @@
 #!/bin/bash
 set -e -o pipefail
 
-#INPUT files:
-#$sample.trimmed.R_BC.fastq.gz
-#$sample.trimmed.R_plasmid.fastq.gz
-
 
 NSLOTS=1
 
+src=/home/maagj01/scratch/transposon/src
 
 sample=$1
 amplicon=$2
 bclen=$3
-#bcread=$4
-chunksize=$5
+#bcread=$4 #Changed back and include a loop to find plasmid read
+chunksize=$4
+sequence=$5
 
 
 jobid=${SGE_TASK_ID}
@@ -33,15 +31,15 @@ date
 echo
 echo "Extracting barcodes from $bcread"
 date
-zcat -f $OUTDIR/$sample.trimmed.$bcread.fastq.gz | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | 
-~maagj01/scratch/transposon/src/extractBarcode.py - --referenceSeq $amplicon --minBaseQ 30 --bclen $bclen --align > $OUTDIR/$sample.barcodes.raw.txt
+zcat -f $OUTDIR/$sample.trimmed.BC.fastq.gz | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | 
+$src/extractBarcode.py - --referenceSeq $amplicon --minBaseQ 30 --bclen $bclen --align --sequence $sequence --alignread $OUTDIR/$sample.plasmid.fastq.gz > $OUTDIR/$sample.barcodes.raw.txt
 date
 
 
 echo
 echo "Merging similar barcodes"
 date
-cat $OUTDIR/$sample.barcodes.raw.txt | python ~maagj01/scratch/transposon/src/AdjacencyDeDup.py --col 1 -o $OUTDIR/$sample.barcodes.deduped.txt -  
+cat $OUTDIR/$sample.barcodes.raw.txt | python $src/AdjacencyDeDup.py --col 1 -o $OUTDIR/$sample.barcodes.deduped.txt -  
 date
 
 #Only merge UMIs if the length is over 4
@@ -53,7 +51,7 @@ if [[ ${#UMIlength} > "4" ]]; then
     cat $OUTDIR/$sample.barcodes.deduped.txt | 
     ##Here we stop being in order of original fastq
     sort -k1,1 |
-    ~maagj01/scratch/transposon/src/AdjacencyDeDup.py --col 3 --groupcol 1 -o $OUTDIR/$sample.barcodes.txt - 
+    $src/AdjacencyDeDup.py --col 3 --groupcol 1 -o $OUTDIR/$sample.barcodes.txt - 
 else
     #Skip UMI deduplication
     echo 'UMI too short'
