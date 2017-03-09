@@ -7,15 +7,17 @@ NSLOTS=1
 src=/home/maagj01/scratch/transposon/src
 
 sample=$1
-amplicon=$2
+BCreadSeq=$2
 bclen=$3
 #bcread=$4 #Changed back and include a loop to find plasmid read
 chunksize=$4
-sequence=$5
+plasmidSeq=$5
 
 
 jobid=${SGE_TASK_ID}
 #jobid=1
+BCreadFile=$OUTDIR/$sample.trimmed.BC.fastq.gz
+PlasmidreadFile=$OUTDIR/$sample.plasmid.fastq.gz
 
 
 OUTDIR=$sample
@@ -31,8 +33,10 @@ date
 echo
 echo "Extracting barcodes from $bcread"
 date
-zcat -f $OUTDIR/$sample.trimmed.BC.fastq.gz | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | 
-$src/extractBarcode.py - --referenceSeq $amplicon --minBaseQ 30 --bclen $bclen --align --sequence $sequence --alignread $OUTDIR/$sample.plasmid.fastq.gz > $OUTDIR/$sample.barcodes.raw.txt
+zcat -f $OUTDIR/$PlasmidreadFile| awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | gzip -1 -c - > $TMPDIR/$sample.plasmid.fastq.gz
+
+zcat -f $OUTDIR/$BCreadFile | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | 
+$src/PlasmidSeqinOtherBCread_CLEAN.py --BCread - --referenceSeq $BCreadSeq --bclen $bclen --plasmidSeq $plasmidSeq --plasmidRead $TMPDIR/$sample.plasmid.fastq.gz --minBaseQ 30 > $OUTDIR/$sample.barcodes.raw.txt
 date
 
 

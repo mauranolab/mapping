@@ -14,15 +14,15 @@ floor()
 src=/home/maagj01/scratch/transposon/src
 
 sample=$1
-amplicon=$2
+BCreadSeq=$2
 #R1/2trim clip before anything (i.e. for NNNN used to create diversity)
 R1trim=$3
 R2trim=$4
 bclen=$5
 bcread=$6
-sequence=$7
+plasmidSeq=$7
 
-shift 6
+shift 7
 basedir=$@
 echo "Looking for files in $basedir"
 f1=`find $basedir/ -name "*_R1_*.fastq.gz"`
@@ -97,9 +97,9 @@ zcat -f $OUTDIR/${sample}.R2.fastq.gz | awk 'END {print NR/4}'
 
 echo
 echo "FASTQC"
-fastqc --outdir $OUTDIR $OUTDIR/${sample}.$bcread.fastq.gz
-
-
+fastqc --outdir $OUTDIR $OUTDIR/${sample}.R1.fastq.gz
+echo
+fastqc --outdir $OUTDIR $OUTDIR/${sample}.R2.fastq.gz
 
 
 echo
@@ -125,7 +125,7 @@ java org.usadellab.trimmomatic.TrimmomaticSE $trimmomaticBaseOpts $OUTDIR/${samp
 
 
 #Change name of fastq files to reflect Barcode or Genome fastq. Dependent on $bcread for RNA and DNA
-if [[ $bcread == R1 ]]
+if [[ "$bcread" == "R1" ]]
 then
        mv $OUTDIR/${sample}.R2.fastq.gz $OUTDIR/${sample}.plasmid.fastq.gz
 else
@@ -156,7 +156,7 @@ echo "$numlines lines to process in chunks of $chunksize"
 
 echo
 echo "Submitting $numjobs jobs"
-qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N extract.${sample} -o ${sample} -b y "$src/extractBCcounts.sh ${sample} $amplicon $bclen $chunksize $sequence" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
+qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N extract.${sample} -o ${sample} -b y "$src/extractBCcounts.sh ${sample} $BCreadSeq $bclen $chunksize $plasmidSeq" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
 echo "Will merge $numjobs files"
 bcfiles=`seq 1 $numjobs | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt "`
 echo -e "Will merge barcode files: $bcfiles\n"

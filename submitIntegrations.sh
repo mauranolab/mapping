@@ -14,14 +14,14 @@ floor()
 src=/home/maagj01/scratch/transposon/src
 
 sample=$1
-amplicon=$2
+BCreadSeq=$2
 #R1/2trim clip before anything (i.e. for NNNN used to create diversity)
 R1trim=$3
 R2trim=$4
 bclen=$5
-sequence=$6
+plasmidSeq=$6
 
-shift 5
+shift 6
 basedir=$@
 echo "Looking for files in $basedir"
 f1=`find $basedir/ -name "*_R1_*.fastq.gz"`
@@ -90,7 +90,7 @@ echo
 echo "FASTQC"
 fastqc --outdir $OUTDIR $OUTDIR/${sample}.R1.fastq.gz
 echo
-fastqc --outdir $OUTDIR $TMPDIR/${sample}.R2.fastq
+fastqc --outdir $OUTDIR $OUTDIR/${sample}.R2.fastq.gz
 
 
 
@@ -127,7 +127,7 @@ convert $TMPDIR/${sample}.plasmid.processed.eps $OUTDIR/${sample}.R2.processed.p
 
 
 #Finally submit jobs
-numlines=`zcat $OUTDIR/${sample}.trimmed.R1.fastq.gz | wc -l`
+numlines=`zcat $OUTDIR/${sample}.trimmed.BC.fastq.gz | wc -l`
 chunksize=2000000 #Split fastq into 500,000 reads for deduplication (500,000 x 4)
 numjobs=`echo "$numlines / $chunksize" | bc -l -q`
 numjobs=$(floor $numjobs)
@@ -137,7 +137,7 @@ echo "$numlines lines to process in chunks of $chunksize"
 
 echo
 echo "Submitting $numjobs jobs"
-qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N map.${sample} -o ${sample} -b y "$src/mapIntegrations.sh ${sample} $amplicon $bclen $chunksize $sequence" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
+qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N map.${sample} -o ${sample} -b y "$src/mapIntegrations.sh ${sample} $BCreadSeq $bclen $chunksize $plasmidSeq" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
 
 echo "Will merge $numjobs files"
 bcfiles=`seq 1 $numjobs | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt "`

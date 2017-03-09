@@ -239,7 +239,7 @@ EOF
 
 echo
 echo "doing DistToDNase"
-sort-bed $OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' - /vol/isg/encode/dnase/mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed |awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
+sort-bed $OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' - /vol/isg/encode/dnase/bak.mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed |awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
 #sort-bed ../aligned.FCH55KHBGX2/$OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' - /vol/mauranolab/maagj01/transposon/Dpn_REsites/DpnREsort.bed |awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {split if ($6=="-") print $13; else if  ($6=="+") print $20}'  > $TMPDIR/DistDpn.txt
 
 #awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $2}'
