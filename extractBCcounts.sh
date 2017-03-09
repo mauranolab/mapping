@@ -36,7 +36,7 @@ date
 zcat -f $OUTDIR/$PlasmidreadFile| awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | gzip -1 -c - > $TMPDIR/$sample.plasmid.fastq.gz
 
 zcat -f $OUTDIR/$BCreadFile | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | 
-$src/PlasmidSeqinOtherBCread_CLEAN.py --BCread - --referenceSeq $BCreadSeq --bclen $bclen --plasmidSeq $plasmidSeq --plasmidRead $TMPDIR/$sample.plasmid.fastq.gz --minBaseQ 30 > $OUTDIR/$sample.barcodes.raw.txt
+$src/extractBarcode.py --BCread - --referenceSeq $BCreadSeq --bclen $bclen --plasmidSeq $plasmidSeq --plasmidRead $TMPDIR/$sample.plasmid.fastq.gz --minBaseQ 30 > $OUTDIR/$sample.barcodes.raw.txt
 date
 
 

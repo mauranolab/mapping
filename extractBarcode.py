@@ -9,11 +9,11 @@ import gzip
 import leven 
 from leven import levenshtein
 
-parser = argparse.ArgumentParser(prog = "keepPlasmidSeqBCs", description = "Only keep barcodes withe the right plasmid sequence in the plasmid read", add_help=True)
+parser = argparse.ArgumentParser(prog = "keepPlasmidSeqBCs", description = "Filter fastq.gz files to retain reads with barcodes matching expected sequence in both Barcode read and in plasmid read", add_help=True)
 parser.add_argument('--BCread', action='store', help='Read with barcode (fastq.gz file)')
-parser.add_argument('--referenceSeq', action='store', default='', help='Primer sequence including barcode, includes B+ at BC position, should match primer sequence')
-parser.add_argument('--plasmidRead', action='store', default=None, help='fastq.gz file')
-parser.add_argument('--plasmidSeq', action='store', default=None, help='Ref seq, should match primer sequence')
+parser.add_argument('--referenceSeq', action='store', default='', help='Reference sequence for BC read including barcode (as B+ at BC position)')
+parser.add_argument('--plasmidRead', action='store', default=None, help='Read containing the fixed plasmid (fastq.gz file)')
+parser.add_argument('--plasmidSeq', action='store', default=None, help='Plasmid reference sequence')
 parser.add_argument("--minBaseQ", action='store', type=int, default=30, help = "The minimum baseQ required over the BC region [%(default)s]. Assumes Phred 33")
 parser.add_argument('--bclen', action='store', type=int, help='length of barcode (barcodes longer than this will be trimmed) [%(default)s]')
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
@@ -54,7 +54,7 @@ print(args, file=sys.stderr)
 minBaseQ = args.minBaseQ
 
 #Levenstein Distance
-maxEditDist=1
+maxEditDist=2
 
 #Reference sequence with Barcode
 #referenceSeq = 'CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBCTAGTTGTGGGATCTTTGTCCAAACTCATCGAGCTCGGGA'
@@ -80,7 +80,7 @@ numlowQual=0
 numWrongBclength=0
 
 BClevenDist = [0] * (bc_start+1)
-PlasmidlevenDist = [0] * (40+1) #TODO limit to read and plasmid length
+PlasmidlevenDist = [0] * (60+1) #TODO limit to read and plasmid length
 try:
        while(True):
               
@@ -117,26 +117,27 @@ try:
               
               bc_baseQ = BCread[3][(bc_start) : (bc_end)]
               
-              
+              BCeditDist = levenshtein(BCread[1][0:bc_start].encode(), referenceSeq[:bc_start].encode())
+              plasmidEditDist = levenshtein(PLread[1][0:plasmidSeqLength].encode(), plasmidSeq[0:len(PLread[1])].encode())
               
               #Check if the start of the barcode read matches the plasmid
-              if levenshtein(BCread[1][0:bc_start].encode(), referenceSeq[:bc_start].encode()) <= maxEditDist:
+              if  BCeditDist <= maxEditDist:
                      readBCpassed = True
-                     BClevenDist[levenshtein(BCread[1][0:bc_start].encode(), referenceSeq[:bc_start].encode())]  += 1
+                     BClevenDist[BCeditDist]  += 1
               else:
                      readBCpassed = False
-                     BClevenDist[levenshtein(BCread[1][0:bc_start].encode(), referenceSeq[:bc_start].encode())]  += 1
+                     BClevenDist[BCeditDist]  += 1
               
               
               
               #Check if the plasmid read matches the plasmid
               if args.plasmidSeq is not None and  args.plasmidRead is not None:
-                     if levenshtein(PLread[1][0:plasmidSeqLength].encode(), plasmidSeq[0:len(PLread[1])].encode()) <= maxEditDist:
+                     if plasmidEditDist <= maxEditDist:
                             readPlasmidpassed = True
-                            PlasmidlevenDist[levenshtein(PLread[1][0:plasmidSeqLength].encode(), plasmidSeq[0:len(PLread[1])].encode())] +=1
+                            PlasmidlevenDist[plasmidEditDist] +=1
                      else:
                             readPlasmidpassed = False
-                            PlasmidlevenDist[levenshtein(PLread[1][0:plasmidSeqLength].encode(), plasmidSeq[0:len(PLread[1])].encode())] +=1
+                            PlasmidlevenDist[plasmidEditDist] +=1
               
               
               #Check the baseQ of the barcode
@@ -166,12 +167,12 @@ try:
               if not readBCpassed:
                      numWrongBCseq += 1
                      if args.verbose:
-                            print("Barcode read doesn't match plasmid start. Levenshtein distance is ",levenshtein(BCread[1][0:bc_start].encode(), referenceSeq[:bc_start].encode()), file=sys.stderr, sep="")
+                            print("Barcode read doesn't match plasmid start. Levenshtein distance is ",BCeditDist, file=sys.stderr, sep="")
               if args.plasmidSeq is not None and  args.plasmidRead is not None:
                      if not readPlasmidpassed:
                             numWrongPlasmid += 1
                             if args.verbose:
-                                   print("Plasmid sequence doesn't match. Levenshtein distance is ", levenshtein(PLread[1][0:plasmidSeqLength].encode(), plasmidSeq[0:len(PLread[1])].encode()), file=sys.stderr, sep="")
+                                   print("Plasmid sequence doesn't match. Levenshtein distance is ", plasmidEditDist, file=sys.stderr, sep="")
               if not readMinbaseQpassed:
                      numlowQual += 1
                      if args.verbose:
