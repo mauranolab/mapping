@@ -12,7 +12,7 @@ bclen=$3
 #bcread=$4 #Changed back and include a loop to find plasmid read
 chunksize=$4
 plasmidSeq=$5
-
+#TODO extractBarcode.py has the $TMPDIR/${sample}.plasmid.fastq.gz as input 
 
 jobid=${SGE_TASK_ID}
 #jobid=1

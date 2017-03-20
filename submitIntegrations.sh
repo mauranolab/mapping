@@ -117,12 +117,13 @@ java org.usadellab.trimmomatic.TrimmomaticPE $trimmomaticBaseOpts $OUTDIR/${samp
 ###Weblogo of processed reads
 echo "Weblogo of processed reads"
 zcat -f $OUTDIR/${sample}.trimmed.BC.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2'| shuf -n 1000000| awk '{print ">id-" NR; print}' |
-weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R2 processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.BC.processed.eps
+weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} BC processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.BC.processed.eps
 convert $TMPDIR/${sample}.BC.processed.eps $OUTDIR/${sample}.BC.processed.png
 
 zcat -f $OUTDIR/${sample}.plasmid.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2'| shuf -n 1000000| awk '{print ">id-" NR; print}' |
-weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R2 processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.plasmid.processed.eps
-convert $TMPDIR/${sample}.plasmid.processed.eps $OUTDIR/${sample}.R2.processed.png
+weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} plasmid processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.plasmid.processed.eps
+convert $TMPDIR/${sample}.plasmid.processed.eps $OUTDIR/${sample}.plasmid.processed.png
+
 
 
 

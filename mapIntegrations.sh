@@ -14,30 +14,18 @@ plasmidSeq=$5
 OUTDIR=$sample
 jobid=${SGE_TASK_ID}
 #jobid=1
-
+#TODO 
 
 echo "Analyzing barcodes"
 #Will read SGE_TASK_ID independently
 $src/extractBCcounts.sh $sample $BCreadSeq $bclen $chunksize $plasmidSeq 
 
 
-#Now set up for the iPCR-specific parts
-#TODO move to analyzeIntegration (QUESTSION: Did you mean mapIntegration.sh ???)
-#Trim primer before mapping to genome
-R2primerlen=18
-echo "Trimming $R2primerlen bp primer from R2"
-zcat -f $OUTDIR/${sample}.plasmid.fastq | 
-awk -F "\t" 'BEGIN {OFS="\t"} {if(NR % 4==1 ) {split($0, name, "_"); print name[1]} else {print}}' |
-awk -v trim=$R2primerlen '{if(NR % 4==2 || NR % 4==0) {print substr($0, trim+1)} else if (NR % 4==1) {print $1} else {print}}' | gzip -9 -c > $OUTDIR/${sample}.genome.fastq.gz
-
-
-
-
-
-f2=$OUTDIR/${sample}.genome.fastq.gz
+#TODO f2 is the read containing the primer sequence and the genomic regions. 
+f2=$OUTDIR/${sample}.plasmid.fastq.gz
 sample="${sample}.$jobid"
 #BUGBUG @RG wrong below--includes jobids
-#TODO
+#TODO 
 DS="BS00000A"
 
 
@@ -74,26 +62,31 @@ mm10)
        exit 3;;
 esac
 
-zcat $f2 | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | gzip -c > $TMPDIR/$sample.genome.fastq.gz
 
+#Now set up for the iPCR-specific parts
+##Trim primer before mapping to genome
+R2primerlen=18
+echo "Trimming $R2primerlen bp primer from R2"
+zcat $f2 | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | 
+awk -F "\t" 'BEGIN {OFS="\t"} {if(NR % 4==1 ) {split($0, name, "_"); print name[1]} else {print}}' |
+awk -v trim=$R2primerlen '{if(NR % 4==2 || NR % 4==0) {print substr($0, trim+1)} else if (NR % 4==1) {print $1} else {print}}' | gzip -9 -c > $TMPDIR/${sample}.genome.fastq.gz
 
-mv $TMPDIR/$sample.genome.fastq.gz $OUTDIR/${sample}.genome.fastq.gz
 
 date
 echo "bwa aln $bwaAlnOpts $bwaIndex ..."
-bwa aln $bwaAlnOpts $bwaIndex $OUTDIR/$sample.genome.fastq.gz > $OUTDIR/$sample.genome.sai
+bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample.genome.fastq.gz > $OUTDIR/$sample.genome.sai
 
 
 date
 DS_nosuffix=`echo $DS | perl -pe 's/[A-Z]$//g;'`
 bwaExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
-extractcmd="samse $bwaExtractOpts $bwaIndex $OUTDIR/$sample.genome.sai $OUTDIR/$sample.genome.fastq.gz"
+extractcmd="samse $bwaExtractOpts $bwaIndex $OUTDIR/$sample.genome.sai $TMPDIR/$sample.genome.fastq.gz"
 echo "Extracting"
 echo -e "extractcmd=bwa $extractcmd | (...)"
 bwa $extractcmd |
 #No need to sort SE data
 #samtools sort -@ $NSLOTS -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
-python $src/filter_reads.py --max_mismatches $permittedMismatches - - |
+$src/filter_reads.py --max_mismatches $permittedMismatches - - |
 samtools view -@ NSLOTS -1 - > $OUTDIR/$sample.bam
 
 

@@ -35,6 +35,7 @@ data.frame(do.call('rbind', strsplit(as.character(Sample[grep('doing GenicLocati
 
 SummarizeFlowcell<-list()
 flowCells<-flowCells[grep('MaxDNA',flowCells,invert=T)]
+#flowCells<-flowCells[8]
 for (flow in 1:length(flowCells)){# change to 1:length(flowCells) when all flowcells are done
     cat(flowCells[flow],'\n') 
     SummarizeFlowcell[[flow]]<-flowCells[flow]

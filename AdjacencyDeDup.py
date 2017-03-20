@@ -22,18 +22,6 @@ from umi_tools._dedup_umi import edit_distance
 # edit_distance('abcd'.encode(),'aaad'.encode())
 
 ###
-#this code is taken from https://www.cgat.org/downloads/public/training/notebooks/umi_simulation/Simulating_umi_deduping.html In [18]: from the Jupyter notebook
-def edit_dist(first, second):
-       ''' returns the edit distance/hamming distances between
-       its two arguements '''
-       dist = levenshtein(first, second)
-       return dist
-		
-#def edit_dist(first, second):
-#       '''Using Numpy instead to speed up''' 
-#              np.dstack((np.array(firstColumn),np.array(firstColumn)))
-#       dist = sum([not a == b for a, b in np.dstack((np/arrafirst,second))])
-#       return dist
 
 
 def breadth_first_search(node, adj_list):
@@ -51,24 +39,6 @@ def breadth_first_search(node, adj_list):
               queue.difference_update(searched)
                      
        return found
-       
-#get_adj_list_directional_adjacency
-#        ''' identify all umis within the hamming distance threshold
-#        and where the counts of the first umi is > (2 * second umi counts)-1'''
-##
-#See if there's any general python rules to speed things up
-#def dedup_dir_adj(Counter):
-#		def get_adj_list_directional_adjacency(umis, counts):
-#		      UmisEncoded = [(umi, umi.encode()) for umi in umis]  #NEW
-#		      Umi_adj_Dict = {} #Create directory 
-#		      #umisKeys = list(umis) #Convert the dynamic dict.keys object into indexed list 
-#		      for i in range(1,len(umis)): #len of dictionary  
-#		      	umi = UmisEncoded[i][0]#get keys from dict_keys
-#		      	umiCounts = counts[umi]
-#		      	umiEncoded = UmisEncoded[i][1]
-#		      	nearbyUmis =[umi2[0]  for umi2 in UmisEncoded if umi != umi2[0] and edit_distance(umiEncoded, umi2[1]) == 1 and umiCounts >= (counts[umi2[0]]*2)-1] #NEW
-#		      	Umi_adj_Dict[umi] = nearbyUmis
-#		      return Umi_adj_Dict
 
 def dedup_dir_adj(Counter):
 		def get_adj_list_directional_adjacency(umis, counts):
