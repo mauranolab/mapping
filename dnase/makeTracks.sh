@@ -204,32 +204,32 @@ $src/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots > 
 cd ../..
 
 
-hotspotfile=hotspots/${sample}/${sample}-final/${sample}.fdr0.01.hot.bed
+hotspotfile=${sample}/hotspots/${sample}-final/${sample}.fdr0.01.hot.bed
 echo "Hotspots for UCSC browser"
 if [ -f "$hotspotfile" ]; then
        cut -f1-3 $hotspotfile > $TMPDIR/${sample}.fdr0.01.hot.bed
-       bedToBigBed -type=bed3 $TMPDIR/${sample}.fdr0.01.hot.bed $chromsizes hotspots/${sample}/${sample}.fdr0.01.hot.bb
+       bedToBigBed -type=bed3 $TMPDIR/${sample}.fdr0.01.hot.bed $chromsizes ${sample}/hotspots/${sample}.fdr0.01.hot.bb
 else
        echo "Can't find $hotspotfile to make bigBed"
 fi
 
-peakfile=hotspots/${sample}/${sample}-final/${sample}.fdr0.01.pks.bed
+peakfile=${sample}/hotspots/${sample}-final/${sample}.fdr0.01.pks.bed
 if [ -f "$peakfile" ]; then
        cut -f1-3 $peakfile > $TMPDIR/${sample}.fdr0.01.pks.bed
-       bedToBigBed -type=bed3 $TMPDIR/${sample}.fdr0.01.pks.bed $chromsizes hotspots/${sample}/${sample}.fdr0.01.pks.bb
+       bedToBigBed -type=bed3 $TMPDIR/${sample}.fdr0.01.pks.bed $chromsizes ${sample}/hotspots/${sample}.fdr0.01.pks.bb
 else
        echo "Can't find $peakfile to make bigBed"
 fi
 
 
-spotout=hotspots/${sample}/$sample.spot.out
+spotout=${sample}/hotspots/$sample.spot.out
 
 #subsample for spot 
 if [ $uniqMappedTags -gt 10000000 ]; then
        echo
        echo "$uniqMappedTags uniquely mapped tags. Calculating SPOT score on subsample of 10M reads"
        sampleAsProportionOfUniqMappedTags=`echo 10000000/$uniqMappedTags | bc -l -q`
-       samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags $sample.bam > $TMPDIR/${sample}.10Mtags.bam
+       samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags ${sample}/$sample.bam > $TMPDIR/${sample}.10Mtags.bam
        
        mkdir -p $TMPDIR/$sample.hotspots.10Mtags
        cd $TMPDIR/$sample.hotspots.10Mtags

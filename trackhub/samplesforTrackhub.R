@@ -52,7 +52,7 @@ colnames(data)<-c('cellType','DSnumber','Replicate','Color','Assay','nonredundan
 for (i in 1:length(bwfiles)){
        SampleID<-gsub('.hg38.bw','',bwfiles[i])
        if (length(grep(paste0('merge.',SampleID),mergedFiles))>0)
-              sampleFile<-readLines(paste0('/vol/mauranolab/public_html/encode/dnase/mapped/',mergedFiles[grep(paste0('merge.',SampleID),mergedFiles)]))
+              sampleFile<-readLines(paste0('/vol/mauranolab/public_html/encode/dnase/bak.mapped/',mergedFiles[grep(paste0('merge.',SampleID),mergedFiles)]))
               if(tail(sampleFile)[1]=='Done!'){
                      colGroup<-col2rgb(as.character(col[rownames(col)%in%gsub("-.*",'',bwfiles[i]),][1]))[,1]
                      data$cellType[i]<-gsub('-.*','',SampleID)
