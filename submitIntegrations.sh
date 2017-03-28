@@ -152,7 +152,13 @@ cat $bcfiles > $OUTDIR/$sample.barcodes.preFilter.txt
 #rm -f $bcfiles
 
 echo Merging bam files
-samtools merge -f -l 9 $OUTDIR/$sample.bam $bamfiles
+if [[ `echo $bamfiles|wc |awk '{print $2}'` -gt 1 ]]
+then 
+       samtools merge -f -l 9 $OUTDIR/$sample.bam $bamfiles
+else 
+       cp $bamfiles $OUTDIR/$sample.bam
+fi
+
 #TODO sort?
 #samtools index $OUTDIR/$sample.bam
 #rm -f $bamfiles

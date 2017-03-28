@@ -119,10 +119,41 @@ SummarizeFlowcell[,i]<-format(as.numeric(SummarizeFlowcell[,i]),big.mark=",", tr
 library(tableHTML)
 SumHTMLtable<-tableHTML(SummarizeFlowcell) %>%  add_css_row(css = list('background-color', 'lightblue'),rows = odd(1:nrow(SummarizeFlowcell)))
 write_tableHTML(SumHTMLtable, file = "$OUTDIR/FlowcellSummary/index.html")
-
+write.table(SummarizeFlowcell, file = "$OUTDIR/FlowcellSummary/summaryflowcell.tsv",sep='\t',quote=F,col.names=T,row.names=F)
 EOF
 
+#Convert to Excel 
+#!/bin/bash
 
+
+PYTHON_ARG="$Flow" INPUT_ARG="$OUTDIR/FlowcellSummary/summaryflowcell.tsv" OUTPUT_ARG="$OUTDIR/FlowcellSummary/${Flow}.xlsx" python - <<END
+import csv
+import os
+from xlsxwriter.workbook import Workbook
+tsv_file = os.environ['INPUT_ARG']
+xlsx_file = os.environ['OUTPUT_ARG']
+
+# Create an XlsxWriter workbook object and add a worksheet.
+workbook = Workbook(xlsx_file)
+worksheet = workbook.add_worksheet()
+
+# Create a TSV file reader.
+tsv_reader = csv.reader(open(tsv_file, 'rt'), delimiter='\t')
+
+# Read the row data from the TSV file and write it to the XLSX file.
+for row, data in enumerate(tsv_reader):
+    worksheet.write_row(row, 0, data)
+
+# Close the XLSX file.
+workbook.close()
+
+END
+
+
+echo '<a href="'${Flow}.xlsx'"><font size="6">FlowcellSummary</font></a>'| cat $OUTDIR/FlowcellSummary/index.html - > $OUTDIR/FlowcellSummary/index1
+mv $OUTDIR/FlowcellSummary/index1 $OUTDIR/FlowcellSummary/index.html
+
+chmod 770 $OUTDIR/FlowcellSummary/${Flow}.xlsx
 ######
 #Levenstein distance per sample
 #######
@@ -268,7 +299,9 @@ if [[ `find -name *Saturation*|sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak| wc -l
        SaturationCurve[,2]<-as.numeric(SaturationCurve[,2])
        SaturationCurve[,1]<-as.numeric(SaturationCurve[,1])
        SaturationCurve[,3]<-gsub('minreads','',SaturationCurve[,3])
-       SaturationCurve\$Type<-gsub(".*_",'',SaturationCurve[,5])
+       #SaturationCurve\$Type<-gsub(".*_",'',SaturationCurve[,5])
+       SaturationCurve\$Type<-gsub(".*_",'',gsub('_Merged','',SaturationCurve[,5]))
+       
        colnames(SaturationCurve)[1:6] <- c("Reads","Unique_BC","minReads","NA","Sample",'Type')
        
        SaturationCurve\$Sample<- substr(SaturationCurve\$Sample, 0, min(nchar(SaturationCurve\$Sample)))
