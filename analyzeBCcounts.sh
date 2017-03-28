@@ -21,13 +21,13 @@ shuf -n 1000000 $OUTDIR/$sample.barcodes.txt |cut -f1 | awk -F "\t" 'BEGIN {OFS=
 weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} barcodes" --stacks-per-line 100 > $TMPDIR/${sample}.barcodes.eps
 convert $TMPDIR/${sample}.barcodes.eps $OUTDIR/${sample}.barcodes.png
 
-####UMIs weblogo
-#if [[ `awk -F "\t" 'BEGIN {OFS="\t"} length($3) >= 1 {found=1} END {print found}' $OUTDIR/$sample.barcodes.txt` == 1 ]]; then
-#    shuf -n 1000000 $OUTDIR/$sample.barcodes.txt| awk -F'\t' '{print $3}'| awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | 
-#    awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
-#    weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${i} UMI" --stacks-per-line 100 > $TMPDIR/${sample}.UMIs.eps
-#    convert $TMPDIR/${sample}.UMIs.eps $OUTDIR/${sample}.UMIs.png
-#fi
+###UMIs weblogo
+if [[ `awk -F "\t" 'BEGIN {OFS="\t"} length($3) >= 1 {found=1} END {print found}' $OUTDIR/$sample.barcodes.txt` == 1 ]]; then
+    shuf -n 1000000 $OUTDIR/$sample.barcodes.txt| awk -F'\t' '{print $3}'| awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | 
+    awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
+    weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${i} UMI" --stacks-per-line 100 > $TMPDIR/${sample}.UMIs.eps
+    convert $TMPDIR/${sample}.UMIs.eps $OUTDIR/${sample}.UMIs.png
+fi
 
 echo
 echo -n -e "$sample\tNumber of total reads\t"
