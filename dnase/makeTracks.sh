@@ -103,7 +103,7 @@ uniqMappedTags=`cat $TMPDIR/$sample.flagstat.txt | grep "mapped (" | awk '{print
 numMappedTagsMitochondria=`samtools view -c -F 512 $sampleOutdir/$sample.bam chrM`
 propMappedTagsMitochondria=`echo $numMappedTagsMitochondria/$uniqMappedTags*100 | bc -l -q`
 #NB now excludes chrM reads in duplicate counts
-dupTags=`samtools view -c -F 512 -f 1024 $sampleOutdir/$sample.bam | awk -F "\t" '$3!="chrM" {count+=1} END {print count}'`
+dupTags=`samtools view -F 512 -f 1024 $sampleOutdir/$sample.bam | awk -F "\t" '$3!="chrM" {count+=1} END {print count}'`
 #dupTags=`cat $TMPDIR/$sample.flagstat.txt | grep "duplicates" | awk '{print $1}'`
 analyzedTags=`unstarch --elements $sampleOutdir/$sample.tags.starch`
 pctPFalignments=`echo $PFalignments/$sequencedTags*100 | bc -l -q`
@@ -324,7 +324,7 @@ samtools view $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"
 if samtools view $sampleOutdir/$sample.bam | cut -f1 | head -10 | grep -v -q -e "^SRR"; then
        echo
        echo "Tag count by sequencing instrument"
-       samtools view $samflags $sampleOutdir/$sample.bam | cut -f1 | cut -d ":" -f1 | sort | uniq -c | sort -k1,1g
+       samtools view $samflags $sampleOutdir/$sample.bam | cut -f1 | cut -d ":" -f1 |sed 's/_.*//g' | sort | uniq -c | sort -k1,1g
 fi
 
 echo

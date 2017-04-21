@@ -26,7 +26,7 @@ shift
 shift
 shift
 shift
-userAlnOptions=$@
+userAlnOptions=""
 
 
 jobid=$SGE_TASK_ID
@@ -52,8 +52,8 @@ fi
 
 #NB needs to be on NFS if you want to run fastqc in separate job
 #note sample1 is not unique (doesn't contain FC)
-#TMPDIR=tmp/$sample1.$jobid
-#mkdir -p $TMPDIR
+TMPDIR=$sampleOutdir/tmp
+mkdir -p $TMPDIR
 echo "using $TMPDIR as TMPDIR"
 
 
@@ -65,9 +65,9 @@ echo "Trimming"
 #Trimmomatic options
 #TODO Probably need different sequences per barcode. Note this fa file has 2 ident copies of left adapter and none of right adapter (with barcode).
 #Regular illumina dsDNA protocol
-illuminaAdapters=/cm/shared/apps/trimmomatic/0.35/adapters/TruSeq3-PE-2.fa
+illuminaAdapters=/cm/shared/apps/trimmomatic/0.36/adapters/TruSeq3-PE-2.fa
 #ATAC-seq
-#illuminaAdapters=/cm/shared/apps/trimmomatic/0.35/adapters/NexteraPE-PE.fa
+#illuminaAdapters=/cm/shared/apps/trimmomatic/0.36/adapters/NexteraPE-PE.fa
 seedmis=2
 #Pretty much anything below 10 works
 PEthresh=5
@@ -224,18 +224,23 @@ for curGenome in $genomesToMap; do
               #-P didn't have a major effect, but some jobs were ~10-40% faster but takes ~16GB RAM instead of 4GB
               extractcmd="sampe $bwaExtractOpts -a 500 $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample2.$curGenome.sai $TMPDIR/$sample1.fastq.gz $TMPDIR/$sample2.fastq.gz"
               
-              
-              #BUGBUG doesn't test if empty
-              echo -e "\nMapping unpaired $sample.unpaired.fastq for $sample1"
-              bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample.unpaired.fastq.gz > $TMPDIR/$sample.unpaired.$curGenome.sai
-              date
-              
-              echo
-              echo "Extracting unpaired reads"
-              unpairedReadsSam="$TMPDIR/$sample.$curGenome.unpaired.sam"
-              unpairedExtractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample.unpaired.$curGenome.sai $TMPDIR/$sample.unpaired.fastq.gz"
-              echo -e "unpairedExtractcmd=bwa $unpairedExtractcmd | (...)"
-              bwa $unpairedExtractcmd | grep -v "^@" > $unpairedReadsSam
+              #Only map unpaired reads if there's more than 1,000
+              if [[ `zcat $TMPDIR/$sample.unpaired.fastq.gz| wc -l` -ge 4000 ]]
+              then
+                     #BUGBUG doesn't test if empty
+                     echo -e "\nMapping unpaired $sample.unpaired.fastq for $sample1"
+                     bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample.unpaired.fastq.gz > $TMPDIR/$sample.unpaired.$curGenome.sai
+                     date
+                     
+                     echo
+                     echo "Extracting unpaired reads"
+                     unpairedReadsSam="$TMPDIR/$sample.$curGenome.unpaired.sam"
+                     #Only run unpaired reads extract if unpaired reads exists
+
+                     unpairedExtractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample.unpaired.$curGenome.sai $TMPDIR/$sample.unpaired.fastq.gz"
+                     echo -e "unpairedExtractcmd=bwa $unpairedExtractcmd | (...)"
+                     bwa $unpairedExtractcmd | grep -v "^@" > $unpairedReadsSam
+              fi
               #TODO merge headers instead of dropping
        else
               extractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample1.fastq.gz"

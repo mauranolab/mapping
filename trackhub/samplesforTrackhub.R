@@ -28,12 +28,11 @@ if (is.null(df$GroupID)){
 } else {cat('Number of unique groups:', length(unique(df$GroupID)),'\n')}
 
 
-bwfiles<-list.files(path=pwd,pattern='hg38.bw')
+bwfiles<-list.files(path='/vol/mauranolab/public_html/encode/dnase/mapped/',pattern='hg38')
+bwfiles<-bwfiles[grep('DS23661|DS24771',bwfiles,invert=T)]
 
 cat('Number of unique group that has a bigWig file: ',length(bwfiles[grep(paste(unique(df$GroupID),collapse="|"),bwfiles)]),'\n')
 bwfiles<-bwfiles[grep(paste(unique(df$GroupID),collapse="|"),bwfiles)]
-mergedFiles<-list.files(path=pwd, pattern="merge.*")
-
 
 
 #pick colours
@@ -49,18 +48,21 @@ col<-as.data.frame(col,unique(Groups))
 
 data<-data.frame(matrix(ncol=10,nrow=length(bwfiles)))
 colnames(data)<-c('cellType','DSnumber','Replicate','Color','Assay','nonredundant_tags','SPOT','Hotspots','Exclude','Variable')
+
 for (i in 1:length(bwfiles)){
-       SampleID<-gsub('.hg38.bw','',bwfiles[i])
-       if (length(grep(paste0('merge.',SampleID),mergedFiles))>0)
-              sampleFile<-readLines(paste0('/vol/mauranolab/public_html/encode/dnase/bak.mapped/',mergedFiles[grep(paste0('merge.',SampleID),mergedFiles)]))
-              if(tail(sampleFile)[1]=='Done!'){
+       SampleID<-bwfiles[i]
+       cat(SampleID,'\n')
+       mergedFiles<-list.files(path=paste0('/vol/mauranolab/public_html/encode/dnase/mapped/',SampleID), pattern="^makeTracks.*")
+       if (length(mergedFiles)>0)
+              sampleFile<-readLines(paste0('/vol/mauranolab/public_html/encode/dnase/mapped/',SampleID,'/',mergedFiles))
+             # if(tail(sampleFile)[2]=='Done!'){
                      colGroup<-col2rgb(as.character(col[rownames(col)%in%gsub("-.*",'',bwfiles[i]),][1]))[,1]
                      data$cellType[i]<-gsub('-.*','',SampleID)
-                     data$DSnumber[i]<-gsub('.*-','',SampleID)
+                     data$DSnumber[i]<-gsub('.hg38','',gsub('.*-','',SampleID))
                      data$Replicate[i]<-1
                      data$Color[i]<-paste(colGroup[1],colGroup[2],colGroup[3],sep=',')
                      data$Assay[i]<-'DNase'
-                     data$nonredundant_tags[i]<-strsplit(sampleFile[grep('Num_nonredundant_tags\t',sampleFile)],'\t')[[1]][2]
+                     data$nonredundant_tags[i]<-strsplit(sampleFile[grep('Num_uniquely_mapped_tags\t',sampleFile)],'\t')[[1]][2]
                      data$Hotspots[i]<-strsplit(sampleFile[grep('Num_hotspots\t',sampleFile)],'\t')[[1]][2]
                      data$SPOT[i]<-strsplit(sampleFile[grep('SPOT\t',sampleFile)],'\t')[[1]][2]
                      
@@ -73,9 +75,10 @@ for (i in 1:length(bwfiles)){
                      if(length(grep('^H1|^H7|ES|^H[0-9]|^iPS',SampleID))>0){data$Variable[i]<-'Pluripotent'}
                      if(length(grep('testis|spinal|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|oesteoblast|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|prostate|intest|medull',
                      SampleID[grep('^f[A-Z]',SampleID,invert=T)],ignore.case=T,invert=F))>0){data$Variable[i]<-'Tissues'}
+                     #rm(sampleFile)
+                     #gc()
                      
-                     
-              }      
+              #}      
 }
 
 
@@ -90,7 +93,7 @@ for (i in 1:length(Replicates)){
 data[data$Replicate>2,]$Replicate<-'Other'
 data$Replicate<-paste0('rep',data$Replicate)
 data$Replicate<-gsub('repOther','Other',data$Replicate)
-data[data$Hotspots=='NA',]$Hotspots<-0
+#data[data$Hotspots=='NA',]$Hotspots<-0
 data$Variable[data$Variable=='UMass']<-'Roadmap'
 
 
