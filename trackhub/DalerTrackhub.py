@@ -181,9 +181,9 @@ for trackComp in Variable:
         track = Track(
             name=re.sub(r'\W+', '',fn[0]+'_'+fn[1]+'_tags'),
             short_label=fn[0]+'_'+fn[1],
-            long_label=fn[0]+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' nonredundant tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)',
+            long_label=fn[0]+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)',
             autoScale='off',
-            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38.bam',
+            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38/'+fn[0]+'-'+fn[1]+'.hg38.bam',
             subgroups=dict(cellType=fn[0], replicate=fn[2], DSnumber=fn[1]),
             tracktype='bam',
             
@@ -193,9 +193,9 @@ for trackComp in Variable:
         track = Track(
             name=re.sub(r'\W+', '',fn[0]+'_'+fn[1]+'_normalizedDensity'),
             short_label=fn[0]+'_'+fn[1],
-            long_label=fn[0]+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' nonredundant tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)',
+            long_label=fn[0]+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)',
             autoScale='off',
-            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38.bw',
+            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38/'+fn[0]+'-'+fn[1]+'.hg38.bw',
             subgroups=dict(cellType=fn[0], replicate=fn[2], DSnumber=fn[1]),
             tracktype='bigWig',
             color=fn[3],
@@ -205,9 +205,9 @@ for trackComp in Variable:
         track = Track(
             name=re.sub(r'\W+', '',fn[0]+'_'+fn[1]+'_peaks'),
             short_label=fn[0]+'_'+fn[1],
-            long_label=fn[0]+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' nonredundant tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)',
+            long_label=fn[0]+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)',
             autoScale='off',
-            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/hotspots/'+fn[0]+'-'+fn[1]+'.hg38'+'/'+fn[0]+'-'+fn[1]+'.hg38.fdr0.01.pks.bb ',
+            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38'+'/hotspots/'+fn[0]+'-'+fn[1]+'.hg38.fdr0.01.pks.bb ',
             subgroups=dict(cellType=fn[0], replicate=fn[2], DSnumber=fn[1]),
             tracktype='bigBed 3',
             color=fn[3],
@@ -217,9 +217,9 @@ for trackComp in Variable:
         track = Track(
             name=re.sub(r'\W+', '',fn[0]+'_'+fn[1]+'_hotspots'),
             short_label=fn[0]+'_'+fn[1],
-            long_label=fn[0]+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' nonredundant tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)',
+            long_label=fn[0]+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)',
             autoScale='off',
-            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/hotspots/'+fn[0]+'-'+fn[1]+'.hg38'+'/'+fn[0]+'-'+fn[1]+'.hg38.fdr0.01.hot.bb',
+            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38'+'/hotspots/'+fn[0]+'-'+fn[1]+'.hg38.fdr0.01.hot.bb',
             subgroups=dict(cellType=fn[0], replicate=fn[2], DSnumber=fn[1]),
             tracktype='bigBed 3',
             color=fn[3],
