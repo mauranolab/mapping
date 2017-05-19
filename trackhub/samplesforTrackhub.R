@@ -1,5 +1,7 @@
 #Add variables from command line tsv files of DSnumbers and Institute
 library("optparse")
+library(data.table)
+library(RColorBrewer)
 option_list = list(
   make_option(c("-f", "--file"), type="character", default=NULL, 
               help="dataset file name", metavar="character"),
@@ -19,7 +21,18 @@ if (is.null(opt$file)){
 cat('Input file: ', opt$file,'\n')
 cat('Output file: ', opt$out,'\n')
 
-df = read.table(opt$file,sep='\t',header=T,stringsAsFactors=F,na.strings=c(""," ","NA",'\t'), fill = TRUE)
+#df = read.table(opt$file,sep='\t',header=T,stringsAsFactors=F,na.strings=c(""," ","NA"), fill = TRUE, check.names=FALSE,colClasses=c('character',NA))
+#df = read(opt$file,fill=TRUE,header=T, check.names=FALSE,colClasses=c('character',NA))
+df <- fread(opt$file)
+df <- as.data.frame(df)
+df <- df[order(df$GroupID),]
+#TODO for now we just use the DS number and Age so we don't have to manually rename all celltypes
+#Age <- fread('../SampleIDs_SampleAge.tsv')
+#Age <- as.data.frame(Age)
+#Age <- Age[order(Age$GroupID),]
+#
+#Age$cellType <- df$cellType
+#df <- Age
 pwd<-getwd()
 cat('Dimensions of Input file: ',dim(unique(df)),'\n')
 
@@ -28,15 +41,15 @@ if (is.null(df$GroupID)){
 } else {cat('Number of unique groups:', length(unique(df$GroupID)),'\n')}
 
 
-bwfiles<-list.files(path='/vol/mauranolab/public_html/encode/dnase/mapped/',pattern='hg38')
-bwfiles<-bwfiles[grep('DS23661|DS24771',bwfiles,invert=T)]
+bwfiles<-list.files(path='./',pattern='hg38')
+#bwfiles<-bwfiles[grep('DS23661|DS24771',bwfiles,invert=T)]
 
 cat('Number of unique group that has a bigWig file: ',length(bwfiles[grep(paste(unique(df$GroupID),collapse="|"),bwfiles)]),'\n')
 bwfiles<-bwfiles[grep(paste(unique(df$GroupID),collapse="|"),bwfiles)]
 
 
 #pick colours
-library(RColorBrewer)
+
 set.seed(12345)
 col<-c(brewer.pal(n=9,'Set1'),brewer.pal(n=8,'Dark2'),brewer.pal(n=12,'Paired')[c(FALSE, TRUE)])
 col<-gsub('#FFFF33','#F0027F',col)
@@ -46,8 +59,8 @@ Groups<-gsub("-.*",'',bwfiles)
 col<-rep(col,round(length(Groups)/length(col),2))[as.factor(unique(Groups))]        
 col<-as.data.frame(col,unique(Groups))
 
-data<-data.frame(matrix(ncol=10,nrow=length(bwfiles)))
-colnames(data)<-c('cellType','DSnumber','Replicate','Color','Assay','nonredundant_tags','SPOT','Hotspots','Exclude','Variable')
+data<-data.frame(matrix(ncol=11,nrow=length(bwfiles)))
+colnames(data)<-c('cellType','DSnumber','Replicate','Color','Assay','nonredundant_tags','SPOT','Hotspots','Exclude','Variable','Age')
 
 for (i in 1:length(bwfiles)){
        SampleID<-bwfiles[i]
@@ -65,7 +78,7 @@ for (i in 1:length(bwfiles)){
                      data$nonredundant_tags[i]<-strsplit(sampleFile[grep('Num_uniquely_mapped_tags\t',sampleFile)],'\t')[[1]][2]
                      data$Hotspots[i]<-strsplit(sampleFile[grep('Num_hotspots\t',sampleFile)],'\t')[[1]][2]
                      data$SPOT[i]<-strsplit(sampleFile[grep('SPOT\t',sampleFile)],'\t')[[1]][2]
-                     
+                     data$Age[i] <- df$Age[grep(gsub('.hg38','',gsub('.*-','',SampleID)),df$GroupID)]
                      #if there's data in the Variable column, add the information. 
                      if(is.null(df$Variable)){data$Variable[i]<-" "
                      } else {data$Variable[i]<-df[grep(data$DSnumber[i],df$GroupID),]$Variable[1]}
@@ -81,20 +94,26 @@ for (i in 1:length(bwfiles)){
               #}      
 }
 
+#Fix sample age. 
+#Only keep first entry e.g. male (week 7) male (week8)
+data$Age <- gsub(').*','',data$Age)
+data$Age[grep('day',data$Age)] <- paste0(round(as.numeric(gsub(' day| days','',data$Age[grep('day',data$Age)]))/7),' weeks')
+data$Age[grep('^8 ',data$Age)] <- '08 weeks' 
 
 #Add replicate numbers based on highest number of non redundant tags
 data<-data[!is.na(data$cellType),]
-Replicates<-unique(data$cellType)
-for (i in 1:length(Replicates)){
-       Order<-order(data[grep(Replicates[i],data$cellType),]$nonredundant_tags,decreasing=T)
-       data[grep(Replicates[i],data$cellType),]$Replicate<-rank(-as.numeric(data[grep(Replicates[i],data$cellType),]$nonredundant_tags))
-       
+Replicates<-unique(subset(data,select=c(cellType,Variable)))
+Replicates$cellType <- gsub('_L$|_R$','',Replicates$cellType)
+for (i in 1:nrow(Replicates)){
+       #cat(Replicates$cellType[i], Replicates$Variable[i])
+       data[gsub('_L$|_R$','',data$cellType)==Replicates$cellType[i] & data$Variable==Replicates$Variable[i],]$Replicate <- rank(-as.numeric(data[gsub('_L$|_R$','',data$cellType)==Replicates$cellType[i] & data$Variable==Replicates$Variable[i],]$nonredundant_tags))
+       #Fix color for Left and right tissues
+       data[gsub('_L$|_R$','',data$cellType)==Replicates$cellType[i] & data$Variable==Replicates$Variable[i],]$Color <- names(tail(table(data[gsub('_L$|_R$','',data$cellType)==Replicates$cellType[i],]$Color),1))
 }
+
 data[data$Replicate>2,]$Replicate<-'Other'
-data$Replicate<-paste0('rep',data$Replicate)
-data$Replicate<-gsub('repOther','Other',data$Replicate)
-#data[data$Hotspots=='NA',]$Hotspots<-0
 data$Variable[data$Variable=='UMass']<-'Roadmap'
+
 
 
 #Output file

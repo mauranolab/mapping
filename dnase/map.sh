@@ -26,7 +26,7 @@ shift
 shift
 shift
 shift
-userAlnOptions=""
+userAlnOptions=$@
 
 
 jobid=$SGE_TASK_ID
@@ -52,8 +52,8 @@ fi
 
 #NB needs to be on NFS if you want to run fastqc in separate job
 #note sample1 is not unique (doesn't contain FC)
-TMPDIR=$sampleOutdir/tmp
-mkdir -p $TMPDIR
+#TMPDIR=tmp/$sample1.$jobid
+#mkdir -p $TMPDIR
 echo "using $TMPDIR as TMPDIR"
 
 
@@ -224,8 +224,8 @@ for curGenome in $genomesToMap; do
               #-P didn't have a major effect, but some jobs were ~10-40% faster but takes ~16GB RAM instead of 4GB
               extractcmd="sampe $bwaExtractOpts -a 500 $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample2.$curGenome.sai $TMPDIR/$sample1.fastq.gz $TMPDIR/$sample2.fastq.gz"
               
-              #Only map unpaired reads if there's more than 1,000
-              if [[ `zcat $TMPDIR/$sample.unpaired.fastq.gz| wc -l` -ge 4000 ]]
+              #Only map unpaired reads if there's more than 1 read
+              if [[ `zcat $TMPDIR/$sample.unpaired.fastq.gz| wc -l` -ge 4 ]]
               then
                      #BUGBUG doesn't test if empty
                      echo -e "\nMapping unpaired $sample.unpaired.fastq for $sample1"
