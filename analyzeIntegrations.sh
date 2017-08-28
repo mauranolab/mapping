@@ -213,7 +213,7 @@ EOF
 
 echo
 echo "doing DisttoDpn"
-sort-bed $OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/DpnREsites/DpnREsort.bed |awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
+sort-bed $OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/Dpn/Dpn.bed|awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
 
 R --quiet --no-save << EOF
 #Work around error "unable to start device PNG" on ISG cluster
@@ -238,8 +238,33 @@ EOF
 
 
 echo
+echo "doing DisttoMspI"
+sort-bed $OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/MspI/MspI.bed |awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
+
+R --quiet --no-save << EOF
+#Work around error "unable to start device PNG" on ISG cluster
+options(bitmapType="cairo") 
+
+filename <- "$OUTDIR/DistDpn.bed"
+cat("Reading", filename, "\n")
+data <- read(filename)
+colnames(data)[5] <- c("DinsToDpn")
+
+library(ggplot2)
+png(file="$OUTDIR/DistToDpnSite.png", width=400, height=400)
+ggplot(data, aes(x=abs(DinsToDpn))) +
+geom_histogram(color="black", size=0.25)+ 
+theme_classic()+
+theme(axis.title.x = element_text(size=20),axis.text.x  = element_text(size=16),axis.title.y=element_text(size=20),axis.text.y=element_text(size=16))+
+xlim(c(0,1500))+
+ggtitle("$sample")+
+xlab('Distance to Dpn site')
+dev.off()
+EOF
+
+echo
 echo "doing DistToDNase"
-sort-bed $OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' - /vol/isg/encode/dnase/bak.mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed |awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
+sort-bed $OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' --closest -  /vol/isg/encode/dnase/bak.mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed  |awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
 #sort-bed ../aligned.FCH55KHBGX2/$OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' - /vol/mauranolab/maagj01/transposon/Dpn_REsites/DpnREsort.bed |awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {split if ($6=="-") print $13; else if  ($6=="+") print $20}'  > $TMPDIR/DistDpn.txt
 
 #awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $2}'

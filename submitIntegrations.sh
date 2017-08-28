@@ -108,7 +108,7 @@ echo
 echo
 echo "Trimmomatic"
 trimmomaticBaseOpts="-threads $NSLOTS"
-trimmomaticSteps="TOPHRED33"
+trimmomaticSteps="CROP:68 TOPHRED33"
 #AVGQUAL:25 TRAILING:20 MINLEN:27
 
 java org.usadellab.trimmomatic.TrimmomaticPE $trimmomaticBaseOpts $OUTDIR/${sample}.R1.fastq.gz $OUTDIR/${sample}.R2.fastq.gz $OUTDIR/${sample}.trimmed.BC.fastq.gz $OUTDIR/${sample}.trimmed.BC.unpaired.fastq.gz $OUTDIR/${sample}.plasmid.fastq.gz $OUTDIR/${sample}.plasmid.unpaired.fastq.gz $trimmomaticSteps

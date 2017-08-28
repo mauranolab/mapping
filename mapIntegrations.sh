@@ -16,6 +16,10 @@ jobid=${SGE_TASK_ID}
 #jobid=1
 #TODO 
 
+#TMPDIR=$OUTDIR/bamintermediate
+#mkdir -p $TMPDIR
+#echo "using $TMPDIR as TMPDIR"
+
 echo "Analyzing barcodes"
 #Will read SGE_TASK_ID independently
 $src/extractBCcounts.sh $sample $BCreadSeq $bclen $chunksize $plasmidSeq 

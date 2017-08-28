@@ -136,11 +136,17 @@ for (i in 1:nrow(SummarizeFlowcell)){
     cat(as.numeric(SummarizeFlowcell[,9][i])/as.numeric(SummarizeFlowcell[,7][i]),'\n')
     
     #Prop PF
-    if(!is.na(SummarizeFlowcell[,12][i])) {SummarizeFlowcell[,14][i]<-as.numeric(SummarizeFlowcell[,13][i])/(as.numeric(SummarizeFlowcell[,12][i])+as.numeric(SummarizeFlowcell[,13][i]))}
+    if(!is.na(SummarizeFlowcell[,12][i])) {SummarizeFlowcell[,14][i]<-as.numeric(SummarizeFlowcell[,13][i])/(as.numeric(SummarizeFlowcell[,5][i]))}
+    #if(!is.na(SummarizeFlowcell[,12][i])) {SummarizeFlowcell[,14][i]<-as.numeric(SummarizeFlowcell[,13][i])/(as.numeric(SummarizeFlowcell[,12][i])+as.numeric(SummarizeFlowcell[,13][i]))}
     if(!is.na(SummarizeFlowcell[,12][i])) {SummarizeFlowcell[,19][i]<-as.numeric(SummarizeFlowcell[,18][i])/(as.numeric(SummarizeFlowcell[,17][i])+as.numeric(SummarizeFlowcell[,18][i]))}
 }
     
+for (i in 5:ncol(SummarizeFlowcell)){
+SummarizeFlowcell[,i]<-format(as.numeric(SummarizeFlowcell[,i]),big.mark=",", trim=TRUE)
+}  
+    
 write.table(SummarizeFlowcell,file=paste0('SummarisedFlowcells/SummarisedFlowcell_',Sys.Date( ),'.tsv'),row.names=F,sep='\t',quote=F)
+write.table(SummarizeFlowcell,file=paste0('~/public_html/blog/Flowcells/SummarisedFlowcell_',Sys.Date( ),'.tsv'),row.names=F,sep='\t',quote=F)
 
 
 
