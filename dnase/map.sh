@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e -o pipefail
+#set -e -o pipefail
 
 
 #Above not catching segfaults
@@ -62,6 +62,7 @@ echo "Trimming"
 #/home/jvierstra/proj/code/bio-tools/apps/trim-adapters-illumina/trim-adapters-illumina DS32747A_CTTGTA_L002_R1_001.fastq.gz DS32747A_CTTGTA_L002_R2_001.fastq.gz R1.jtrim.fastq.gz R2.jtrim.fastq.gz
 
 
+
 #Trimmomatic options
 #TODO Probably need different sequences per barcode. Note this fa file has 2 ident copies of left adapter and none of right adapter (with barcode).
 #Regular illumina dsDNA protocol
@@ -75,7 +76,25 @@ SEthresh=5
 mintrim=1
 keepReverseReads=true
 trimmomaticBaseOpts="-threads $NSLOTS"
-trimmomaticSteps="CROP:36 TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:27"
+
+
+numberReads=$(zcat $readsFq|awk 'NR%4==2'| wc -l)
+readsWithSequence=$(zcat $readsFq|awk 'NR%4==2'|grep TCGTATGCCGTCTTC| wc -l)
+readLength=$(zcat $readsFq|awk 'NR%4==2 {print length($1)}'|head -1)
+propReads=$(echo $readsWithSequence/$numberReads| bc -l)
+
+
+if [ `echo "$propReads"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ]; then 
+       echo "More than 25% of reads have TCGTATGCCGTCTTC- Hard clip to 20bp reads"
+       trimmomaticSteps="CROP:20 TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:20"
+elif [[ `echo "$readLength"` -le 22 ]]; then
+       echo "Reads are 20bp- Hard clip to 20bp reads"
+       trimmomaticSteps="CROP:20 TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:20"
+else
+       echo "Reads don't have more than 25% TCGTATGCCGTCTTC - No hard clipping"
+       trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:27"
+fi
+#trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:27"
 #MAXINFO:27:0.95 TRAILING:20
 
 

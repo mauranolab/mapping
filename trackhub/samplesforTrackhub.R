@@ -2,6 +2,7 @@
 library("optparse")
 library(data.table)
 library(RColorBrewer)
+library(dplyr)
 option_list = list(
   make_option(c("-f", "--file"), type="character", default=NULL, 
               help="dataset file name", metavar="character"),
@@ -27,12 +28,12 @@ df <- fread(opt$file)
 df <- as.data.frame(df)
 df <- df[order(df$GroupID),]
 #TODO for now we just use the DS number and Age so we don't have to manually rename all celltypes
-#Age <- fread('../SampleIDs_SampleAge.tsv')
-#Age <- as.data.frame(Age)
-#Age <- Age[order(Age$GroupID),]
-#
-#Age$cellType <- df$cellType
-#df <- Age
+Age <- fread('../SampleIDs_SampleAge.tsv')
+Age <- as.data.frame(Age)
+Age <- Age[order(Age$GroupID),]
+
+Age$cellType <- df$cellType
+df <- Age
 pwd<-getwd()
 cat('Dimensions of Input file: ',dim(unique(df)),'\n')
 
@@ -47,7 +48,7 @@ bwfiles<-list.files(path='./',pattern='hg38')
 cat('Number of unique group that has a bigWig file: ',length(bwfiles[grep(paste(unique(df$GroupID),collapse="|"),bwfiles)]),'\n')
 bwfiles<-bwfiles[grep(paste(unique(df$GroupID),collapse="|"),bwfiles)]
 
-
+bwfiles <- bwfiles[grep('DS17664',bwfiles,invert=T)]
 #pick colours
 
 set.seed(12345)
@@ -61,6 +62,9 @@ col<-as.data.frame(col,unique(Groups))
 
 data<-data.frame(matrix(ncol=11,nrow=length(bwfiles)))
 colnames(data)<-c('cellType','DSnumber','Replicate','Color','Assay','nonredundant_tags','SPOT','Hotspots','Exclude','Variable','Age')
+
+#Change cellType names for Fetal tissues
+
 
 for (i in 1:length(bwfiles)){
        SampleID<-bwfiles[i]
@@ -83,8 +87,8 @@ for (i in 1:length(bwfiles)){
                      if(is.null(df$Variable)){data$Variable[i]<-" "
                      } else {data$Variable[i]<-df[grep(data$DSnumber[i],df$GroupID),]$Variable[1]}
                      #Divide samples based on category
-                     if(length(grep('^f[A-Z]',SampleID))>0){data$Variable[i]<-'Fetal_roadmap'}
-                     if(length(grep('^CD|^Th|^TH|^hTH|^iTH|^th',SampleID))>0){data$Variable[i]<-'Hematopoietic_lineage'}
+                     if(length(grep('^f[A-Z]',SampleID))>0){data$Variable[i]<-'Fetal_Tissues'}
+                     if(length(grep('^CD|^Th|^TH|^hTH|^iTH|^th|^GM1',SampleID))>0){data$Variable[i]<-'Hematopoietic_lineage'}
                      if(length(grep('^H1|^H7|ES|^H[0-9]|^iPS',SampleID))>0){data$Variable[i]<-'Pluripotent'}
                      if(length(grep('testis|spinal|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|oesteoblast|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|prostate|intest|medull',
                      SampleID[grep('^f[A-Z]',SampleID,invert=T)],ignore.case=T,invert=F))>0){data$Variable[i]<-'Tissues'}
@@ -100,6 +104,17 @@ data$Age <- gsub(').*','',data$Age)
 data$Age[grep('day',data$Age)] <- paste0(round(as.numeric(gsub(' day| days','',data$Age[grep('day',data$Age)]))/7),' weeks')
 data$Age[grep('^8 ',data$Age)] <- '08 weeks' 
 
+##Rename the fetal tissues 
+#fetalRename <- data[grep('day|week',data$Age),] %>% 
+#       filter(!grepl('^f',cellType)) %>%
+#       filter(!grepl('AG04449|AG04450|IMR_90',cellType)) %>%
+#       select(DSnumber)
+#       
+#library(Hmisc)
+#data[data$DSnumber%in%fetalRename$DSnumber,]$cellType <- gsub('^','f',capitalize(data[data$DSnumber%in%fetalRename$DSnumber,]$cellType))
+#data[data$DSnumber%in%fetalRename$DSnumber,]$Variable <- 'Fetal_roadmap'
+
+
 #Add replicate numbers based on highest number of non redundant tags
 data<-data[!is.na(data$cellType),]
 Replicates<-unique(subset(data,select=c(cellType,Variable)))
@@ -113,8 +128,8 @@ for (i in 1:nrow(Replicates)){
 
 data[data$Replicate>2,]$Replicate<-'Other'
 data$Variable[data$Variable=='UMass']<-'Roadmap'
-
-
-
+data$Variable[data$Variable=='Roadmap']<-'UW'
+data[is.na(data$Age),]$Age <- 'NoAge'
+data$Replicate<-paste0('rep',data$Replicate)
 #Output file
 write.table(data, file=opt$out,sep='\t',col.names=T,row.names=F,quote=F)

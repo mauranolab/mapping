@@ -76,7 +76,7 @@ _GENOME_ = hg38
 _K_ = 36
 ## Chromosome coordinates, bed format.
 # $HOTSPOT_DISTR/hotspot-deploy/bin/writeChromInfoBed.pl /vol/isg/annotation/fasta/hg38/hg38all.fa && cat chromInfo.bed | grep -v hap | grep -v random | grep -v chrUn | grep -v scaffold > hotspots.hg38.chromInfo.bed && rm -f chromInfo.bed
-_CHROM_FILE_ = /vol/isg/encode/dnase/src/dnase/hotspots.hg38.chromInfo.bed
+_CHROM_FILE_ = /vol/isg/encode/dnase/src/hotspots.hg38.chromInfo.bed
 ## Location of uniquely mappable positions in the genome for this tag length.
 _MAPPABLE_FILE_ = /vol/isg/annotation/bed/hg38/mappability/hg38.K36.mappable_only.starch
 #_MAPPABLE_FILE_ = /vol/isg/annotation/bed/%(_GENOME_)s/mappability/%(_GENOME_)s.K%(_K_)s.mappable_only.bed

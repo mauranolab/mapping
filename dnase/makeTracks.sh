@@ -17,7 +17,20 @@ echo "Making tracks for sample $sample ($DS) against genome $mappedgenome"
 #mkdir -p $TMPDIR
 echo "using $TMPDIR as TMPDIR"
 
-samflags="-q 20 -F 524"
+readsLength20=$(samtools view ${sampleOutdir}/${sample}.bam|awk 'length($10) ==20 {print $10}'| wc -l)
+readsTotal=$(samtools view ${sampleOutdir}/${sample}.bam| wc -l)
+
+propReads=$(echo $readsLength20/$readsTotal|bc -l)
+if [ `echo "$propReads"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ];
+then
+       echo "More than 25% of reads are 20bp - q10"
+       samflags="-q 10 -F 524"
+else
+       echo "Less than 25% of reads are 20bp - q20"
+       samflags="-q 20 -F 524"
+fi;
+
+
 #NB chrM being considered in most downstream analyses
 
 

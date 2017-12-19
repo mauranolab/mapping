@@ -13,6 +13,7 @@ module load python/3.5.0
 module load hotspot/4.1
 module load samblaster/0.1.22
 module load ucsckentutils/10132015
+module load hotspot2/2.0 
 
 
 genome=$1
