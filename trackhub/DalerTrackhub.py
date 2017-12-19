@@ -205,7 +205,7 @@ for trackComp in Variable:
     for fn in matching:
         cellTypeLR = re.sub(r'_L$|_R$','',fn[0])
         track = Track(
-            name=re.sub(r'\W+', '',cellTypeLR+'_'+fn[1]+'_tags'),
+            name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '_tags'),
             short_label=cellTypeLR+'_'+fn[1],
             long_label="DNase Tags "+cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
             autoScale='off',
@@ -217,7 +217,7 @@ for trackComp in Variable:
         Tags_view.add_tracks(track)
         #NormalizedDensity_view
         track = Track(
-            name=re.sub(r'\W+', '',cellTypeLR+'_'+fn[1]+'_normalizedDensity'),
+            name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '_normalizedDensity'),
             short_label=cellTypeLR+'_'+fn[1],
             long_label='DNase Density ' + cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
             autoScale='off',
@@ -229,7 +229,7 @@ for trackComp in Variable:
         NormalizedDensity_view.add_tracks(track)
         #PerBaseCutCunt
         track = Track(
-            name=re.sub(r'\W+', '',cellTypeLR + '_'+fn[1]+'_perBaseCleavage'),
+            name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '_perBaseCleavage'),
             short_label=cellTypeLR+'_'+fn[1],
             long_label='DNase Cut counts ' + cellTypeLR + '_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
             autoScale='off',
@@ -241,7 +241,7 @@ for trackComp in Variable:
         perBaseCleavage_view.add_tracks(track)
         #Peaks_View
         track = Track(
-            name=re.sub(r'\W+', '',cellTypeLR+'_'+fn[1]+'_peaks'),
+            name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '_peaks'),
             short_label=cellTypeLR+'_'+fn[1],
             long_label='DNase Peaks ' + cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
             autoScale='off',
@@ -253,7 +253,7 @@ for trackComp in Variable:
         Peaks_view.add_tracks(track)
         #Hotspots_view
         track = Track(
-            name=re.sub(r'\W+', '',cellTypeLR + '_'+fn[1]+'_hotspots'),
+            name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '_hotspots'),
             short_label=cellTypeLR + '_'+fn[1],
             long_label='DNase Hotspots ' + cellTypeLR +'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
             autoScale='off',
@@ -267,7 +267,7 @@ for trackComp in Variable:
     for track in NormalizedDensity_view.subtracks:
         track.add_params(viewLimits='0:3', autoScale='off')
         
-    composite.add_params( dimensions="dimY=cellType dimA=replicate dimX=Age")
+    composite.add_params( dimensions="dimY=cellType dimA=replicate dimX=Age", dimensionAchecked ="rep1")
     print composite 
     trackdb.add_tracks(composite)
 
