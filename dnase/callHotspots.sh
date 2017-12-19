@@ -20,6 +20,21 @@ echo "dens=$dens"
 echo "outdir=$outdir"
 
 
+readsLength20=$(samtools view $bam|awk 'length($10) ==20 {print $10}'| wc -l)
+readsTotal=$(samtools view $bam| wc -l)
+
+propReads=$(echo $readsLength20/$readsTotal|bc -l)
+if [ `echo "$propReads"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ];
+then
+       echo "More than 25% of reads are 20bp"
+       Kreads=20
+       mappableFile=/vol/isg/annotation/bed/hg38/mappability/hg38.K20.mappable_only.starch
+else
+       Kreads=36
+       mappableFile=/vol/isg/annotation/bed/hg38/mappability/hg38.K36.mappable_only.starch
+fi;
+
+
 #done by makeTracks.sh
 #samflags="-q 30 -F 524"
 #NB hotspot bases output filename on the .bam name here
@@ -73,12 +88,12 @@ _INPUT_TAGS_ =
 ## Genome 
 _GENOME_ = hg38
 ## Tag length
-_K_ = 36
+_K_ = $Kreads
 ## Chromosome coordinates, bed format.
 # $HOTSPOT_DISTR/hotspot-deploy/bin/writeChromInfoBed.pl /vol/isg/annotation/fasta/hg38/hg38all.fa && cat chromInfo.bed | grep -v hap | grep -v random | grep -v chrUn | grep -v scaffold > hotspots.hg38.chromInfo.bed && rm -f chromInfo.bed
 _CHROM_FILE_ = /vol/isg/encode/dnase/src/hotspots.hg38.chromInfo.bed
 ## Location of uniquely mappable positions in the genome for this tag length.
-_MAPPABLE_FILE_ = /vol/isg/annotation/bed/hg38/mappability/hg38.K36.mappable_only.starch
+_MAPPABLE_FILE_ = $mappableFile
 #_MAPPABLE_FILE_ = /vol/isg/annotation/bed/%(_GENOME_)s/mappability/%(_GENOME_)s.K%(_K_)s.mappable_only.bed
 
 ## Set DUPOK to T for DNaseI data, F for ChIP-seq data (DUPOK = T means allow duplicate reads)
