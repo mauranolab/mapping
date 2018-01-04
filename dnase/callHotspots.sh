@@ -12,7 +12,7 @@ fi
 bam=$1
 dens=$2
 outdir=$3
-
+mappedgenome=$4
 date
 echo "Running hotspot"
 echo "bam=$bam"
@@ -20,18 +20,19 @@ echo "dens=$dens"
 echo "outdir=$outdir"
 
 
-readsLength20=$(samtools view $bam|awk 'length($10) ==20 {print $10}'| wc -l)
+readsLength20bp=$(samtools view $bam|awk 'length($10) ==20 {print $10}'| wc -l)
 readsTotal=$(samtools view $bam| wc -l)
 
-propReads=$(echo $readsLength20/$readsTotal|bc -l)
-if [ `echo "$propReads"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ];
+propReads20bp=$(echo $readsLength20bp/$readsTotal|bc -l)
+if [ `echo "$propReads20bp"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ];
 then
-       echo "More than 25% of reads are 20bp"
+       echo "More than 25% of reads are 20bp - K20"
        Kreads=20
-       mappableFile=/vol/isg/annotation/bed/hg38/mappability/hg38.K20.mappable_only.starch
+       mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch
 else
+       echo "Less than 25% of reads are 20bp - K36"
        Kreads=36
-       mappableFile=/vol/isg/annotation/bed/hg38/mappability/hg38.K36.mappable_only.starch
+       mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch
 fi;
 
 
@@ -86,12 +87,12 @@ _USE_INPUT_ = F
 _INPUT_TAGS_ = 
 
 ## Genome 
-_GENOME_ = hg38
+_GENOME_ = $mappedgenome
 ## Tag length
 _K_ = $Kreads
 ## Chromosome coordinates, bed format.
-# $HOTSPOT_DISTR/hotspot-deploy/bin/writeChromInfoBed.pl /vol/isg/annotation/fasta/hg38/hg38all.fa && cat chromInfo.bed | grep -v hap | grep -v random | grep -v chrUn | grep -v scaffold > hotspots.hg38.chromInfo.bed && rm -f chromInfo.bed
-_CHROM_FILE_ = /vol/isg/encode/dnase/src/hotspots.hg38.chromInfo.bed
+$HOTSPOT_DISTR/hotspot-deploy/bin/writeChromInfoBed.pl /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}all.fa && cat $TMPDIR/chromInfo.bed | grep -v hap | grep -v random | grep -v chrUn |grep -v alt| grep -v scaffold > $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed && rm -f $TMPDIR/chromInfo.bed
+_CHROM_FILE_ = $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed 
 ## Location of uniquely mappable positions in the genome for this tag length.
 _MAPPABLE_FILE_ = $mappableFile
 #_MAPPABLE_FILE_ = /vol/isg/annotation/bed/%(_GENOME_)s/mappability/%(_GENOME_)s.K%(_K_)s.mappable_only.bed

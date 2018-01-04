@@ -17,11 +17,11 @@ echo "Making tracks for sample $sample ($DS) against genome $mappedgenome"
 #mkdir -p $TMPDIR
 echo "using $TMPDIR as TMPDIR"
 
-readsLength20=$(samtools view ${sampleOutdir}/${sample}.bam|awk 'length($10) ==20 {print $10}'| wc -l)
-readsTotal=$(samtools view ${sampleOutdir}/${sample}.bam| wc -l)
+readsLength20bp=$(samtools view ${sampleOutdir}/${sample}.bam|awk 'length($10) ==20 {print $10}'| wc -l)
+sequencedTags=`cat inputs.txt | grep $DS | sort | uniq | xargs zcat | awk 'END {print NR/4}'`
 
-propReads=$(echo $readsLength20/$readsTotal|bc -l)
-if [ `echo "$propReads"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ];
+propReads20bp=$(echo $readsLength20bp/$sequencedTags|bc -l)
+if [ `echo "$propReads20bp"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ];
 then
        echo "More than 25% of reads are 20bp - q10"
        samflags="-q 10 -F 524"
@@ -109,7 +109,7 @@ samtools flagstat $sampleOutdir/$sample.bam > $TMPDIR/$sample.flagstat.txt
 cat $TMPDIR/$sample.flagstat.txt
 
 #BUGBUG breaks for DSall or encode reps
-sequencedTags=`cat inputs.txt | grep $DS | sort | uniq | xargs zcat | awk 'END {print NR/4}'`
+
 PFalignments=`cat $TMPDIR/$sample.flagstat.txt | grep "in total" | awk '{print $1+$3}'`
 #NB used to count both columns of flagstat output ($1 + $3) for remaining metrics but it gives no guarantee of 1 line per tag
 uniqMappedTags=`cat $TMPDIR/$sample.flagstat.txt | grep "mapped (" | awk '{print $1}'`
@@ -194,7 +194,6 @@ mkdir -p $sampleOutdir/hotspots
 
 
 #Force creation of new density file (ours is normalized)
-hotspotDens=$outbase/$sampleOutdir/hotspots/$sample.density.starch
 hotspotBAM=$TMPDIR/${sample}.bam
 #250M is too much, 150M takes 12-24 hrs
 if [ $uniqMappedTags -gt 100000000 ]; then
@@ -209,54 +208,76 @@ fi
 
 samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags $sampleOutdir/$sample.bam > $hotspotBAM
 
-cd $sampleOutdir/hotspots
 
 #BUGBUG I think hotspot1 can use >40GB memory for some large datasets
-$src/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots > $outbase/$sampleOutdir/hotspots/$sample.log 2>&1
-
-cd ../..
-
-
-hotspotfile=${sample}/hotspots/${sample}-final/${sample}.fdr0.01.hot.bed
-echo "Hotspots for UCSC browser"
-if [ -f "$hotspotfile" ]; then
-       cut -f1-3 $hotspotfile > $TMPDIR/${sample}.fdr0.01.hot.bed
-       bedToBigBed -type=bed3 $TMPDIR/${sample}.fdr0.01.hot.bed $chromsizes ${sample}/hotspots/${sample}.fdr0.01.hot.bb
-else
-       echo "Can't find $hotspotfile to make bigBed"
+callHotspots1=TRUE
+if [ $callHotspots1 == TRUE ]; then
+       hotspotDens=$outbase/$sampleOutdir/hotspots/$sample.density.starch
+       cd $sampleOutdir/hotspots
+       $src/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots $mappedgenome > $outbase/$sampleOutdir/hotspots/$sample.log 2>&1
+       
+       cd ../..
+       
+       
+       hotspotfile=${sample}/hotspots/${sample}-final/${sample}.fdr0.01.hot.bed
+       echo "Hotspots for UCSC browser"
+       if [ -f "$hotspotfile" ]; then
+              cut -f1-3 $hotspotfile > $TMPDIR/${sample}.fdr0.01.hot.bed
+              bedToBigBed -type=bed3 $TMPDIR/${sample}.fdr0.01.hot.bed $chromsizes ${sample}/hotspots/${sample}.fdr0.01.hot.bb
+       else
+              echo "Can't find $hotspotfile to make bigBed"
+       fi
+       
+       peakfile=${sample}/hotspots/${sample}-final/${sample}.fdr0.01.pks.bed
+       if [ -f "$peakfile" ]; then
+              cut -f1-3 $peakfile > $TMPDIR/${sample}.fdr0.01.pks.bed
+              bedToBigBed -type=bed3 $TMPDIR/${sample}.fdr0.01.pks.bed $chromsizes ${sample}/hotspots/${sample}.fdr0.01.pks.bb
+       else
+              echo "Can't find $peakfile to make bigBed"
+       fi
+       
+       
+       spotout=${sample}/hotspots/$sample.spot.out
+       
+       #subsample for spot 
+       if [ $uniqMappedTags -gt 10000000 ]; then
+              echo
+              echo "$uniqMappedTags uniquely mapped tags. Calculating SPOT score on subsample of 10M reads"
+              sampleAsProportionOfUniqMappedTags=`echo 10000000/$uniqMappedTags | bc -l -q`
+              samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags ${sample}/$sample.bam > $TMPDIR/${sample}.10Mtags.bam
+              
+              mkdir -p $TMPDIR/$sample.hotspots.10Mtags
+              cd $TMPDIR/$sample.hotspots.10Mtags
+              
+              #NB dens track doesn't exist
+              $src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $outbase/$sampleOutdir/hotspots/$sample.10Mtags.log 2>&1
+              
+              #NB otherwise prints pwd
+              cd - > /dev/null
+              
+              spotout=$TMPDIR/${sample}.hotspots.10Mtags/${sample}.10Mtags.spot.out
+       fi
 fi
 
-peakfile=${sample}/hotspots/${sample}-final/${sample}.fdr0.01.pks.bed
-if [ -f "$peakfile" ]; then
-       cut -f1-3 $peakfile > $TMPDIR/${sample}.fdr0.01.pks.bed
-       bedToBigBed -type=bed3 $TMPDIR/${sample}.fdr0.01.pks.bed $chromsizes ${sample}/hotspots/${sample}.fdr0.01.pks.bb
-else
-       echo "Can't find $peakfile to make bigBed"
+
+#COMMENT Hotspot2 calls all hotspots for one FDR treshold. Further filtering is done through the for loop below
+callHotspots2=TRUE 
+if [ $callHotspots2 == TRUE ]; then
+       echo 'Calling hotspots2' 
+       mkdir -p ${sampleOutdir}/hotspot2
+       if [ `echo "$propReads20bp"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ];then 
+           hotspot2.sh  -c /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.chrom.sizes -C /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.CenterSites.starch  -F 0.20 -f 0.20 -M /vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch  $hotspotBAM ${sampleOutdir}/hotspot2  > $sampleOutdir/hotspot2/$sample.log 2>&1
+       
+       else
+           hotspot2.sh  -c /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.chrom.sizes -C /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.CenterSites.starch  -F 0.20 -f 0.20 -M /vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch  $hotspotBAM ${sampleOutdir}/hotspot2 > $sampleOutdir/hotspot2/$sample.log 2>&1
+       
+       fi;
+       
+       for FDR in {0.05,0.01,0.005,0.001} 
+       do
+              hsmerge.sh -f ${FDR} ${sampleOutdir}/hotspot2/${sample}.allcalls.starch ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr${FDR}.starch
+       done
 fi
-
-
-spotout=${sample}/hotspots/$sample.spot.out
-
-#subsample for spot 
-if [ $uniqMappedTags -gt 10000000 ]; then
-       echo
-       echo "$uniqMappedTags uniquely mapped tags. Calculating SPOT score on subsample of 10M reads"
-       sampleAsProportionOfUniqMappedTags=`echo 10000000/$uniqMappedTags | bc -l -q`
-       samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags ${sample}/$sample.bam > $TMPDIR/${sample}.10Mtags.bam
-       
-       mkdir -p $TMPDIR/$sample.hotspots.10Mtags
-       cd $TMPDIR/$sample.hotspots.10Mtags
-       
-       #NB dens track doesn't exist
-       $src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $outbase/$sampleOutdir/hotspots/$sample.10Mtags.log 2>&1
-       
-       #NB otherwise prints pwd
-       cd - > /dev/null
-       
-       spotout=$TMPDIR/${sample}.hotspots.10Mtags/${sample}.10Mtags.spot.out
-fi
-
-
 #Stats
 echo
 echo "*** Overall Stats ***"
@@ -288,6 +309,22 @@ else
        spot="NA"
 fi
 echo -e "SPOT\t$spot\t\t$sample"
+
+
+if [ -f "${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.01.starch" ]; then
+       numhotspots2=`unstarch ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.01.starch | wc -l`
+else
+       numhotspots2="NA"
+fi
+echo -e "Num_hotspots2\t$numhotspots2\t\t$sample"
+
+
+if [ -f "${sampleOutdir}/hotspot2/${sample}.SPOT.txt" ]; then
+       spot2=`cat ${sampleOutdir}/hotspot2/${sample}.SPOT.txt`
+else
+       spot2="NA"
+fi
+echo -e "SPOT2\t$spot2\t\t$sample"
 
 
 echo
