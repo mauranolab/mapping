@@ -62,11 +62,8 @@ echo "$name merge"
 qsub -p -400 -S /bin/bash -cwd -V --qos=normal -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid` -o $sampleOutdir/ -N merge.$name "$src/merge.sh $name $DS $genome" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.merge.$name
 
 echo "$name makeTracks"
-qsub -p -400 -S /bin/bash -cwd -V --qos=normal -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid.merge.$name` -o $sampleOutdir/ -N makeTracks.$name "$src/makeTracks.sh $name $DS $genome $src" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.makeTracks.$name
+qsub -p -400 -S /bin/bash -cwd -V --qos=low -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid.merge.$name` -o $sampleOutdir/ -N makeTracks.$name "$src/makeTracks.sh $name $DS $genome $src" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.makeTracks.$name
 
-echo "$name hotspots2"
-qsub -p -450 -S /bin/bash -cwd -V --qos=normal -pe threads 1 -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid.makeTracks.$name` -o $sampleOutdir/ -N hotspot2.$name "$src/hotspot2.sh $name" |perl -pe 's/[^\d].+$//g;'  > $sampleOutdir/sgeid.hot2.$name
-
-rm -f $sampleOutdir/sgeid $sampleOutdir/sgeid.merge.$name $sampleOutdir/sgeid.makeTracks.$name $sampleOutdir/sgeid.hot2.$name
+rm -f $sampleOutdir/sgeid $sampleOutdir/sgeid.merge.$name $sampleOutdir/sgeid.makeTracks.$name
 
 echo
