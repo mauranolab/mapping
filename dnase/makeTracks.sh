@@ -17,18 +17,7 @@ echo "Making tracks for sample $sample ($DS) against genome $mappedgenome"
 #mkdir -p $TMPDIR
 echo "using $TMPDIR as TMPDIR"
 
-readsLength20bp=$(samtools view ${sampleOutdir}/${sample}.bam|awk 'length($10) ==20 {print $10}'| wc -l)
-sequencedTags=`cat inputs.txt | grep $DS | sort | uniq | xargs zcat | awk 'END {print NR/4}'`
 
-propReads20bp=$(echo $readsLength20bp/$sequencedTags|bc -l)
-if [ `echo "$propReads20bp"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ];
-then
-       echo "More than 25% of reads are 20bp - q10"
-       samflags="-q 10 -F 524"
-else
-       echo "Less than 25% of reads are 20bp - q20"
-       samflags="-q 20 -F 524"
-fi;
 
 
 #NB chrM being considered in most downstream analyses
@@ -71,6 +60,18 @@ getcolor () {
 
 ###Analysis
 date
+readsLength20bp=$(samtools view ${sampleOutdir}/${sample}.bam|awk 'length($10) ==20 {print $10}'| wc -l)
+sequencedTags=`cat inputs.txt | grep $DS | sort | uniq | xargs zcat | awk 'END {print NR/4}'`
+
+propReads20bp=$(echo $readsLength20bp/$sequencedTags|bc -l)
+if [ `echo "$propReads20bp"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ];
+then
+       echo "More than 25% of reads are 20bp - q10"
+       samflags="-q 10 -F 524"
+else
+       echo "Less than 25% of reads are 20bp - q20"
+       samflags="-q 20 -F 524"
+fi;
 echo "Making bed file"
 samtools view $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
       readlength = length($10); \
@@ -195,7 +196,7 @@ mkdir -p $sampleOutdir/hotspots
 
 #Force creation of new density file (ours is normalized)
 hotspotBAM=$TMPDIR/${sample}.bam
-#250M is too much, 150M takes 12-24 hrs
+#250M is too much for hotspot1, 150M takes 12-24 hrs
 if [ $uniqMappedTags -gt 100000000 ]; then
        echo "$uniqMappedTags uniquely mapped tags. Generating hotspots on subsample of 100M reads"
        
@@ -209,9 +210,10 @@ fi
 samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags $sampleOutdir/$sample.bam > $hotspotBAM
 
 
-#BUGBUG I think hotspot1 can use >40GB memory for some large datasets
+
 callHotspots1=TRUE
 if [ $callHotspots1 == TRUE ]; then
+       #BUGBUG I think hotspot1 can use >40GB memory for some large datasets
        hotspotDens=$outbase/$sampleOutdir/hotspots/$sample.density.starch
        cd $sampleOutdir/hotspots
        $src/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots $mappedgenome > $outbase/$sampleOutdir/hotspots/$sample.log 2>&1
@@ -260,24 +262,27 @@ if [ $callHotspots1 == TRUE ]; then
 fi
 
 
-#COMMENT Hotspot2 calls all hotspots for one FDR treshold. Further filtering is done through the for loop below
+
 callHotspots2=TRUE 
 if [ $callHotspots2 == TRUE ]; then
+       #COMMENT Hotspot2 calls all hotspots for one FDR treshold. Further filtering is done through the for loop below
        echo 'Calling hotspots2' 
        mkdir -p ${sampleOutdir}/hotspot2
-       if [ `echo "$propReads20bp"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ];then 
-           hotspot2.sh  -c /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.chrom.sizes -C /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.CenterSites.starch  -F 0.20 -f 0.20 -M /vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch  $hotspotBAM ${sampleOutdir}/hotspot2  > $sampleOutdir/hotspot2/$sample.log 2>&1
-       
+       if (( $(bc -l <<<"$propReads20bp >=0.25") )); then 
+              mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch
        else
-           hotspot2.sh  -c /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.chrom.sizes -C /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.CenterSites.starch  -F 0.20 -f 0.20 -M /vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch  $hotspotBAM ${sampleOutdir}/hotspot2 > $sampleOutdir/hotspot2/$sample.log 2>&1
-       
+              mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch
        fi;
+       
+       hotspot2.sh  -c /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.chrom.sizes -C /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.CenterSites.starch  -F 0.20 -f 0.20 -M ${mappableFile}  $hotspotBAM ${sampleOutdir}/hotspot2  > $sampleOutdir/hotspot2/$sample.log 2>&1
        
        for FDR in {0.05,0.01,0.005,0.001} 
        do
               hsmerge.sh -f ${FDR} ${sampleOutdir}/hotspot2/${sample}.allcalls.starch ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr${FDR}.starch
        done
 fi
+
+
 #Stats
 echo
 echo "*** Overall Stats ***"
