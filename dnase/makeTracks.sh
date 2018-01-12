@@ -207,7 +207,7 @@ else
        sampleAsProportionOfUniqMappedTags=1
 fi
 
-samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags $sampleOutdir/$sample.bam > $hotspotBAM
+samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags $sampleOutdir/$sample.bam chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY > $hotspotBAM
 
 
 
@@ -252,7 +252,7 @@ if [ $callHotspots1 == TRUE ]; then
               cd $TMPDIR/$sample.hotspots.10Mtags
               
               #NB dens track doesn't exist
-              $src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags > $outbase/$sampleOutdir/hotspots/$sample.10Mtags.log 2>&1
+              $src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags $mappedgenome > $outbase/$sampleOutdir/hotspots/$sample.10Mtags.log 2>&1
               
               #NB otherwise prints pwd
               cd - > /dev/null
@@ -261,25 +261,34 @@ if [ $callHotspots1 == TRUE ]; then
        fi
 fi
 
-
+if [ $callHotspots1 == FALSE ]; then
+       hotspotfile=${sample}/hotspots/${sample}-final/${sample}.fdr0.01.hot.bed
+       spotout=${sample}/hotspots/$sample.spot.out
+       
+fi
 
 callHotspots2=TRUE 
 if [ $callHotspots2 == TRUE ]; then
-       #COMMENT Hotspot2 calls all hotspots for one FDR treshold. Further filtering is done through the for loop below
-       echo 'Calling hotspots2' 
-       mkdir -p ${sampleOutdir}/hotspot2
-       if (( $(bc -l <<<"$propReads20bp >=0.25") )); then 
-              mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch
-       else
-              mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch
-       fi;
-       
-       hotspot2.sh  -c /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.chrom.sizes -C /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.CenterSites.starch  -F 0.20 -f 0.20 -M ${mappableFile}  $hotspotBAM ${sampleOutdir}/hotspot2  > $sampleOutdir/hotspot2/$sample.log 2>&1
-       
-       for FDR in {0.05,0.01,0.005,0.001} 
-       do
-              hsmerge.sh -f ${FDR} ${sampleOutdir}/hotspot2/${sample}.allcalls.starch ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr${FDR}.starch
-       done
+       FDRhot2=0.05
+       if (( $(bc -l <<<"$FDRhot2 >=0.05") )); then
+              #COMMENT Hotspot2 calls all hotspots for one FDR treshold. Further filtering is done through the for loop below
+              echo 'Calling hotspots2' 
+              mkdir -p ${sampleOutdir}/hotspot2
+              if (( $(bc -l <<<"$propReads20bp >=0.25") )); then 
+                     mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch
+              else
+                     mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch
+              fi;
+              
+              hotspot2.sh  -c /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.chrom.sizes -C /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.CenterSites.starch  -F $FDRhot2 -f $FDRhot2 -M ${mappableFile}  $hotspotBAM ${sampleOutdir}/hotspot2  > $sampleOutdir/hotspot2/$sample.log 2>&1
+              for FDR in {0.05,0.01,0.005,0.001} 
+              do
+                     hsmerge.sh -f ${FDR} ${sampleOutdir}/hotspot2/${sample}.allcalls.starch ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr${FDR}.starch
+              done
+       else 
+              echo "Hotspot2 should be run with at least FDR 0.05"
+              echo "Skipping hotspot2"
+       fi
 fi
 
 
