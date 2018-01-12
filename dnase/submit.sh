@@ -51,7 +51,7 @@ fi
 
 #SGE doesn't accept a complicated -t array, so we'll start R2 jobs that will die instantly rather than prune here
 echo "Processing $name (input.txt lines $firstline-$lastline) for genome $genome"
-qsub -p -450 -S /bin/bash -cwd -V --qos=normal -pe threads 2 -terse -j y -b y -t $firstline-$lastline -o $sampleOutdir/ -N map.$name "$src/map.sh $celltype $DS $genome $src" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid
+qsub -p -450 -S /bin/bash -cwd -V --qos=low -pe threads 2 -terse -j y -b y -t $firstline-$lastline -o $sampleOutdir/ -N map.$name "$src/map.sh $celltype $DS $genome $src" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid
 
 echo -n "Your job "
 cat $sampleOutdir/sgeid | perl -pe 's/\n/ /g;'
@@ -59,11 +59,11 @@ echo "has been submitted"
 
 
 echo "$name merge"
-qsub -p -400 -S /bin/bash -cwd -V --qos=normal -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid` -o $sampleOutdir/ -N merge.$name "$src/merge.sh $name $DS $genome" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.merge.$name
+qsub -p -400 -S /bin/bash -cwd -V --qos=low -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid` -o $sampleOutdir/ -N merge.$name "$src/merge.sh $name $DS $genome" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.merge.$name
 
 echo "$name makeTracks"
 qsub -p -400 -S /bin/bash -cwd -V --qos=low -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid.merge.$name` -o $sampleOutdir/ -N makeTracks.$name "$src/makeTracks.sh $name $DS $genome $src" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.makeTracks.$name
-
+#
 rm -f $sampleOutdir/sgeid $sampleOutdir/sgeid.merge.$name $sampleOutdir/sgeid.makeTracks.$name
 
 echo

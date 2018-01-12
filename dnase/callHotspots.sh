@@ -3,7 +3,7 @@
 #BUGBUG can't handle % in file names
 
 
-if [ "$#" -ne 3 ]; then
+if [ "$#" -ne 4 ]; then
        echo "Wrong num args"
        exit 1
 fi
@@ -36,6 +36,8 @@ else
 fi;
 
 
+awk -v OFS='\t' '{print $1, 0, $2, $1}' /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes |grep -v 'alt\|random\|Un\|hap\|scaffold'|sort-bed -> $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed 
+chromFile=$TMPDIR/hotspots.${mappedgenome}.chromInfo.bed
 #done by makeTracks.sh
 #samflags="-q 30 -F 524"
 #NB hotspot bases output filename on the .bam name here
@@ -91,8 +93,8 @@ _GENOME_ = $mappedgenome
 ## Tag length
 _K_ = $Kreads
 ## Chromosome coordinates, bed format.
-$HOTSPOT_DISTR/hotspot-deploy/bin/writeChromInfoBed.pl /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}all.fa && cat $TMPDIR/chromInfo.bed | grep -v hap | grep -v random | grep -v chrUn |grep -v alt| grep -v scaffold > $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed && rm -f $TMPDIR/chromInfo.bed
-_CHROM_FILE_ = $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed 
+#$HOTSPOT_DISTR/hotspot-deploy/bin/writeChromInfoBed.pl /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}all.fa && cat $TMPDIR/chromInfo.bed | grep -v hap | grep -v random | grep -v chrUn |grep -v alt| grep -v scaffold > $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed && rm -f $TMPDIR/chromInfo.bed
+_CHROM_FILE_ = $chromFile
 ## Location of uniquely mappable positions in the genome for this tag length.
 _MAPPABLE_FILE_ = $mappableFile
 #_MAPPABLE_FILE_ = /vol/isg/annotation/bed/%(_GENOME_)s/mappability/%(_GENOME_)s.K%(_K_)s.mappable_only.bed
