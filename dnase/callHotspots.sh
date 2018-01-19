@@ -21,10 +21,9 @@ echo "outdir=$outdir"
 
 
 readsLength20bp=$(samtools view $bam|awk 'length($10) ==20 {print $10}'| wc -l)
-readsTotal=$(samtools view $bam| wc -l)
+sequencedTags=$(samtools view $bam| wc -l)
 
-propReads20bp=$(echo $readsLength20bp/$readsTotal|bc -l)
-if [ `echo "$propReads20bp"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ];
+if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") ))
 then
        echo "More than 25% of reads are 20bp - K20"
        Kreads=20

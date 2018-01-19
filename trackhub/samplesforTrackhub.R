@@ -48,7 +48,7 @@ bwfiles<-list.files(path='./',pattern='hg38')
 cat('Number of unique group that has a bigWig file: ',length(bwfiles[grep(paste(unique(df$GroupID),collapse="|"),bwfiles)]),'\n')
 bwfiles<-bwfiles[grep(paste(unique(df$GroupID),collapse="|"),bwfiles)]
 
-bwfiles <- bwfiles[grep('DS17664',bwfiles,invert=T)]
+bwfiles <- bwfiles[grep('bak',bwfiles,invert=T)]
 #pick colours
 
 set.seed(12345)

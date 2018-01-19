@@ -66,9 +66,23 @@ echo "Trimming"
 #Trimmomatic options
 #TODO Probably need different sequences per barcode. Note this fa file has 2 ident copies of left adapter and none of right adapter (with barcode).
 #Regular illumina dsDNA protocol
-illuminaAdapters=/cm/shared/apps/trimmomatic/0.36/adapters/TruSeq3-PE-2.fa
-#ATAC-seq
-#illuminaAdapters=/cm/shared/apps/trimmomatic/0.36/adapters/NexteraPE-PE.fa
+
+
+#accessibilityAnalysis can either be DNase or ATAC
+accessibilityAnalysis=ATAC
+if [ "$accessibilityAnalysis" == "DNase" ]; then 
+       illuminaAdapters=/cm/shared/apps/trimmomatic/0.36/adapters/TruSeq3-PE-2.fa
+       echo 'Running DNase analysis'
+       echo "$illuminaAdapters"
+elif [ $accessibilityAnalysis == "ATAC" ]; then 
+       illuminaAdapters=/cm/shared/apps/trimmomatic/0.36/adapters/NexteraPE-PE.fa
+       echo 'Running ATAC-seq analysis'
+       echo $illuminaAdapters
+else 
+       echo 'ERROR specify adapters'
+       exit 2
+fi
+
 seedmis=2
 #Pretty much anything below 10 works
 PEthresh=5
@@ -77,40 +91,21 @@ mintrim=1
 keepReverseReads=true
 trimmomaticBaseOpts="-threads $NSLOTS"
 
+#Check if samples contain DUKE adapter (TCGTATGCCGTCTTC) and trim to 20bp if more than 25% of reads do
+sequencedTags=$(zcat $readsFq|awk 'NR%4==2'| wc -l)
+readsWithDukeSequence=$(zcat $readsFq|awk 'NR%4==2'|grep TCGTATGCCGTCTTC| wc -l)
 
-numberReads=$(zcat $readsFq|awk 'NR%4==2'| wc -l)
-readsWithSequence=$(zcat $readsFq|awk 'NR%4==2'|grep TCGTATGCCGTCTTC| wc -l)
-readLength=$(zcat $readsFq|awk 'NR%4==2 {print length($1)}'|head -1)
-propReads=$(echo $readsWithSequence/$numberReads| bc -l)
-
-
-if [ `echo "$propReads"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ]; then 
-       echo "More than 25% of reads have TCGTATGCCGTCTTC- Hard clip to 20bp reads"
-       trimmomaticSteps="CROP:20 TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:20"
-elif [[ `echo "$readLength"` -le 22 ]]; then
-       echo "Reads are 20bp- Hard clip to 20bp reads"
+if (( $(bc -l <<<"$readsWithDukeSequence/$sequencedTags >=0.25") )); then
+       echo "More than 25% of reads have DUKE sequence (TCGTATGCCGTCTTC) - Hard clip to 20bp reads"
        trimmomaticSteps="CROP:20 TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:20"
 else
-       echo "Reads don't have more than 25% TCGTATGCCGTCTTC - No hard clipping"
-       trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:27"
+       echo "No DUKE sequence present "
+       trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:20"
 fi
-#trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:27"
-#MAXINFO:27:0.95 TRAILING:20
 
 
-#BUGBUG a bit fragile
-#BUGBUG misses things like UwStam_CH12-DS22536-FCD0TGK-L002_R1_001.fastq.gz and UwStam_CH12-DS22542-FCD0TDB-L001_R1_002.fastq.gz, but don't see any collision
-#if [[ `basename $readsFq` =~ "^s_" ]]; then
-#       fc=`readlink -f $readsFq | perl -pe 's/\/\d\d\d\/s_/\/s_/g;' | xargs dirname | xargs basename | perl -pe 's/_\d+_tag//g;'`
-#else
-#       fc=`readlink -f $readsFq | xargs dirname | xargs dirname | xargs dirname | xargs basename | perl -pe 's/_\d+_tag//g;'`
-#fi
-#if [[ "$fc" == "." ]] ; then
-#       fc=""
-#else
-#       echo "Flowcell $fc"
-#       fc="${fc}."
-#fi
+#BUGBUG For aggregate submission e.g. submitting multiple flowcells at once, there will be a collision if we have sequenced same sample on multiple flowcells. 
+
 fc=""
 
 #BUGBUG any older data w/o R1/R2 convention?
