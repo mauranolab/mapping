@@ -71,13 +71,11 @@ echo "Trimming"
 #accessibilityAnalysis can either be DNase or ATAC
 accessibilityAnalysis=ATAC
 if [ "$accessibilityAnalysis" == "DNase" ]; then 
-       illuminaAdapters=/cm/shared/apps/trimmomatic/0.36/adapters/TruSeq3-PE-2.fa
+       illuminaAdaptersFile=/cm/shared/apps/trimmomatic/0.36/adapters/TruSeq3-PE-2.fa
        echo 'Running DNase analysis'
-       echo "$illuminaAdapters"
 elif [ $accessibilityAnalysis == "ATAC" ]; then 
-       illuminaAdapters=/cm/shared/apps/trimmomatic/0.36/adapters/NexteraPE-PE.fa
+       illuminaAdaptersFile=/cm/shared/apps/trimmomatic/0.36/adapters/NexteraPE-PE.fa
        echo 'Running ATAC-seq analysis'
-       echo $illuminaAdapters
 else 
        echo 'ERROR specify adapters'
        exit 2
@@ -97,10 +95,10 @@ readsWithDukeSequence=$(zcat $readsFq|awk 'NR%4==2'|grep TCGTATGCCGTCTTC| wc -l)
 
 if (( $(bc -l <<<"$readsWithDukeSequence/$sequencedTags >=0.25") )); then
        echo "More than 25% of reads have DUKE sequence (TCGTATGCCGTCTTC) - Hard clip to 20bp reads"
-       trimmomaticSteps="CROP:20 TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:20"
+       trimmomaticSteps="CROP:20 TOPHRED33 ILLUMINACLIP:$illuminaAdaptersFile:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:20"
 else
        echo "No DUKE sequence present "
-       trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:20"
+       trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdaptersFile:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:20"
 fi
 
 
