@@ -333,8 +333,10 @@ fi
 echo -e "Num_hotspots2\t$numhotspots2\t\t$sample"
 
 
-if [ -f "${sampleOutdir}/hotspot2/${sample}.SPOT.txt" ]; then
-       spot2=`cat ${sampleOutdir}/hotspot2/${sample}.SPOT.txt`
+if [ -f "${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.05.starch" ]; then
+       ntags2=$(unstarch ${sampleOutdir}/hotspot2/${sample}.cutcounts.starch| awk '{print $5}'|  awk '{sum+=$1} END {print sum}')
+       hot2=$(unstarch ${sampleOutdir}/hotspot2/${sample}.cutcounts.starch | bedops --header -e -1 - ${sample}/hotspot2/${sample}.hotspots.fdr0.05.starch|  awk '{print $5}'|  awk '{sum+=$1} END {print sum}')
+       spot2=$(echo "scale=4; $hot2/$ntags2" | bc)
 else
        spot2="NA"
 fi
