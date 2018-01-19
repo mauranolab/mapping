@@ -63,8 +63,7 @@ date
 readsLength20bp=$(samtools view ${sampleOutdir}/${sample}.bam|awk 'length($10) ==20 {print $10}'| wc -l)
 sequencedTags=`cat inputs.txt | grep $DS | sort | uniq | xargs zcat | awk 'END {print NR/4}'`
 
-propReads20bp=$(echo $readsLength20bp/$sequencedTags|bc -l)
-if [ `echo "$propReads20bp"|awk '{if ($1>0.25) print 1; else print 0}'` -ge 1 ];
+if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") ))
 then
        echo "More than 25% of reads are 20bp - q10"
        samflags="-q 10 -F 524"
@@ -73,6 +72,7 @@ else
        samflags="-q 20 -F 524"
 fi;
 echo "Making bed file"
+
 samtools view $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
       readlength = length($10); \
       insertlength = $9; \
@@ -274,7 +274,7 @@ if [ $callHotspots2 == TRUE ]; then
               #COMMENT Hotspot2 calls all hotspots for one FDR treshold. Further filtering is done through the for loop below
               echo 'Calling hotspots2' 
               mkdir -p ${sampleOutdir}/hotspot2
-              if (( $(bc -l <<<"$propReads20bp >=0.25") )); then 
+              if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") )); then 
                      mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch
               else
                      mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch
