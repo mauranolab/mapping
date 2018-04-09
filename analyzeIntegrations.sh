@@ -162,16 +162,16 @@ cat $OUTDIR/$sample.barcodes.coords.bed | cut -f5 | awk -v cutoff=10 '{if($0>=cu
 
 
 
-uniqueIntervals=$(tail -n +2 /vol/isg/encode/dnase/bak.mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed| paste /vol/isg/encode/dnase/bak.mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed -| awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}'| sed \$d| awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}'| bedtools intersect -wa -a - -b $OUTDIR/$sample.barcodes.coords.bed|sort|uniq| wc -l|awk '{print $1}')
-allIntervals=$(wc -l /vol/isg/encode/dnase/bak.mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed|awk '{print $1}')
+uniqueIntervals=$(tail -n +2 /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed| paste /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed -| awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}'| sed \$d| awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}'| bedtools intersect -wa -a - -b $OUTDIR/$sample.barcodes.coords.bed|sort|uniq| wc -l|awk '{print $1}')
+allIntervals=$(wc -l /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed|awk '{print $1}')
 zeroInsertions=`echo $allIntervals-$uniqueIntervals|bc -l`
 
 echo
 echo "Histogram of number of insertions between two neighboring DNase sites"
 echo " "$zeroInsertions 0
 
-tail -n +2 /vol/isg/encode/dnase/bak.mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed|
-paste /vol/isg/encode/dnase/bak.mapped/hotspots/K562-DS9764.hg38/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed -|
+tail -n +2 /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed|
+paste /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed -|
 awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}'|
 sed \$d|
 awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}'|
@@ -264,7 +264,7 @@ EOF
 
 echo
 echo "doing DistToDNase"
-sort-bed $OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' --closest -  /vol/isg/encode/dnase/bak.mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed  |awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
+sort-bed $OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' --closest -  /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed  |awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
 #sort-bed ../aligned.FCH55KHBGX2/$OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' - /vol/mauranolab/maagj01/transposon/Dpn_REsites/DpnREsort.bed |awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {split if ($6=="-") print $13; else if  ($6=="+") print $20}'  > $TMPDIR/DistDpn.txt
 
 #awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $2}'

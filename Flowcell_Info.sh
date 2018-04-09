@@ -7,18 +7,261 @@ OUTDIR=$Dir/$Flow
 mkdir -p $OUTDIR
 
 
-#####
-#Weblogos
-######
-#For raw sequence
 
+#####
+#TODO fix if only HiC samples are running
+#####
+#######
+#HiC data
+######
+if [[ `find -maxdepth 1 -type d |grep -v bak|grep 'HiC\|CapC\|dsDNA\|3C'| wc -l` -ge 1 ]]
+then
+       echo 'HiC samples found'
+       mkdir -p $OUTDIR/HiC/
+       
+       
+       find -name *.R2.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs cp -t $OUTDIR/HiC/
+       find -name *.R1.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs cp -t $OUTDIR/HiC/
+       for i in `ls $OUTDIR/HiC/*R1.raw.png|sort|awk -F'/' '{print $NF}'`;do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ;done  >$OUTDIR/HiC/R1index.html
+       for i in `ls $OUTDIR/HiC/*R2.raw.png|sort|awk -F'/' '{print $NF}'`;do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1500px"; height="120"></a>' ;done  >$OUTDIR/HiC/R2index.html
+       cat $OUTDIR//HiC/R1index.html $OUTDIR/HiC//R2index.html |sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/HiC/Weblogoindex.html
+       
+#       if [[ `find -name *R1.mmapstat |sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak| wc -l` -ge 1 ]]
+#       then
+#              for HiC in `find -name *R1.mmapstat|sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, "R1", HiC}' ${HiC}/bowtie_results/bwt2/${HiC}/*R1.mmapstat |
+#              grep -v "#" ;done > $OUTDIR/HiC/mmapstatR1.tsv
+#              for HiC in `find -name *R2.mmapstat|sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, "R2", HiC}' ${HiC}/bowtie_results/bwt2/${HiC}/*R2.mmapstat  |
+#              grep -v "#" ;done >$OUTDIR/HiC/mmapstatR2.tsv
+#       fi
+#       
+#       if [[ `find -name *mpairstat |sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak| wc -l` -ge 1 ]]
+#       then
+#              for HiC in `find -name *mmapstat|sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, $3, HiC}' ${HiC}/bowtie_results/bwt2/${HiC}/*mpairstat|
+#              grep -v "#" ;done > $OUTDIR/HiC/mpairstat.tsv
+#       fi
+#       
+#       if [[ `find -maxdepth 2 -name *_R1.bam |grep -v bak| wc -l` -ge 1 ]]
+#       then
+#              for HiC in `find -maxdepth 1 -type d|grep 'HiC\|CapC\|dsDNA\|3C'|sed 's/^..//g'| grep -v bak`; do samtools view -F4 -q30 ${HiC}/${HiC}_R1.bam |
+#              cut -f3|sort |uniq -c|awk -v OFS='\t' -v name="$HiC" '{print $2, $1, "R1", name}' ;done > $OUTDIR/HiC/SE_mappingR1.tsv
+#              for HiC in `find -maxdepth 1 -type d|grep 'HiC\|CapC\|dsDNA\|3C'|sed 's/^..//g'| grep -v bak`; do samtools view -F4 -q30 ${HiC}/${HiC}_R2.bam |
+#              cut -f3|sort |uniq -c|awk -v OFS='\t' -v name="$HiC" '{print $2, $1, "R2", name}' ;done > $OUTDIR/HiC/SE_mappingR2.tsv
+#       fi
+#       
+#       if [[ `find -name *.bwt2glob.unmap_trimmed.fastq |grep -v bak| wc -l` -ge 1 ]]
+#       then
+#              for HiC in `find -name *.bwt2glob.unmap_trimmed.fastq|awk -F '/' '{print $2}'|grep -v bak|sort|uniq`; do cat ${HiC}/bowtie_results/bwt2_global/${HiC}/*R1*.bwt2glob.unmap_trimmed.fastq|
+#              awk 'NR%4==2 {print length($1)}'|sort|uniq -c |awk -v OFS='\t' -v sample="$HiC" '{print $2, $1, "R1", sample}' ;done > $OUTDIR/HiC/trimmedReadsR1.tsv
+#              for HiC in `find -name *.bwt2glob.unmap_trimmed.fastq|awk -F '/' '{print $2}'|grep -v bak|sort|uniq`; do cat ${HiC}/bowtie_results/bwt2_global/${HiC}/*R2*.bwt2glob.unmap_trimmed.fastq|
+#              awk 'NR%4==2 {print length($1)}' |sort|uniq -c |awk -v OFS='\t' -v sample="$HiC" '{print $2, $1, "R2", sample}';done > $OUTDIR/HiC/trimmedReadsR2.tsv
+#       fi
+#       
+#       if [[ `find -name *mergestat |sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak| wc -l` -ge 1 ]]
+#       then
+#              for HiC in `find -name *mergestat|sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, HiC}' ${HiC}/hic_results/data/${HiC}/*mergestat|
+#              grep -v "#" ;done > $OUTDIR/HiC/mergestat.tsv
+#       fi
+#       
+#       if [[ `find -name *mRSstat |sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak| wc -l` -ge 1 ]]
+#       then
+#              for HiC in `find -name *mRSstat|sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, HiC}' ${HiC}/hic_results/data/${HiC}/*mRSstat|
+#              grep -v "#" ;done > $OUTDIR/HiC/mRSstat.tsv
+#       fi
+#       
+#        for HiC in `find -maxdepth 1 -type d|grep 'HiC\|CapC\|dsDNA\|3C'|grep -v bak| sed 's/^..//g'`; do reads=$(grep Surviving submit.${HiC}*|awk '{print $4}'); \
+#              adapter=$(grep Surviving submit.${HiC}*|awk '{print $7}'); \
+#              validPairs=$(cat ${HiC}/hic_results/data/${HiC}/${HiC}_allValidPairs|wc -l); \
+#              validPairsSameChrom=$(cat ${HiC}/hic_results/data/${HiC}/${HiC}_allValidPairs|awk '$2==$5'|wc -l); \
+#              gatcR1=$(zcat ${HiC}/${HiC}_R1.fastq.gz| grep 'GATC'|wc -l); \
+#              gatcR2=$(zcat ${HiC}/${HiC}_R2.fastq.gz| grep 'GATC'|wc -l); \
+#              numLinkR1=$(zcat ${HiC}/${HiC}_R1.fastq.gz| grep 'CGCGATATCTTATCTGA\|TCAGATAAGATATCGC'|wc -l); \
+#              numLinkR2=$(zcat ${HiC}/${HiC}_R2.fastq.gz|grep 'CGCGATATCTTATCTGA\|TCAGATAAGATATCGC' |wc -l); \
+#              mappedR1=$(samtools view -F4 -q30 ${HiC}/${HiC}_R1.sorted.bam|wc -l); \
+#              mappedR2=$(samtools view -F4 -q30 ${HiC}/${HiC}_R2.sorted.bam|wc -l); \
+#              dangling=$(grep Dangling ${HiC}/hic_results/data/${HiC}/${HiC}.mRSstat|awk '{print $2}'); \
+#              echo $Flow $HiC $reads $adapter $mappedR1 $mappedR2 $gatcR1 $gatcR2 $numLinkR1 $numLinkR2 $dangling $validPairs $validPairsSameChrom  ;done |awk -v OFS='\t' '{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' > $OUTDIR/HiC/HiC_summary.tsv
+#             
+#
+#       
+#       R --quiet --no-save << EOF
+#       library(stringr)
+#       library(reshape2)
+#       library(data.table)
+#       library(dplyr)
+#       library(gridExtra)
+#       library(gtools)
+#       library(tableHTML)
+#       
+#       
+#       #####
+#       #Create HiC summary table
+#       #####
+#       HiCsummary <- read.table("$OUTDIR/HiC/HiC_summary.tsv", header=F,stringsAsFactors=F)
+#       
+#       for (i in 3:ncol(HiCsummary)){
+#              HiCsummary[,i]<-format(as.numeric(HiCsummary[,i]),big.mark=",", trim=TRUE)
+#       
+#       }
+#       HiCsummary <- HiCsummary[order(HiCsummary[,"V2"]),]
+#       rownames(HiCsummary) <-1:nrow(HiCsummary)
+#       colnames(HiCsummary) <- c('Flowcell', 'Sample', 'Reads', 'Survived trimming', 'SE map R1 (MAPQ>=30)', 'SE map R2(MAPQ>=30)', 'gatcR1', 'gatcR2', 'linkerR1', 'linkerR2', 'dangling ends', 'validPairs', 'cis-validPairs')
+#       SumHTMLtable<-tableHTML(HiCsummary) %>%  add_css_row(css = list('background-color', 'lightblue'),rows = odd(1:nrow(HiCsummary)))
+#       write_tableHTML(SumHTMLtable, file = "$OUTDIR/HiC/HiCsummary.html")
+#       
+#       
+#       #####
+#       #Plot SE mapping
+#       #####
+#       R1 <- fread("$OUTDIR/HiC/SE_mappingR1.tsv")
+#       R2 <- fread("$OUTDIR/HiC/SE_mappingR2.tsv")
+#       SEmapped <- rbind(R1,R2)
+#       SEmapped <- as.data.frame(SEmapped)
+#       SEmapped <- SEmapped[grep('consensus|chrM|Un|alt|random|chrM|chrY',SEmapped[,1], invert=T),]
+#       hg38 <- read.table('/vol/isg/annotation/fasta/hg38/hg38.chrom.sizes')
+#       hg38 <- hg38[grep('Un|alt|random|chrM|chrY',hg38[,"V1"],invert=T),]
+#       hg38[,"Mb"] <- hg38[,"V2"]/1e6
+#       colnames(hg38) <-c('V1', 'size','Mb')
+#
+#       SEmapped <- SEmapped %>% 
+#              arrange(V1) %>%
+#              left_join(hg38, by='V1') %>%
+#              mutate(normReads=V2/Mb)
+#       head(SEmapped)
+#
+#       
+#       height <- ceiling(length(unique(SEmapped[,"V4"]))/3)*4
+#       
+#       ggSEmapped <- SEmapped %>%
+#              mutate(V1 = factor(V1, levels=unique(mixedsort(V1)))) %>%
+#              ggplot(aes(x=V1, y=normReads,fill=V3))+
+#              geom_bar(stat='identity') +
+#              facet_wrap(~V4, ncol=3)+
+#              theme_classic() +
+#              xlab('Chromosomes') +
+#              ylab('Mapped reads/Mb') +
+#              scale_fill_manual(values=rev(brewer.pal(n=3,"Set1")[1:2]))+
+#              ggtitle('Normalised reads per chromosome (MAPQ >=30)')+
+#              theme(axis.title.x = element_text(size=14), axis.text.x  = element_text(size=12,angle=60,hjust=1), axis.title.y = element_text(size=14), axis.text.y = element_text(size=12))
+#       ggsave(ggSEmapped,file="$OUTDIR/HiC/1.SE_perChrom_mapping.pdf", width=13, height=height)
+#
+#       
+#       
+#       #####
+#       #Plot mapping stat
+#       #####
+#       R1 <- read.table("$OUTDIR/HiC/mmapstatR1.tsv", sep='\t', header=F, stringsAsFactors=F)
+#       R2 <- read.table("$OUTDIR/HiC/mmapstatR2.tsv", sep='\t', header=F, stringsAsFactors=F)
+#       
+#       mapStat <- rbind(R1,R2)
+#       mapped <- mapStat[grep('mapped',mapStat\$V1, invert=T),]
+#       mappedUnmelt <- dcast(mapped,formula=V1~V4+V3,value.var='V2')
+#       mappedUnmelt[4,] <- c('Unmapped', as.numeric(mappedUnmelt[,-1][3,])- (as.numeric(mappedUnmelt[,-1][2,])+as.numeric(mappedUnmelt[,-1][1,])))
+#       mapped<- melt(mappedUnmelt,id='V1')
+#       mapped <- mapped[grep('total',mapped\$V1, invert=T),]
+#       mapped\$Read <- substr(as.character(mapped\$variable),nchar(as.character(mapped\$variable))-1, nchar(as.character(mapped\$variable)))
+#       mapped\$variable <- substr(as.character(mapped\$variable),1, nchar(as.character(mapped\$variable))-3)
+#       
+#       mapped[grep('global',mapped\$V1),]\$V1 <-'Full_read_mapped'
+#       mapped[grep('local',mapped\$V1),]\$V1 <-'Trimmed_read_mapped'
+#       mapped\$value <-as.numeric(as.character(mapped\$value))
+#
+#       colnames(mapped) <- c('Mapping', 'Sample','numberReads', 'Read')
+#      
+#       mapped\$Mapping <- factor(mapped\$Mapping,levels=c( 'Unmapped', 'Trimmed_read_mapped','Full_read_mapped' ))
+#       #mapped\$Sample <- gsub('MSH_061517_GM12865~DpnII~','',mapped\$Sample)
+#       mapped\$Sample <- substr(mapped\$Sample,1, 8)
+#       t<-ggplot(mapped, aes(x=Read,y=numberReads, fill=Mapping)) +
+#       geom_bar(stat='identity',color="black", size=0.25) +
+#       theme_classic()+
+#       scale_fill_manual(values=c('#bdbdbd','#9ecae1','#4292c6'))+
+#       facet_wrap(~Sample, ncol=3)+ 
+#       theme_classic()+
+#       ggtitle('Mapped reads (MAPQ>=0)')+
+#       scale_y_continuous(label= fancy_scientific) +
+#       theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
+#       
+#       gp = ggplotGrob(t)
+#       gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
+#       
+#       ggsave(gp,file="$OUTDIR/HiC/2.mapping.pdf", width=13, height=height)
+#       
+#       
+#       
+#       #####
+#       #Plot merged interaction stat
+#       #####
+#       mergeStat <- read.table("$OUTDIR/HiC/mergestat.tsv", header=F, sep='\t', stringsAsFactors=F)
+#       
+#       mergeStat <- mergeStat[grep('valid_interaction|Range', mergeStat\$V1, invert=T),]
+#       colnames(mergeStat) <- c('Interaction', 'numberReads', 'Sample')
+#       mergeStat\$Sample <- substr(mergeStat\$Sample,1, 8)
+#       mergeStat\$Interaction <- gsub("_interaction",'',mergeStat\$Interaction)
+#       
+#       t<-ggplot(mergeStat, aes(x=Interaction,y=numberReads, fill=Interaction)) +
+#       geom_bar(stat='identity',color="black", size=0.25) +
+#       theme_classic()+
+#       scale_fill_manual(values=c('#9ecae1','#4292c6'))+
+#       facet_wrap(~Sample, ncol=3)+ 
+#       theme_classic()+
+#       scale_y_continuous(label= fancy_scientific) +
+#       theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
+#       
+#       ggsave(t,file="$OUTDIR/HiC/3.Interactions.pdf", width=13, height=height)
+#       
+#       
+#       #####
+#       #Plot valid pairs
+#       #####
+#       mRSstat <- read.table("$OUTDIR/HiC/mRSstat.tsv", header=F, stringsAsFactors=F, sep='\t')
+#       
+#       mRSstat\$Passed <- ''
+#       mRSstat[grep('Valid', mRSstat\$V1),]\$Passed <- 'Valid'
+#       mRSstat[grep('Valid', mRSstat\$V1, invert=T),]\$Passed <- 'Dumped'
+#       
+#       mRSstat<- mRSstat[!mRSstat\$V1 %in% 'Valid_interaction_pairs',]
+#       colnames(mRSstat) <- c('Interaction', 'Pairs', 'Sample','Passed')
+#       mRSstat\$Sample <- substr(mRSstat\$Sample,1, 8)
+#       
+#       t<-ggplot(mRSstat, aes(x=Sample,y=Pairs, fill=Interaction)) +
+#       geom_bar(stat='identity',color="black", size=0.25) +
+#       theme_classic()+
+#       #scale_fill_manual(values=c('#9ecae1','#4292c6'))+
+#       facet_wrap(~Passed, ncol=3)+ 
+#       theme_classic()+
+#       scale_y_continuous(label= fancy_scientific) +
+#       theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
+#       
+#       ggsave(t,file="$OUTDIR/HiC/4.ValidPairs.pdf", width=13, height=height)
+#       
+#EOF
+#              convert -density 300 $OUTDIR/HiC/1.SE_perChrom_mapping.pdf -quality 100 $OUTDIR/HiC/1.SE_perChrom_mapping.png
+#              convert -density 300 $OUTDIR/HiC/2.mapping.pdf -quality 100 $OUTDIR/HiC/2.mapping.png
+#              convert -density 300 $OUTDIR/HiC/3.Interactions.pdf -quality 100 $OUTDIR/HiC/3.Interactions.png
+#              convert -density 300 $OUTDIR/HiC/4.ValidPairs.pdf -quality 100 $OUTDIR/HiC/4.ValidPairs.png
+#              for i in `ls $OUTDIR/HiC/*.png|grep 'SE_perChrom_mapping\|mapping\|Interactions\|ValidPairs' |sort|sed 's/.png//g' |awk -F'/' '{print $NF}'`;do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ;done |awk ' {print;} NR % 1 == 0 { print "<br>"; }' >$OUTDIR/HiC/Images.html
+#              cat $OUTDIR/HiC/HiCsummary.html <(echo "") <(echo "<br>") $OUTDIR/HiC/Weblogoindex.html <(echo "") <(echo "<br>") $OUTDIR/HiC/Images.html >$OUTDIR/HiC/index.html
+else 
+       echo 'No HiC samples found'     
+       echo 'Exit'
+fi
+#
+#######
+#if [[ `find -type d |grep BS|grep -v bak|grep -v 'HiC\|CapC\|dsDNA\|3C'| wc -l` == 0 ]]
+#then
+#       exit
+#fi
+######
+##Weblogos
+#######
+##For raw sequence
+#
 
 
 if [ "$Flow" != "Merged" ]
 then
        mkdir -p $OUTDIR/Weblogos_raw
-       find -name *.R2.raw.png |grep -v 'bak\|HiC'| xargs cp -t $OUTDIR/Weblogos_raw
-       find -name *.R1.raw.png |grep -v 'bak\|HiC'| xargs cp -t $OUTDIR/Weblogos_raw
+       find -name *.R2.raw.png |grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_raw
+       find -name *.R1.raw.png |grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_raw
        for i in `ls $OUTDIR/Weblogos_raw/*R1.raw.png|sort|awk -F'/' '{print $NF}'`;do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ;done  >$OUTDIR/Weblogos_raw/R1index.html
        for i in `ls $OUTDIR/Weblogos_raw/*R2.raw.png|sort|awk -F'/' '{print $NF}'`;do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:900px"; height="120"></a>' ;done  >$OUTDIR/Weblogos_raw/R2index.html
        cat $OUTDIR/Weblogos_raw/R1index.html $OUTDIR/Weblogos_raw/R2index.html |sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_raw/index.html
@@ -27,8 +270,8 @@ then
        
        #For processed sequence
        mkdir -p $OUTDIR/Weblogos_processed
-       find -name *.BC.processed.png |grep -v 'bak\|HiC'| xargs cp -t $OUTDIR/Weblogos_processed
-       find -name *.plasmid.processed.png |grep -v 'bak\|HiC'| xargs cp -t $OUTDIR/Weblogos_processed
+       find -name *.BC.processed.png |grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_processed
+       find -name *.plasmid.processed.png |grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_processed
        for i in `ls $OUTDIR/Weblogos_processed/*BC.processed.png|sort|awk -F'/' '{print $NF}'`;do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ;done  >$OUTDIR/Weblogos_processed/BCindex.html
        for i in `ls $OUTDIR/Weblogos_processed/*plasmid.processed.png|sort|awk -F'/' '{print $NF}'`;do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:900px"; height="120"></a>' ;done  >$OUTDIR/Weblogos_processed/plasmidindex.html
        cat $OUTDIR/Weblogos_processed/BCindex.html $OUTDIR/Weblogos_processed/plasmidindex.html |sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_processed/index.html
@@ -37,12 +280,12 @@ fi
 
 #For Barcode sequence
 mkdir -p $OUTDIR/Weblogos_Barcode
-find -name *barcodes.png |grep -v 'bak\|HiC'| xargs cp -t $OUTDIR/Weblogos_Barcode
+find -name *barcodes.png |grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_Barcode
 for i in `ls $OUTDIR/Weblogos_Barcode/*barcodes.png|sort|awk -F'/' '{print $NF}'`;do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ;done  |awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_Barcode/index.html
 
 #For UMI sequence
 mkdir -p $OUTDIR/Weblogos_UMI
-find -name *UMIs.png |grep -v 'bak\|HiC'| xargs cp -t $OUTDIR/Weblogos_UMI
+find -name *UMIs.png |grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_UMI
 for i in `ls $OUTDIR/Weblogos_UMI/*UMIs.png|sort|awk -F'/' '{print $NF}'`;do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ;done  |awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_UMI/index.html
 
 
@@ -52,6 +295,7 @@ for i in `ls $OUTDIR/Weblogos_UMI/*UMIs.png|sort|awk -F'/' '{print $NF}'`;do ech
 #Summarize flowcell info
 #####
 mkdir -p $OUTDIR/FlowcellSummary
+mkdir -p $OUTDIR/QC_RNA_DNA
 R  --quiet --no-save << EOF
 
 Barcodes<-list.files('./',pattern='^BS00',include.dirs = FALSE)
@@ -130,6 +374,111 @@ library(tableHTML)
 SumHTMLtable<-tableHTML(SummarizeFlowcell) %>%  add_css_row(css = list('background-color', 'lightblue'),rows = odd(1:nrow(SummarizeFlowcell)))
 write_tableHTML(SumHTMLtable, file = "$OUTDIR/FlowcellSummary/index.html")
 write.table(SummarizeFlowcell, file = "$OUTDIR/FlowcellSummary/summaryflowcell.tsv",sep='\t',quote=F,col.names=T,row.names=F)
+
+#####
+#Quality control of RNA and DNA
+#####
+#!/bin/env Rscript
+library(tableHTML)
+library(dplyr)
+
+
+Barcodes<-list.files('./',pattern='^BS00',include.dirs = FALSE)
+Barcodes<-Barcodes[grep('bak|minReads|BS00118A_19_20_121A|iPCRvsDNA',Barcodes,invert=T)]#REMOVE WHEN FILES ARE FINISHED
+Barcodes<-Barcodes[grep('\\\.o[0-9]', Barcodes)]
+Barcodes<-Barcodes[file.info(Barcodes)\$size>200]#Removes files with errors
+Barcodes <- Barcodes[grep('RNA|DNA', Barcodes, invert=F)]
+sumBarcode<-as.data.frame(matrix(ncol=9,nrow=length(Barcodes))) 
+colnames(sumBarcode)<-c('Flowcell','BSnumber','Name','sampleType','Total reads','Total barcodes','BC+UMI','UMI length','Unique BC')
+
+
+for (files in 1:length(Barcodes)){cat(Barcodes[files],'\n')
+    Sample<-readLines(Barcodes[files])
+    Sample<-sub("^\\\s+","",Sample)
+    if (tail(Sample,2)[1]=="Done!!!") {
+       sumBarcode[files,]\$BSnumber<-gsub('-.*','',Barcodes[files])
+       sumBarcode[files,]\$Name<-gsub('_RNA\$|_DNA\$|_iPCR\$','',gsub('\\\.o.*|.*-','',Barcodes[files]))
+       if(length(grep('Merged',Barcodes[files]))==1){sumBarcode[files,]\$sampleType<-gsub('.*_|\\\.o.*','',gsub('_Merged','',Barcodes[files]))}
+       else{sumBarcode[files,]\$sampleType<-gsub('.*_|\\\.o.*','',Barcodes[files])}
+       sumBarcode[files,]\$Flowcell<-gsub('.*/','',getwd())
+       sumBarcode[files,][,5]<-splitLines('Number of total reads','\t')\$X3
+       sumBarcode[files,][,6]<-splitLines('Number of total read barcodes','\t')\$X3
+       if (length(grep('No UMIs found',Sample))==0){
+           sumBarcode[files,][,7]<-splitLines('Number of unique barcodes+UMI','\t')\$X3
+           sumBarcode[files,][,9]<-splitLines('Number of unique barcodes','\t')[2,]\$X3
+           if(!is.na(getLength('UMI lengths')\$X2)) {sumBarcode[files,][,8]<-getLength('UMI lengths')\$X2}
+              else if (getLength('UMI lengths')\$X1!=sumBarcode[files,][,7]){
+                     sumBarcode[files,][,6] <- strsplit(Sample[grep(sumBarcode[files,][,5],Sample,fixed=T)][2], "\\\s+")[[1]][2]
+                     if (is.na(strsplit(Sample[grep(sumBarcode[files,][,7],Sample,fixed=T)][2], "\\\s+")[[1]][2]) && length(Sample[grep(as.numeric(sumBarcode[files,][,7])-1,Sample,fixed=T)])==0){
+                     sumBarcode[files,][,8]<-NA
+                     }else sumBarcode[files,][,8] <- strsplit(Sample[grep(as.numeric(sumBarcode[files,][,7])-1,Sample,fixed=T)], "\\\s+")[[1]][2]
+           }else sumBarcode[files,][,8]<-getLength('UMI lengths')\$X2
+       }else if (length(splitLines('Number of unique barcodes','\t')\$X3)==2){sumBarcode[files,][,8]<-NA
+       }else sumBarcode[files,][,9]<-splitLines('Number of unique barcodes','\t')\$X3
+      
+       
+    } 
+              
+}   
+
+SummarizeFlowcell<-sumBarcode
+
+SummarizeFlowcell[,"prop Kept Reads"] <- signif(as.numeric(SummarizeFlowcell[,"Total barcodes"])/as.numeric(SummarizeFlowcell[,"Total reads"]), 3)
+SummarizeFlowcell[,"prop Unique Molecules"] <- signif(as.numeric(SummarizeFlowcell[,"BC+UMI"])/as.numeric(SummarizeFlowcell[,"Total barcodes"]), 3)
+SummarizeFlowcell[,"median BC count UMIcorr"] <- 0
+SummarizeFlowcell[,"BC count 75% UMIcorr"] <- 0
+for (BS in 1:nrow(SummarizeFlowcell)) {
+       SampleName <- paste0(SummarizeFlowcell\$BSnumber[BS], '-', SummarizeFlowcell\$Name[BS], '_', SummarizeFlowcell\$sampleType[BS])
+       if(file.exists(paste0(SampleName,'/',SampleName,'.barcode.counts.UMI.corrected.txt'))) {
+              sampleBarcodes <- read.table(paste0(SampleName,'/',SampleName,'.barcode.counts.UMI.corrected.txt'), sep='\t')
+              SummarizeFlowcell[,"median BC count UMIcorr"][BS] <-  median(sampleBarcodes\$V2)
+              SummarizeFlowcell[,"BC count 75% UMIcorr"][BS] <- as.numeric(summary(sampleBarcodes\$V2)[2])
+       } else { 
+              SummarizeFlowcell[,"median BC count UMIcorr"][BS] <- 0
+              SummarizeFlowcell[,"BC count 75% UMIcorr"][BS] <- 0
+       }
+}
+
+for (i in 5:ncol(SummarizeFlowcell)){
+       SummarizeFlowcell[,i]<-as.numeric(SummarizeFlowcell[,i])
+       #SummarizeFlowcell[,i]<-format(as.numeric(SummarizeFlowcell[,i]),big.mark=",", trim=TRUE)
+}  
+
+for (i in 5:6){
+       #SummarizeFlowcell[,i]<-as.numeric(SummarizeFlowcell[,i])
+       SummarizeFlowcell[,i]<-format(as.numeric(SummarizeFlowcell[,i]),big.mark=",", trim=TRUE)
+}  
+write.table(SummarizeFlowcell, file='QC_BCs.tsv', sep='\t', quote=F, col.names=T, row.names=F)
+
+
+SumHTMLtable<-tableHTML(SummarizeFlowcell) %>%  add_css_row(css = list('background-color', '#d9d9d9'),rows = odd(1:nrow(SummarizeFlowcell)))
+
+#
+SumHTMLtable <- SumHTMLtable %>% add_css_conditional_column( conditional = '>=', 
+                                                               c('Unique BC'),
+                                                               value =5e4,
+                                                               css = list('background-color', '#a1d99b'))
+
+SumHTMLtable <- SumHTMLtable %>% add_css_conditional_column( conditional = '>=', 
+                                                               c('prop Kept Reads', 'prop_BC10/BC1', 'prop Unique Molecules'),
+                                                               value =0.7,
+                                                               css = list('background-color', '#a1d99b'))
+
+
+SumHTMLtable <- SumHTMLtable %>% add_css_conditional_column( conditional = '>=', 
+                                                               c('median BC count UMIcorr', 'BC count 75% UMIcorr'),
+                                                               value =10,
+                                                               css = list('background-color', '#a1d99b'))
+
+SumHTMLtable <- SumHTMLtable %>% add_css_conditional_column( conditional = '>=', 
+                                                               c('BC+UMI'),
+                                                               value =9e5,
+                                                               css = list('background-color', '#a1d99b'))
+write_tableHTML(SumHTMLtable, file = "$OUTDIR/QC_RNA_DNA/index.html")
+
+
+
+
 EOF
 
 #Convert to Excel 
@@ -196,6 +545,10 @@ then
        Plasmidleven<-melt(Plasmidleven)
        Plasmidleven[,4]<-'Plasmid'
        
+       if (length(grep('iPCR\$',Plasmidleven[,1]))>0) {
+              Plasmidleven[grep('iPCR\$',Plasmidleven[,1]),][,4] <-'Primer'
+       }
+       
        BCleven<-rbind(BCleven,Plasmidleven)
        colnames(BCleven)[1:4]<-c('Sample','Hamming','Reads','Read')
        BCleven[,2]<-as.numeric(as.character(BCleven[,2]))
@@ -233,7 +586,7 @@ then
        
        #plot
        #pdf("$OUTDIR/EditDist/LevenDistance_Plasmid.pdf",height=10,width=20)
-       pll<-ggplot(BCleven[grep('Plasmid',BCleven[,4]),], aes(Hamming,Reads,fill=Type)) + 
+       pll<-ggplot(BCleven[grep('Plasmid|Primer',BCleven[,4]),], aes(Hamming,Reads,fill=Type)) + 
        geom_bar(stat="identity",color="black", size=0.1,alpha=0.4) +
        #ggtitle('GGlo')+
        facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
@@ -572,16 +925,19 @@ then
               
               TSS <- read("$OUTDIR/iPCR/DistToTSS.bed")
               colnames(TSS) <- c("DistToTSS", "Sample")
-              TSS\$DistToTSS.bin <- cut(TSS\$DistToTSS, breaks=c(-10^7, -10^6, -10^5, -10^4, -2500, 0, 5000, 10^4, 10^5, 10^6, 10^7), right=F, include.lowest=T, labels=c("-10 Mb", "-1 Mb", "-100 kb", "-10 kb", "-2.5 kb", "+5 kb", "+10 kb", "+100 kb", "+1 Mb", "+10 Mb"))
+              #TSS\$DistToTSS.bin <- cut(TSS\$DistToTSS, breaks=c(-10^7, -10^6, -10^5, -10^4, -2500, 0, 5000, 10^4, 10^5, 10^6, 10^7), right=F, include.lowest=T, labels=c("-10 Mb", "-1 Mb", "-100 kb", "-10 kb", "-2.5 kb", "+5 kb", "+10 kb", "+100 kb", "+1 Mb", "+10 Mb"))
               
               TSS\$Type<-gsub(".*_",'',gsub('_Merged','',TSS\$Sample))
-              t<-ggplot(TSS, aes(x=DistToTSS.bin,fill=Type)) +
-              geom_bar(color="black", size=0.25,alpha=0.4) +
+              t<-ggplot(TSS, aes(x=abs(DistToTSS)+1,fill=Type)) +
+              #geom_bar(color="black", size=0.25,alpha=0.4) +
+              geom_histogram(binwidth=0.1, colour="black", size=0.25, alpha=0.4) + 
               theme_classic()+
               colScale+
               facet_wrap(~Sample,scales="free_y", ncol=3)+ 
               theme_classic()+
-              theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
+              theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12)) +
+              scale_x_log10(  breaks = scales::trans_breaks("log10", function(x) 10^x),  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
+              annotation_logticks(sides = "b",long = unit(0.2, "cm"))    
               ggsave(t,file="$OUTDIR/iPCR/DistToTSS.pdf", width=13, height=height)
               
               
@@ -642,239 +998,7 @@ fi
 
 
 
-#######
-#HiC data
-######
-if [[ `find -type d |grep BS|grep -v bak|grep HiC| wc -l` -ge 1 ]]
-then
-       echo 'HiC samples found'
-       mkdir -p $OUTDIR/HiC/
-       
-       
-       find -name *.R2.raw.png | grep HiC| grep -v bak| xargs cp -t $OUTDIR/HiC/
-       find -name *.R1.raw.png | grep HiC| grep -v bak| xargs cp -t $OUTDIR/HiC/
-       for i in `ls $OUTDIR/HiC/*R1.raw.png|sort|awk -F'/' '{print $NF}'`;do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ;done  >$OUTDIR/HiC/R1index.html
-       for i in `ls $OUTDIR/HiC/*R2.raw.png|sort|awk -F'/' '{print $NF}'`;do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:900px"; height="120"></a>' ;done  >$OUTDIR/HiC/R2index.html
-       cat $OUTDIR//HiC/R1index.html $OUTDIR/HiC//R2index.html |sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/HiC/Weblogoindex.html
-       
-       if [[ `find -name *R1.mmapstat |sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak| wc -l` -ge 1 ]]
-       then
-              for HiC in `find -name *R1.mmapstat|sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, "R1", HiC}' ${HiC}/bowtie_results/bwt2/${HiC}/*R1.mmapstat |
-              grep -v "#" ;done > $OUTDIR/HiC/mmapstatR1.tsv
-              for HiC in `find -name *R2.mmapstat|sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, "R2", HiC}' ${HiC}/bowtie_results/bwt2/${HiC}/*R2.mmapstat  |
-              grep -v "#" ;done >$OUTDIR/HiC/mmapstatR2.tsv
-       fi
-       
-       if [[ `find -name *mpairstat |sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak| wc -l` -ge 1 ]]
-       then
-              for HiC in `find -name *mmapstat|sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, $3, HiC}' ${HiC}/bowtie_results/bwt2/${HiC}/*mpairstat|
-              grep -v "#" ;done > $OUTDIR/HiC/mpairstat.tsv
-       fi
-       
-       if [[ `find -maxdepth 2 -name *_R1.bam |grep -v bak| wc -l` -ge 1 ]]
-       then
-              for HiC in `find -maxdepth 1 -type d|grep HiC|sed 's/^..//g'| grep -v bak`; do samtools view -F4 -q30 ${HiC}/${HiC}_R1.bam |
-              cut -f3|sort |uniq -c|awk -v OFS='\t' -v name="$HiC" '{print $2, $1, "R1", name}' ;done > $OUTDIR/HiC/SE_mappingR1.tsv
-              for HiC in `find -maxdepth 1 -type d|grep HiC|sed 's/^..//g'| grep -v bak`; do samtools view -F4 -q30 ${HiC}/${HiC}_R2.bam |
-              cut -f3|sort |uniq -c|awk -v OFS='\t' -v name="$HiC" '{print $2, $1, "R2", name}' ;done > $OUTDIR/HiC/SE_mappingR2.tsv
-       fi
-       
-       if [[ `find -name *.bwt2glob.unmap_trimmed.fastq |grep -v bak| wc -l` -ge 1 ]]
-       then
-              for HiC in `find -name *.bwt2glob.unmap_trimmed.fastq|awk -F '/' '{print $2}'|grep -v bak|sort|uniq`; do cat ${HiC}/bowtie_results/bwt2_global/${HiC}/*R1*.bwt2glob.unmap_trimmed.fastq|
-              awk 'NR%4==2 {print length($1)}'|sort|uniq -c |awk -v OFS='\t' -v sample="$HiC" '{print $2, $1, "R1", sample}' ;done > $OUTDIR/HiC/trimmedReadsR1.tsv
-              for HiC in `find -name *.bwt2glob.unmap_trimmed.fastq|awk -F '/' '{print $2}'|grep -v bak|sort|uniq`; do cat ${HiC}/bowtie_results/bwt2_global/${HiC}/*R2*.bwt2glob.unmap_trimmed.fastq|
-              awk 'NR%4==2 {print length($1)}' |sort|uniq -c |awk -v OFS='\t' -v sample="$HiC" '{print $2, $1, "R2", sample}';done > $OUTDIR/HiC/trimmedReadsR2.tsv
-       fi
-       
-       if [[ `find -name *mergestat |sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak| wc -l` -ge 1 ]]
-       then
-              for HiC in `find -name *mergestat|sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, HiC}' ${HiC}/hic_results/data/${HiC}/*mergestat|
-              grep -v "#" ;done > $OUTDIR/HiC/mergestat.tsv
-       fi
-       
-       if [[ `find -name *mRSstat |sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak| wc -l` -ge 1 ]]
-       then
-              for HiC in `find -name *mRSstat|sed 's/^..//g'|sed 's/\/.*//g'|grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, HiC}' ${HiC}/hic_results/data/${HiC}/*mRSstat|
-              grep -v "#" ;done > $OUTDIR/HiC/mRSstat.tsv
-       fi
-       
-        for HiC in `find -maxdepth 1 -type d|grep HiC|grep -v bak| sed 's/^..//g'`; do reads=$(grep Surviving submit.${HiC}*|awk '{print $4}'); \
-              adapter=$(grep Surviving submit.${HiC}*|awk '{print $7}'); \
-              validPairs=$(cat ${HiC}/hic_results/data/${HiC}/${HiC}_allValidPairs|wc -l); \
-              validPairsSameChrom=$(cat ${HiC}/hic_results/data/${HiC}/${HiC}_allValidPairs|awk '$2==$5'|wc -l); \
-              gatcR1=$(zcat ${HiC}/${HiC}_R1.fastq.gz| grep 'GATC'|wc -l); \
-              gatcR2=$(zcat ${HiC}/${HiC}_R2.fastq.gz| grep 'GATC'|wc -l); \
-              numLinkR1=$(zcat ${HiC}/${HiC}_R1.fastq.gz| grep 'CGCGATATCTTATCTGA\|TCAGATAAGATATCGC'|wc -l); \
-              numLinkR2=$(zcat ${HiC}/${HiC}_R2.fastq.gz|grep 'CGCGATATCTTATCTGA\|TCAGATAAGATATCGC' |wc -l); \
-              mappedR1=$(samtools view -F4 -q30 ${HiC}/${HiC}_R1.bam|wc -l); \
-              mappedR2=$(samtools view -F4 -q30 ${HiC}/${HiC}_R2.bam|wc -l); \
-              dangling=$(grep Dangling ${HiC}/hic_results/data/${HiC}/${HiC}.mRSstat|awk '{print $2}'); \
-              echo $Flow $HiC $reads $adapter $mappedR1 $mappedR2 $gatcR1 $gatcR2 $numLinkR1 $numLinkR2 $dangling $validPairs $validPairsSameChrom  ;done |awk -v OFS='\t' '{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' > $OUTDIR/HiC/HiC_summary.tsv
-             
 
-       
-       R --quiet --no-save << EOF
-       library(stringr)
-       library(reshape2)
-       library(data.table)
-       library(dplyr)
-       library(gridExtra)
-       library(gtools)
-       library(tableHTML)
-       
-       
-       #####
-       #Create HiC summary table
-       #####
-       HiCsummary <- read.table("$OUTDIR/HiC/HiC_summary.tsv", header=F,stringsAsFactors=F)
-       
-       for (i in 3:ncol(HiCsummary)){
-              HiCsummary[,i]<-format(as.numeric(HiCsummary[,i]),big.mark=",", trim=TRUE)
-       
-       }
-       HiCsummary <- HiCsummary[order(HiCsummary[,"V2"]),]
-       rownames(HiCsummary) <-1:nrow(HiCsummary)
-       colnames(HiCsummary) <- c('Flowcell', 'Sample', 'Reads', 'Survived trimming', 'SE map R1 (MAPQ>=30)', 'SE map R2(MAPQ>=30)', 'gatcR1', 'gatcR2', 'linkerR1', 'linkerR2', 'dangling ends', 'validPairs', 'cis-validPairs')
-       SumHTMLtable<-tableHTML(HiCsummary) %>%  add_css_row(css = list('background-color', 'lightblue'),rows = odd(1:nrow(HiCsummary)))
-       write_tableHTML(SumHTMLtable, file = "$OUTDIR/HiC/HiCsummary.html")
-       
-       
-       #####
-       #Plot SE mapping
-       #####
-       R1 <- fread("$OUTDIR/HiC/SE_mappingR1.tsv")
-       R2 <- fread("$OUTDIR/HiC/SE_mappingR2.tsv")
-       SEmapped <- rbind(R1,R2)
-       SEmapped <- as.data.frame(SEmapped)
-       SEmapped <- SEmapped[grep('consensus|chrM|Un|alt|random|chrM|chrY',SEmapped[,1], invert=T),]
-       hg38 <- read.table('/vol/isg/annotation/fasta/hg38/hg38.chrom.sizes')
-       hg38 <- hg38[grep('Un|alt|random|chrM|chrY',hg38[,"V1"],invert=T),]
-       hg38[,"Mb"] <- hg38[,"V2"]/1e6
-       colnames(hg38) <-c('V1', 'size','Mb')
-
-       SEmapped <- SEmapped %>% 
-              arrange(V1) %>%
-              left_join(hg38, by='V1') %>%
-              mutate(normReads=V2/Mb)
-       head(SEmapped)
-
-       
-       height <- ceiling(length(unique(SEmapped[,"V4"]))/3)*4
-       
-       ggSEmapped <- SEmapped %>%
-              mutate(V1 = factor(V1, levels=unique(mixedsort(V1)))) %>%
-              ggplot(aes(x=V1, y=normReads,fill=V3))+
-              geom_bar(stat='identity') +
-              facet_wrap(~V4, ncol=3)+
-              theme_classic() +
-              xlab('Chromosomes') +
-              ylab('Mapped reads/Mb') +
-              scale_fill_manual(values=rev(brewer.pal(n=3,"Set1")[1:2]))+
-              ggtitle('Normalised reads per chromosome (MAPQ >=30)')+
-              theme(axis.title.x = element_text(size=14), axis.text.x  = element_text(size=12,angle=60,hjust=1), axis.title.y = element_text(size=14), axis.text.y = element_text(size=12))
-       ggsave(ggSEmapped,file="$OUTDIR/HiC/1.SE_perChrom_mapping.pdf", width=13, height=height)
-
-       
-       
-       #####
-       #Plot mapping stat
-       #####
-       R1 <- read.table("$OUTDIR/HiC/mmapstatR1.tsv", sep='\t', header=F, stringsAsFactors=F)
-       R2 <- read.table("$OUTDIR/HiC/mmapstatR2.tsv", sep='\t', header=F, stringsAsFactors=F)
-       
-       mapStat <- rbind(R1,R2)
-       mapped <- mapStat[grep('mapped',mapStat\$V1, invert=T),]
-       mappedUnmelt <- dcast(mapped,formula=V1~V4+V3,value.var='V2')
-       mappedUnmelt[4,] <- c('Unmapped', as.numeric(mappedUnmelt[,-1][3,])- (as.numeric(mappedUnmelt[,-1][2,])+as.numeric(mappedUnmelt[,-1][1,])))
-       mapped<- melt(mappedUnmelt,id='V1')
-       mapped <- mapped[grep('total',mapped\$V1, invert=T),]
-       mapped\$Read <- substr(as.character(mapped\$variable),nchar(as.character(mapped\$variable))-1, nchar(as.character(mapped\$variable)))
-       mapped\$variable <- substr(as.character(mapped\$variable),1, nchar(as.character(mapped\$variable))-3)
-       
-       mapped[grep('global',mapped\$V1),]\$V1 <-'Full_read_mapped'
-       mapped[grep('local',mapped\$V1),]\$V1 <-'Trimmed_read_mapped'
-       mapped\$value <-as.numeric(as.character(mapped\$value))
-
-       colnames(mapped) <- c('Mapping', 'Sample','numberReads', 'Read')
-      
-       mapped\$Mapping <- factor(mapped\$Mapping,levels=c( 'Unmapped', 'Trimmed_read_mapped','Full_read_mapped' ))
-       #mapped\$Sample <- gsub('MSH_061517_GM12865~DpnII~','',mapped\$Sample)
-       mapped\$Sample <- substr(mapped\$Sample,1, 8)
-       t<-ggplot(mapped, aes(x=Read,y=numberReads, fill=Mapping)) +
-       geom_bar(stat='identity',color="black", size=0.25) +
-       theme_classic()+
-       scale_fill_manual(values=c('#bdbdbd','#9ecae1','#4292c6'))+
-       facet_wrap(~Sample, ncol=3)+ 
-       theme_classic()+
-       ggtitle('Mapped reads (MAPQ>=0)')+
-       scale_y_continuous(label= fancy_scientific) +
-       theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
-       
-       gp = ggplotGrob(t)
-       gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
-       
-       ggsave(gp,file="$OUTDIR/HiC/2.mapping.pdf", width=13, height=height)
-       
-       
-       
-       #####
-       #Plot merged interaction stat
-       #####
-       mergeStat <- read.table("$OUTDIR/HiC/mergestat.tsv", header=F, sep='\t', stringsAsFactors=F)
-       
-       mergeStat <- mergeStat[grep('valid_interaction|Range', mergeStat\$V1, invert=T),]
-       colnames(mergeStat) <- c('Interaction', 'numberReads', 'Sample')
-       mergeStat\$Sample <- substr(mergeStat\$Sample,1, 8)
-       mergeStat\$Interaction <- gsub("_interaction",'',mergeStat\$Interaction)
-       
-       t<-ggplot(mergeStat, aes(x=Interaction,y=numberReads, fill=Interaction)) +
-       geom_bar(stat='identity',color="black", size=0.25) +
-       theme_classic()+
-       scale_fill_manual(values=c('#9ecae1','#4292c6'))+
-       facet_wrap(~Sample, ncol=3)+ 
-       theme_classic()+
-       scale_y_continuous(label= fancy_scientific) +
-       theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
-       
-       ggsave(t,file="$OUTDIR/HiC/3.Interactions.pdf", width=13, height=height)
-       
-       
-       #####
-       #Plot valid pairs
-       #####
-       mRSstat <- read.table("$OUTDIR/HiC/mRSstat.tsv", header=F, stringsAsFactors=F, sep='\t')
-       
-       mRSstat\$Passed <- ''
-       mRSstat[grep('Valid', mRSstat\$V1),]\$Passed <- 'Valid'
-       mRSstat[grep('Valid', mRSstat\$V1, invert=T),]\$Passed <- 'Dumped'
-       
-       mRSstat<- mRSstat[!mRSstat\$V1 %in% 'Valid_interaction_pairs',]
-       colnames(mRSstat) <- c('Interaction', 'Pairs', 'Sample','Passed')
-       mRSstat\$Sample <- substr(mRSstat\$Sample,1, 8)
-       
-       t<-ggplot(mRSstat, aes(x=Sample,y=Pairs, fill=Interaction)) +
-       geom_bar(stat='identity',color="black", size=0.25) +
-       theme_classic()+
-       #scale_fill_manual(values=c('#9ecae1','#4292c6'))+
-       facet_wrap(~Passed, ncol=3)+ 
-       theme_classic()+
-       scale_y_continuous(label= fancy_scientific) +
-       theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
-       
-       ggsave(t,file="$OUTDIR/HiC/4.ValidPairs.pdf", width=13, height=height)
-       
-EOF
-              convert -density 300 $OUTDIR/HiC/1.SE_perChrom_mapping.pdf -quality 100 $OUTDIR/HiC/1.SE_perChrom_mapping.png
-              convert -density 300 $OUTDIR/HiC/2.mapping.pdf -quality 100 $OUTDIR/HiC/2.mapping.png
-              convert -density 300 $OUTDIR/HiC/3.Interactions.pdf -quality 100 $OUTDIR/HiC/3.Interactions.png
-              convert -density 300 $OUTDIR/HiC/4.ValidPairs.pdf -quality 100 $OUTDIR/HiC/4.ValidPairs.png
-              for i in `ls $OUTDIR/HiC/*.png|grep 'SE_perChrom_mapping\|mapping\|Interactions\|ValidPairs' |sort|sed 's/.png//g' |awk -F'/' '{print $NF}'`;do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ;done |awk ' {print;} NR % 1 == 0 { print "<br>"; }' >$OUTDIR/HiC/Images.html
-              cat $OUTDIR/HiC/HiCsummary.html <(echo "") <(echo "<br>") $OUTDIR/HiC/Weblogoindex.html <(echo "") <(echo "<br>") $OUTDIR/HiC/Images.html >$OUTDIR/HiC/index.html
-else 
-       echo 'No HiC samples found'     
-       echo 'Exit'
-fi
 
 echo 'Done!!!'
 date

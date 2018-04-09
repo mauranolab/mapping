@@ -60,11 +60,15 @@ if [[ "$R1trim" > "0" ]]; then
 else
        bc1pattern="X"
 fi
-if [[ "$R2trim" > "0" ]]; then
+#Only extract UMI from R2 for RNA samples where bcread is R1
+if [[ "$R2trim" > "0" && "$bcread" == "R1" ]]; then
        echo "Trimming $R2trim bp from R2"
        bc2pattern=`printf 'N%.0s' $(seq 1 $R2trim)`
+       zcat -f $f2 > $TMPDIR/${sample}.R2.fastq
 else
        bc2pattern="X"
+       echo "Removing $R2trim bp from R2"
+       /home/maagj01/.local/bin/cutadapt --quiet -u $R2trim $f2 > $TMPDIR/${sample}.R2.fastq
 fi
 
 if [[ "$bc1pattern" != "" ]]; then
@@ -73,9 +77,14 @@ fi
 if [[ "$bc2pattern" != "" ]]; then
        bc2pattern=" --bc-pattern2 $bc2pattern"
 fi
+
+
+
+       
+
 echo "umi_tools extract $bc1pattern $bc2pattern"
 
-zcat -f $f2 > $TMPDIR/${sample}.R2.fastq
+#zcat -f $f2 > $TMPDIR/${sample}.R2.fastq
 #/home/mauram01/.local/bin/umi_tools extract --help
 zcat -f $f1 | /home/maagj01/.local/bin/umi_tools extract $bc1pattern $bc2pattern --read2-in=$TMPDIR/${sample}.R2.fastq --read2-out=$TMPDIR/${sample}.R2.out.fastq -v 0 --log=$TMPDIR/${sample}.umi.log |
 gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz
