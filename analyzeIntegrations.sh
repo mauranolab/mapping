@@ -127,7 +127,7 @@ awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"} \
        } \
        END {print last[1], last[2], last[3], last[4], last[5], last[6]}' |
 sort-bed - |
-awk -v minReads=2 -F "\t" 'BEGIN {OFS="\t"} $5>=minReads' > $OUTDIR/$sample.barcodes.coords.bed
+awk -v minReads=1 -F "\t" 'BEGIN {OFS="\t"} $5>=minReads' > $OUTDIR/$sample.barcodes.coords.bed
 #columns: chrom, start, end, readname, strand, BC seq, count (coords are of integration site)
 
 
