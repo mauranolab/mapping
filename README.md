@@ -50,6 +50,16 @@ UMI_distribution -- Distributions of UMIs per barcode
 SaturationCurve -- Saturation curves of number of UMI adjusted Barcodes
 ```
 
+Summary table
+```
+Flowcell	BSnumber	Name	sampleType	Total reads	Total barcodes	BC+UMI	UMI length	Unique BC	BC length	Complexity	PF reads	QC mapped reads	Prop PF	Unique sites	Unique sites +-5bp	#BC 1 site	#BC 2+ sites	Prop 2+
+aligned.FCHKWNLBGX5	BS00786B	RDL_20171106_T0054_K562_BGlo_Day10	RNA	28,796	3,026	2,918	10	1,805	16	0.6185744	NA	NA	NA	NA	NA	NA	NA	NA
+aligned.FCHKWNLBGX5	BS00948A	RDL_20171211_K562_T0061_Hsp68_d5_GFPLow	RNA	32,608	3,785	3,718	8	3,029	16	0.8146853	NA	NA	NA	NA	NA	NA	NA	NA
+aligned.FCHKWNLBGX5	BS00950A	RDL_20171211_K562_T0055_LTR7_d1	RNA	NA	NA	NA	NA	NA	NA	1.0000000	NA	NA	NA	NA	NA	NA	NA	NA
+aligned.FCHKWNLBGX5	BS00951A	RDL_20180207_K562_T0073_CMVHigh	DNA	368,623	40,888	39,582	8	26,313	16	0.6647719	NA	NA	NA	NA	NA	NA	NA	NA
+aligned.FCHKWNLBGX5	BS00952A	RDL_20180207_K562_T0073_CMVLow	DNA	356,229	28,456	26,305	9	14,991	16	0.5698917	NA	NA	NA	NA	NA	NA	NA	NA
+```
+
 ## All vs all overlap between samples
 The script below runs an all vs all comparison of specified samples.  
 This generates a tsv file with all overlaps, as well as a heatmap of the jaccard index between each sample comparison.  
