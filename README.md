@@ -80,6 +80,15 @@ To run the script use the following command in the Transposon directory
 -o -- Output name (createas a OUTPUT.tsv and OUTPUT.pdf)
 ```
 
+
+This results in a file with intersect, union, and jaccard index for each comparison
+```
+A	B	#A	#B	Intersect	Union	Intersect/Union	#A_10	#B_10	Intersect_10	Union_10	Intersect_10/Union_10
+BS00953A-RDL-20180207-K562-T0073-CMVNull-DNA	BS00953A-RDL-20180207-K562-T0073-CMVNull-DNA	15743	15743	15743	15743	1	413	413	413	413	1
+BS00989A-RDL-20180207-K562-T0074-Hsp68Low-RNA	BS00953A-RDL-20180207-K562-T0073-CMVNull-DNA	32412	15743	1	48154	0	3073	413	0	3486	0
+BS00980A-MSH-20180129-K562-T0075-CMVNull-DNA	BS00953A-RDL-20180207-K562-T0073-CMVNull-DNA	4814	15743	339	20218	0.02	17	413	1	429	0 
+```
+
 ## Overlap between specific samples
 This is more used when we want to compare overlap of DNA, RNA, and iPCR samples from the same transfection.  
 Here we can select the threshold for UMI corrected barcodes for DNA and RNA samples, while iPCR remains unfiltered.
@@ -146,4 +155,8 @@ aligned.FCHGLHJBGX5/BS00846A-RDL_20171211_K562_T0058_CMV_d5sort_High_iPCR/BS0084
 ~/public_html/blog/GFP_sort/CMV_High_UMI
 
 ```
+
+
+
+
 
