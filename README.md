@@ -96,7 +96,7 @@ aligned.FCHFMK5BGX5/BS00744A-RDL_20171211_K562_CMV_day1_RNA \
 -c aligned.FCHFNJJBGX5/BS00772A-RDL_20171211_K562_T0055_LTR7_d1sort_iPCR,\
 aligned.FCHFNJJBGX5/BS00773A-RDL_20171211_K562_T0056_CMV_d1sort_iPCR \
 -t 10 \
--o ~/public_html/blog/20180430/Raven_Merged_10.tsv 
+-o ~/public_html/blog/20180430/Ovarlap_10.tsv 
 ```
 
 This results in a output file
@@ -146,8 +146,4 @@ aligned.FCHGLHJBGX5/BS00846A-RDL_20171211_K562_T0058_CMV_d5sort_High_iPCR/BS0084
 ~/public_html/blog/GFP_sort/CMV_High_UMI
 
 ```
-
-
-
-
 
