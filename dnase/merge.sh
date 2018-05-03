@@ -17,20 +17,8 @@ for f1 in `grep $DS inputs.txt | grep -v R2`; do
        #echo "adding $f1"
        
        #First get FC
-       #NB This must match exactly what is in runAnalysis.sh
+       #NB This must match exactly what is in map.sh
        #BUGBUG a bit fragile
-       #BUGBUG misses things like UwStam_CH12-DS22536-FCD0TGK-L002_R1_001.fastq.gz and UwStam_CH12-DS22542-FCD0TDB-L001_R1_002.fastq.gz, but don't see any collision
-#       if [[ `basename $f1` =~ "^s_" ]]; then
-#              fc=`readlink -f $f1 | perl -pe 's/\/\d\d\d\/s_/\/s_/g;' | xargs dirname | xargs basename | perl -pe 's/_\d+_tag//g;'`
-#       else
-#              fc=`readlink -f $f1 | xargs dirname | xargs dirname | xargs dirname | xargs basename | perl -pe 's/_\d+_tag//g;'`
-#       fi
-#       if [[ "$fc" == "." ]] ; then
-#              fc=""
-#       else
-##              echo "Flowcell $fc"
-#              fc="${fc}."
-#       fi
        fc=""
        
        f2=`echo $f1 | perl -pe 's/_R1(_\d+)?/_R2$1/g;'`
@@ -70,7 +58,7 @@ else
        samtools merge -l 1 -@ $NSLOTS $sampleOutdir/$name.bam $files
 fi
 
-echo "Processing $sampleOutdir/$name.bam"
+echo "Processing $name.bam"
 #TODO AddOrReplaceReadGroups or do bwa -r ""
 
 

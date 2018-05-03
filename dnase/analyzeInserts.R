@@ -17,7 +17,7 @@ options(bitmapType="cairo")
 
 cat("Loading insert lengths\n")
 results <- NULL
-for(f in list.files(path=".", pattern=".insertlengths.txt.gz$")) {
+for(f in list.files(path=".", pattern=".insertlengths.txt.gz$", recursive=T)) {
        cat("Doing", f, "\n")
        data <- read(f)
        colnames(data) <- c("sample", "length")
@@ -26,6 +26,8 @@ for(f in list.files(path=".", pattern=".insertlengths.txt.gz$")) {
 }
 
 results$sample <- factor(gsub(".hg19$", "", results$sample))
+results$sample <- factor(gsub(".hg38$", "", results$sample))
+results$sample <- factor(gsub(".mm10$", "", results$sample))
 results$DS <- sapply(as.character(results$sample), function(x) {unlist(strsplit(x, "-"))[2]})
 
 
@@ -40,7 +42,7 @@ xlab("Fragment length (bp)") +
 ylab("Density") +
 scale_x_continuous(breaks=c(27,36, 125, 200, 300), limits=c(27,300)) +
 guides(color=F, linetype=F) +
-geom_dl(method=list("top.points", cex=0.6))
+geom_dl(method=list("top.points", cex=0.8))
 #theme(plot.margin=unit(c(0,0,0,0), "lines"))) #NB top, rt, bot, left
 
 pdf("insertlengths.pdf", width=7, height=5)

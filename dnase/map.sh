@@ -1,5 +1,5 @@
 #!/bin/bash
-#set -e -o pipefail
+set -e -o pipefail
 
 
 #Above not catching segfaults
@@ -13,7 +13,7 @@
 
 date
 
-permittedMismatches=2
+permittedMismatches=3
 
 
 #celltype is called sample in BWAmerge and submitBWA
@@ -33,7 +33,7 @@ jobid=$SGE_TASK_ID
 readsFq=`cat inputs.txt | awk -v jobid=$jobid 'NR==jobid'`
 if [ ! -f "$readsFq" ]; then
        echo "ERROR: Can not find file $readsFq"
-       exit 4
+       exit 1
 fi
 echo "Will process reads file $readsFq"
 
@@ -62,20 +62,18 @@ echo "Trimming"
 #/home/jvierstra/proj/code/bio-tools/apps/trim-adapters-illumina/trim-adapters-illumina DS32747A_CTTGTA_L002_R1_001.fastq.gz DS32747A_CTTGTA_L002_R2_001.fastq.gz R1.jtrim.fastq.gz R2.jtrim.fastq.gz
 
 
-
 #Trimmomatic options
 #TODO Probably need different sequences per barcode. Note this fa file has 2 ident copies of left adapter and none of right adapter (with barcode).
 #Regular illumina dsDNA protocol
 
 
-#accessibilityAnalysis can either be DNase or ATAC
-accessibilityAnalysis=ATAC
-if [ "$accessibilityAnalysis" == "DNase" ]; then 
-       illuminaAdaptersFile=/cm/shared/apps/trimmomatic/0.36/adapters/TruSeq3-PE-2.fa
-       echo 'Running DNase analysis'
-elif [ $accessibilityAnalysis == "ATAC" ]; then 
-       illuminaAdaptersFile=/cm/shared/apps/trimmomatic/0.36/adapters/NexteraPE-PE.fa
-       echo 'Running ATAC-seq analysis'
+#analysisType can either be DNase or ATAC
+analysisType="DNase"
+echo "Running $analysisType analysis"
+if [ "$analysisType" == "DNase" ]; then 
+       illuminaAdapters=/cm/shared/apps/trimmomatic/0.36/adapters/TruSeq3-PE-2.fa
+elif [ $analysisType == "ATAC" ]; then 
+       illuminaAdapters=/cm/shared/apps/trimmomatic/0.36/adapters/NexteraPE-PE.fa
 else 
        echo 'ERROR specify adapters'
        exit 2
@@ -87,39 +85,40 @@ PEthresh=5
 SEthresh=5
 mintrim=1
 keepReverseReads=true
-trimmomaticBaseOpts="-threads $NSLOTS"
+trimmomaticBaseOpts="-threads $NSLOTS -trimlog $TMPDIR/${sample1}.trim.log.txt"
+trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:27 CROP:36"
+#MAXINFO:27:0.95 TRAILING:20
 
 #Check if samples contain DUKE adapter (TCGTATGCCGTCTTC) and trim to 20bp if more than 25% of reads do
 sequencedTags=$(zcat $readsFq|awk 'NR%4==2'| wc -l)
-readsWithDukeSequence=$(zcat $readsFq|awk 'NR%4==2'|grep TCGTATGCCGTCTTC| wc -l)
 
-if (( $(bc -l <<<"$readsWithDukeSequence/$sequencedTags >=0.25") )); then
+#For shorter old Duke data
+readsWithDukeSequence=$(zcat $readsFq | awk 'NR%4==2' | grep TCGTATGCCGTCTTC | wc -l)
+if (( $(bc -l <<<"$readsWithDukeSequence/$sequencedTags >= 0.25") )); then
        echo "More than 25% of reads have DUKE sequence (TCGTATGCCGTCTTC) - Hard clip to 20bp reads"
-       trimmomaticSteps="CROP:20 TOPHRED33 ILLUMINACLIP:$illuminaAdaptersFile:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:20"
+       trimmomaticSteps="CROP:20 $trimmomaticSteps"
 else
        echo "No DUKE sequence present "
-       trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdaptersFile:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:20"
 fi
 
 
 #BUGBUG For aggregate submission e.g. submitting multiple flowcells at once, there will be a collision if we have sequenced same sample on multiple flowcells. 
-
 fc=""
 
 #BUGBUG any older data w/o R1/R2 convention?
 sample2=`echo $sample1 | perl -pe 's/_R1(_\d+)?$/_R2$1/g;'`
 #BUGBUG note grep -q $fc dies on two PATSKI samples but they are SE
-if echo $sample1 | grep -q R1 && echo $sample2 | grep -q R2 && grep $sample2 inputs.txt | grep -q "$fc" ; then
+if echo "$sample1" | grep -q R1 && echo "$sample2" | grep -q R2 && grep "$sample2" inputs.txt | grep -q "$fc" ; then
        echo "Found R2 $sample2"
-       if [ `grep $sample2 inputs.txt | grep "$fc" | wc -l` -gt 1 ]; then
+       if [ `grep "$sample2" inputs.txt | grep "$fc" | wc -l` -gt 1 ]; then
               echo "ERROR: Multiple R2 files found -- are there duplicate entries in inputs.txt?"
-              exit 2
+              exit 3
        fi
        
-       reads2fq=`grep $sample2 inputs.txt | grep "$fc"`
+       reads2fq=`grep "$sample2" inputs.txt | grep "$fc"`
        if [ ! -f "$reads2fq" ]; then
               echo "ERROR: Can not find R2 file $reads2fq"
-              exit 5
+              exit 4
        fi
        
        echo "Will process reads file $reads2fq"
@@ -129,53 +128,75 @@ if echo $sample1 | grep -q R1 && echo $sample2 | grep -q R2 && grep $sample2 inp
        sample=`echo $sample1 | perl -pe 's/_R1(_\d+)?/_R1R2\1/g;'`
        sample="${fc}$sample"
        
-       java org.usadellab.trimmomatic.TrimmomaticPE $trimmomaticBaseOpts $readsFq $reads2fq $TMPDIR/$sample1.fastq.gz $TMPDIR/$sample1.unpaired.fastq.gz $TMPDIR/$sample2.fastq.gz $TMPDIR/$sample2.unpaired.fastq.gz $trimmomaticSteps
+       echo "Filtering out reads with >75% G content"
+       #TODO could potentially save R1 where only R2 is dark once it can handle single read. Could patch trimmomatic instead?
+       $src/filterNextSeqReadsForPolyG.py --inputfileR1 $readsFq --inputfileR2 $reads2fq --outputfileR1 $TMPDIR/$sample1.pretrim.fastq.gz --outputfileR2 $TMPDIR/$sample2.pretrim.fastq.gz --maxPolyG 75
+       
+       java org.usadellab.trimmomatic.TrimmomaticPE $trimmomaticBaseOpts $TMPDIR/$sample1.pretrim.fastq.gz $TMPDIR/$sample2.pretrim.fastq.gz $TMPDIR/$sample1.fastq $TMPDIR/$sample1.unpaired.fastq $TMPDIR/$sample2.fastq $TMPDIR/$sample2.unpaired.fastq $trimmomaticSteps
        
        echo -n "Unpaired reads:"
        #Merge anything unpaired from either R1 or R2
-       zcat $TMPDIR/$sample1.unpaired.fastq $TMPDIR/$sample2.unpaired.fastq.gz | gzip -c > $TMPDIR/$sample.unpaired.fastq.gz
-       zcat $TMPDIR/$sample.unpaired.fastq.gz | wc -l
+       cat $TMPDIR/$sample1.unpaired.fastq $TMPDIR/$sample2.unpaired.fastq | tee $TMPDIR/$sample.unpaired.fastq | wc -l
+       
+       
+       if [ ! -s "$TMPDIR/$sample1.fastq" ] && [ ! -s "$TMPDIR/$sample2.fastq" ]; then
+              echo "No tags passed filtering, quitting successfully"
+              exit 0
+       fi
        
        
        mkdir -p fastqc
        fastQcOutdir="fastqc/${fc}${sample1}_qc"
        if [ ! -d "$fastQcOutdir" ]; then
-              mkdir -p $fastQcOutdir
-              fastqc --outdir $fastQcOutdir $TMPDIR/$sample1.fastq.gz
+              #qsub -cwd -V -N ${sample1}.qc -o fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p $fastQcOutdir; fastqc --outdir $fastQcOutdir $TMPDIR/$sample1.fastq"
+              mkdir -p $fastQcOutdir; fastqc --outdir $fastQcOutdir $TMPDIR/$sample1.fastq
        fi
        
        fastQcOutdir="fastqc/${fc}${sample2}_qc"
        if [ ! -d "$fastQcOutdir" ]; then
-              mkdir -p $fastQcOutdir
-              fastqc --outdir $fastQcOutdir $TMPDIR/$sample2.fastq.gz
+              #qsub -cwd -V -N ${sample2}.qc -o fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p $fastQcOutdir; fastqc --outdir $fastQcOutdir $TMPDIR/$sample2.fastq"
+              mkdir -p $fastQcOutdir; fastqc --outdir $fastQcOutdir $TMPDIR/$sample2.fastq
        fi
        
-       if [ ! -s "$TMPDIR/$sample1.fastq.gz" ] && [ ! -s "$TMPDIR/$sample2.fastq.gz" ]; then
-              echo "No tags passed filtering, quitting successfully"
-              exit 0
-       fi
+       echo
+       echo "Histogram of read lengths for R1"
+       awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' $TMPDIR/$sample1.fastq | sort -k1,1n
+       
+       echo
+       echo "Histogram of read lengths for R1"
+       awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' $TMPDIR/$sample2.fastq | sort -k1,1n
+       
+       echo
+       echo "Histogram of read lengths for unpaired"
+       awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' $TMPDIR/$sample.unpaired.fastq | sort -k1,1n
 else
        PErun="FALSE"
        sample="${fc}$sample1"
        
-       #BUGBUG wrong adapter files for SE
-       java org.usadellab.trimmomatic.TrimmomaticSE $trimmomaticBaseOpts $readsFq $TMPDIR/$sample1.fastq.gz $trimmomaticSteps
-       mkdir -p fastqc
-       fastQcOutdir="fastqc/${fc}${sample1}_qc"
-       if [ ! -d "$fastQcOutdir" ]; then
-              mkdir -p $fastQcOutdir
-              fastqc --outdir $fastQcOutdir $TMPDIR/$sample1.fastq.gz
-       fi
+       #TODO filterNextSeqReadsForPolyG.py
        
-       if [ ! -s "$TMPDIR/$sample1.fastq.gz" ]; then
+       #BUGBUG wrong adapter files
+       java org.usadellab.trimmomatic.TrimmomaticSE $trimmomaticBaseOpts $readsFq $TMPDIR/$sample1.fastq $trimmomaticSteps
+       
+       
+       if [ ! -s "$TMPDIR/$sample1.fastq" ]; then
               echo "No tags passed filtering, quitting successfully"
               exit 0
        fi
+       
+       
+       mkdir -p fastqc
+       fastQcOutdir="fastqc/${fc}${sample1}_qc"
+       if [ ! -d "$fastQcOutdir" ]; then
+              #qsub -cwd -V -N ${sample1}.qc -o fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p $fastQcOutdir; fastqc --outdir $fastQcOutdir $TMPDIR/$sample1.fastq"
+              mkdir -p $fastQcOutdir; fastqc --outdir $fastQcOutdir $TMPDIR/$sample1.fastq
+       fi
+       
+       echo
+       echo "Histogram of read lengths for R1"
+       awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' $TMPDIR/$sample1.fastq | sort -k1,1n       
 fi
 
-sampleOutdir=${celltype}-${DS}.${genome}
-
-mkdir -p $sampleOutdir
 
 date
 
@@ -184,6 +205,10 @@ date
 echo
 echo "Mapping $readsFq for $sample1"
 echo "userAlnOptions=$userAlnOptions"
+
+sampleOutdir=${celltype}-${DS}.${genome}
+mkdir -p $sampleOutdir
+
 
 #not sure what -R is, making it lower than samse/pe -n reduces mapped PE tags but not SE tags
 #-Y filters sequences with \d+:Y:... after the space in the read name
@@ -209,16 +234,18 @@ for curGenome in $genomesToMap; do
        hg19)
               bwaIndex=$bwaIndexBase/hg19all/hg19all;;
        hg38)
-              bwaIndex=$bwaIndexBase/hg38all/hg38all;;
+#              bwaIndex=$bwaIndexBase/hg38all/hg38all;;
+              bwaIndex=$bwaIndexBase/hg38_no_alt_analysis_set/hg38_no_alt_analysis_set;;
        mm10)
-              bwaIndex=$bwaIndexBase/mm10all/mm10all;;
+#              bwaIndex=$bwaIndexBase/mm10all/mm10all;;
+              bwaIndex=$bwaIndexBase/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set;;
        *)
               echo "Don't recognize genome $curGenome";
-              exit 3;;
+              exit 5;;
        esac
        
        echo "bwa aln $bwaAlnOpts $bwaIndex ..."
-       bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample1.fastq.gz > $TMPDIR/$sample1.$curGenome.sai
+       bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample1.fastq > $TMPDIR/$sample1.$curGenome.sai
 
        date
 
@@ -230,32 +257,30 @@ for curGenome in $genomesToMap; do
        bwaExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
        if [[ "$PErun" == "TRUE" ]] ; then
               echo -e "\nMapping R2 $reads2fq for $sample2"
-              bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample2.fastq.gz > $TMPDIR/$sample2.$curGenome.sai
+              bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample2.fastq > $TMPDIR/$sample2.$curGenome.sai
               date
               
               #-P didn't have a major effect, but some jobs were ~10-40% faster but takes ~16GB RAM instead of 4GB
-              extractcmd="sampe $bwaExtractOpts -a 500 $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample2.$curGenome.sai $TMPDIR/$sample1.fastq.gz $TMPDIR/$sample2.fastq.gz"
+              extractcmd="sampe $bwaExtractOpts -a 500 $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample2.$curGenome.sai $TMPDIR/$sample1.fastq $TMPDIR/$sample2.fastq"
               
-              #Only map unpaired reads if there's more than 1 read
-              if [[ `zcat $TMPDIR/$sample.unpaired.fastq.gz| wc -l` -ge 4 ]]
-              then
-                     #BUGBUG doesn't test if empty
+              #Only map unpaired reads if the file nonzer
+              if [ -s cat $TMPDIR/$sample.unpaired.fastq ]; then
                      echo -e "\nMapping unpaired $sample.unpaired.fastq for $sample1"
-                     bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample.unpaired.fastq.gz > $TMPDIR/$sample.unpaired.$curGenome.sai
+                     bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample.unpaired.fastq > $TMPDIR/$sample.unpaired.$curGenome.sai
                      date
                      
                      echo
                      echo "Extracting unpaired reads"
                      unpairedReadsSam="$TMPDIR/$sample.$curGenome.unpaired.sam"
-                     #Only run unpaired reads extract if unpaired reads exists
-
                      unpairedExtractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample.unpaired.$curGenome.sai $TMPDIR/$sample.unpaired.fastq.gz"
                      echo -e "unpairedExtractcmd=bwa $unpairedExtractcmd | (...)"
                      bwa $unpairedExtractcmd | grep -v "^@" > $unpairedReadsSam
+              else
+                     unpairedReadsSam=""
               fi
               #TODO merge headers instead of dropping
        else
-              extractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample1.fastq.gz"
+              extractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample1.fastq"
               unpairedReadsSam=""
        fi
        
@@ -267,11 +292,8 @@ for curGenome in $genomesToMap; do
        
        #BUGBUG wasting cores?
        #TODO use fork/wait
-       bwa $extractcmd | gzip -1 -c - > $TMPDIR/$sample.extractBWA.sam.gz
-       echo 
-       echo
-       echo "Sorting, filtering, and picard"
-       zcat -f $TMPDIR/$sample.extractBWA.sam.gz $unpairedReadsSam |
+       bwa $extractcmd |
+       cat - $unpairedReadsSam |
        \
        #calmd
        #Necessary?
@@ -284,7 +306,7 @@ for curGenome in $genomesToMap; do
        #Use view instead of calmd
        #TODO prob better to do NSLOTS/2 or so
        #samtools view -@ $NSLOTS -S -u - | 
-       samtools sort -@ $NSLOTS -m 1500M  -O bam -T $TMPDIR/${sample}.sortbyname -l 1 -n - |
+       samtools sort -@ $NSLOTS -m 1500M -O bam -T $TMPDIR/${sample}.sortbyname -l 1 -n - |
        $src/filter_reads.py --max_mismatches $permittedMismatches - - |
        samtools sort -@ $NSLOTS -m 1500M -O bam -T $TMPDIR/${sample}.sort -l 1 - |
        #Add MC tag containing mate CIGAR for duplicate calling
@@ -302,7 +324,7 @@ for curGenome in $genomesToMap; do
        
        echo
        echo "SAMtools statistics for genome $genome"
-       samtools flagstat  $sampleOutdir/$sample.$curGenome.bam
+       samtools flagstat $sampleOutdir/$sample.$curGenome.bam
 done
 
 
@@ -316,13 +338,8 @@ echo "Mean quality by cycle"
 #BUGBUG performs badly for SRR jobs -- some assumption not met?
 java -Xmx3g -jar /cm/shared/apps/picard/1.140/picard.jar MeanQualityByCycle INPUT= $sampleOutdir/$sample.$curGenome.bam OUTPUT=$TMPDIR/$sample.baseQ.txt CHART_OUTPUT=$TMPDIR/$sample.baseQ.pdf VALIDATION_STRINGENCY=LENIENT
 
-if samtools view  $sampleOutdir/$sample.$curGenome.bam | cut -f1 | head -10 | grep -q -e "^SRR"; then
-       #Hack to deal with read names from SRA
-       instrument="SRA"
-else
-       #BUGBUG slow
-       instrument=`samtools view  $sampleOutdir/$sample.$curGenome.bam | cut -f1 | cut -d ":" -f1 | uniq | sort | uniq | perl -pe 's/\n/;/g;' | perl -pe 's/;$//g;'`
-fi
+#BUGBUG slow
+instrument=`samtools view $sampleOutdir/$sample.$curGenome.bam | cut -f1 | cut -d ":" -f1 | uniq | sort | uniq | perl -pe 's/\n$//g;' | perl -pe 's/\n/;/g;'`
 awk -v instrument=$instrument -v fc=$fc -v sample=$sample -v ds=$DS -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $0!="" {if($1=="CYCLE") {$0=tolower($0); $(NF+1)="instrument\tfc\tsample\tDS"} else {$(NF+1)=instrument "\t" fc "\t" sample "\t" ds;} print}' $TMPDIR/$sample.baseQ.txt > $sampleOutdir/$sample.baseQ.txt
 
 

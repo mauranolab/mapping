@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e # -o pipefail
 
+alias bedmap='bedmap --ec --sweep-all'
 
 ###Parameters
 sample=$1
@@ -10,25 +11,12 @@ src=$4
 
 chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
 
-sampleOutdir=$sample
-echo "Making tracks for sample $sample ($DS) against genome $mappedgenome"
-
-#TMPDIR=`pwd`/tmp.makeTracks.$sample
-#mkdir -p $TMPDIR
-echo "using $TMPDIR as TMPDIR"
-
-
-
-
-#NB chrM being considered in most downstream analyses
-
 
 ###Setup
 if [ -z "$NSLOTS" ]; then
        export NSLOTS=1
 fi
 
-alias bedmap='bedmap --ec --sweep-all'
 
 # the function "round()" was taken from 
 # http://stempell.com/2009/08/rechnen-in-bash/
@@ -38,6 +26,7 @@ round()
 {
 echo $(printf %.$2f $(echo "scale=$2;(((10^$2)*$1)+0.5)/(10^$2)" | bc))
 };
+
 
 getcolor () {
        case "$1" in
@@ -60,20 +49,36 @@ getcolor () {
 
 ###Analysis
 date
-readsLength20bp=$(samtools view ${sampleOutdir}/${sample}.bam|awk 'length($10) ==20 {print $10}'| wc -l)
+
+sampleOutdir=$sample
+echo "Making tracks for sample $sample ($DS) against genome $mappedgenome"
+
+#TMPDIR=`pwd`/tmp.makeTracks.$sample
+#mkdir -p $TMPDIR
+echo "using $TMPDIR as TMPDIR"
+
+
+#BUGBUG define FC
+fc="FC"
+
 sequencedTags=`cat inputs.txt | grep $DS | sort | uniq | xargs zcat | awk 'END {print NR/4}'`
 
-if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") ))
-then
-       echo "More than 25% of reads are 20bp - q10"
-       samflags="-q 10 -F 524"
-else
-       echo "Less than 25% of reads are 20bp - q20"
-       samflags="-q 20 -F 524"
-fi;
-echo "Making bed file"
+#NB chrM being considered in most downstream analyses
+#samflags="-q 30 -F 1548"
+samflags="-q 20 -F 524"
 
-samtools view $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
+#For shorter old Duke data
+readsLength20bp=$(samtools view ${sampleOutdir}/${sample}.bam | awk 'length($10)==20 {print $10}'| wc -l)
+if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") )); then
+       echo "More than 25% of reads are 20bp - using q10"
+       samflags="-q 10 -F 524"
+fi
+
+
+echo "Making bed file"
+samtools view $samflags $sampleOutdir/$sample.bam | 
+awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrEBV"' |
+awk -F "\t" 'BEGIN {OFS="\t"} { \
       readlength = length($10); \
       insertlength = $9; \
 #      tagSequence = $10; \
@@ -110,75 +115,76 @@ samtools flagstat $sampleOutdir/$sample.bam > $TMPDIR/$sample.flagstat.txt
 cat $TMPDIR/$sample.flagstat.txt
 
 #BUGBUG breaks for DSall or encode reps
-
+#BUGBUG making multiple passes through bam now
+sequencedTags=`cat inputs.txt | grep $DS | sort | uniq | xargs zcat | awk 'END {print NR/4}'`
 PFalignments=`cat $TMPDIR/$sample.flagstat.txt | grep "in total" | awk '{print $1+$3}'`
-#NB used to count both columns of flagstat output ($1 + $3) for remaining metrics but it gives no guarantee of 1 line per tag
-uniqMappedTags=`cat $TMPDIR/$sample.flagstat.txt | grep "mapped (" | awk '{print $1}'`
-numMappedTagsMitochondria=`samtools view -c -F 512 $sampleOutdir/$sample.bam chrM`
-propMappedTagsMitochondria=`echo $numMappedTagsMitochondria/$uniqMappedTags*100 | bc -l -q`
-#NB now excludes chrM reads in duplicate counts
-dupTags=`samtools view -F 512 -f 1024 $sampleOutdir/$sample.bam | awk -F "\t" '$3!="chrM" {count+=1} END {print count}'`
-#dupTags=`cat $TMPDIR/$sample.flagstat.txt | grep "duplicates" | awk '{print $1}'`
-analyzedTags=`unstarch --elements $sampleOutdir/$sample.tags.starch`
+numMappedReadsMitochondria=`samtools view -c -F 512 $sampleOutdir/$sample.bam chrM`
+
+#NB now exclude chrM reads in remaining counts
+uniqMappedReads=`samtools view -F 512 $sampleOutdir/$sample.bam | awk -F "\t" '$3!="chrM" {count+=1} END {print count}'`
+dupReads=`samtools view -F 512 -f 1024 $sampleOutdir/$sample.bam | awk -F "\t" '$3!="chrM" {count+=1} END {print count}'`
+#BUGBUG exclude chrM here too?
+analyzedReads=`unstarch --elements $sampleOutdir/$sample.tags.starch`
+
 pctPFalignments=`echo $PFalignments/$sequencedTags*100 | bc -l -q`
-pctUniqMappedTags=`echo $uniqMappedTags/$sequencedTags*100 | bc -l -q`
-pctDupTags=`echo $dupTags/$uniqMappedTags*100 | bc -l -q`
-pctAnalyzedTags=`echo $analyzedTags/$sequencedTags*100 | bc -l -q`
+pctMappedReadsMitochondria=`echo $numMappedReadsMitochondria/$uniqMappedReads*100 | bc -l -q`
+pctuniqMappedReads=`echo $uniqMappedReads/$sequencedTags*100 | bc -l -q`
+pctdupReads=`echo $dupReads/$uniqMappedReads*100 | bc -l -q`
+pctanalyzedReads=`echo $analyzedReads/$sequencedTags*100 | bc -l -q`
 
 #Tally how many reads were recovered from unpaired/SE reads (NB many of these may not even be PF, so are unrepresented)
 PFalignmentsSE=`samtools view -F 1 $sampleOutdir/$sample.bam | wc -l`
-uniqMappedTagsSE=`samtools view -q 20 -F 525 $sampleOutdir/$sample.bam | wc -l`
-pctUniqMappedTagsSE=`echo $uniqMappedTagsSE/$PFalignmentsSE*100 | bc -l -q`
+uniqMappedReadsSE=`samtools view $samflags -F 1 $sampleOutdir/$sample.bam | wc -l`
+pctuniqMappedReadsSE=`echo $uniqMappedReadsSE/$PFalignmentsSE*100 | bc -l -q`
 
 
 echo
 echo "Making density track"
+#BUGBUG double counts fragments where both reads are in window
+
 #Make density track of number of overlapping tags per 150-bp window
 #Normalizes the density to 1M tags, ignores enrichment for now
 #Note the last awk statement makes the exact intervals conform to Richard's convention that the counts are reported in 20bp windows including tags +/-75 from the center of that window
 #Remember wig is 1-indexed (groan)
 cat $chromsizes | 
-grep -v random | grep -v _hap | grep -v chrM | grep -v _alt|grep -v Un|
+grep -v random | grep -v _hap | grep -v chrM | grep -v _alt | grep -v chrUn | 
 awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk 'BEGIN {OFS="\t"} {for(i=0; i<=$2-150; i+=20) {print $1, i, i+150} }' | 
 bedmap --bp-ovr 1 --echo --count - $sampleOutdir/$sample.tags.starch | perl -pe 's/\|/\t\t/g;' | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' |
 awk -F "\t" 'BEGIN {OFS="\t"} {$2+=65; $3-=65; print}' |
-awk -v analyzedTags=$analyzedTags -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedTags*1000000; print}' |
-starch - > $sampleOutdir/$sample.density.starch
-
-
-unstarch $sampleOutdir/$sample.density.starch |
+awk -v analyzedReads=$analyzedReads -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedReads*1000000; print}' |
+tee $TMPDIR/$sample.density.bed |
 awk 'lastChr!=$1 {print "fixedStep chrom=" $1 " start=" $2+1 " step=" $3-$2 " span=" $3-$2; lastChr=$1} {print $5}' > $TMPDIR/$sample.wig
+
+starch $TMPDIR/$sample.density.bed > $sampleOutdir/$sample.density.starch
 
 #Kent tools can't use STDIN
 wigToBigWig $TMPDIR/$sample.wig $chromsizes $sampleOutdir/$sample.bw
-rm -f $TMPDIR/$sample.wig
-
 
 trackcolor=$(getcolor $sample)
 
-analyzedTagsM=`echo $analyzedTags/1000000 | bc -l -q` 
-analyzedTagsM=$(round $analyzedTagsM 1)
+analyzedReadsM=`echo $analyzedReads/1000000 | bc -l -q` 
+analyzedReadsM=$(round $analyzedReadsM 1)
 
 #can't find a way to force autoscale=off. http://genome.ucsc.edu/goldenPath/help/bigWig.html implies it's not a parameter in this context
-echo "track name=$sample description=\"$sample DNase Density (${analyzedTagsM}M analyzed tags; normalized to 1M)- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sampleOutdir/$sample.bw"
+echo "track name=$sample description=\"$sample DNase Density (${analyzedReadsM}M analyzed tags; normalized to 1M)- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/$fc/$sampleOutdir/$sample.bw"
 
 echo "Making cut count track"
 samtools view $samflags $sampleOutdir/$sample.bam | sam2bed --do-not-sort | 
+awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrEBV"' |
+#BUGBUG should just take this from $sampleOutdir/$sample.tags.starch, but would need to add strand to output, changing format a bit
 awk '{if($6=="+"){s=$2; e=$2+1}else{s=$3; e=$3+1} print $1 "\t"s"\t"e"\tid\t1\t"$6 }' | sort-bed - | tee $TMPDIR/$sample.cuts.bed | 
 bedops --chop 1 - | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' > $TMPDIR/$sample.cuts.loc.bed
 bedmap --delim '\t' --echo --count $TMPDIR/$sample.cuts.loc.bed $TMPDIR/$sample.cuts.bed | 
-awk -v analyzedTags=$analyzedTags -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedTags*100000000; print}' |
+awk -v analyzedReads=$analyzedReads -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedReads*100000000; print}' |
 starch - > $sampleOutdir/$sample.perBase.starch
-rm -f $TMPDIR/$sample.cuts.loc.bed $TMPDIR/$sample.cuts.bed
 
 #Skip chrM since UCSC doesn't like the cut count to the right of the last bp in a chromosome
-gcat $sampleOutdir/$sample.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM"' > $TMPDIR/$sample.perBase.bedGraph
+unstarch $sampleOutdir/$sample.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM"' > $TMPDIR/$sample.perBase.bedGraph
 
 #Kent tools can't use STDIN
 bedGraphToBigWig $TMPDIR/$sample.perBase.bedGraph $chromsizes $sampleOutdir/$sample.perBase.bw
-rm -f $TMPDIR/$sample.perBase.bedGraph
 
-echo "track name=$sample description=\"$sample cut counts (${analyzedTagsM}M analyzed tags- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/mapped/$sampleOutdir/$sample.perBase.bw"
+echo "track name=$sample description=\"$sample cut counts (${analyzedReadsM}M nonredundant tags- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/$fc/$sampleOutdir/$sample.perBase.bw"
 
 
 #echo "Making fragment coverage track"
@@ -189,30 +195,37 @@ echo "track name=$sample description=\"$sample cut counts (${analyzedTagsM}M ana
 
 
 echo
-echo "Calling hotspots"
+echo "Preparing"
+date
 outbase=`pwd`
-mkdir -p $sampleOutdir/hotspots
 
 
 #Force creation of new density file (ours is normalized)
 hotspotBAM=$TMPDIR/${sample}.bam
 #250M is too much for hotspot1, 150M takes 12-24 hrs
-if [ $uniqMappedTags -gt 100000000 ]; then
-       echo "$uniqMappedTags uniquely mapped tags. Generating hotspots on subsample of 100M reads"
+if [ $uniqMappedReads -gt 100000000 ]; then
+       echo "$uniqMappedReads uniquely mapped tags. Generating hotspots on subsample of 100M reads"
        
-       sampleAsProportionOfUniqMappedTags=`echo 100000000/$uniqMappedTags | bc -l -q`
+       sampleAsProportionOfuniqMappedReads=`echo 100000000/$uniqMappedReads | bc -l -q`
 else
-       echo "$uniqMappedTags uniquely mapped tags. Generating hotspots on all reads"
+       echo "$uniqMappedReads uniquely mapped tags. Generating hotspots on all reads"
        
-       sampleAsProportionOfUniqMappedTags=1
+       sampleAsProportionOfuniqMappedReads=1
 fi
 
-samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags $sampleOutdir/$sample.bam chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY > $hotspotBAM
+
+#BUGBUG hardcoded chromosome names
+samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfuniqMappedReads $sampleOutdir/$sample.bam chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY > $hotspotBAM
 
 
+callHotspots1=0
+callHotspots2=1 
 
-callHotspots1=TRUE
-if [ $callHotspots1 == TRUE ]; then
+if [ "$callHotspots1" == 1 ]; then
+       echo "Calling hotspots"
+       date
+       mkdir -p $sampleOutdir/hotspots
+       
        #BUGBUG I think hotspot1 can use >40GB memory for some large datasets
        hotspotDens=$outbase/$sampleOutdir/hotspots/$sample.density.starch
        cd $sampleOutdir/hotspots
@@ -242,11 +255,11 @@ if [ $callHotspots1 == TRUE ]; then
        spotout=${sample}/hotspots/$sample.spot.out
        
        #subsample for spot 
-       if [ $uniqMappedTags -gt 10000000 ]; then
+       if [ $uniqMappedReads -gt 10000000 ]; then
               echo
-              echo "$uniqMappedTags uniquely mapped tags. Calculating SPOT score on subsample of 10M reads"
-              sampleAsProportionOfUniqMappedTags=`echo 10000000/$uniqMappedTags | bc -l -q`
-              samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfUniqMappedTags ${sample}/$sample.bam > $TMPDIR/${sample}.10Mtags.bam
+              echo "$uniqMappedReads uniquely mapped tags. Calculating SPOT score on subsample of 10M reads"
+              sampleAsProportionOfuniqMappedReads=`echo 10000000/$uniqMappedReads | bc -l -q`
+              samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfuniqMappedReads ${sample}/$sample.bam > $TMPDIR/${sample}.10Mtags.bam
               
               mkdir -p $TMPDIR/$sample.hotspots.10Mtags
               cd $TMPDIR/$sample.hotspots.10Mtags
@@ -261,32 +274,29 @@ if [ $callHotspots1 == TRUE ]; then
        fi
 fi
 
-if [ $callHotspots1 == FALSE ]; then
-       hotspotfile=${sample}/hotspots/${sample}-final/${sample}.fdr0.01.hot.bed
-       spotout=${sample}/hotspots/$sample.spot.out
-       
-fi
-
-callHotspots2=TRUE 
-if [ $callHotspots2 == TRUE ]; then
-       FDRhot2=0.05
+if [ "$callHotspots2" == 1 ]; then
+       FDRhot2="0.05"
        if (( $(bc -l <<<"$FDRhot2 >=0.05") )); then
               #COMMENT Hotspot2 calls all hotspots for one FDR treshold. Further filtering is done through the for loop below
-              echo 'Calling hotspots2' 
+              echo "Calling hotspots2"
+              date
               mkdir -p ${sampleOutdir}/hotspot2
-              if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") )); then 
-                     mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch
-              else
-                     mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch
-              fi;
               
-              hotspot2.sh  -c /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.chrom.sizes -C /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.CenterSites.starch  -F $FDRhot2 -f $FDRhot2 -M ${mappableFile}  $hotspotBAM ${sampleOutdir}/hotspot2  > $sampleOutdir/hotspot2/$sample.log 2>&1
-              for FDR in {0.05,0.01,0.005,0.001} 
-              do
+              mappableFile="/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch"
+              #For shorter old Duke data
+              if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") )); then 
+                     mappableFile="/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch"
+              fi
+              
+              hotspot2.sh -c /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.chrom.sizes -C /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.CenterSites.starch -F $FDRhot2 -f $FDRhot2 -M ${mappableFile} $hotspotBAM ${sampleOutdir}/hotspot2 > $sampleOutdir/hotspot2/$sample.log 2>&1
+              for FDR in {0.05,0.01,0.005,0.001}; do
                      hsmerge.sh -f ${FDR} ${sampleOutdir}/hotspot2/${sample}.allcalls.starch ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr${FDR}.starch
               done
+              
+              hotspot2file=${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.01.starch
+              hotspot2fileFDR05=${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.05.starch
        else 
-              echo "Hotspot2 should be run with at least FDR 0.05"
+              echo "WARNING: Hotspot2 should be run with at least FDR 0.05"
               echo "Skipping hotspot2"
        fi
 fi
@@ -294,19 +304,20 @@ fi
 
 #Stats
 echo
+date
 echo "*** Overall Stats ***"
 echo
-printf "Num_sequenced_tags\t$sequencedTags\t\t%s\n" "$sample"
+printf "Num_sequenced_reads\t$sequencedTags\t\t%s\n" "$sample"
 printf "Num_pass_filter_alignments\t$PFalignments\t%.1f%%\t%s\n" "$pctPFalignments" "$sample"
-printf "Num_uniquely_mapped_tags\t$uniqMappedTags\t%.1f%%\t%s\n" "$pctUniqMappedTags" "$sample"
-printf "Num_mitochondria_tags\t$numMappedTagsMitochondria\t%.1f%%\t%s\n" "$propMappedTagsMitochondria" "$sample"
-printf "Num_duplicate_tags\t$dupTags\t%.1f%%\t%s\n" "$pctDupTags" "$sample"
-printf "Num_analyzed_tags\t$analyzedTags\t%.1f%%\t%s\n" "$pctAnalyzedTags" "$sample"
+printf "Num_uniquely_mapped_reads\t$uniqMappedReads\t%.1f%%\t%s\n" "$pctuniqMappedReads" "$sample"
+printf "Num_mitochondria_reads\t$numMappedReadsMitochondria\t%.1f%%\t%s\n" "$pctMappedReadsMitochondria" "$sample"
+printf "Num_duplicate_reads\t$dupReads\t%.1f%%\t%s\n" "$pctdupReads" "$sample"
+printf "Num_analyzed_reads\t$analyzedReads\t%.1f%%\t%s\n" "$pctanalyzedReads" "$sample"
 
-#Don't have denominator of unpaired tags we tried to map, so don't compute % for first
+#Don't have denominator of unpaired reads we tried to map, so don't compute % for first
 printf "Num_SE_pass_filter_alignments\t$PFalignmentsSE\t\t%s\n" "$sample"
-#NB denominator is PF tags, not tags sequenced
-printf "Num_SE_uniquely_mapped_tags\t$uniqMappedTagsSE\t%.1f%%\t%s\n"  "$pctUniqMappedTagsSE" "$sample"
+#NB denominator is PF reads, not pctMappedReadsMitochondrias sequenced
+printf "Num_SE_uniquely_mapped_reads\t$uniqMappedReadsSE\t%.1f%%\t%s\n"  "$pctuniqMappedReadsSE" "$sample"
 
 
 if [ -f "$hotspotfile" ]; then
@@ -325,18 +336,18 @@ fi
 echo -e "SPOT\t$spot\t\t$sample"
 
 
-if [ -f "${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.01.starch" ]; then
-       numhotspots2=`unstarch ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.01.starch | wc -l`
+if [ -f "$hotspot2file" ]; then
+       numhotspots2=`unstarch --elements $hotspot2file`
 else
        numhotspots2="NA"
 fi
 echo -e "Num_hotspots2\t$numhotspots2\t\t$sample"
 
 
-if [ -f "${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.05.starch" ]; then
-       ntags2=$(unstarch ${sampleOutdir}/hotspot2/${sample}.cutcounts.starch| awk '{print $5}'|  awk '{sum+=$1} END {print sum}')
-       hot2=$(unstarch ${sampleOutdir}/hotspot2/${sample}.cutcounts.starch | bedops --header -e -1 - ${sample}/hotspot2/${sample}.hotspots.fdr0.05.starch|  awk '{print $5}'|  awk '{sum+=$1} END {print sum}')
-       spot2=$(echo "scale=4; $hot2/$ntags2" | bc)
+if [ -f "$hotspot2fileFDR05" ]; then
+       numTotalReadsHotspot2=$(unstarch ${sampleOutdir}/hotspot2/${sample}.cutcounts.starch | awk '{print $5}'|  awk '{sum+=$1} END {print sum}')
+       numReadsinDHSHotspot2=$(unstarch ${sampleOutdir}/hotspot2/${sample}.cutcounts.starch | bedops --header -e -1 - $hotspot2fileFDR05 | awk '{print $5}' | awk '{sum+=$1} END {print sum}')
+       spot2=$(echo "scale=4; $numReadsinDHSHotspot2/$numTotalReadsHotspot2" | bc)
 else
        spot2="NA"
 fi
@@ -385,13 +396,10 @@ echo
 echo "Tag lengths:"
 samtools view $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} {print length($10)}' | sort -g | uniq -c | sort -k1,1g 
 
+echo
+echo "Tag count by sequencing instrument"
+samtools view $samflags $sampleOutdir/$sample.bam | cut -f1 | cut -d ":" -f1 | sort -g | uniq -c | sort -k1,1g
 
-#Hack to deal with read names from SRA
-if samtools view $sampleOutdir/$sample.bam | cut -f1 | head -10 | grep -v -q -e "^SRR"; then
-       echo
-       echo "Tag count by sequencing instrument"
-       samtools view $samflags $sampleOutdir/$sample.bam | cut -f1 | cut -d ":" -f1 |sed 's/_.*//g' | sort | uniq -c | sort -k1,1g
-fi
 
 echo
 echo -e "\nDone!"

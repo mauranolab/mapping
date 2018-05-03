@@ -60,8 +60,8 @@ Groups<-gsub("-.*",'',bwfiles)
 col<-rep(col,round(length(Groups)/length(col),2))[as.factor(unique(Groups))]        
 col<-as.data.frame(col,unique(Groups))
 
-data<-data.frame(matrix(ncol=11,nrow=length(bwfiles)))
-colnames(data)<-c('cellType','DSnumber','Replicate','Color','Assay','nonredundant_tags','SPOT','Hotspots','Exclude','Variable','Age')
+data<-data.frame(matrix(ncol=12,nrow=length(bwfiles)))
+colnames(data)<-c('cellType','DSnumber','Replicate','Color','Assay','nonredundant_tags','SPOT','Hotspots','Exclude','Variable','Age', 'Uni')
 
 #Change cellType names for Fetal tissues
 
@@ -83,6 +83,7 @@ for (i in 1:length(bwfiles)){
                      data$Hotspots[i]<-strsplit(sampleFile[grep('Num_hotspots\t',sampleFile)],'\t')[[1]][2]
                      data$SPOT[i]<-strsplit(sampleFile[grep('SPOT\t',sampleFile)],'\t')[[1]][2]
                      data$Age[i] <- df$Age[grep(gsub('.hg38','',gsub('.*-','',SampleID)),df$GroupID)]
+                     data$Uni[i] <- df[grep(data$DSnumber[i],df$GroupID),]$Variable[1]#ADDED 20180129
                      #if there's data in the Variable column, add the information. 
                      if(is.null(df$Variable)){data$Variable[i]<-" "
                      } else {data$Variable[i]<-df[grep(data$DSnumber[i],df$GroupID),]$Variable[1]}
@@ -126,10 +127,30 @@ for (i in 1:nrow(Replicates)){
        data[gsub('_L$|_R$','',data$cellType)==Replicates$cellType[i] & data$Variable==Replicates$Variable[i],]$Color <- names(tail(table(data[gsub('_L$|_R$','',data$cellType)==Replicates$cellType[i],]$Color),1))
 }
 
+data$Variable[data$Variable=='UMass']<-'UW'
+data$Uni[data$Uni=='UMass']<-'UW'
+
+#Delete to restore from 20180129
+dataRep <- data
+dataRep$cellType <- gsub('_L$|_R$','',dataRep$cellType)
+dataRep <- split(dataRep, dataRep$cellType)
+#repDF <- dataRep[[3]]
+dataReplist <- lapply(dataRep, function(repDF) {
+       head(repDF)
+       #repDF$Replicate <- NA
+       if ( nrow(repDF[grep('UW', repDF$Uni),]) >0 ) {
+               repDF[grep('UW', repDF$Uni),]$Replicate <- rank(-as.numeric(repDF[grep('UW', repDF$Uni),]$nonredundant_tags))
+               repDF[grep('UW', repDF$Uni, invert=T),]$Replicate <- rank(-as.numeric(repDF[grep('UW', repDF$Uni , invert=T),]$nonredundant_tags)) + nrow(repDF[grep('UW', repDF$Uni),])
+       } else { repDF$Replicate <- rank(-as.numeric(repDF$nonredundant_tags))
+       }
+       repDF
+})               
+
+data <- do.call(rbind, dataReplist)
+
 data[data$Replicate>2,]$Replicate<-'Other'
-data$Variable[data$Variable=='UMass']<-'Roadmap'
-data$Variable[data$Variable=='Roadmap']<-'UW'
+#data$Variable[data$Variable=='UMass']<-'UW'
 data[is.na(data$Age),]$Age <- 'NoAge'
 data$Replicate<-paste0('rep',data$Replicate)
 #Output file
-write.table(data, file=opt$out,sep='\t',col.names=T,row.names=F,quote=F)
+write.table(subset(data, select=-c(Uni)), file=opt$out,sep='\t',col.names=T,row.names=F,quote=F)
