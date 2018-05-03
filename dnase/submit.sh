@@ -13,30 +13,26 @@ module load python/3.5.0
 module load hotspot/4.1
 module load samblaster/0.1.22
 module load ucsckentutils/10132015
-module load hotspot2/2.0 
+module load hotspot2/2.1
 
 
 genome=$1
 celltype=$2
 DS=$3
 name=${celltype}-${DS}.${genome}
+#Files for a given sample will be output to a folder named "$celltype-$DS-$genome"
 
-###Files will be outputted to a folder called name (celltype-DS-genome)
-
-
-#scripts from https://github.com/mauranolab/pipelines/blob/master/dnase/
 src=/vol/isg/encode/dnase/src/
-
-
-sampleOutdir=$name
-mkdir -p $sampleOutdir
-
-#mkdir -p tmp
 
 if ! grep -q $DS inputs.txt; then
        echo "Can't find $DS"
        exit 1
 fi
+
+
+sampleOutdir=$name
+mkdir -p $sampleOutdir
+
 
 numlines=`grep $DS inputs.txt | wc -l`
 
@@ -51,19 +47,14 @@ fi
 
 #SGE doesn't accept a complicated -t array, so we'll start R2 jobs that will die instantly rather than prune here
 echo "Processing $name (input.txt lines $firstline-$lastline) for genome $genome"
-qsub -p -450 -S /bin/bash -cwd -V --qos=low -pe threads 2 -terse -j y -b y -t $firstline-$lastline -o $sampleOutdir/ -N map.$name "$src/map.sh $celltype $DS $genome $src" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid
-
-echo -n "Your job "
-cat $sampleOutdir/sgeid | perl -pe 's/\n/ /g;'
-echo "has been submitted"
-
+qsub -p -450 -S /bin/bash -cwd -V --qos=normal -pe threads 2 -terse -j y -b y -t $firstline-$lastline -o $sampleOutdir/ -N map.$name "$src/map.sh $celltype $DS $genome $src" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid
 
 echo "$name merge"
-qsub -p -400 -S /bin/bash -cwd -V --qos=low -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid` -o $sampleOutdir/ -N merge.$name "$src/merge.sh $name $DS $genome" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.merge.$name
+qsub -p -400 -S /bin/bash -cwd -V --qos=normal -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid` -o $sampleOutdir/ -N merge.$name "$src/merge.sh $name $DS $genome" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.merge.$name
 
 echo "$name makeTracks"
-qsub -p -400 -S /bin/bash -cwd -V --qos=low -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid.merge.$name` -o $sampleOutdir/ -N makeTracks.$name "$src/makeTracks.sh $name $DS $genome $src" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.makeTracks.$name
-#
+qsub -p -400 -S /bin/bash -cwd -V --qos=normal -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid.merge.$name` -o $sampleOutdir/ -N makeTracks.$name "$src/makeTracks.sh $name $DS $genome $src" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.makeTracks.$name
+
 rm -f $sampleOutdir/sgeid $sampleOutdir/sgeid.merge.$name $sampleOutdir/sgeid.makeTracks.$name
 
 echo

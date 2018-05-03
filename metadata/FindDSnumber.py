@@ -58,7 +58,7 @@ def getDS(inputmetadata):
             print(sampleAge)
             #keyword = 'human '
             regexp = re.compile(r'DS[0-9]{5}|DS[0-9]{4}')
-            befor_keyowrd, keyword, after_keyword = output['replicate']['experiment']['description'].partition('human ')
+            befor_keyowrd, keyword, after_keyword = output['replicate']['experiment']['biosample_summary'].partition('human ')
             cellType = after_keyword.split(' ')[0].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
             if not cellType and regexp.search(str(output)) is not None:
             	if len(output['replicate']['experiment']['biosample_synonyms'])>=1:
@@ -92,40 +92,45 @@ def getDS(inputmetadata):
                 print(DSidOut)
                 
                 
-            if line.split('\t')[32] =='paired-ended':
-                if line.split('\t')[33] =='1' and line.split('\t')[47]!='missing paired_with\n':
-                    DSidOut1 = DSidOut + (cellType, line.split('\t')[6],  'paired-ended', SampleName, line.split('\t')[34],output['replicate']['experiment']['description'],output['lab']['institute_label'],sampleAge)
+            cellType = re.sub("Entire_|entire_|Entire|entire", "", cellType)
+            if re.search('embryo', str(output['replicate']['experiment']['biosample_summary'])) is not None:
+                cellType = 'f' + cellType.capitalize()
+                
+            
+            if line.split('\t')[29] =='paired-ended':
+                if line.split('\t')[30] =='1' and line.split('\t')[33]!='missing paired_with\n':
+                    DSidOut1 = DSidOut + (cellType, line.split('\t')[6],  'paired-ended', SampleName, line.split('\t')[31],output['replicate']['experiment']['biosample_summary'],output['lab']['institute_label'],sampleAge,  output['replicate']['library']['accession'])
                     
-                elif line.split('\t')[33] =='2' and line.split('\t')[47]!='missing paired_with\n':
-                    DSidOut1 = DSidOut + (cellType, line.split('\t')[6], 'paired-ended', line.split('\t')[34], SampleName,output['replicate']['experiment']['description'],output['lab']['institute_label'],sampleAge)
+                elif line.split('\t')[30] =='2' and line.split('\t')[33]!='missing paired_with\n':
+                    DSidOut1 = DSidOut + (cellType, line.split('\t')[6], 'paired-ended', line.split('\t')[31], SampleName,output['replicate']['experiment']['biosample_summary'],output['lab']['institute_label'],sampleAge, output['replicate']['library']['accession'])
                     
                 #If paired_with is missing
-                elif line.split('\t')[33] =='1' and line.split('\t')[47]=='missing paired_with\n':
-                    DSidOut1 = DSidOut + (cellType, line.split('\t')[6], 'paired-ended', SampleName, '',output['replicate']['experiment']['description'],output['lab']['institute_label'],sampleAge)
+                elif line.split('\t')[30] =='1' and line.split('\t')[33]=='missing paired_with\n':
+                    DSidOut1 = DSidOut + (cellType, line.split('\t')[6], 'paired-ended', SampleName, '',output['replicate']['experiment']['biosample_summary'],output['lab']['institute_label'],sampleAge, output['replicate']['library']['accession'])
                     
-            elif line.split('\t')[32] =='single-ended':
-                DSidOut1 = DSidOut + (cellType, line.split('\t')[6], 'single-ended', SampleName, '',output['replicate']['experiment']['description'],output['lab']['institute_label'],sampleAge)
-        
-            print(DSidOut1)
+            elif line.split('\t')[29] =='single-ended':
+                DSidOut1 = DSidOut + (cellType, line.split('\t')[6], 'single-ended', SampleName, '',output['replicate']['experiment']['biosample_summary'],output['lab']['institute_label'],sampleAge, output['replicate']['library']['accession'])
+       
+      #print(SidOut1)
             #stripped_line = [s.rstrip() for s in DSidOut]
             #print([stripped_line])
             wr.writerows([DSidOut1])
         except Exception: 
             pass
             print('wrong')
-            if line.split('\t')[32] =='paired-ended':
-                if line.split('\t')[33] =='1' and line.split('\t')[47]!='missing paired_with\n':
-                    DSidOut1 =  DSidOut + (cellType, line.split('\t')[6], 'paired-ended', SampleName, line.split('\t')[34],output['replicate']['experiment']['description'],output['lab']['institute_label'],sampleAge)
+            if line.split('\t')[29] =='paired-ended':
+                if line.split('\t')[30] =='1' and line.split('\t')[33]!='missing paired_with\n':
+                    DSidOut1 =  DSidOut + (cellType, line.split('\t')[6], 'paired-ended', SampleName, line.split('\t')[31],output['replicate']['experiment']['biosample_summary'],output['lab']['institute_label'],sampleAge, output['replicate']['library']['accession'])
                     
-                elif line.split('\t')[33] =='2' and line.split('\t')[47]!='missing paired_with\n':
-                    DSidOut1 = DSidOut + (cellType, line.split('\t')[6], 'paired-ended', line.split('\t')[34], SampleName,output['replicate']['experiment']['description'],output['lab']['institute_label'],sampleAge)
+                elif line.split('\t')[30] =='2' and line.split('\t')[33]!='missing paired_with\n':
+                    DSidOut1 = DSidOut + (cellType, line.split('\t')[6], 'paired-ended', line.split('\t')[31], SampleName,output['replicate']['experiment']['biosample_summary'],output['lab']['institute_label'],sampleAge, output['replicate']['library']['accession'])
                     
                 #If paired_with is missing
-                elif line.split('\t')[33] =='1' and line.split('\t')[47]=='missing paired_with\n':
-                    DSidOut1 = DSidOut + (cellType, line.split('\t')[6], 'paired-ended', SampleName, '',output['replicate']['experiment']['description'],output['lab']['institute_label'],sampleAge)
+                elif line.split('\t')[30] =='1' and line.split('\t')[33]=='missing paired_with\n':
+                    DSidOut1 = DSidOut + (cellType, line.split('\t')[6], 'paired-ended', SampleName, '',output['replicate']['experiment']['biosample_summary'],output['lab']['institute_label'],sampleAge, output['replicate']['library']['accession'])
                     
-            elif line.split('\t')[32] =='single-ended':
-                DSidOut1 = DSidOut +  (cellType, line.split('\t')[6], 'single-ended', SampleName, '',output['replicate']['experiment']['description'],output['lab']['institute_label'],sampleAge)
+            elif line.split('\t')[29] =='single-ended':
+                DSidOut1 = DSidOut +  (cellType, line.split('\t')[6], 'single-ended', SampleName, '',output['replicate']['experiment']['biosample_summary'],output['lab']['institute_label'],sampleAge, output['replicate']['library']['accession'])
                 
             print(DSidOut1)
             wr.writerows([DSidOut1])
@@ -135,7 +140,7 @@ try:
         outfile = open(args.output, 'w')#use 
         # Pass file handle to csv.writer
         wr = csv.writer(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True)
-        wr.writerow(['SampleID','GroupID','cellType','Name','Single_or_Paired','R1','R2','Assay','Variable','Age'])
+        wr.writerow(['SampleID','GroupID','cellType','Name','Single_or_Paired','R1','R2','Assay','Variable','Age', 'Library'])
         getDS(SampleName)
 finally:
         outfile.close()
