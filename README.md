@@ -2,8 +2,8 @@
 This repository contains all the scripts for the Transposon pipeline.
 
 ## Structure of Transposon folder
-All new flowcells receive a separate folder name aligned.FLOWCELL  
-A submit script is created for each flowcell submitFLOWCELL.sh
+For new flowcells, I create a separate folder name aligned.FLOWCELL  
+I also create a submit script for each flowcell submitFLOWCELL.sh using createFlowcellSubmit.py (see below)  
 
 ## Submit jobs from new flowcell
 The createFlowcellSubmit.py script is used to submit samples from the newly sequenced flowcell.  
