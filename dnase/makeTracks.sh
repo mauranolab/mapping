@@ -295,6 +295,13 @@ if [ "$callHotspots2" == 1 ]; then
               
               hotspot2file=${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.01.starch
               hotspot2fileFDR05=${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.05.starch
+              #Hotspots
+              unstarch ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.01.starch| awk -v OFS='\t' '{print $1, $2, $3}' > $TMPDIR/${sample}.hotspots.fdr0.01.bed
+              bedToBigBed $TMPDIR/${sample}.hotspots.fdr0.01.bed /vol/isg/annotation/bed/hg38/chromInfo.txt ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.01.bb
+              
+              #Peaks
+              unstarch ${sampleOutdir}/hotspot2/${sample}.peaks.starch| awk -v OFS='\t' '{print $1, $2, $3}' > $TMPDIR/${sample}.peaks.bed
+              bedToBigBed $TMPDIR/${sample}.peaks.bed /vol/isg/annotation/bed/hg38/chromInfo.txt ${sampleOutdir}/hotspot2/${sample}.peaks.bb
        else 
               echo "WARNING: Hotspot2 should be run with at least FDR 0.05"
               echo "Skipping hotspot2"

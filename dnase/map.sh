@@ -86,7 +86,7 @@ SEthresh=5
 mintrim=1
 keepReverseReads=true
 trimmomaticBaseOpts="-threads $NSLOTS -trimlog $TMPDIR/${sample1}.trim.log.txt"
-trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads MINLEN:27 CROP:36"
+trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads"
 #MAXINFO:27:0.95 TRAILING:20
 
 #Check if samples contain DUKE adapter (TCGTATGCCGTCTTC) and trim to 20bp if more than 25% of reads do
@@ -96,9 +96,10 @@ sequencedTags=$(zcat $readsFq|awk 'NR%4==2'| wc -l)
 readsWithDukeSequence=$(zcat $readsFq | awk 'NR%4==2' | grep TCGTATGCCGTCTTC | wc -l)
 if (( $(bc -l <<<"$readsWithDukeSequence/$sequencedTags >= 0.25") )); then
        echo "More than 25% of reads have DUKE sequence (TCGTATGCCGTCTTC) - Hard clip to 20bp reads"
-       trimmomaticSteps="CROP:20 $trimmomaticSteps"
+       trimmomaticSteps="$trimmomaticSteps  MINLEN:20 CROP:20"
 else
        echo "No DUKE sequence present "
+       trimmomaticSteps="$trimmomaticSteps  MINLEN:27 CROP:36"
 fi
 
 
