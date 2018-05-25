@@ -28,12 +28,12 @@ df <- fread(opt$file)
 df <- as.data.frame(df)
 df <- df[order(df$GroupID),]
 #TODO for now we just use the DS number and Age so we don't have to manually rename all celltypes
-Age <- fread('../SampleIDs_SampleAge.tsv')
-Age <- as.data.frame(Age)
-Age <- Age[order(Age$GroupID),]
-
-Age$cellType <- df$cellType
-df <- Age
+#Age <- fread('../SampleIDs_SampleAge.tsv')
+#Age <- as.data.frame(Age)
+#Age <- Age[order(Age$GroupID),]
+#
+#Age$cellType <- df$cellType
+#df <- Age
 pwd<-getwd()
 cat('Dimensions of Input file: ',dim(unique(df)),'\n')
 
@@ -69,9 +69,10 @@ colnames(data)<-c('cellType','DSnumber','Replicate','Color','Assay','nonredundan
 for (i in 1:length(bwfiles)){
        SampleID<-bwfiles[i]
        cat(SampleID,'\n')
-       mergedFiles<-list.files(path=paste0('/vol/mauranolab/public_html/encode/dnase/mapped/',SampleID), pattern="^makeTracks.*")
+       mergedFiles<-list.files(path=paste0(pwd, '/',SampleID), pattern="^makeTracks.*")
+       #cat(mergedFiles, '\n')
        if (length(mergedFiles)>0)
-              sampleFile<-readLines(paste0('/vol/mauranolab/public_html/encode/dnase/mapped/',SampleID,'/',mergedFiles))
+              sampleFile<-readLines(paste0(pwd, '/', SampleID,'/',mergedFiles), n=2000)
              # if(tail(sampleFile)[2]=='Done!'){
                      colGroup<-col2rgb(as.character(col[rownames(col)%in%gsub("-.*",'',bwfiles[i]),][1]))[,1]
                      data$cellType[i]<-gsub('-.*','',SampleID)
@@ -79,16 +80,16 @@ for (i in 1:length(bwfiles)){
                      data$Replicate[i]<-1
                      data$Color[i]<-paste(colGroup[1],colGroup[2],colGroup[3],sep=',')
                      data$Assay[i]<-'DNase'
-                     data$nonredundant_tags[i]<-strsplit(sampleFile[grep('Num_uniquely_mapped_tags\t',sampleFile)],'\t')[[1]][2]
-                     data$Hotspots[i]<-strsplit(sampleFile[grep('Num_hotspots\t',sampleFile)],'\t')[[1]][2]
-                     data$SPOT[i]<-strsplit(sampleFile[grep('SPOT\t',sampleFile)],'\t')[[1]][2]
+                     data$nonredundant_tags[i]<-strsplit(sampleFile[grep('Num_uniquely_mapped_reads\t',sampleFile)],'\t')[[1]][2]
+                     data$Hotspots[i]<-strsplit(sampleFile[grep('Num_hotspots2\t',sampleFile)],'\t')[[1]][2]
+                     data$SPOT[i]<-strsplit(sampleFile[grep('SPOT2\t',sampleFile)],'\t')[[1]][2]
                      data$Age[i] <- df$Age[grep(gsub('.hg38','',gsub('.*-','',SampleID)),df$GroupID)]
                      data$Uni[i] <- df[grep(data$DSnumber[i],df$GroupID),]$Variable[1]#ADDED 20180129
                      #if there's data in the Variable column, add the information. 
                      if(is.null(df$Variable)){data$Variable[i]<-" "
                      } else {data$Variable[i]<-df[grep(data$DSnumber[i],df$GroupID),]$Variable[1]}
                      #Divide samples based on category
-                     if(length(grep('^f[A-Z]',SampleID))>0){data$Variable[i]<-'Fetal_Tissues'}
+                     if(length(grep('^f[A-Z]',SampleID))>0){data$Variable[i]<-'Fetal_Roadmap'}
                      if(length(grep('^CD|^Th|^TH|^hTH|^iTH|^th|^GM1',SampleID))>0){data$Variable[i]<-'Hematopoietic_lineage'}
                      if(length(grep('^H1|^H7|ES|^H[0-9]|^iPS',SampleID))>0){data$Variable[i]<-'Pluripotent'}
                      if(length(grep('testis|spinal|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|oesteoblast|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|prostate|intest|medull',

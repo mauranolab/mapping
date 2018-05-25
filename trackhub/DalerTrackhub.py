@@ -209,8 +209,8 @@ for trackComp in Variable:
             short_label=cellTypeLR+'_'+fn[1],
             long_label="DNase Tags "+cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
             autoScale='off',
-            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38/'+fn[0]+'-'+fn[1]+'.hg38.bam',
-            subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_roadmap' else 'NoAge'),
+            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase201805/mapped/'+fn[0]+'-'+fn[1]+'.hg38/'+fn[0]+'-'+fn[1]+'.hg38.bam',
+            subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
             tracktype='bam',
             
             )
@@ -221,8 +221,8 @@ for trackComp in Variable:
             short_label=cellTypeLR+'_'+fn[1],
             long_label='DNase Density ' + cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
             autoScale='off',
-            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38/'+fn[0]+'-'+fn[1]+'.hg38.bw',
-            subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_roadmap' else 'NoAge'),
+            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase201805/mapped/'+fn[0]+'-'+fn[1]+'.hg38/'+fn[0]+'-'+fn[1]+'.hg38.bw',
+            subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
             tracktype='bigWig',
             color=fn[3],
             )
@@ -233,8 +233,8 @@ for trackComp in Variable:
             short_label=cellTypeLR+'_'+fn[1],
             long_label='DNase Cut counts ' + cellTypeLR + '_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
             autoScale='off',
-            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38/'+fn[0]+'-'+fn[1]+'.hg38.perBase.bw',
-            subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_roadmap' else 'NoAge'),
+            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase201805/mapped/'+fn[0]+'-'+fn[1]+'.hg38/'+fn[0]+'-'+fn[1]+'.hg38.perBase.bw',
+            subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
             tracktype='bigWig',
             color=fn[3],
             )
@@ -245,8 +245,8 @@ for trackComp in Variable:
             short_label=cellTypeLR+'_'+fn[1],
             long_label='DNase Peaks ' + cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
             autoScale='off',
-            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38'+'/hotspots/'+fn[0]+'-'+fn[1]+'.hg38.fdr0.01.pks.bb ',
-            subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_roadmap' else 'NoAge'),
+            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase201805/mapped/'+fn[0]+'-'+fn[1]+'.hg38'+'/hotspot2/'+fn[0]+'-'+fn[1]+'.hg38.peaks.bb',
+            subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
             tracktype='bigBed 3',
             color=fn[3],
             )
@@ -257,8 +257,8 @@ for trackComp in Variable:
             short_label=cellTypeLR + '_'+fn[1],
             long_label='DNase Hotspots ' + cellTypeLR +'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquly mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
             autoScale='off',
-            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38'+'/hotspots/'+fn[0]+'-'+fn[1]+'.hg38.fdr0.01.hot.bb',
-            subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_roadmap' or trackComp == 'Tissues' or trackComp == 'Roadmap'  else 'NoAge'),
+            url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase201805/mapped/'+fn[0]+'-'+fn[1]+'.hg38'+'/hotspot2/'+fn[0]+'-'+fn[1]+'.hg38.hotspots.fdr0.01.bb',
+            subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
             tracktype='bigBed 3',
             color=fn[3],
             )
