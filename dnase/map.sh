@@ -58,7 +58,7 @@ echo "using $TMPDIR as TMPDIR"
 
 
 echo
-echo "Trimming"
+echo "Configuring trimming parameters"
 #/home/jvierstra/proj/code/bio-tools/apps/trim-adapters-illumina/trim-adapters-illumina DS32747A_CTTGTA_L002_R1_001.fastq.gz DS32747A_CTTGTA_L002_R2_001.fastq.gz R1.jtrim.fastq.gz R2.jtrim.fastq.gz
 
 
@@ -69,13 +69,13 @@ echo "Trimming"
 
 #analysisType can either be DNase or ATAC
 analysisType="DNase"
-echo "Running $analysisType analysis"
+echo "Using $analysisType adapters for trimming"
 if [ "$analysisType" == "DNase" ]; then 
-       illuminaAdapters=/cm/shared/apps/trimmomatic/0.36/adapters/TruSeq3-PE-2.fa
+       illuminaAdapters="/cm/shared/apps/trimmomatic/0.36/adapters/TruSeq3-PE-2.fa"
 elif [ $analysisType == "ATAC" ]; then 
-       illuminaAdapters=/cm/shared/apps/trimmomatic/0.36/adapters/NexteraPE-PE.fa
+       illuminaAdapters="/cm/shared/apps/trimmomatic/0.36/adapters/NexteraPE-PE.fa"
 else 
-       echo 'ERROR specify adapters'
+       echo "ERROR specify adapters"
        exit 2
 fi
 
@@ -90,16 +90,15 @@ trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$S
 #MAXINFO:27:0.95 TRAILING:20
 
 #Check if samples contain DUKE adapter (TCGTATGCCGTCTTC) and trim to 20bp if more than 25% of reads do
-sequencedTags=$(zcat $readsFq|awk 'NR%4==2'| wc -l)
+sequencedTags=$(zcat $readsFq | awk 'NR%4==2' | wc -l)
 
 #For shorter old Duke data
-readsWithDukeSequence=$(zcat $readsFq | awk 'NR%4==2' | grep TCGTATGCCGTCTTC | wc -l)
-if (( $(bc -l <<<"$readsWithDukeSequence/$sequencedTags >= 0.25") )); then
+if [ `zcat $readsFq | awk -v sequencedTags=$sequencedTags 'NR%4==2 && $1~/TCGTATGCCGTCTTC/ {readsWithDukeSequence+=1} END {print readsWithDukeSequence/sequencedTags}'`]; then
        echo "More than 25% of reads have DUKE sequence (TCGTATGCCGTCTTC) - Hard clip to 20bp reads"
-       trimmomaticSteps="$trimmomaticSteps  MINLEN:20 CROP:20"
+       trimmomaticSteps="CROP:20 $trimmomaticSteps"
 else
-       echo "No DUKE sequence present "
-       trimmomaticSteps="$trimmomaticSteps  MINLEN:27 CROP:36"
+       echo "No DUKE sequence present"
+       trimmomaticSteps=" $trimmomaticSteps MINLEN:27 CROP:36"
 fi
 
 
