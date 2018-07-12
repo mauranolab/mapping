@@ -13,37 +13,33 @@ bam=$1
 dens=$2
 outdir=$3
 mappedgenome=$4
+
 date
 echo "Running hotspot"
 echo "bam=$bam"
 echo "dens=$dens"
 echo "outdir=$outdir"
+echo "mappedgenome=$mappedgenome"
 
 
-readsLength20bp=$(samtools view $bam|awk 'length($10) ==20 {print $10}'| wc -l)
-sequencedTags=$(samtools view $bam| wc -l)
+#Duke data
+#readsLength20bp=$(samtools view $bam|awk 'length($10) ==20 {print $10}'| wc -l)
+#sequencedTags=$(samtools view $bam| wc -l)
 
-if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") ))
-then
-       echo "More than 25% of reads are 20bp - K20"
-       Kreads=20
-       mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch
-else
+#if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") ))
+#then
+#       echo "More than 25% of reads are 20bp - K20"
+#       Kreads=20
+#       mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch
+#else
        echo "Less than 25% of reads are 20bp - K36"
        Kreads=36
        mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch
-fi;
+#fi;
 
 
-awk -v OFS='\t' '{print $1, 0, $2, $1}' /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes |grep -v 'alt\|random\|Un\|hap\|scaffold'|sort-bed -> $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed 
+awk -v OFS='\t' '{print $1, 0, $2, $1}' /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes | grep -v 'alt\|random\|Un\|hap\|scaffold' | sort-bed - > $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed 
 chromFile=$TMPDIR/hotspots.${mappedgenome}.chromInfo.bed
-#done by makeTracks.sh
-#samflags="-q 30 -F 524"
-#NB hotspot bases output filename on the .bam name here
-#mkdir -p $TMPDIR/nonredundant
-#nonredundantbam=$TMPDIR/nonredundant/`basename $bam`
-#echo "Copying nonredundant tags to $nonredundantbam"
-#samtools view -@ $NSLOTS -b -1 $samflags $bam -o $nonredundantbam
 
 
 HOTSPOT_DISTR=/cm/shared/apps/hotspot/4.1/hotspot-master/hotspot-distr/
