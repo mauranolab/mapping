@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e # -o pipefail
+set -e -o pipefail
 
 alias bedmap='bedmap --ec --sweep-all'
 
@@ -26,6 +26,32 @@ round()
 {
 echo $(printf %.$2f $(echo "scale=$2;(((10^$2)*$1)+0.5)/(10^$2)" | bc))
 };
+
+bam2instrument()
+{
+       cut -f1 | cut -d ":" -f1 | 
+       #Hack to clean up some encodeproject.org data that has underscore in place of colon after sequencer name
+       perl -pe 's/_\d+_\d+_\d+_\d+$//g;' | 
+       #SRR data
+       perl -pe 's/^(SRR\d+)\.\d+$/$1/g;'
+}
+
+
+#Cheap hack
+printfNA()
+{
+       msg=$1
+       shift
+       if [ "$1" == "NA" ]; then
+              #https://stackoverflow.com/questions/10216340/authoritative-regular-expression-for-sprintf-format-string
+              #https://en.wikipedia.org/wiki/Printf_format_string
+              #NB don't parse % in type field (we don't want to do substitution on %%)
+              msg=`echo -n "$msg" | perl -pe 's/%(\d+\$)?([-+ 0#])*(\d)*(\.?\d+|\.\*)?(ll|[ljqL])?[aAcdeEfFgGinopsuxX]/NA/g;'`
+              printf "$msg"
+       else
+              printf "$msg" "$@"
+       fi
+}
 
 
 getcolor () {
@@ -61,23 +87,28 @@ echo "using $TMPDIR as TMPDIR"
 #BUGBUG define FC
 fc="FC"
 
-sequencedTags=`cat inputs.txt | grep $DS | sort | uniq | xargs zcat | awk 'END {print NR/4}'`
-
-#NB chrM being considered in most downstream analyses
-#samflags="-q 30 -F 1548"
-samflags="-q 20 -F 524"
-
-#For shorter old Duke data
-readsLength20bp=$(samtools view ${sampleOutdir}/${sample}.bam | awk 'length($10)==20 {print $10}'| wc -l)
-if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") )); then
-       echo "More than 25% of reads are 20bp - using q10"
-       samflags="-q 10 -F 524"
+if grep $DS inputs.txt | grep -q .fastq ; then
+       sequencedTags=`cat inputs.txt | grep $DS | sort | uniq | xargs zcat -f | awk 'END {print NR/4}'`
+else
+       echo "Not merging .fastq files; unable to count total number of sequenced reads"
+       sequencedTags="NA"
 fi
+
+
+samflags="-q 20 -F 524"
+readlength="36"
+
+#readsLength20bp was never defined here
+#if [ "$sequencedTags" != "NA" ] && [ `echo "$readsLength20bp/$sequencedTags >= 0.25" | bc -l` == 1 ]; then 
+#       echo "More than 25% of reads are 20bp - using q10"
+#       samflags="-q 10 -F 524"
+#       readlength="20"
+#fi
 
 
 echo "Making bed file"
 samtools view $samflags $sampleOutdir/$sample.bam | 
-awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrEBV"' |
+awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrEBV"' |
 awk -F "\t" 'BEGIN {OFS="\t"} { \
       readlength = length($10); \
       insertlength = $9; \
@@ -116,27 +147,36 @@ cat $TMPDIR/$sample.flagstat.txt
 
 #BUGBUG breaks for DSall or encode reps
 #BUGBUG making multiple passes through bam now
-sequencedTags=`cat inputs.txt | grep $DS | sort | uniq | xargs zcat | awk 'END {print NR/4}'`
 PFalignments=`cat $TMPDIR/$sample.flagstat.txt | grep "in total" | awk '{print $1+$3}'`
 numMappedReadsMitochondria=`samtools view -c -F 512 $sampleOutdir/$sample.bam chrM`
 
 #NB now exclude chrM reads in remaining counts
-uniqMappedReads=`samtools view -F 512 $sampleOutdir/$sample.bam | awk -F "\t" '$3!="chrM" {count+=1} END {print count}'`
-dupReads=`samtools view -F 512 -f 1024 $sampleOutdir/$sample.bam | awk -F "\t" '$3!="chrM" {count+=1} END {print count}'`
-#BUGBUG exclude chrM here too?
-analyzedReads=`unstarch --elements $sampleOutdir/$sample.tags.starch`
+uniqMappedReads=`samtools view -F 512 $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {count=0} $3!="chrM" {count+=1} END {print count}'`
+dupReads=`samtools view -F 512 -f 1024 $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {count=0} $3!="chrM" {count+=1} END {print count}'`
+analyzedReads=`unstarch $sampleOutdir/$sample.tags.starch | awk -F "\t" '$1!="chrM" {count+=1} END {print count}'`
 
-pctPFalignments=`echo $PFalignments/$sequencedTags*100 | bc -l -q`
 pctMappedReadsMitochondria=`echo $numMappedReadsMitochondria/$uniqMappedReads*100 | bc -l -q`
-pctuniqMappedReads=`echo $uniqMappedReads/$sequencedTags*100 | bc -l -q`
-pctdupReads=`echo $dupReads/$uniqMappedReads*100 | bc -l -q`
-pctanalyzedReads=`echo $analyzedReads/$sequencedTags*100 | bc -l -q`
+pctdupReads=`echo "$dupReads/$uniqMappedReads*100" | bc -l -q`
+
+if [ "$sequencedTags" != "NA" ]; then
+       pctPFalignments=`echo "$PFalignments/$sequencedTags*100" | bc -l -q`
+       #BUGBUG denominator wrong here
+       pctuniqMappedReads=`echo "$uniqMappedReads/$sequencedTags*100" | bc -l -q`
+       pctanalyzedReads=`echo "$analyzedReads/$sequencedTags*100" | bc -l -q`
+else
+       pctPFalignments="NA"
+       pctuniqMappedReads="NA"
+       pctanalyzedReads="NA"
+fi
 
 #Tally how many reads were recovered from unpaired/SE reads (NB many of these may not even be PF, so are unrepresented)
 PFalignmentsSE=`samtools view -F 1 $sampleOutdir/$sample.bam | wc -l`
-uniqMappedReadsSE=`samtools view $samflags -F 1 $sampleOutdir/$sample.bam | wc -l`
-pctuniqMappedReadsSE=`echo $uniqMappedReadsSE/$PFalignmentsSE*100 | bc -l -q`
-
+uniqMappedReadsSE=`samtools view -F 513 $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {count=0} $3!="chrM" {count+=1} END {print count}'`
+if [ "$PFalignmentsSE" == "0" ]; then
+       pctuniqMappedReadsSE="NA"
+else
+       pctuniqMappedReadsSE=`echo "$uniqMappedReadsSE/$PFalignmentsSE*100" | bc -l -q`
+fi
 
 echo
 echo "Making density track"
@@ -147,7 +187,7 @@ echo "Making density track"
 #Note the last awk statement makes the exact intervals conform to Richard's convention that the counts are reported in 20bp windows including tags +/-75 from the center of that window
 #Remember wig is 1-indexed (groan)
 cat $chromsizes | 
-grep -v random | grep -v _hap | grep -v chrM | grep -v _alt | grep -v chrUn | 
+grep -v random | grep -v _hap | grep -v _alt | grep -v chrUn | grep -v chrM | 
 awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk 'BEGIN {OFS="\t"} {for(i=0; i<=$2-150; i+=20) {print $1, i, i+150} }' | 
 bedmap --bp-ovr 1 --echo --count - $sampleOutdir/$sample.tags.starch | perl -pe 's/\|/\t\t/g;' | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' |
 awk -F "\t" 'BEGIN {OFS="\t"} {$2+=65; $3-=65; print}' |
@@ -162,7 +202,7 @@ wigToBigWig $TMPDIR/$sample.wig $chromsizes $sampleOutdir/$sample.bw
 
 trackcolor=$(getcolor $sample)
 
-analyzedReadsM=`echo $analyzedReads/1000000 | bc -l -q` 
+analyzedReadsM=`echo "$analyzedReads/1000000" | bc -l -q` 
 analyzedReadsM=$(round $analyzedReadsM 1)
 
 #can't find a way to force autoscale=off. http://genome.ucsc.edu/goldenPath/help/bigWig.html implies it's not a parameter in this context
@@ -194,37 +234,32 @@ echo "track name=$sample description=\"$sample cut counts (${analyzedReadsM}M no
 #right metric?
 
 
-echo
-echo "Preparing"
-date
-outbase=`pwd`
-
-
-#Force creation of new density file (ours is normalized)
-hotspotBAM=$TMPDIR/${sample}.bam
-#250M is too much for hotspot1, 150M takes 12-24 hrs
-if [ $uniqMappedReads -gt 100000000 ]; then
-       echo "$uniqMappedReads uniquely mapped tags. Generating hotspots on subsample of 100M reads"
-       
-       sampleAsProportionOfuniqMappedReads=`echo 100000000/$uniqMappedReads | bc -l -q`
-else
-       echo "$uniqMappedReads uniquely mapped tags. Generating hotspots on all reads"
-       
-       sampleAsProportionOfuniqMappedReads=1
-fi
-
-
-#BUGBUG hardcoded chromosome names
-samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfuniqMappedReads $sampleOutdir/$sample.bam chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY > $hotspotBAM
-
-
 callHotspots1=0
 callHotspots2=1 
 
 if [ "$callHotspots1" == 1 ]; then
        echo "Calling hotspots"
        date
+       outbase=`pwd`
        mkdir -p $sampleOutdir/hotspots
+
+       #Force creation of new density file (ours is normalized)
+       hotspotBAM=$TMPDIR/${sample}.bam
+       #250M is too much for hotspot1, 150M takes 12-24 hrs
+       if [ $analyzedReads -gt 100000000 ]; then
+              echo "$analyzedReads analyzed reads. Generating hotspots on subsample of 100M reads"
+       
+              sampleAsProportionOfAnalyzedReads=`echo "100000000/$analyzedReads" | bc -l -q`
+       else
+              echo "$analyzedReads analyzed reads. Generating hotspots on all reads"
+       
+              sampleAsProportionOfAnalyzedReads=1
+       fi
+
+
+       #BUGBUG hardcoded chromosome names
+       samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfAnalyzedReads $sampleOutdir/$sample.bam chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY > $hotspotBAM
+       
        
        #BUGBUG I think hotspot1 can use >40GB memory for some large datasets
        hotspotDens=$outbase/$sampleOutdir/hotspots/$sample.density.starch
@@ -251,15 +286,15 @@ if [ "$callHotspots1" == 1 ]; then
               echo "Can't find $peakfile to make bigBed"
        fi
        
-       
        spotout=${sample}/hotspots/$sample.spot.out
        
+       
        #subsample for spot 
-       if [ $uniqMappedReads -gt 10000000 ]; then
+       if [ $analyzedReads -gt 10000000 ]; then
               echo
-              echo "$uniqMappedReads uniquely mapped tags. Calculating SPOT score on subsample of 10M reads"
-              sampleAsProportionOfuniqMappedReads=`echo 10000000/$uniqMappedReads | bc -l -q`
-              samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfuniqMappedReads ${sample}/$sample.bam > $TMPDIR/${sample}.10Mtags.bam
+              echo "$analyzedReads analyzed reads. Calculating SPOT score on subsample of 10M reads"
+              sampleAsProportionOfAnalyzedReads=`echo "10000000/$analyzedReads" | bc -l -q`
+              samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfAnalyzedReads ${sample}/$sample.bam > $TMPDIR/${sample}.10Mtags.bam
               
               mkdir -p $TMPDIR/$sample.hotspots.10Mtags
               cd $TMPDIR/$sample.hotspots.10Mtags
@@ -267,64 +302,80 @@ if [ "$callHotspots1" == 1 ]; then
               #NB dens track doesn't exist
               $src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags $mappedgenome > $outbase/$sampleOutdir/hotspots/$sample.10Mtags.log 2>&1
               
+              spotout=$TMPDIR/${sample}.hotspots.10Mtags/${sample}.10Mtags.spot.out
+              
               #NB otherwise prints pwd
               cd - > /dev/null
-              
-              spotout=$TMPDIR/${sample}.hotspots.10Mtags/${sample}.10Mtags.spot.out
        fi
+       
+       echo "Done calling hotspots"
+       date
+       echo
 fi
 
 if [ "$callHotspots2" == 1 ]; then
        FDRhot2="0.05"
        if (( $(bc -l <<<"$FDRhot2 >=0.05") )); then
-              #COMMENT Hotspot2 calls all hotspots for one FDR treshold. Further filtering is done through the for loop below
-              echo "Calling hotspots2"
+              #COMMENT Hotspot2 calls all hotspots for one FDR threshold. Further filtering is done through the for loop below
+              echo "Calling hotspot2"
               date
               mkdir -p ${sampleOutdir}/hotspot2
               
               mappableFile="/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch"
               #For shorter old Duke data
-              if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") )); then 
-                     mappableFile="/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch"
-              fi
+#              if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") )); then 
+#                     mappableFile="/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch"
+#              fi
               
-              hotspot2.sh -c /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.chrom.sizes -C /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.CenterSites.starch -F $FDRhot2 -f $FDRhot2 -M ${mappableFile} $hotspotBAM ${sampleOutdir}/hotspot2 > $sampleOutdir/hotspot2/$sample.log 2>&1
+              hotspot2.sh -c /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.chrom.sizes -C /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.CenterSites.starch -F $FDRhot2 -f $FDRhot2 -M ${mappableFile} $sampleOutdir/$sample.bam ${sampleOutdir}/hotspot2 > $sampleOutdir/hotspot2/$sample.log 2>&1
               for FDR in {0.05,0.01,0.005,0.001}; do
+                     echo "Thresholding hotspots at FDR $FDR"
                      hsmerge.sh -f ${FDR} ${sampleOutdir}/hotspot2/${sample}.allcalls.starch ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr${FDR}.starch
               done
               
+              
+              echo "Hotspots for UCSC browser"
+              #Hotspots
               hotspot2file=${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.01.starch
               hotspot2fileFDR05=${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.05.starch
-              #Hotspots
-              unstarch ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.01.starch| awk -v OFS='\t' '{print $1, $2, $3}' > $TMPDIR/${sample}.hotspots.fdr0.01.bed
-              bedToBigBed $TMPDIR/${sample}.hotspots.fdr0.01.bed /vol/isg/annotation/bed/hg38/chromInfo.txt ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.01.bb
+              if [ -f "$hotspot2fileFDR05" ] && [ `unstarch --elements $hotspot2fileFDR05` -gt 0 ]; then
+                     unstarch $hotspot2fileFDR05 | cut -f1-4 > $TMPDIR/${sample}.hotspots.fdr0.05.bed
+                     bedToBigBed -type=bed4 $TMPDIR/${sample}.hotspots.fdr0.05.bed /vol/isg/annotation/bed/hg38/chromInfo.txt ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.05.bb
+              fi
               
               #Peaks
-              unstarch ${sampleOutdir}/hotspot2/${sample}.peaks.starch| awk -v OFS='\t' '{print $1, $2, $3}' > $TMPDIR/${sample}.peaks.bed
-              bedToBigBed $TMPDIR/${sample}.peaks.bed /vol/isg/annotation/bed/hg38/chromInfo.txt ${sampleOutdir}/hotspot2/${sample}.peaks.bb
+              hotspot2peakfile=${sampleOutdir}/hotspot2/${sample}.peaks.starch
+              if [ -f "$hotspot2peakfile" ] && [ `unstarch --elements $hotspot2peakfile` -gt 0 ]; then
+                     unstarch $hotspot2peakfile | cut -f1-4 > $TMPDIR/${sample}.peaks.bed
+                     bedToBigBed -type=bed4 $TMPDIR/${sample}.peaks.bed /vol/isg/annotation/bed/hg38/chromInfo.txt ${sampleOutdir}/hotspot2/${sample}.peaks.bb
+              fi
+              
+              echo "Done calling hotspot2"
+              date
+              echo
        else 
-              echo "WARNING: Hotspot2 should be run with at least FDR 0.05"
+              echo "WARNING: Hotspot2 should be run with FDR >= 0.05"
               echo "Skipping hotspot2"
+              echo
        fi
 fi
 
 
 #Stats
 echo
-date
 echo "*** Overall Stats ***"
 echo
-printf "Num_sequenced_reads\t$sequencedTags\t\t%s\n" "$sample"
-printf "Num_pass_filter_alignments\t$PFalignments\t%.1f%%\t%s\n" "$pctPFalignments" "$sample"
-printf "Num_uniquely_mapped_reads\t$uniqMappedReads\t%.1f%%\t%s\n" "$pctuniqMappedReads" "$sample"
-printf "Num_mitochondria_reads\t$numMappedReadsMitochondria\t%.1f%%\t%s\n" "$pctMappedReadsMitochondria" "$sample"
-printf "Num_duplicate_reads\t$dupReads\t%.1f%%\t%s\n" "$pctdupReads" "$sample"
-printf "Num_analyzed_reads\t$analyzedReads\t%.1f%%\t%s\n" "$pctanalyzedReads" "$sample"
+echo -e "Num_sequenced_reads\t$sequencedTags\t\t$sample"
+printfNA "Num_pass_filter_alignments\t$PFalignments\t%.1f%%\t$sample\n" "$pctPFalignments"
+printfNA "Num_uniquely_mapped_reads\t$uniqMappedReads\t%.1f%%\t$sample\n" "$pctuniqMappedReads"
+printfNA "Num_mitochondria_reads\t$numMappedReadsMitochondria\t%.1f%%\t$sample\n" "$pctMappedReadsMitochondria"
+printfNA "Num_duplicate_reads\t$dupReads\t%.1f%%\t$sample\n" "$pctdupReads"
+printfNA "Num_analyzed_reads\t$analyzedReads\t%.1f%%\t$sample\n" "$pctanalyzedReads"
 
 #Don't have denominator of unpaired reads we tried to map, so don't compute % for first
-printf "Num_SE_pass_filter_alignments\t$PFalignmentsSE\t\t%s\n" "$sample"
+echo -e "Num_SE_pass_filter_alignments\t$PFalignmentsSE\t\t$sample"
 #NB denominator is PF reads, not pctMappedReadsMitochondrias sequenced
-printf "Num_SE_uniquely_mapped_reads\t$uniqMappedReadsSE\t%.1f%%\t%s\n"  "$pctuniqMappedReadsSE" "$sample"
+printfNA "Num_SE_uniquely_mapped_reads\t$uniqMappedReadsSE\t%.1f%%\t$sample\n" "$pctuniqMappedReadsSE"
 
 
 if [ -f "$hotspotfile" ]; then
@@ -351,7 +402,7 @@ fi
 echo -e "Num_hotspots2\t$numhotspots2\t\t$sample"
 
 
-if [ -f "$hotspot2fileFDR05" ]; then
+if [ -f "$hotspot2fileFDR05" ] && [ "$numhotspots2" -gt 0 ]; then
        numTotalReadsHotspot2=$(unstarch ${sampleOutdir}/hotspot2/${sample}.cutcounts.starch | awk '{print $5}'|  awk '{sum+=$1} END {print sum}')
        numReadsinDHSHotspot2=$(unstarch ${sampleOutdir}/hotspot2/${sample}.cutcounts.starch | bedops --header -e -1 - $hotspot2fileFDR05 | awk '{print $5}' | awk '{sum+=$1} END {print sum}')
        spot2=$(echo "scale=4; $numReadsinDHSHotspot2/$numTotalReadsHotspot2" | bc)
@@ -405,7 +456,7 @@ samtools view $samflags $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"
 
 echo
 echo "Tag count by sequencing instrument"
-samtools view $samflags $sampleOutdir/$sample.bam | cut -f1 | cut -d ":" -f1 | sort -g | uniq -c | sort -k1,1g
+samtools view $samflags $sampleOutdir/$sample.bam | bam2instrument | sort -g | uniq -c | sort -k1,1g
 
 
 echo
