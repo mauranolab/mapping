@@ -29,6 +29,16 @@ shift
 userAlnOptions=$@
 
 
+bam2instrument()
+{
+       cut -f1 | cut -d ":" -f1 | 
+       #Hack to clean up some encodeproject.org data that has underscore in place of colon after sequencer name
+       perl -pe 's/_\d+_\d+_\d+_\d+$//g;' | 
+       #SRR data
+       perl -pe 's/^(SRR\d+)\.\d+$/$1/g;'
+}
+
+
 jobid=$SGE_TASK_ID
 readsFq=`cat inputs.txt | awk -v jobid=$jobid 'NR==jobid'`
 if [ ! -f "$readsFq" ]; then
@@ -93,13 +103,16 @@ trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$S
 sequencedTags=$(zcat $readsFq | awk 'NR%4==2' | wc -l)
 
 #For shorter old Duke data
-if [ `zcat $readsFq | awk -v sequencedTags=$sequencedTags 'NR%4==2 && $1~/TCGTATGCCGTCTTC/ {readsWithDukeSequence+=1} END {print readsWithDukeSequence/sequencedTags}'`]; then
-       echo "More than 25% of reads have DUKE sequence (TCGTATGCCGTCTTC) - Hard clip to 20bp reads"
-       trimmomaticSteps="CROP:20 $trimmomaticSteps"
-else
-       echo "No DUKE sequence present"
+#BUGBUG - I think Jesper just took what looks like a readthrough sequence (TCGTATGCCGTCTTC). Not sure why the trimmer isn't dealing with this properly
+#if [ `zcat $readsFq | awk -v thresh=0.25 -v sequencedTags=$sequencedTags 'NR%4==2 && $1~/TCGTATGCCGTCTTC/ {readsWithDukeSequence+=1} END {if (readsWithDukeSequence/sequencedTags>thresh) {print 1} else {print 0}}'` ]; then
+#       echo "More than 25% of reads have DUKE sequence (TCGTATGCCGTCTTC) - Hard clip to 20bp reads"
+#       trimmomaticSteps="CROP:20 $trimmomaticSteps"
+#       minMAPQ=10
+#else
+#       echo "No DUKE sequence present"
        trimmomaticSteps=" $trimmomaticSteps MINLEN:27 CROP:36"
-fi
+       minMAPQ=20
+#fi
 
 
 #BUGBUG For aggregate submission e.g. submitting multiple flowcells at once, there will be a collision if we have sequenced same sample on multiple flowcells. 
@@ -307,7 +320,7 @@ for curGenome in $genomesToMap; do
        #TODO prob better to do NSLOTS/2 or so
        #samtools view -@ $NSLOTS -S -u - | 
        samtools sort -@ $NSLOTS -m 1500M -O bam -T $TMPDIR/${sample}.sortbyname -l 1 -n - |
-       $src/filter_reads.py --max_mismatches $permittedMismatches - - |
+       $src/filter_reads.py --max_mismatches $permittedMismatches --min_mapq $minMAPQ - - |
        samtools sort -@ $NSLOTS -m 1500M -O bam -T $TMPDIR/${sample}.sort -l 1 - |
        #Add MC tag containing mate CIGAR for duplicate calling
        java -Xmx2g -jar /cm/shared/apps/picard/1.140/picard.jar FixMateInformation INPUT=/dev/stdin OUTPUT= $sampleOutdir/$sample.$curGenome.bam VERBOSITY=ERROR QUIET=TRUE COMPRESSION_LEVEL=1
@@ -339,7 +352,7 @@ echo "Mean quality by cycle"
 java -Xmx3g -jar /cm/shared/apps/picard/1.140/picard.jar MeanQualityByCycle INPUT= $sampleOutdir/$sample.$curGenome.bam OUTPUT=$TMPDIR/$sample.baseQ.txt CHART_OUTPUT=$TMPDIR/$sample.baseQ.pdf VALIDATION_STRINGENCY=LENIENT
 
 #BUGBUG slow
-instrument=`samtools view $sampleOutdir/$sample.$curGenome.bam | cut -f1 | cut -d ":" -f1 | uniq | sort | uniq | perl -pe 's/\n$//g;' | perl -pe 's/\n/;/g;'`
+instrument=`samtools view $sampleOutdir/$sample.$curGenome.bam | bam2instrument | uniq | sort | uniq | perl -pe 's/\n$//g;' | perl -pe 's/\n/;/g;'`
 awk -v instrument=$instrument -v fc=$fc -v sample=$sample -v ds=$DS -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $0!="" {if($1=="CYCLE") {$0=tolower($0); $(NF+1)="instrument\tfc\tsample\tDS"} else {$(NF+1)=instrument "\t" fc "\t" sample "\t" ds;} print}' $TMPDIR/$sample.baseQ.txt > $sampleOutdir/$sample.baseQ.txt
 
 
