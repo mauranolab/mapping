@@ -150,32 +150,29 @@ cat $TMPDIR/$sample.flagstat.txt
 PFalignments=`cat $TMPDIR/$sample.flagstat.txt | grep "in total" | awk '{print $1+$3}'`
 numMappedReadsMitochondria=`samtools view -c -F 512 $sampleOutdir/$sample.bam chrM`
 
-#NB now exclude chrM reads in remaining counts
-uniqMappedReads=`samtools view -F 512 $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {count=0} $3!="chrM" {count+=1} END {print count}'`
+#Exclude chrM reads in remaining counts
 dupReads=`samtools view -F 512 -f 1024 $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {count=0} $3!="chrM" {count+=1} END {print count}'`
 analyzedReads=`unstarch $sampleOutdir/$sample.tags.starch | awk -F "\t" '$1!="chrM" {count+=1} END {print count}'`
 
-pctMappedReadsMitochondria=`echo $numMappedReadsMitochondria/$uniqMappedReads*100 | bc -l -q`
-pctdupReads=`echo "$dupReads/$uniqMappedReads*100" | bc -l -q`
+pctMappedReadsMitochondria=`echo $numMappedReadsMitochondria/$analyzedReads*100 | bc -l -q`
+pctdupReads=`echo "$dupReads/$analyzedReads*100" | bc -l -q`
 
 if [ "$sequencedTags" != "NA" ]; then
        pctPFalignments=`echo "$PFalignments/$sequencedTags*100" | bc -l -q`
        #BUGBUG denominator wrong here
-       pctuniqMappedReads=`echo "$uniqMappedReads/$sequencedTags*100" | bc -l -q`
        pctanalyzedReads=`echo "$analyzedReads/$sequencedTags*100" | bc -l -q`
 else
        pctPFalignments="NA"
-       pctuniqMappedReads="NA"
        pctanalyzedReads="NA"
 fi
 
 #Tally how many reads were recovered from unpaired/SE reads (NB many of these may not even be PF, so are unrepresented)
 PFalignmentsSE=`samtools view -F 1 $sampleOutdir/$sample.bam | wc -l`
-uniqMappedReadsSE=`samtools view -F 513 $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {count=0} $3!="chrM" {count+=1} END {print count}'`
+analyzedReadsSE=`samtools view -F 513 $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {count=0} $3!="chrM" {count+=1} END {print count}'`
 if [ "$PFalignmentsSE" == "0" ]; then
-       pctuniqMappedReadsSE="NA"
+       pctanalyzedReadsSE="NA"
 else
-       pctuniqMappedReadsSE=`echo "$uniqMappedReadsSE/$PFalignmentsSE*100" | bc -l -q`
+       pctanalyzedReadsSE=`echo "$analyzedReadsSE/$PFalignmentsSE*100" | bc -l -q`
 fi
 
 echo
@@ -367,15 +364,14 @@ echo "*** Overall Stats ***"
 echo
 echo -e "Num_sequenced_reads\t$sequencedTags\t\t$sample"
 printfNA "Num_pass_filter_alignments\t$PFalignments\t%.1f%%\t$sample\n" "$pctPFalignments"
-printfNA "Num_uniquely_mapped_reads\t$uniqMappedReads\t%.1f%%\t$sample\n" "$pctuniqMappedReads"
 printfNA "Num_mitochondria_reads\t$numMappedReadsMitochondria\t%.1f%%\t$sample\n" "$pctMappedReadsMitochondria"
-printfNA "Num_duplicate_reads\t$dupReads\t%.1f%%\t$sample\n" "$pctdupReads"
 printfNA "Num_analyzed_reads\t$analyzedReads\t%.1f%%\t$sample\n" "$pctanalyzedReads"
+printfNA "Num_duplicate_reads\t$dupReads\t%.1f%%\t$sample\n" "$pctdupReads"
 
 #Don't have denominator of unpaired reads we tried to map, so don't compute % for first
 echo -e "Num_SE_pass_filter_alignments\t$PFalignmentsSE\t\t$sample"
 #NB denominator is PF reads, not pctMappedReadsMitochondrias sequenced
-printfNA "Num_SE_uniquely_mapped_reads\t$uniqMappedReadsSE\t%.1f%%\t$sample\n" "$pctuniqMappedReadsSE"
+printfNA "Num_SE_uniquely_mapped_reads\t$analyzedReadsSE\t%.1f%%\t$sample\n" "$pctanalyzedReadsSE"
 
 
 if [ -f "$hotspotfile" ]; then
