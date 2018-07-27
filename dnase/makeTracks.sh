@@ -98,6 +98,7 @@ fi
 samflags="-q 20 -F 524"
 readlength="36"
 
+#For shorter old Duke data
 #readsLength20bp was never defined here
 #if [ "$sequencedTags" != "NA" ] && [ `echo "$readsLength20bp/$sequencedTags >= 0.25" | bc -l` == 1 ]; then 
 #       echo "More than 25% of reads are 20bp - using q10"
@@ -149,13 +150,12 @@ cat $TMPDIR/$sample.flagstat.txt
 #BUGBUG making multiple passes through bam now
 PFalignments=`cat $TMPDIR/$sample.flagstat.txt | grep "in total" | awk '{print $1+$3}'`
 numMappedReadsMitochondria=`samtools view -c -F 512 $sampleOutdir/$sample.bam chrM`
+pctMappedReadsMitochondria=`echo $numMappedReadsMitochondria/$pctPFalignments*100 | bc -l -q`
 
 #Exclude chrM reads in remaining counts
 dupReads=`samtools view -F 512 -f 1024 $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {count=0} $3!="chrM" {count+=1} END {print count}'`
-analyzedReads=`unstarch $sampleOutdir/$sample.tags.starch | awk -F "\t" '$1!="chrM" {count+=1} END {print count}'`
-
-pctMappedReadsMitochondria=`echo $numMappedReadsMitochondria/$analyzedReads*100 | bc -l -q`
 pctdupReads=`echo "$dupReads/$analyzedReads*100" | bc -l -q`
+analyzedReads=`unstarch $sampleOutdir/$sample.tags.starch | awk -F "\t" '$1!="chrM" {count+=1} END {print count}'`
 
 if [ "$sequencedTags" != "NA" ]; then
        pctPFalignments=`echo "$PFalignments/$sequencedTags*100" | bc -l -q`
@@ -234,6 +234,13 @@ echo "track name=$sample description=\"$sample cut counts (${analyzedReadsM}M no
 callHotspots1=0
 callHotspots2=1 
 
+mappableFile="/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch"
+#For shorter old Duke data
+#if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") )); then 
+#      mappableFile="/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch"
+#fi
+
+
 if [ "$callHotspots1" == 1 ]; then
        echo "Calling hotspots"
        date
@@ -261,7 +268,7 @@ if [ "$callHotspots1" == 1 ]; then
        #BUGBUG I think hotspot1 can use >40GB memory for some large datasets
        hotspotDens=$outbase/$sampleOutdir/hotspots/$sample.density.starch
        cd $sampleOutdir/hotspots
-       $src/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots $mappedgenome > $outbase/$sampleOutdir/hotspots/$sample.log 2>&1
+       $src/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots $mappedgenome > $outbase/$sampleOutdir/hotspots/$sample.log $mappableFile 2>&1
        
        cd ../..
        
@@ -318,11 +325,6 @@ if [ "$callHotspots2" == 1 ]; then
               date
               mkdir -p ${sampleOutdir}/hotspot2
               
-              mappableFile="/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch"
-              #For shorter old Duke data
-#              if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") )); then 
-#                     mappableFile="/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch"
-#              fi
               
               hotspot2.sh -c /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.chrom.sizes -C /vol/isg/annotation/bed/${mappedgenome}/hotspots2/${mappedgenome}.CenterSites.starch -F $FDRhot2 -f $FDRhot2 -M ${mappableFile} $sampleOutdir/$sample.bam ${sampleOutdir}/hotspot2 > $sampleOutdir/hotspot2/$sample.log 2>&1
               for FDR in {0.05,0.01,0.005,0.001}; do
