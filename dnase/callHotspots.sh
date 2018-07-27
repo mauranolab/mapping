@@ -13,6 +13,7 @@ bam=$1
 dens=$2
 outdir=$3
 mappedgenome=$4
+mappableFile=$5
 
 date
 echo "Running hotspot"
@@ -20,22 +21,7 @@ echo "bam=$bam"
 echo "dens=$dens"
 echo "outdir=$outdir"
 echo "mappedgenome=$mappedgenome"
-
-
-#Duke data
-#readsLength20bp=$(samtools view $bam|awk 'length($10) ==20 {print $10}'| wc -l)
-#sequencedTags=$(samtools view $bam| wc -l)
-
-#if (( $(bc -l <<<"$readsLength20bp/$sequencedTags >=0.25") ))
-#then
-#       echo "More than 25% of reads are 20bp - K20"
-#       Kreads=20
-#       mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch
-#else
-       echo "Less than 25% of reads are 20bp - K36"
-       Kreads=36
-       mappableFile=/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K36.mappable_only.starch
-#fi;
+echo "mappableFile=$mappableFile"
 
 
 awk -v OFS='\t' '{print $1, 0, $2, $1}' /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes | grep -v 'alt\|random\|Un\|hap\|scaffold' | sort-bed - > $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed 
