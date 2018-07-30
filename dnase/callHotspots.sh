@@ -3,7 +3,7 @@
 #BUGBUG can't handle % in file names
 
 
-if [ "$#" -ne 4 ]; then
+if [ "$#" -ne 5 ]; then
        echo "Wrong num args"
        exit 1
 fi
