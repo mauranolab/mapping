@@ -150,7 +150,7 @@ cat $TMPDIR/$sample.flagstat.txt
 #BUGBUG making multiple passes through bam now
 PFalignments=`cat $TMPDIR/$sample.flagstat.txt | grep "in total" | awk '{print $1+$3}'`
 numMappedReadsMitochondria=`samtools view -c -F 512 $sampleOutdir/$sample.bam chrM`
-pctMappedReadsMitochondria=`echo $numMappedReadsMitochondria/$pctPFalignments*100 | bc -l -q`
+pctMappedReadsMitochondria=`echo $numMappedReadsMitochondria/$PFalignments*100 | bc -l -q`
 
 #Exclude chrM reads in remaining counts
 dupReads=`samtools view -F 512 -f 1024 $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {count=0} $3!="chrM" {count+=1} END {print count}'`
@@ -242,7 +242,7 @@ mappableFile="/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome
 
 
 if [ "$callHotspots1" == 1 ]; then
-       echo "Calling hotspots"
+       echo "Preparing hotspot V1"
        date
        outbase=`pwd`
        mkdir -p $sampleOutdir/hotspots
@@ -265,6 +265,7 @@ if [ "$callHotspots1" == 1 ]; then
        samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfAnalyzedReads $sampleOutdir/$sample.bam chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY > $hotspotBAM
        
        
+       echo "Calling hotspots"
        #BUGBUG I think hotspot1 can use >40GB memory for some large datasets
        hotspotDens=$outbase/$sampleOutdir/hotspots/$sample.density.starch
        cd $sampleOutdir/hotspots
@@ -339,14 +340,14 @@ if [ "$callHotspots2" == 1 ]; then
               hotspot2fileFDR05=${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.05.starch
               if [ -f "$hotspot2fileFDR05" ] && [ `unstarch --elements $hotspot2fileFDR05` -gt 0 ]; then
                      unstarch $hotspot2fileFDR05 | cut -f1-4 > $TMPDIR/${sample}.hotspots.fdr0.05.bed
-                     bedToBigBed -type=bed4 $TMPDIR/${sample}.hotspots.fdr0.05.bed /vol/isg/annotation/bed/hg38/chromInfo.txt ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.05.bb
+                     bedToBigBed -type=bed4 $TMPDIR/${sample}.hotspots.fdr0.05.bed $chromsizes ${sampleOutdir}/hotspot2/${sample}.hotspots.fdr0.05.bb
               fi
               
               #Peaks
               hotspot2peakfile=${sampleOutdir}/hotspot2/${sample}.peaks.starch
               if [ -f "$hotspot2peakfile" ] && [ `unstarch --elements $hotspot2peakfile` -gt 0 ]; then
                      unstarch $hotspot2peakfile | cut -f1-4 > $TMPDIR/${sample}.peaks.bed
-                     bedToBigBed -type=bed4 $TMPDIR/${sample}.peaks.bed /vol/isg/annotation/bed/hg38/chromInfo.txt ${sampleOutdir}/hotspot2/${sample}.peaks.bb
+                     bedToBigBed -type=bed4 $TMPDIR/${sample}.peaks.bed $chromsizes ${sampleOutdir}/hotspot2/${sample}.peaks.bb
               fi
               
               echo "Done calling hotspot2"
