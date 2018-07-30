@@ -19,6 +19,9 @@ if (is.null(opt$file)){
   stop("At least one argument must be supplied (input file).n", call.=FALSE)
 }
 
+#for debug
+#opt=list(file="/vol/isg/encode/dnase201805/SampleIDs_20180502_MTM.tsv",out="/vol/isg/encode/dnase201805/SamplesForTrackhub.tsv")
+
 cat('Input file: ', opt$file,'\n')
 cat('Output file: ', opt$out,'\n')
 
@@ -73,14 +76,14 @@ for (i in 1:length(bwfiles)){
        #cat(mergedFiles, '\n')
        if (length(mergedFiles)>0)
               sampleFile<-readLines(paste0(pwd, '/', SampleID,'/',mergedFiles), n=2000)
-             # if(tail(sampleFile)[2]=='Done!'){
+              if(tail(sampleFile, 2)[1]=='Done!'){
                      colGroup<-col2rgb(as.character(col[rownames(col)%in%gsub("-.*",'',bwfiles[i]),][1]))[,1]
                      data$cellType[i]<-gsub('-.*','',SampleID)
                      data$DSnumber[i]<-gsub('.hg38','',gsub('.*-','',SampleID))
                      data$Replicate[i]<-1
                      data$Color[i]<-paste(colGroup[1],colGroup[2],colGroup[3],sep=',')
                      data$Assay[i]<-'DNase'
-                     data$nonredundant_tags[i]<-strsplit(sampleFile[grep('Num_uniquely_mapped_reads\t',sampleFile)],'\t')[[1]][2]
+                     data$nonredundant_tags[i]<-strsplit(sampleFile[grep('Num_analyzed_reads\t',sampleFile)],'\t')[[1]][2]
                      data$Hotspots[i]<-strsplit(sampleFile[grep('Num_hotspots2\t',sampleFile)],'\t')[[1]][2]
                      data$SPOT[i]<-strsplit(sampleFile[grep('SPOT2\t',sampleFile)],'\t')[[1]][2]
                      data$Age[i] <- df$Age[grep(gsub('.hg38','',gsub('.*-','',SampleID)),df$GroupID)]
@@ -96,9 +99,9 @@ for (i in 1:length(bwfiles)){
                      SampleID[grep('^f[A-Z]',SampleID,invert=T)],ignore.case=T,invert=F))>0){data$Variable[i]<-'Tissues'}
                      #rm(sampleFile)
                      #gc()
-                     
-              #}      
+              }
 }
+
 
 #Fix sample age. 
 #Only keep first entry e.g. male (week 7) male (week8)
