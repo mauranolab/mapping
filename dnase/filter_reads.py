@@ -117,12 +117,6 @@ class ReadException(Exception):
               super(ReadException, self).__init__(msg)
               self.msg = msg
               self.value = value
-              
-              global readPairFailureCodes
-              if self.msg in readPairFailureCodes:
-                     readPairFailureCodes[self.msg] += 1
-              else:
-                     readPairFailureCodes[self.msg] = 1
 
 '''
 General function to set the flag field
@@ -139,10 +133,18 @@ def set_proper_pair(read, mark = True):
        return set_read_flag(read, 1, mark)
 
 
-def set_qc_fail(read, mark = True):
+def set_qc_fail(read, mark = True, qc_msg = None):
+       global readPairFailureCodes
        global totalReadsFailed
+       
        if(mark):
+              if qc_msg in readPairFailureCodes:
+                     readPairFailureCodes[qc_msg] += 1
+              else:
+                     readPairFailureCodes[qc_msg] = 1
+       
               totalReadsFailed += 1
+       
        return set_read_flag(read, 9, mark)
 
 
@@ -283,18 +285,20 @@ while(1):
                      
                      # failed a test above, not properly paired
                      
-                     proper_pair = False                     
-                     qc_fail = True              
+                     proper_pair = False
+                     qc_fail = True
+                     qc_msg = e.msg
               else:
                      if verbose: print("\tPASS")
-                     proper_pair = True                     
+                     proper_pair = True
                      qc_fail = False
+                     qc_msg = None
               
               finally:
-                     set_qc_fail(read1, qc_fail)
+                     set_qc_fail(read1, qc_fail, qc_msg)
                      set_proper_pair(read1, proper_pair)
                      
-                     set_qc_fail(read2, qc_fail)
+                     set_qc_fail(read2, qc_fail, qc_msg)
                      set_proper_pair(read2, proper_pair)
                      
                      # write to file
@@ -320,13 +324,15 @@ while(1):
               except ReadException as e:
                      if verbose: print("\tFAIL:", e)
                      qc_fail = True
+                     qc_msg = e.msg
               
               else:
                      if verbose: print("\tPASS")
                      qc_fail = False
+                     qc_msg = None
               
               finally:
-                     set_qc_fail(read1, qc_fail)
+                     set_qc_fail(read1, qc_fail, qc_msg)
                      #can't be properly paired (it's SE)
                      set_proper_pair(read1, False)
               
@@ -342,7 +348,6 @@ filtered_reads.close()
 
 
 #BUGBUG getting lost sys.stderr at end now
-
 
 print("\n[filter_reads.py] Failure codes by read pair (", totalReads, " reads processed):", sep="", file=sys.stderr)
 print("[filter_reads.py]", readPairFailureCodes, file=sys.stderr)
