@@ -269,7 +269,7 @@ if [ "$callHotspots1" == 1 ]; then
        #BUGBUG I think hotspot1 can use >40GB memory for some large datasets
        hotspotDens=$outbase/$sampleOutdir/hotspots/$sample.density.starch
        cd $sampleOutdir/hotspots
-       $src/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots $mappedgenome > $outbase/$sampleOutdir/hotspots/$sample.log $mappableFile 2>&1
+       $src/callHotspots.sh $hotspotBAM $hotspotDens $outbase/$sampleOutdir/hotspots $mappedgenome $mappableFile > $outbase/$sampleOutdir/hotspots/$sample.log 2>&1
        
        cd ../..
        
@@ -305,7 +305,7 @@ if [ "$callHotspots1" == 1 ]; then
               cd $TMPDIR/$sample.hotspots.10Mtags
               
               #NB dens track doesn't exist
-              $src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags $mappedgenome > $outbase/$sampleOutdir/hotspots/$sample.10Mtags.log 2>&1
+              $src/callHotspots.sh $TMPDIR/${sample}.10Mtags.bam $TMPDIR/${sample}.10Mtags.density.starch $TMPDIR/$sample.hotspots.10Mtags $mappedgenome $mappableFile > $outbase/$sampleOutdir/hotspots/$sample.10Mtags.log 2>&1
               
               spotout=$TMPDIR/${sample}.hotspots.10Mtags/${sample}.10Mtags.spot.out
               
