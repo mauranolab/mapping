@@ -276,8 +276,8 @@ for curGenome in $genomesToMap; do
               #-P didn't have a major effect, but some jobs were ~10-40% faster but takes ~16GB RAM instead of 4GB
               extractcmd="sampe $bwaExtractOpts -a 500 $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample2.$curGenome.sai $TMPDIR/$sample1.fastq $TMPDIR/$sample2.fastq"
               
-              #Only map unpaired reads if the file nonzer
-              if [ -s cat $TMPDIR/$sample.unpaired.fastq ]; then
+              #Only map unpaired reads if the file is nonzero
+              if [ -s $TMPDIR/$sample.unpaired.fastq ]; then
                      echo -e "\nMapping unpaired $sample.unpaired.fastq for $sample1"
                      bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample.unpaired.fastq > $TMPDIR/$sample.unpaired.$curGenome.sai
                      date
