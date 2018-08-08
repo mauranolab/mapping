@@ -1,14 +1,19 @@
 #!/bin/bash
 set -e -o pipefail
 
+#TODO
+#better command line arg processing
+#merge back in aggregation scripts
+
+
 #Load modules
 module load picard/1.140
 module load FastQC/0.11.4
-module load bedops/2.4.30
+module load bedops/2.4.35
 module load bwa/0.7.15
-module load htslib/1.2.1
-module load samtools/1.3.1
-module load trimmomatic/0.36
+module load htslib/1.9
+module load samtools/1.9
+module load trimmomatic/0.38
 module load python/3.5.0
 module load samblaster/0.1.22
 module load ucsckentutils/10132015
