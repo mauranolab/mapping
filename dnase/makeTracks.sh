@@ -154,8 +154,8 @@ pctMappedReadsMitochondria=`echo $numMappedReadsMitochondria/$PFalignments*100 |
 
 #Exclude chrM reads in remaining counts
 dupReads=`samtools view -F 512 -f 1024 $sampleOutdir/$sample.bam | awk -F "\t" 'BEGIN {count=0} $3!="chrM" {count+=1} END {print count}'`
-pctdupReads=`echo "$dupReads/$analyzedReads*100" | bc -l -q`
 analyzedReads=`unstarch $sampleOutdir/$sample.tags.starch | awk -F "\t" '$1!="chrM" {count+=1} END {print count}'`
+pctdupReads=`echo "$dupReads/$analyzedReads*100" | bc -l -q`
 
 if [ "$sequencedTags" != "NA" ]; then
        pctPFalignments=`echo "$PFalignments/$sequencedTags*100" | bc -l -q`
@@ -374,7 +374,7 @@ printfNA "Num_duplicate_reads\t$dupReads\t%.1f%%\t$sample\n" "$pctdupReads"
 #Don't have denominator of unpaired reads we tried to map, so don't compute % for first
 echo -e "Num_SE_pass_filter_alignments\t$PFalignmentsSE\t\t$sample"
 #NB denominator is PF reads, not pctMappedReadsMitochondrias sequenced
-printfNA "Num_SE_uniquely_mapped_reads\t$analyzedReadsSE\t%.1f%%\t$sample\n" "$pctanalyzedReadsSE"
+printfNA "Num_SE_analyzed_reads\t$analyzedReadsSE\t%.1f%%\t$sample\n" "$pctanalyzedReadsSE"
 
 
 if [ -f "$hotspotfile" ]; then
