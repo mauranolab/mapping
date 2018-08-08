@@ -81,9 +81,9 @@ echo "Configuring trimming parameters"
 analysisType="DNase"
 echo "Using $analysisType adapters for trimming"
 if [ "$analysisType" == "DNase" ]; then 
-       illuminaAdapters="/cm/shared/apps/trimmomatic/0.36/adapters/TruSeq3-PE-2.fa"
+       illuminaAdapters="/cm/shared/apps/trimmomatic/0.38/adapters/TruSeq3-PE-2.fa"
 elif [ $analysisType == "ATAC" ]; then 
-       illuminaAdapters="/cm/shared/apps/trimmomatic/0.36/adapters/NexteraPE-PE.fa"
+       illuminaAdapters="/cm/shared/apps/trimmomatic/0.38/adapters/NexteraPE-PE.fa"
 else 
        echo "ERROR specify adapters"
        exit 2
@@ -99,10 +99,9 @@ trimmomaticBaseOpts="-threads $NSLOTS -trimlog $TMPDIR/${sample1}.trim.log.txt"
 trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads"
 #MAXINFO:27:0.95 TRAILING:20
 
-#Check if samples contain DUKE adapter (TCGTATGCCGTCTTC) and trim to 20bp if more than 25% of reads do
-sequencedTags=$(zcat $readsFq | awk 'NR%4==2' | wc -l)
-
 #For shorter old Duke data
+#Check if samples contain DUKE adapter (TCGTATGCCGTCTTC) and trim to 20bp if more than 25% of reads do
+#sequencedTags=$(zcat $readsFq | awk 'NR%4==2' | wc -l)
 #BUGBUG - I think Jesper just took what looks like a readthrough sequence (TCGTATGCCGTCTTC). Not sure why the trimmer isn't dealing with this properly
 #if [ `zcat $readsFq | awk -v thresh=0.25 -v sequencedTags=$sequencedTags 'NR%4==2 && $1~/TCGTATGCCGTCTTC/ {readsWithDukeSequence+=1} END {if (readsWithDukeSequence/sequencedTags>thresh) {print 1} else {print 0}}'` ]; then
 #       echo "More than 25% of reads have DUKE sequence (TCGTATGCCGTCTTC) - Hard clip to 20bp reads"
@@ -146,6 +145,7 @@ if echo "$sample1" | grep -q R1 && echo "$sample2" | grep -q R2 && grep "$sample
        $src/filterNextSeqReadsForPolyG.py --inputfileR1 $readsFq --inputfileR2 $reads2fq --outputfileR1 $TMPDIR/$sample1.pretrim.fastq.gz --outputfileR2 $TMPDIR/$sample2.pretrim.fastq.gz --maxPolyG 75
        
        java org.usadellab.trimmomatic.TrimmomaticPE $trimmomaticBaseOpts $TMPDIR/$sample1.pretrim.fastq.gz $TMPDIR/$sample2.pretrim.fastq.gz $TMPDIR/$sample1.fastq $TMPDIR/$sample1.unpaired.fastq $TMPDIR/$sample2.fastq $TMPDIR/$sample2.unpaired.fastq $trimmomaticSteps
+       #TODO why does this output uncompressed fastq? I think it's just so one can test with -s below
        
        echo -n "Unpaired reads:"
        #Merge anything unpaired from either R1 or R2
@@ -173,20 +173,20 @@ if echo "$sample1" | grep -q R1 && echo "$sample2" | grep -q R2 && grep "$sample
        
        echo
        echo "Histogram of read lengths for R1"
-       awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' $TMPDIR/$sample1.fastq | sort -k1,1n
+       cat $TMPDIR/$sample1.fastq | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
        
        echo
        echo "Histogram of read lengths for R1"
-       awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' $TMPDIR/$sample2.fastq | sort -k1,1n
+       cat $TMPDIR/$sample2.fastq | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
        
        echo
        echo "Histogram of read lengths for unpaired"
-       awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' $TMPDIR/$sample.unpaired.fastq | sort -k1,1n
+       cat $TMPDIR/$sample.unpaired.fastq | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
 else
        PErun="FALSE"
        sample="${fc}$sample1"
        
-       #TODO filterNextSeqReadsForPolyG.py
+       #TODO missing filterNextSeqReadsForPolyG.py
        
        #BUGBUG wrong adapter files
        java org.usadellab.trimmomatic.TrimmomaticSE $trimmomaticBaseOpts $readsFq $TMPDIR/$sample1.fastq $trimmomaticSteps
@@ -207,7 +207,7 @@ else
        
        echo
        echo "Histogram of read lengths for R1"
-       awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' $TMPDIR/$sample1.fastq | sort -k1,1n       
+       cat $TMPDIR/$sample1.fastq | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
 fi
 
 
@@ -276,8 +276,8 @@ for curGenome in $genomesToMap; do
               #-P didn't have a major effect, but some jobs were ~10-40% faster but takes ~16GB RAM instead of 4GB
               extractcmd="sampe $bwaExtractOpts -a 500 $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample2.$curGenome.sai $TMPDIR/$sample1.fastq $TMPDIR/$sample2.fastq"
               
-              #Only map unpaired reads if the file is nonzero
-              if [ -s $TMPDIR/$sample.unpaired.fastq ]; then
+              #Only map unpaired reads if the file nonzero
+              if [ -s "$TMPDIR/$sample.unpaired.fastq" ]; then
                      echo -e "\nMapping unpaired $sample.unpaired.fastq for $sample1"
                      bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample.unpaired.fastq > $TMPDIR/$sample.unpaired.$curGenome.sai
                      date
@@ -285,7 +285,7 @@ for curGenome in $genomesToMap; do
                      echo
                      echo "Extracting unpaired reads"
                      unpairedReadsSam="$TMPDIR/$sample.$curGenome.unpaired.sam"
-                     unpairedExtractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample.unpaired.$curGenome.sai $TMPDIR/$sample.unpaired.fastq.gz"
+                     unpairedExtractcmd="samse $bwaExtractOpts $bwaIndex $TMPDIR/$sample.unpaired.$curGenome.sai $TMPDIR/$sample.unpaired.fastq"
                      echo -e "unpairedExtractcmd=bwa $unpairedExtractcmd | (...)"
                      bwa $unpairedExtractcmd | grep -v "^@" > $unpairedReadsSam
               else
