@@ -4,7 +4,7 @@
 
 
 if [ "$#" -ne 5 ]; then
-       echo "Wrong num args"
+       echo "Wrong number of arguments"
        exit 1
 fi
 
