@@ -252,17 +252,17 @@ if [ "$callHotspots1" == 1 ]; then
        #250M is too much for hotspot1, 150M takes 12-24 hrs
        if [ $analyzedReads -gt 100000000 ]; then
               echo "$analyzedReads analyzed reads. Generating hotspots on subsample of 100M reads"
-       
-              sampleAsProportionOfAnalyzedReads=`echo "100000000/$analyzedReads" | bc -l -q`
+              #include -s directly in the variable as recent versions of samtools don't accept -s 1
+              sampleAsProportionOfAnalyzedReads="-s "`echo "100000000/$analyzedReads" | bc -l -q`
        else
               echo "$analyzedReads analyzed reads. Generating hotspots on all reads"
        
-              sampleAsProportionOfAnalyzedReads=1
+              sampleAsProportionOfAnalyzedReads=""
        fi
 
 
        #BUGBUG hardcoded chromosome names
-       samtools view $samflags -b -1 -@ $NSLOTS -s $sampleAsProportionOfAnalyzedReads $sampleOutdir/$sample.bam chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY > $hotspotBAM
+       samtools view $samflags -b -1 -@ $NSLOTS $sampleAsProportionOfAnalyzedReads $sampleOutdir/$sample.bam chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY > $hotspotBAM
        
        
        echo "Calling hotspots"
