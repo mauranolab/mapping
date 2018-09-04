@@ -18,11 +18,11 @@ options(bitmapType="cairo")
 cat("Loading insert lengths\n")
 results <- NULL
 for(f in list.files(path=".", pattern=".insertlengths.txt.gz$", recursive=T)) {
-       cat("Doing", f, "\n")
-       data <- read(f)
-       colnames(data) <- c("sample", "length")
-       dens <- density(subset(data, length<=300 & length>=27)$length, bw=10)
-       results <- rbind(results, data.frame(sample=data[1, "sample"], x=dens$x, y=dens$y, stringsAsFactors=F))
+	cat("Doing", f, "\n")
+	data <- read(f)
+	colnames(data) <- c("sample", "length")
+	dens <- density(subset(data, length<=300 & length>=27)$length, bw=10)
+	results <- rbind(results, data.frame(sample=data[1, "sample"], x=dens$x, y=dens$y, stringsAsFactors=F))
 }
 
 results$sample <- factor(gsub(".hg19$", "", results$sample))
