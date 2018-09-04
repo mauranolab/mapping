@@ -34,8 +34,8 @@ name=${celltype}-${DS}.${genome}
 src=/vol/isg/encode/dnase/src/
 
 if ! grep -q $DS inputs.txt; then
-       echo "Can't find $DS"
-       exit 1
+    echo "Can't find $DS"
+    exit 1
 fi
 
 
@@ -49,22 +49,22 @@ firstline=`grep -n $DS inputs.txt | head -1 | awk -F ":" '{print $1}'`
 lastline=`grep -n $DS inputs.txt | tail -1 | awk -F ":" '{print $1}'`
 expectednumlines=`echo "$lastline-$firstline+1" | bc -l -q`
 if [ "$expectednumlines" -ne "$numlines" ]; then
-       echo "Wrong number of lines (expected $expectednumlines, found $numlines), are all fastq files contiguous in inputs.txt?"
-       exit 2
+    echo "Wrong number of lines (expected $expectednumlines, found $numlines), are all fastq files contiguous in inputs.txt?"
+    exit 2
 fi
 
 
 if [ "$runMap" -eq 1 ]; then
-       #SGE doesn't accept a complicated -t array, so we'll start R2 jobs that will die instantly rather than prune here
-       echo "Processing $name (input.txt lines $firstline-$lastline) for genome $genome"
-       qsub -S /bin/bash -cwd -V $qsubargs -pe threads 2 -terse -j y -b y -t $firstline-$lastline -o $sampleOutdir/ -N map.$name "$src/map.sh $celltype $DS $genome $src" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.map
-       
-       echo "$name merge"
-       qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid.map` -o $sampleOutdir -N merge.$name "$src/merge.sh $name $DS $genome" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.merge.$name
-       
-       makeTracksHold="-hold_jid `cat $sampleOutdir/sgeid.merge.$name`"
+    #SGE doesn't accept a complicated -t array, so we'll start R2 jobs that will die instantly rather than prune here
+    echo "Processing $name (input.txt lines $firstline-$lastline) for genome $genome"
+    qsub -S /bin/bash -cwd -V $qsubargs -pe threads 2 -terse -j y -b y -t $firstline-$lastline -o $sampleOutdir/ -N map.$name "$src/map.sh $celltype $DS $genome $src" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.map
+    
+    echo "$name merge"
+    qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y -hold_jid `cat $sampleOutdir/sgeid.map` -o $sampleOutdir -N merge.$name "$src/merge.sh $name $DS $genome" | perl -pe 's/[^\d].+$//g;' > $sampleOutdir/sgeid.merge.$name
+    
+    makeTracksHold="-hold_jid `cat $sampleOutdir/sgeid.merge.$name`"
 else
-       makeTracksHold=""
+    makeTracksHold=""
 fi
 
 
