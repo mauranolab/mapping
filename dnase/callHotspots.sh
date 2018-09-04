@@ -4,8 +4,8 @@
 
 
 if [ "$#" -ne 5 ]; then
-       echo "Wrong number of arguments"
-       exit 1
+    echo "Wrong number of arguments"
+    exit 1
 fi
 
 
@@ -36,8 +36,8 @@ cat <<EOF >  runall.tokens.txt
 
 #######################################
 ## Notes:  If duplicate token definitions exist, the last definition in
-##         the file will be used. Tokens can use .ini variables and declarations.
-##         See http://docs.python.org/library/configparser.html
+##      the file will be used. Tokens can use .ini variables and declarations.
+##      See http://docs.python.org/library/configparser.html
 #######################################
 
 #######################################
