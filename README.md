@@ -47,11 +47,11 @@ awk -v base="/vol/isg/encode/dnase/renamed" -F "\t" 'BEGIN {OFS="\t"} $1==$6 {pr
 sort -k2,2 | cut -f1 >inputs.txt 
 
 cat ../SampleIDs.tsv | 
-perl -pe 's/ /_/g;' -e 's/\-/_/g;' -e 's/['%]//g;' | 
+perl -pe 's/ /_/g;' -e 's/\-/_/g;' -e "s/[\'%]//g;" | 
 awk -F "\t" '{print "/vol/isg/encode/dnase/src/submit.sh hg38 map_dnase " $3  " " $2}' | 
 sort | 
 uniq | 
-sort -k4,3|
+sort -k4,3 |
 grep -v GroupID >submitJobs.sh 
 
 ```
