@@ -46,13 +46,13 @@ cd mapped
 awk -v base="/vol/isg/encode/dnase/renamed" -F "\t" 'BEGIN {OFS="\t"} $1==$6 {print base "/" $1 "_" $2 "_R1.fastq.gz", $2; if($7!="") {print base "/" $1 "_" $2 "_R2.fastq.gz", $2}}' ../SampleIDs.tsv |
 sort -k2,2 | cut -f1 >inputs.txt 
 
-cat ../SampleIDs.tsv | 
-perl -pe 's/ /_/g;' -e 's/\-/_/g;' -e "s/[\'%]//g;" | 
-awk -F "\t" '{print "/vol/isg/encode/dnase/src/submit.sh hg38 map_dnase " $3  " " $2}' | 
-sort | 
-uniq | 
+cat ../SampleIDs.tsv |
+perl -pe 's/ /_/g;' -e 's/\-/_/g;' -e "s/[\(\)\'%]//g;" |
+awk -F "\t" '{print "/vol/isg/encode/dnase/src/submit.sh hg38 map_dnase " $3  " " $2}' |
+sort |
+uniq |
 sort -k4,3 |
-grep -v GroupID >submitJobs.sh 
+grep -v GroupID >submitJobs.sh
 
 ```
 
