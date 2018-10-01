@@ -10,28 +10,28 @@ from collections import defaultdict
 
 
 def process_lines(input_data, wr):
-       #Checks which barcodes are the most common before deduplication
-       bcColNum = col
-       myCounts = collections.Counter([line[bcColNum] for line in input_data])
-       
-       #Don't include failed BCs in further counts
-       del myCounts['']
-       totalBCs = sum(myCounts.values())
-        
-       if args.verbose:
-              print("\nNumber of unique barcodes:", totalBCs, file=sys.stderr)
-              print("The 10 most common BCs before removal:",myCounts.most_common(10), file=sys.stderr)
-       
-       failedBCs = [x for x in myCounts.keys() if myCounts[x] / totalBCs > freq]
-       
-       if args.verbose:
-              print("\nNumber of barcodes removed:", len(failedBCs), file=sys.stderr)
-       
-       for line in input_data:
-              oldBC = line[bcColNum]
-              if oldBC in failedBCs:
-                     line[bcColNum] = ""
-              wr.writerows([line])
+    #Checks which barcodes are the most common before deduplication
+    bcColNum = col
+    myCounts = collections.Counter([line[bcColNum] for line in input_data])
+    
+    #Don't include failed BCs in further counts
+    del myCounts['']
+    totalBCs = sum(myCounts.values())
+     
+    if args.verbose:
+        print("\nNumber of unique barcodes:", totalBCs, file=sys.stderr)
+        print("The 10 most common BCs before removal:",myCounts.most_common(10), file=sys.stderr)
+    
+    failedBCs = [x for x in myCounts.keys() if myCounts[x] / totalBCs > freq]
+    
+    if args.verbose:
+        print("\nNumber of barcodes removed:", len(failedBCs), file=sys.stderr)
+    
+    for line in input_data:
+        oldBC = line[bcColNum]
+        if oldBC in failedBCs:
+            line[bcColNum] = ""
+        wr.writerows([line])
 
 
 ###Main
@@ -45,10 +45,10 @@ parser.add_argument('-o','--output', action='store', dest='output',help='Dedupli
 
 
 try:
-          args = parser.parse_args()
+    args = parser.parse_args()
 except argparse.ArgumentError as exc:
-          print(exc.message, '\n', exc.argument, file=sys.stderr)
-          sys.exit(2)
+    print(exc.message, '\n', exc.argument, file=sys.stderr)
+    sys.exit(2)
 
 col = args.col-1
 freq = args.freq
@@ -60,21 +60,25 @@ print(args, file=sys.stderr)
 
 ## open file handles
 if args.inputfilename=="-":
-          inputfile = sys.stdin
+    inputfile = sys.stdin
 else:
-          inputfile = open(args.inputfilename, 'r') 
+    inputfile = open(args.inputfilename, 'r') 
 
 input_data = inputfile.readlines()
 input_data = [line.rstrip().split('\t') for line in input_data]
 
 
 if args.output=="-":
-          outfile = sys.stdout
+    outfile = sys.stdout
 else:
-          outfile = open(args.output, 'w')
+    outfile = open(args.output, 'w')
 wr = csv.writer(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True)
 
 process_lines(input_data, wr)
 
 
 print("\nAll barcodes have been processed", file=sys.stderr)
+
+
+inputfile.close()
+outfile.close()
