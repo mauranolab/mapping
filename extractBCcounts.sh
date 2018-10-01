@@ -1,25 +1,32 @@
 #!/bin/bash
-set -e -o pipefail
+set -eu -o pipefail
 
 
-NSLOTS=1
+#NSLOTS=1
 
-src=/home/maagj01/scratch/transposon/src
+src=/vol/mauranolab/transposon/src
+
+
+###Parse command line args
+if [ "$#" -ne 6 ]; then
+    echo "Wrong number of arguments"
+    exit 1
+fi
 
 sample=$1
 BCreadSeq=$2
 bclen=$3
-#bcread=$4 #Changed back and include a loop to find plasmid read
 chunksize=$4
 plasmidSeq=$5
-#TODO extractBarcode.py has the $TMPDIR/${sample}.plasmid.fastq.gz as input 
+extractBCargs=$6
+#TODO extractBarcode.py has the $TMPDIR/${sample}.trimmed.plasmid.fastq.gz as input
 
+
+#Save the name before we append jobid to $sample for simplicity
+BCreadFile=$sample.trimmed.BC.fastq.gz
+PlasmidreadFile=$sample.trimmed.plasmid.fastq.gz
 jobid=${SGE_TASK_ID}
 #jobid=1
-BCreadFile=$OUTDIR/$sample.trimmed.BC.fastq.gz
-PlasmidreadFile=$OUTDIR/$sample.plasmid.fastq.gz
-
-
 OUTDIR=$sample
 sample="${sample}.$jobid"
 
@@ -31,12 +38,20 @@ date
 
 
 echo
-echo "Extracting barcodes from $bcread"
+echo "Extracting barcodes from $BCreadFile"
 date
-zcat -f $OUTDIR/$PlasmidreadFile| awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | gzip -1 -c - > $TMPDIR/$sample.plasmid.fastq.gz
+zcat -f $OUTDIR/$PlasmidreadFile | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | gzip -1 -c - > $TMPDIR/$sample.plasmid.fastq.gz
 
-zcat -f $OUTDIR/$BCreadFile | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | 
-$src/extractBarcode.py --BCread - --referenceSeq $BCreadSeq --bclen $bclen --plasmidSeq $plasmidSeq --plasmidRead $TMPDIR/$sample.plasmid.fastq.gz --minBaseQ 30 > $OUTDIR/$sample.barcodes.raw.txt
+
+if [[ "$plasmidSeq" == "None" ]]; then
+    echo "No plasmid sequence provided, will extract barcodes from BC read only"
+    plasmidcmd=""
+else
+    plasmidcmd="--plasmidSeq $plasmidSeq --plasmidRead $TMPDIR/$sample.plasmid.fastq.gz"
+fi
+
+zcat -f $OUTDIR/$BCreadFile | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
+$src/extractBarcode.py --BCread - --referenceSeq $BCreadSeq --bclen $bclen $plasmidcmd --minBaseQ 30 $extractBCargs > $OUTDIR/$sample.barcodes.raw.txt
 date
 
 
@@ -47,7 +62,7 @@ cat $OUTDIR/$sample.barcodes.raw.txt | python $src/AdjacencyDeDup.py --col 1 -o 
 date
 
 #Only merge UMIs if the length is over 4
-UMIlength=$(head -1 $OUTDIR/$sample.barcodes.deduped.txt|cut -f3)
+UMIlength=$(head -1 $OUTDIR/$sample.barcodes.deduped.txt | cut -f3)
 if [[ ${#UMIlength} > "4" ]]; then
     echo "Deduping UMIs"
     echo "Merging similar UMIs per barcode"
