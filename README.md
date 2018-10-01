@@ -58,6 +58,7 @@ grep -v GroupID >submitJobs.sh
 
 ## Annotate samples for trackhub
 ```
+cd /vol/isg/encode/dnase/mapped
 Rscript --vanilla /vol/isg/encode/dnase/src/trackhub/samplesforTrackhub.R --file /vol/isg/encode/dnase/SampleIDs_20180502_MTM.tsv --out /vol/isg/encode/dnase201805/SamplesForTrackhub.tsv
 ```
 ## Create trackhub
