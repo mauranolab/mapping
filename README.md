@@ -58,7 +58,7 @@ grep -v GroupID >submitJobs.sh
 
 ## Annotate samples for trackhub
 ```
-Rscript --vanilla  trackhub/samplesforTrackhub.R --file "output from FindDSnumber.py" --out output
+Rscript --vanilla /vol/isg/encode/dnase/src/trackhub/samplesforTrackhub.R --file /vol/isg/encode/dnase/SampleIDs_20180502_MTM.tsv --out /vol/isg/encode/dnase201805/SamplesForTrackhub.tsv
 ```
 ## Create trackhub
 This script creates the hub, and genome file at the output location, and creates a subdirectory names hg38 containing the trackhub.txt  
@@ -66,5 +66,8 @@ This should be run after all DNase samples have been processed
 
 (requires python 2.7)
 ```
-python src/trackhub/DalerTrackhub.py "trackhub/samplesforTrackhub.R output" --output hub
+module remove python
+module add python/2.7.10
+mkdir -p trackhub/hg38
+python /vol/isg/encode/dnase/src/trackhub/DalerTrackhub.py /vol/isg/encode/dnase/SamplesForTrackhub.tsv --output /vol/isg/encode/dnase201805/Encode_DNase | perl -pe 's/^track/\ntrack/g;' > trackhub/hg38/trackDb.txt
 ```
