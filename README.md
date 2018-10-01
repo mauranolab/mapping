@@ -1,4 +1,4 @@
-# DNase pipeline
+# DNase pipeline - procedure for mapping ENCODE data
 
 ## Download fastq files info and metadata
 
