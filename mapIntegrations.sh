@@ -1,20 +1,35 @@
 #!/bin/bash
-set -e -o pipefail
-module load trimmomatic/0.33 weblogo/3.5.0 ImageMagick picard/1.140 FastQC/0.11.4 samtools/1.3.1 bwa/0.7.7 
+set -eu -o pipefail
 
-NSLOTS=1
+module load trimmomatic/0.36
+module load weblogo/3.5.0
+module load ImageMagick
+module load picard/1.140
+module load FastQC/0.11.4
+module load samtools/1.3.1
+module load bwa/0.7.7 
 
-src=/home/maagj01/scratch/transposon/src
+#NSLOTS=1
+
+src=/vol/mauranolab/transposon/src
+
+
+###Parse command line args
+if [ "$#" -ne 6 ]; then
+    echo "Wrong number of arguments"
+    exit 1
+fi
 
 sample=$1
 BCreadSeq=$2
 bclen=$3
 chunksize=$4
 plasmidSeq=$5
+extractBCargs=$6
+
 OUTDIR=$sample
 jobid=${SGE_TASK_ID}
 #jobid=1
-#TODO 
 
 #TMPDIR=$OUTDIR/bamintermediate
 #mkdir -p $TMPDIR
@@ -22,11 +37,11 @@ jobid=${SGE_TASK_ID}
 
 echo "Analyzing barcodes"
 #Will read SGE_TASK_ID independently
-$src/extractBCcounts.sh $sample $BCreadSeq $bclen $chunksize $plasmidSeq 
+$src/extractBCcounts.sh $sample $BCreadSeq $bclen $chunksize $plasmidSeq $extractBCargs
 
 
 #TODO f2 is the read containing the primer sequence and the genomic regions. 
-f2=$OUTDIR/${sample}.plasmid.fastq.gz
+f2=$OUTDIR/${sample}.trimmed.plasmid.fastq.gz
 sample="${sample}.$jobid"
 #BUGBUG @RG wrong below--includes jobids
 #TODO 
@@ -39,31 +54,31 @@ echo "Running on $HOSTNAME. Output to $OUTDIR. Jobid=$jobid (lines ${firstline}-
 
 
 
-
 echo
 echo "Aligning reads"
+userAlnOptions=""
 permittedMismatches=2
 curStrain="hg38"
 bwaAlnOpts="-n $permittedMismatches -l 32 $userAlnOptions -t $NSLOTS -Y"
 
-echo "Will map to strains $curStrain"
+echo "Will map to reference $curStrain"
 
 
 #NB am losing about 15" to load index when submit multiple jobs
 bwaIndexBase=/vol/isg/annotation/bwaIndex
 
 echo
-echo "Mapping to genome for strain $curStrain"
+echo "Mapping to reference $curStrain"
 case "$curStrain" in
 hg19)
-       bwaIndex=$bwaIndexBase/hg19all/hg19all;;
+    bwaIndex=$bwaIndexBase/hg19all/hg19all;;
 hg38)
-       bwaIndex=$bwaIndexBase/hg38all/hg38all;;
+    bwaIndex=$bwaIndexBase/hg38all/hg38all;;
 mm10)
-       bwaIndex=$bwaIndexBase/mm10all/mm10all;;
+    bwaIndex=$bwaIndexBase/mm10all/mm10all;;
 *)
-       echo "Don't recognize strain $curStrain";
-       exit 3;;
+    echo "Don't recognize strain $curStrain";
+    exit 3;;
 esac
 
 
