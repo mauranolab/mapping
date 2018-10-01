@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e -o pipefail
+set -eu -o pipefail
 
 
 #Above not catching segfaults
@@ -16,12 +16,14 @@ date
 permittedMismatches=3
 
 
-#celltype is called sample in BWAmerge and submitBWA
-celltype=$1
-DS=$2
-genome=$3
-src=$4
-echo "celltype: $celltype, DS: $DS, Genome: $genome"
+#celltype is called sample in merge.sh and submit.sh
+genome=$1
+analysisType=$2
+celltype=$3
+DS=$4
+src=$5
+echo "celltype: $celltype, DS: $DS, Genome: $genome, analysisType:$analysisType"
+shift
 shift
 shift
 shift
@@ -77,16 +79,10 @@ echo "Configuring trimming parameters"
 #Regular illumina dsDNA protocol
 
 
-#analysisType can either be DNase or ATAC
-analysisType="DNase"
-echo "Using $analysisType adapters for trimming"
-if [ "$analysisType" == "DNase" ]; then 
-    illuminaAdapters="/cm/shared/apps/trimmomatic/0.38/adapters/TruSeq3-PE-2.fa"
-elif [ $analysisType == "ATAC" ]; then 
+if [[ "$analysisType" == "map_atac" ]]; then 
     illuminaAdapters="/cm/shared/apps/trimmomatic/0.38/adapters/NexteraPE-PE.fa"
 else 
-    echo "ERROR specify adapters"
-    exit 2
+    illuminaAdapters="/cm/shared/apps/trimmomatic/0.38/adapters/TruSeq3-PE-2.fa"
 fi
 
 seedmis=2
@@ -109,18 +105,28 @@ trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$S
 #    minMAPQ=10
 #else
 #    echo "No DUKE sequence present"
-    trimmomaticSteps=" $trimmomaticSteps MINLEN:27 CROP:36"
-    minMAPQ=20
-#fi
 
 
-#BUGBUG For aggregate submission e.g. submitting multiple flowcells at once, there will be a collision if we have sequenced same sample on multiple flowcells. 
-fc=""
+minMAPQ=20
+trimmomaticSteps="$trimmomaticSteps MINLEN:27"
+if [[ "$analysisType" =~ "dnase" ]] || [[ "$analysisType" == "atac" ]]; then
+    trimmomaticSteps="$trimmomaticSteps CROP:36"
+fi
+
+
+#BUGBUG a bit fragile
+fc=`readlink -f $readsFq | xargs dirname | xargs dirname | xargs dirname | xargs basename`
+if [[ ! "$fc" =~ ^FC ]] ; then
+    fc=""
+else
+    echo "Flowcell $fc"
+    fc="${fc}."
+fi
 
 #BUGBUG any older data w/o R1/R2 convention?
 sample2=`echo $sample1 | perl -pe 's/_R1(_\d+)?$/_R2$1/g;'`
 #BUGBUG note grep -q $fc dies on two PATSKI samples but they are SE
-if echo "$sample1" | grep -q R1 && echo "$sample2" | grep -q R2 && grep "$sample2" inputs.txt | grep -q "$fc" ; then
+if echo "$sample1" | grep -q _R1 && echo "$sample2" | grep -q _R2 && grep "$sample2" inputs.txt | grep -q "$fc" ; then
     echo "Found R2 $sample2"
     if [ `grep "$sample2" inputs.txt | grep "$fc" | wc -l` -gt 1 ]; then
         echo "ERROR: Multiple R2 files found -- are there duplicate entries in inputs.txt?"
@@ -176,7 +182,7 @@ if echo "$sample1" | grep -q R1 && echo "$sample2" | grep -q R2 && grep "$sample
     cat $TMPDIR/$sample1.fastq | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
     
     echo
-    echo "Histogram of read lengths for R1"
+    echo "Histogram of read lengths for R2"
     cat $TMPDIR/$sample2.fastq | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
     
     echo
@@ -206,7 +212,7 @@ else
     fi
     
     echo
-    echo "Histogram of read lengths for R1"
+    echo "Histogram of read lengths"
     cat $TMPDIR/$sample1.fastq | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
 fi
 
@@ -247,11 +253,11 @@ for curGenome in $genomesToMap; do
     hg19)
         bwaIndex=$bwaIndexBase/hg19all/hg19all;;
     hg38)
-#        bwaIndex=$bwaIndexBase/hg38all/hg38all;;
         bwaIndex=$bwaIndexBase/hg38_no_alt_analysis_set/hg38_no_alt_analysis_set;;
     mm10)
-#        bwaIndex=$bwaIndexBase/mm10all/mm10all;;
         bwaIndex=$bwaIndexBase/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set;;
+    hg38_sacCer3)
+        bwaIndex=$bwaIndexBase/hg38_sacCer3/hg38_sacCer3;;
     *)
         echo "Don't recognize genome $curGenome";
         exit 5;;
@@ -265,15 +271,16 @@ for curGenome in $genomesToMap; do
 
     #Previously used -n 10 but never really used XA tag and maybe was causing sampe to occasionally truncate last line of output (dropping the tags)
     #TODO perhaps I should add -N to get complete set of hits?
-    #Read group should properly be FC name, lane and barcode but we don't have the latter info
+    #Read group should properly be FC name, lane and barcode but we don't have the BC avail. Also missing other info like instrument name or sequencing date
     DS_nosuffix=`echo $DS | perl -pe 's/[A-Z]$//g;'`
-    bwaExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
+    bwaExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}\\tPL:ILLUMINA"
     if [[ "$PErun" == "TRUE" ]] ; then
         echo -e "\nMapping R2 $reads2fq for $sample2"
         bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample2.fastq > $TMPDIR/$sample2.$curGenome.sai
         date
         
         #-P didn't have a major effect, but some jobs were ~10-40% faster but takes ~16GB RAM instead of 4GB
+        #TODO permit higher insert size for non-DNase?
         extractcmd="sampe $bwaExtractOpts -a 500 $bwaIndex $TMPDIR/$sample1.$curGenome.sai $TMPDIR/$sample2.$curGenome.sai $TMPDIR/$sample1.fastq $TMPDIR/$sample2.fastq"
         
         #Only map unpaired reads if the file nonzero
