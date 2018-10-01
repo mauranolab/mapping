@@ -19,9 +19,9 @@ basenames <- ls()
 #source("~/.Rprofile")
 option_list = list(
        make_option(c("-s", "--samples"), type="character", default=NULL, 
-              help="Comma seperated list of Samples to compare agains each other", metavar="character"),
+              help="Comma separated list of Samples to compare agains each other", metavar="character"),
        make_option(c("-t", "--threshold"), type="numeric", default=1, 
-              help="Comma seperated list of SamplesB", metavar="character"),
+              help="Comma separated list of SamplesB", metavar="character"),
        make_option(c("-f", "--File"), action="store_true", type="character", default=FALSE, 
               help="Samples are in a new line separated file", metavar="character"),
        make_option(c("-o", "--output"), type="character", default=NULL, 
@@ -150,8 +150,8 @@ colnames(cont) <- paste0('V', 1:ncol(cont))
 
 colnames(cont)
 #Keep dates for Raven
-cont$name1 <- gsub('T0053-|T0052-|T0054-|T0055-|T0056-|T0058-|T0059-|T0060-|T0061-|-2xgDNA', '', paste0( gsub('.*-K562-|.*-K562~|.*-BJM-20171011-', '',cont$V1), '-', gsub('-.*', '', cont$V1), '-', gsub('.*-', '', strtrim(cont$V1, width=21))))
-cont$name2 <- gsub('T0053-|T0052-|T0054-|T0055-|T0056-|T0058-|T0059-|T0060-|T0061-|-2xgDNA', '', paste0( gsub('.*-K562-|.*-K562~|.*-BJM-20171011-', '',cont$V2), '-', gsub('-.*', '', cont$V2), '-', gsub('.*-', '', strtrim(cont$V2, width=21))))
+cont$name1 <- gsub('T0053-|T0052-|T0054-|T0055-|T0056-|T0058-|T0059-|T0060-|T0061-|-2xgDNA', '', paste0( gsub('.*-K562-|.*-K562~|.*-BJM-20171011-|.*-BJM-20180204-', '',cont$V1), '-', gsub('-.*', '', cont$V1), '-', gsub('.*-', '', strtrim(cont$V1, width=21))))
+cont$name2 <- gsub('T0053-|T0052-|T0054-|T0055-|T0056-|T0058-|T0059-|T0060-|T0061-|-2xgDNA', '', paste0( gsub('.*-K562-|.*-K562~|.*-BJM-20171011-|.*-BJM-20180204-', '',cont$V2), '-', gsub('-.*', '', cont$V2), '-', gsub('.*-', '', strtrim(cont$V2, width=21))))
 
 cont$name1  <- gsub('K$', '20170605', cont$name1)
 cont$name2 <- gsub('K$', '20170605', cont$name2)
@@ -167,8 +167,8 @@ cont$name1 <- gsub('GFP', '',  gsub('sort', '', gsub('Day|day', 'd', cont$name1)
 cont$name2 <- gsub('GFP', '',  gsub('sort', '', gsub('Day|day', 'd', cont$name2)))
 
 
-#cont$name1<- gsub('~', '-', cont$name1)
-#cont$name2<- gsub('~', '-', cont$name2)
+cont$name1<- gsub('~', '-', cont$name1)
+cont$name2<- gsub('~', '-', cont$name2)
 #
 
 contDF <- dcast(data = cont,formula = name1~name2,fun.aggregate = mean,value.var = "V12")
@@ -206,8 +206,8 @@ mat_col <- data.frame(Type = gsub('.*-', '', gsub("-BS.*", '', rownames(contDFSu
 
 #mat_col$Sample[grep('Nich', mat_col$Sample)] <- 'Nich'
 
-rownames(contDFSubset) <- gsub('-20.*', '', rownames(contDFSubset) )
-colnames(contDFSubset) <- gsub('-20.*', '', colnames(contDFSubset) )
+rownames(contDFSubset) <- gsub('2018[0-9]{4}|2017[0-9]{4}|2016[0-9]{4}|2019[0-9]{4}', '', rownames(contDFSubset) )
+colnames(contDFSubset) <- gsub('2018[0-9]{4}|2017[0-9]{4}|2016[0-9]{4}|2019[0-9]{4}', '', colnames(contDFSubset) )
 rownames(mat_col) <- rownames(contDFSubset)
 mat_col$Type <- as.factor(mat_col$Type)
 
@@ -231,10 +231,10 @@ contDFSubset[contDFSubset>0.3] <- 0.3
 
 
 plotWidth = nrow(contDFSubset)*0.4
-pdf(paste0(opt$output, '.pdf'), width=plotWidth+1, height=plotWidth, onefile=F)
+pdf(paste0(opt$output, '.pdf'), width=10+1, height=10, onefile=F)
 pheatmap(contDFSubset,  
        color = colorRampPalette(brewer.pal(n = 9, name ="Reds"))(100), 
-       main= "Contamination between samples\nJaccard Index", 
+       main= "Overlap between samples\nJaccard Index", 
        fontsize_row = 8, fontsize_col = 8, 
        cluster_rows = FALSE, cluster_cols = FALSE ,
        annotation_row=mat_col, annotation_col=mat_col, annotation_colors= mat_colors)
