@@ -1,28 +1,29 @@
 #!/bin/bash
-set -e # -o pipefail
+set -eu -o pipefail
 
-src=/home/maagj01/scratch/transposon/src
+src=/vol/mauranolab/transposon/src
 
 sample=$1
 
 OUTDIR=$sample
 
-#Two input files:
-#$OUTDIR/$sample.barcodes.txt
-#$OUTDIR/$sample.bam
+if [ ! -s "$OUTDIR/$sample.barcodes.txt" ]; then
+    echo "analyzeIntegrations.sh ERROR: barcode input file $OUTDIR/$sample.barcodes.txt does not exist!"
+    exit 1
+fi
+
+if [ ! -s "$OUTDIR/$sample.bam" ]; then
+    echo "analyzeIntegrations.sh ERROR: mapped reads input file $OUTDIR/$sample.bam does not exist!"
+    exit 2
+fi
 
 
 echo "Analyzing data for $sample"
-
-echo "Analyzing barcodes"
-~/scratch/transposon/src/analyzeBCcounts.sh $sample
-
-
 echo "Analyzing read mapping"
 
 
 echo
-echo "SAMtools statistics for strain $strain"
+echo "SAMtools statistics for sample $sample"
 samtools flagstat $OUTDIR/$sample.bam | tee $TMPDIR/$sample.flagstat.txt
 
 echo
@@ -34,16 +35,16 @@ echo
 echo "Merge mapping and barcodes"
 samflags="-q 30 -F 516" #CHANGE from 30 to 1 for 101A and 102A. Otherwise run 30 on all other samples 
 samtools view $samflags $OUTDIR/$sample.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
-      readlength = length($10); \
-      if (and($2, 16)) { \
-              strand="-"; \
-              chromStart=$4-2+readlength; \
-      } else { \
-              strand="+"; \
-              chromStart=$4-1; \
-      } \
-      chromEnd=chromStart+1; \
-      print $3, chromStart, chromEnd, $1, "id-" NR, strand; \
+    readlength = length($10); \
+    if (and($2, 16)) { \
+        strand="-"; \
+        chromStart=$4-2+readlength; \
+    } else { \
+        strand="+"; \
+        chromStart=$4-1; \
+    } \
+    chromEnd=chromStart+1; \
+    print $3, chromStart, chromEnd, $1, "id-" NR, strand; \
 }' | sort-bed - > $TMPDIR/$sample.coords.bed
 
 echo -e -n "Number of tags passing all filters\t"
@@ -62,43 +63,46 @@ cat $OUTDIR/$sample.barcodes.readnames.coords.raw.bed | wc -l
 
 #TODO dedup? BC/site
 cat $OUTDIR/$sample.barcodes.readnames.coords.raw.bed | cut -f1-7 |
-awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"; groupnum=1} \
-       { \
-              if( NR>1 && (last[1] != $1 || $2 - last[2] > maxstep || $3 - last[3] > maxstep || last[5] != $5 )) { \
-                     #5bp between the insertions group together\
-                     groupnum = groupnum+1; \
-              } \
-              $(NF+1) = groupnum; \
-              print; \
-              split($0, last); \
-       }' |
+awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"; groupnum=1} { \
+    if( NR>1 && (last[1] != $1 || $2 - last[2] > maxstep || $3 - last[3] > maxstep || last[5] != $5 )) { \
+        #5bp between the insertions group together\
+        groupnum = groupnum+1; \
+    } \
+    $(NF+1) = groupnum; \
+    print; \
+    split($0, last); \
+}' |
 #NB no need to sort
 $src/AdjacencyDeDup.py --col 6 --groupcol 8 -o - - |
+#BUGBUG occasionally spits out null barcodes , e.g. from FCHHLLWBGX7/BS01481A-RDL_20180722_K562_pMH022_T0098_GFPpos_iPCR
+#chr12   109074738       109074739       NB501831:111:HHLLWBGX7:4:13407:1923:8064        -
+awk -F "\t" 'BEGIN {OFS="\t"} $6!=""' |
+#I think column 7 is the UMI, if any
 cut -f1-7 > $OUTDIR/$sample.barcodes.readnames.coords.bed
 #NB Barcodes are now out of sync with those from analyzeBCcounts.sh
 
 
 echo
 echo "Histogram of barcode reads after coordinate-based deduping"
-cat $OUTDIR/$sample.barcodes.readnames.coords.bed | cut -f6 |sort| uniq -c |awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+cat $OUTDIR/$sample.barcodes.readnames.coords.bed | cut -f6 | sort | uniq -c | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 
 
 if [[ `awk -F "\t" 'BEGIN {OFS="\t"} length($3) > 4 {found=1} END {print found}' $OUTDIR/$sample.barcodes.txt` == 1 ]]; then
-       echo
-       echo "Analyzing UMIs"
-       
-       cat $OUTDIR/$sample.barcodes.readnames.coords.bed | cut -f1-2,5-7 | sort -k1,1 -k2,2g -k4,4 -k5,5 | uniq -c |
-       awk 'BEGIN {OFS="\t"} {print $2, $3, $5, $1, $4}' > $TMPDIR/$sample.coords.collapsedUMI.bed
-       #(NB chromEnd is omitted)
-       
-       echo
-       echo -n -e "$sample\tNumber of unique coordinates+barcodes+UMI\t"
-       #TODO move to extract.py
-       cat $TMPDIR/$sample.coords.collapsedUMI.bed | wc -l
+    echo
+    echo "Analyzing UMIs"
+    
+    cat $OUTDIR/$sample.barcodes.readnames.coords.bed | cut -f1-2,5-7 | sort -k1,1 -k2,2g -k4,4 -k5,5 | uniq -c |
+    awk 'BEGIN {OFS="\t"} {print $2, $3, $5, $1, $4}' > $TMPDIR/$sample.coords.collapsedUMI.bed
+    #(NB chromEnd is omitted)
+    
+    echo
+    echo -n -e "$sample\tNumber of unique coordinates+barcodes+UMI\t"
+    #TODO move to extract.py
+    cat $TMPDIR/$sample.coords.collapsedUMI.bed | wc -l
 else
-       echo
-       echo "No UMIs found"
-       cat $OUTDIR/$sample.barcodes.readnames.coords.bed | awk 'BEGIN {OFS="\t"} {print $1, $2, $6, 1, $5}' | sort -k1,1 -k2,2g -k3,3 > $TMPDIR/$sample.coords.collapsedUMI.bed
+    echo
+    echo "No UMIs found"
+    cat $OUTDIR/$sample.barcodes.readnames.coords.bed | awk 'BEGIN {OFS="\t"} {print $1, $2, $6, 1, $5}' | sort -k1,1 -k2,2g -k3,3 > $TMPDIR/$sample.coords.collapsedUMI.bed
 fi
 #columns: chrom, start, BC seq, count, strand
 
@@ -109,23 +113,23 @@ uniq -c |
 awk 'BEGIN {OFS="\t"} {print $2, $3, $3+1, $4, $1, $5}' |
 #columns: chrom, start, end, BC seq, count, strand
 #Combine subsequent lines having the same barcode at slightly different sites
-sort -k4,4 -k1,1 -k2,2g  |
+sort -k4,4 -k1,1 -k2,2g |
 awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"} \
-       NR==1 {split($0, last)} \
-       NR>1 { \
-              if(last[1] != $1 || $2 - last[2] > maxstep || $3 - last[3] > maxstep || last[4] != $4 || last[6] != $6) { 
-                     #not the same site or BC, so print \
-                     print last[1], last[2], last[3], last[4], last[5], last[6]; \
-                     split($0, last); \
-              } else { #the same BC \
-                     if($5 > last[5]) { \
-                            #Use the coords from this site since it has more reads \
-                            last[2]=$2; last[3]=$3; \
-                     } \
-                     last[5] += $5; #add the counts \
-              } \
-       } \
-       END {print last[1], last[2], last[3], last[4], last[5], last[6]}' |
+NR==1 {split($0, last)} \
+NR>1 { \
+    if(last[1] != $1 || $2 - last[2] > maxstep || $3 - last[3] > maxstep || last[4] != $4 || last[6] != $6) { 
+        #not the same site or BC, so print \
+        print last[1], last[2], last[3], last[4], last[5], last[6]; \
+        split($0, last); \
+    } else { #the same BC \
+        if($5 > last[5]) { \
+            #Use the coords from this site since it has more reads \
+            last[2]=$2; last[3]=$3; \
+        } \
+        last[5] += $5; #add the counts \
+    } \
+} \
+END {print last[1], last[2], last[3], last[4], last[5], last[6]}' |
 sort-bed - |
 awk -v minReads=1 -F "\t" 'BEGIN {OFS="\t"} $5>=minReads' > $OUTDIR/$sample.barcodes.coords.bed
 #columns: chrom, start, end, readname, strand, BC seq, count (coords are of integration site)
@@ -162,23 +166,23 @@ cat $OUTDIR/$sample.barcodes.coords.bed | cut -f5 | awk -v cutoff=10 '{if($0>=cu
 
 
 
-uniqueIntervals=$(tail -n +2 /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed| paste /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed -| awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}'| sed \$d| awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}'| bedtools intersect -wa -a - -b $OUTDIR/$sample.barcodes.coords.bed|sort|uniq| wc -l|awk '{print $1}')
-allIntervals=$(wc -l /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed|awk '{print $1}')
-zeroInsertions=`echo $allIntervals-$uniqueIntervals|bc -l`
+uniqueIntervals=$(tail -n +2 /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed | paste /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed - | awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}' | sed \$d | awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' | bedtools intersect -wa -a - -b $OUTDIR/$sample.barcodes.coords.bed | sort | uniq | wc -l | awk '{print $1}')
+allIntervals=$(wc -l /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed | awk '{print $1}')
+zeroInsertions=`echo $allIntervals-$uniqueIntervals | bc -l`
 
 echo
 echo "Histogram of number of insertions between two neighboring DNase sites"
 echo " "$zeroInsertions 0
 
-tail -n +2 /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed|
-paste /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed -|
-awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}'|
-sed \$d|
-awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}'|
-bedtools intersect -wa -a - -b $OUTDIR/$sample.barcodes.coords.bed|
-sort |uniq -c|awk '{print $1}'|
-awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}'|
-sort|uniq -c|sort -k2,2g
+tail -n +2 /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed |
+paste /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed - |
+awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}' |
+sed \$d |
+awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' |
+bedtools intersect -wa -a - -b $OUTDIR/$sample.barcodes.coords.bed |
+sort | uniq -c | awk '{print $1}' |
+awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' |
+sort | uniq -c | sort -k2,2g
 
 
 echo
@@ -213,7 +217,7 @@ EOF
 
 echo
 echo "doing DisttoDpn"
-sort-bed $OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/Dpn/Dpn.bed|awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
+sort-bed $OUTDIR/$sample.barcodes.coords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/Dpn/Dpn.bed | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
 
 R --quiet --no-save << EOF
 #Work around error "unable to start device PNG" on ISG cluster
@@ -239,7 +243,7 @@ EOF
 
 echo
 echo "doing DisttoMspI"
-sort-bed $OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/MspI/MspI.bed |awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
+sort-bed $OUTDIR/$sample.barcodes.coords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/MspI/MspI.bed | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
 
 R --quiet --no-save << EOF
 #Work around error "unable to start device PNG" on ISG cluster
@@ -264,8 +268,8 @@ EOF
 
 echo
 echo "doing DistToDNase"
-sort-bed $OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' --closest -  /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed  |awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
-#sort-bed ../aligned.FCH55KHBGX2/$OUTDIR/$sample.barcodes.coords.bed |closest-features --dist  --delim '\t' - /vol/mauranolab/maagj01/transposon/Dpn_REsites/DpnREsort.bed |awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {split if ($6=="-") print $13; else if  ($6=="+") print $20}'  > $TMPDIR/DistDpn.txt
+sort-bed $OUTDIR/$sample.barcodes.coords.bed | closest-features --dist  --delim '\t' --closest -  /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
+#sort-bed ../aligned.FCH55KHBGX2/$OUTDIR/$sample.barcodes.coords.bed | closest-features --dist  --delim '\t' - /vol/mauranolab/maagj01/transposon/Dpn_REsites/DpnREsort.bed | awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {split if ($6=="-") print $13; else if  ($6=="+") print $20}'  > $TMPDIR/DistDpn.txt
 
 #awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $2}'
 R --quiet --no-save << EOF
