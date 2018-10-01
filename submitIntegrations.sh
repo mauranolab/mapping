@@ -6,7 +6,8 @@ module load weblogo/3.5.0
 module load ImageMagick
 module load picard/1.140
 module load FastQC/0.11.4
-module load cutadapt/1.9.1
+module load samtools/1.9
+module load bwa/0.7.15
 
 # the function "round()" was taken from 
 # https://stempell.com/2009/08/rechnen-in-bash/
@@ -66,36 +67,21 @@ convert $TMPDIR/${sample}.R2.raw.eps $OUTDIR/${sample}.R2.raw.png
 
 
 echo "Trimming/extracting UMI from R1 files $f1 and R2 files $f2"
-#Get UMI from both reads even if only one is used for further analysis
 if [[ "$R1trim" > "0" ]]; then
     echo "Trimming $R1trim bp from R1"
-    bc1pattern=`printf 'N%.0s' $(seq 1 $R1trim)`
+    bc1pattern="--bc-pattern "`printf 'N%.0s' $(seq 1 $R1trim)`
 else
-    bc1pattern="X"
+    bc1pattern="--bc-pattern X"
 fi
-
-#BUGBUG really?
-#Only extract UMI from R2 for RNA samples where bcread is R1
-if [[ "$R2trim" > "0" && "$bcread" == "R1" ]]; then
+if [[ "$R2trim" > "0" ]]; then
     echo "Trimming $R2trim bp from R2"
-    bc2pattern=`printf 'N%.0s' $(seq 1 $R2trim)`
-    zcat -f $f2 > $TMPDIR/${sample}.R2.fastq
+    bc2pattern=" --bc-pattern2 "`printf 'N%.0s' $(seq 1 $R2trim)`
 else
-    bc2pattern="X"
-    echo "Removing $R2trim bp from R2"
-    cutadapt --quiet -u $R2trim $f2 > $TMPDIR/${sample}.R2.fastq
-fi
-
-if [[ "$bc1pattern" != "" ]]; then
-    bc1pattern="--bc-pattern $bc1pattern"
-fi
-if [[ "$bc2pattern" != "" ]]; then
-    bc2pattern=" --bc-pattern2 $bc2pattern"
+    bc2pattern=" --bc-pattern2 X"
 fi
 echo "umi_tools extract $bc1pattern $bc2pattern"
 
-#BUGBUG really?
-#zcat -f $f2 > $TMPDIR/${sample}.R2.fastq
+zcat -f $f2 > $TMPDIR/${sample}.R2.fastq
 #/home/mauram01/.local/bin/umi_tools extract --help
 #BUGBUG umi_tools installed in python3.5 module missing matplotlib??? also .local by default is not group-readable
 zcat -f $f1 | /home/mauram01/.local/bin/umi_tools extract $bc1pattern $bc2pattern --read2-in=$TMPDIR/${sample}.R2.fastq --read2-out=$TMPDIR/${sample}.R2.out.fastq -v 0 --log=$TMPDIR/${sample}.umi.log |
@@ -125,12 +111,12 @@ fastqc --outdir $OUTDIR $OUTDIR/${sample}.R2.fastq.gz
 
 echo
 echo "Weblogo of raw UMI"
-#BUGBUG why hardcoded to R2?
+#BUGBUG why hardcoded to R1?
 #Use tail to run through to end of file so zcat doesn't throw an error code
-UMIlength=`zcat -f $OUTDIR/${sample}.R2.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print length(readname[2])}' | tail -1`
+UMIlength=`zcat -f $OUTDIR/${sample}.R1.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print length(readname[2])}' | tail -1`
 if [[ "${UMIlength}" > "0" ]]; then
     echo "Making weblogo of UMI"
-    zcat -f $OUTDIR/${sample}.R2.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print readname[2]}' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' | weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R1 UMI sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R1.raw.UMI.eps
+    zcat -f $OUTDIR/${sample}.R1.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print readname[2]}' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' | weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R1 UMI sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R1.raw.UMI.eps
     convert $TMPDIR/${sample}.R1.raw.UMI.eps $OUTDIR/${sample}.R1.raw.UMI.png
 fi
 
@@ -176,17 +162,35 @@ echo "$numlines lines to process in chunks of $chunksize"
 
 echo
 echo "Submitting $numjobs jobs"
-qsub -S /bin/bash -t 1-${numjobs} -terse -j y --qos=full -N extract.${sample} -o ${sample} -b y "$src/extractBCcounts.sh ${sample} $BCreadSeq $bclen $chunksize $plasmidSeq $extractBCargs" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
+qsub -S /bin/bash -t 1-${numjobs} -terse -j y --qos=full -N map.${sample} -o ${sample} -b y "$src/mapIntegrations.sh ${sample} $BCreadSeq $bclen $chunksize $plasmidSeq $extractBCargs" | perl -pe 's/[^\d].+$//g;' > sgeid.${sample}
+
 echo "Will merge $numjobs files"
 bcfiles=`seq 1 $numjobs | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt "`
 echo -e "Will merge barcode files: $bcfiles\n"
-cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.map.${sample}` -j y --qos=full -N ${sample} -b y | perl -pe 's/[^\d].+$//g;' # > sgeid.merge.${sample}
+bamfiles=`seq 1 $numjobs | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.bam "`
+echo -e "Will merge bamfiles files: $bamfiles\n"
+cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.${sample}` -j y --qos=full -N ${sample} -b y | perl -pe 's/[^\d].+$//g;' # > sgeid.merge.${sample}
 set -e -o pipefail
 echo "Merging barcodes"
 cat $bcfiles > $OUTDIR/$sample.barcodes.preFilter.txt
 #rm -f $bcfiles
 
 $src/analyzeBCcounts.sh ${sample}
+
+
+echo "Merging bam files"
+if [[ `echo $bamfiles | wc | awk '{print $2}'` -gt 1 ]]
+then 
+    samtools merge -f -l 9 $OUTDIR/$sample.bam $bamfiles
+else 
+    cp $bamfiles $OUTDIR/$sample.bam
+fi
+
+#TODO sort?
+#samtools index $OUTDIR/$sample.bam
+#rm -f $bamfiles
+
+$src/analyzeIntegrations.sh ${sample}
 EOF
 
 rm -f sgeid.${sample}
