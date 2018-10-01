@@ -1,5 +1,7 @@
 #!/bin/env Rscript
 
+#TODO change ABC in column headers to DNA,RNA,iPCR and make separate sample column more like https://cascade.isg.med.nyu.edu/~mauram01/blog/tag_transposon.shtml#1535134189
+
 #Add variables from command line tsv files of DSnumbers and Institute
 suppressWarnings(suppressMessages(library("optparse")))
 suppressWarnings(suppressMessages(library(ggplot2)))
@@ -16,15 +18,15 @@ basenames <- ls()
 #source("~/.Rprofile")
 option_list = list(
        make_option(c("-a", "--samplesA"), type="character", default=NULL, 
-              help="Comma seperated list of SamplesA", metavar="character"),
+              help="Comma separated list of SamplesA", metavar="character"),
        make_option(c("-b", "--samplesB"), type="character", default=NULL, 
-              help="Comma seperated list of SamplesB", metavar="character"),
+              help="Comma separated list of SamplesB", metavar="character"),
        make_option(c("-c", "--samplesC"), type="character", default=NULL, 
-              help="Comma seperated list of SamplesC (assumed to be iPCR)", metavar="character"),
+              help="Comma separated list of SamplesC (assumed to be iPCR)", metavar="character"),
        make_option(c("-d", "--samplesC2"), type="character", default=NULL, 
-              help="Comma seperated list of SamplesC (assumed to be iPCR)", metavar="character"),
+              help="Comma separated list of SamplesC (assumed to be iPCR)", metavar="character"),
        make_option(c("-t", "--threshold"), type="numeric", default=1, 
-              help="Comma seperated list of SamplesB", metavar="character"),
+              help="thresholdRNADNA", metavar="character"),
        make_option(c("-o", "--output"), type="character", default=NULL, 
               help="output folder for all comparisons", metavar="character")
 ); 
@@ -44,13 +46,13 @@ if (is.null(opt$samplesB)){
 }
 
 if (!is.null(opt$samplesC)){
-  print_help(opt_parser)
+#  print_help(opt_parser)
   cat("Samples C are provided \n")
 }
 
 
 if (!is.null(opt$samplesC2)){
-  print_help(opt_parser)
+#  print_help(opt_parser)
   cat("Samples C2 are provided \n")
 }
 
@@ -99,9 +101,9 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesC) & is.null(opt$samplesB)) {
        
               cat(BCpairs$V1[i],BCpairs$V2[i],'\n')
        
-              samA_BC<-fread(paste0("/home/maagj01/scratch/transposon/",BCpairs$V1[i],'/',gsub('.*/','',BCpairs$V1[i]),'.barcode.counts.txt'),header=F,stringsAsFactors=F)
+              samA_BC<-fread(paste0(BCpairs$V1[i],'/',gsub('.*/','',BCpairs$V1[i]),'.barcode.counts.UMI.corrected.txt'),header=F,stringsAsFactors=F)
        
-              samB_BC<-fread(paste0("/home/maagj01/scratch/transposon/",BCpairs$V2[i],'/',gsub('.*/','',BCpairs$V2[i]),'.barcode.counts.txt'),header=F,stringsAsFactors=F)
+              samB_BC<-fread(paste0(BCpairs$V2[i],'/',gsub('.*/','',BCpairs$V2[i]),'.barcode.counts.UMI.corrected.txt'),header=F,stringsAsFactors=F)
        
        
               samA_samB<-intersect(samA_BC$V1,samB_BC$V1)
@@ -158,9 +160,9 @@ if (!is.null(opt$samplesA) &  is.null(opt$samplesC) & !is.null(opt$samplesB)) {
        
               cat(BCpairs$A[i],BCpairs$B[i],'\n')
        
-              samA_BC<-fread(paste0("/home/maagj01/scratch/transposon/",BCpairs$A[i],'/',gsub('.*/','',BCpairs$A[i]),'.barcode.counts.txt'),header=F,stringsAsFactors=F)
+              samA_BC<-fread(paste0(BCpairs$A[i],'/',gsub('.*/','',BCpairs$A[i]),'.barcode.counts.UMI.corrected.txt'),header=F,stringsAsFactors=F)
        
-              samB_BC<-fread(paste0("/home/maagj01/scratch/transposon/",BCpairs$B[i],'/',gsub('.*/','',BCpairs$B[i]),'.barcode.counts.txt'),header=F,stringsAsFactors=F)
+              samB_BC<-fread(paste0(BCpairs$B[i],'/',gsub('.*/','',BCpairs$B[i]),'.barcode.counts.UMI.corrected.txt'),header=F,stringsAsFactors=F)
        
        
               samA_samB<-intersect(samA_BC$V1,samB_BC$V1)
@@ -212,11 +214,11 @@ if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & !is.null(opt$samplesC)) {
        for (i in 1:nrow(BCpairs)){
 
 
-       samA_BC<-fread(paste0("/home/maagj01/scratch/transposon/",BCpairs$A[i],'/',gsub('.*/','',BCpairs$A[i]),'.barcode.counts.txt'),header=F,stringsAsFactors=F)
+       samA_BC<-fread(paste0(BCpairs$A[i],'/',gsub('.*/','',BCpairs$A[i]),'.barcode.counts.UMI.corrected.txt'),header=F,stringsAsFactors=F)
 
-       samB_BC<-fread(paste0("/home/maagj01/scratch/transposon/",BCpairs$B[i],'/',gsub('.*/','',BCpairs$B[i]),'.barcode.counts.txt'),header=F,stringsAsFactors=F)
+       samB_BC<-fread(paste0(BCpairs$B[i],'/',gsub('.*/','',BCpairs$B[i]),'.barcode.counts.UMI.corrected.txt'),header=F,stringsAsFactors=F)
 
-       samC<-fread(paste0("/home/maagj01/scratch/transposon/",BCpairs$C[i],'/',gsub('.*/','',BCpairs$C[i]),'.barcodes.coords.bed'),header=F,stringsAsFactors=F)
+       samC<-fread(paste0(BCpairs$C[i],'/',gsub('.*/','',BCpairs$C[i]),'.barcodes.coords.bed'),header=F,stringsAsFactors=F)
        
        samC_BC1<-samC[samC$V5>=thresholdIPCR,]
        samA_BC10<-samA_BC[samA_BC$V2>=thresholdRNADNA,]
@@ -281,9 +283,9 @@ if (!is.null(opt$samplesA) &  is.null(opt$samplesB) & !is.null(opt$samplesC)) {
        
               cat(BCpairs$A[i],BCpairs$B[i],'\n')
        
-              samA_BC<-fread(paste0("/home/maagj01/scratch/transposon/",BCpairs$A[i],'/',gsub('.*/','',BCpairs$A[i]),'.barcode.counts.txt'),header=F,stringsAsFactors=F)
+              samA_BC<-fread(paste0(BCpairs$A[i],'/',gsub('.*/','',BCpairs$A[i]),'.barcode.counts.UMI.corrected.txt'),header=F,stringsAsFactors=F)
        
-              samB_BC<-fread(paste0("/home/maagj01/scratch/transposon/",BCpairs$B[i],'/',gsub('.*/','',BCpairs$B[i]),'.barcodes.coords.bed'),header=F,stringsAsFactors=F)
+              samB_BC<-fread(paste0(BCpairs$B[i],'/',gsub('.*/','',BCpairs$B[i]),'.barcodes.coords.bed'),header=F,stringsAsFactors=F)
        
        
               samA_samB<-intersect(samA_BC$V1,samB_BC$V4)
@@ -334,9 +336,9 @@ if (is.null(opt$samplesA) &  !is.null(opt$samplesC) & !is.null(opt$samplesC2)) {
        
               cat(BCpairs$A[i],BCpairs$B[i],'\n')
        
-              samA_BC<-fread(paste0("/home/maagj01/scratch/transposon/",BCpairs$A[i],'/',gsub('.*/','',BCpairs$A[i]),'.barcodes.coords.bed'),header=F,stringsAsFactors=F)
+              samA_BC<-fread(paste0(BCpairs$A[i],'/',gsub('.*/','',BCpairs$A[i]),'.barcodes.coords.bed'),header=F,stringsAsFactors=F)
        
-              samB_BC<-fread(paste0("/home/maagj01/scratch/transposon/",BCpairs$B[i],'/',gsub('.*/','',BCpairs$B[i]),'.barcodes.coords.bed'),header=F,stringsAsFactors=F)
+              samB_BC<-fread(paste0(BCpairs$B[i],'/',gsub('.*/','',BCpairs$B[i]),'.barcodes.coords.bed'),header=F,stringsAsFactors=F)
        
        
               samA_samB<-intersect(samA_BC$V4,samB_BC$V4)
