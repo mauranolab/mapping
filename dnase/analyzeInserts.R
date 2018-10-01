@@ -3,7 +3,6 @@
 print(date())
 
 
-
 suppressPackageStartupMessages(library(directlabels))
 
 old <- theme_set(theme_classic(base_size=7)) #pdf
@@ -15,19 +14,25 @@ old <- theme_update(panel.border = element_blank(), strip.background = element_b
 options(bitmapType="cairo") 
 
 
+maxlength <- 300
+
+
 cat("Loading insert lengths\n")
 results <- NULL
-for(f in list.files(path=".", pattern=".insertlengths.txt.gz$", recursive=T)) {
-	cat("Doing", f, "\n")
-	data <- read(f)
-	colnames(data) <- c("sample", "length")
-	dens <- density(subset(data, length<=300 & length>=27)$length, bw=10)
-	results <- rbind(results, data.frame(sample=data[1, "sample"], x=dens$x, y=dens$y, stringsAsFactors=F))
+for(d in c(".")) {
+	for(f in list.files(path=d, pattern=".insertlengths.txt.gz$", recursive=T, full.names=T)) {
+		cat("Doing", f, "\n")
+		data <- read(f)
+		colnames(data) <- c("sample", "length")
+		dens <- density(subset(data, length<=maxlength & length>=27)$length, bw=10)
+		results <- rbind(results, data.frame(sample=data[1, "sample"], x=dens$x, y=dens$y, stringsAsFactors=F))
+	}
 }
 
 results$sample <- factor(gsub(".hg19$", "", results$sample))
 results$sample <- factor(gsub(".hg38$", "", results$sample))
 results$sample <- factor(gsub(".mm10$", "", results$sample))
+results$sample <- factor(gsub(".hg38_sacCer3$", "", results$sample))
 results$DS <- sapply(as.character(results$sample), function(x) {unlist(strsplit(x, "-"))[2]})
 
 
@@ -35,15 +40,19 @@ cat("Saving...\n")
 save(list=c("results"), file="insertlengths.RData", compress="bzip2")
 
 #For subsetting
-#results <- subset(results, DS %in% c("BS01207A", "BS01208A", "BS01209A", "BS01210A", "BS01201A", "BS01202A", "BS01203A", "BS01204A"))
+#results <- subset(results, DS %in% c("BS01403A", "BS01403B", "BS01403C", "BS01403D", "BS01409A", "BS01409B", "BS01409C", "BS01409D"))
+#results$cleanup <- sapply(results$sample, FUN=function(x) {unlist(strsplit(as.character(x), "_"))[5]})
+#results$polymerase <- sapply(results$sample, FUN=function(x) {unlist(strsplit(as.character(x), "_"))[6]})
 
 
-p <- ggplot(data=subset(results, x>=27 & x<=300), aes(x=x, y=y, group=DS, label=DS, color=DS)) +
+p <- ggplot(data=subset(results, x>=27 & x<=maxlength), aes(x=x, y=y, group=DS, label=DS, color=DS)) +
 labs(title="") +
 geom_line() +
 xlab("Fragment length (bp)") +
 ylab("Density") +
-scale_x_continuous(breaks=c(36, 50, 75, 100, 125, 150, 175, 200, 250, 300), limits=c(27,300)) +
+scale_x_continuous(breaks=c(36, 50, 75, 100, 125, 150, 175, seq.int(200, maxlength, 50)), limits=c(27,maxlength)) +
+scale_y_continuous(labels = function(x) {scales::scientific(x, digits=1)}) +
+#facet_grid(polymerase~., scales = "free_x", space = "free_x") +
 guides(color=F, linetype=F) +
 geom_dl(method=list("top.points", cex=0.8))
 #theme(plot.margin=unit(c(0,0,0,0), "lines"))) #NB top, rt, bot, left
