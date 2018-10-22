@@ -32,7 +32,10 @@ for(d in c(".")) {
 results$sample <- factor(gsub(".hg19$", "", results$sample))
 results$sample <- factor(gsub(".hg38$", "", results$sample))
 results$sample <- factor(gsub(".mm10$", "", results$sample))
+results$sample <- factor(gsub(".rn6$", "", results$sample))
 results$sample <- factor(gsub(".hg38_sacCer3$", "", results$sample))
+results$sample <- factor(gsub(".mm10_sacCer3$", "", results$sample))
+results$sample <- factor(gsub(".rn6_sacCer3$", "", results$sample))
 results$DS <- sapply(as.character(results$sample), function(x) {unlist(strsplit(x, "-"))[2]})
 
 
