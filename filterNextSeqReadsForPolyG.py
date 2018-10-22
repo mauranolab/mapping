@@ -16,7 +16,7 @@ def log_readfiltering(msg):
         logfile.write(msg + '\n')
 
 
-parser = argparse.ArgumentParser(prog = "filterNextSeqReadsForPolyG.py", description = "Filter out polyG sequences from the fastq files before trimmomatic as polyG are given high quality scores from NextSeq", add_help=True)
+parser = argparse.ArgumentParser(prog = "filterNextSeqReadsForPolyG.py", description = "Filter out polyG sequences from the fastq files before trimmomatic as polyG are given high quality scores from NextSeq", allow_abbrev=False)
 parser.add_argument('--inputfileR1', type = str, help='input.R1.fastq.gz', required=True)
 parser.add_argument('--inputfileR2', type = str, help='input.R2.fastq.gz', required=True)
 parser.add_argument('--outputfileR1', type = str, help='output.R1.fastq.gz', required=True)
