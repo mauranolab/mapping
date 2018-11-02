@@ -1,7 +1,6 @@
 #!/bin/bash
 set -eu -o pipefail
 
-
 #Above not catching segfaults
 #https://unix.stackexchange.com/questions/24307/how-can-i-trap-a-program-that-returns-139-segmentation-fault-in-bash
 #not working
@@ -11,9 +10,12 @@ set -eu -o pipefail
 
 #BTW can parse core dump with 'objdump -s core' or 'gdb prog core' (if you know prog)
 
-date
 
-permittedMismatches=3
+shopt -s expand_aliases
+alias bedops='bedops --ec --header'
+alias bedmap='bedmap --ec --header'
+alias starch='starch --header'
+alias closest-features='closest-features --header'
 
 
 genomesToMap=$1
@@ -22,7 +24,6 @@ sampleOutdir=$3
 DS=$4
 src=$5
 
-echo "Output directory: ${sampleOutdir}, DS: ${DS}, Genomes: ${genomesToMap}, analysisType:${analysisType}"
 shift
 shift
 shift
@@ -31,8 +32,20 @@ shift
 userAlnOptions=$@
 
 
+echo "Output directory: ${sampleOutdir}, DS: ${DS}, Genomes: ${genomesToMap}, analysisType:${analysisType}"
+date
+
+
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
+
+
+permittedMismatches=3
+if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]]; then
+    maxInsertSize=500
+else
+    maxInsertSize=1000
+fi
 
 
 bam2instrument()
@@ -78,17 +91,11 @@ mkdir -p ${sampleOutdir}
 
 echo
 echo "Configuring trimming parameters"
-#/home/jvierstra/proj/code/bio-tools/apps/trim-adapters-illumina/trim-adapters-illumina DS32747A_CTTGTA_L002_R1_001.fastq.gz DS32747A_CTTGTA_L002_R2_001.fastq.gz R1.jtrim.fastq.gz R2.jtrim.fastq.gz
-
-
 #Trimmomatic options
-#TODO Probably need different sequences per barcode. Note this fa file has 2 ident copies of left adapter and none of right adapter (with barcode).
-#Regular illumina dsDNA protocol
-
-
 if [[ "${analysisCommand}" == "atac" ]]; then 
     illuminaAdapters="/cm/shared/apps/trimmomatic/0.38/adapters/NexteraPE-PE.fa"
 else 
+    #TODO Probably need different sequences per barcode. Note this fa file has 2 ident copies of left adapter and none of right adapter (with barcode).
     illuminaAdapters="/cm/shared/apps/trimmomatic/0.38/adapters/TruSeq3-PE-2.fa"
 fi
 
@@ -130,9 +137,29 @@ else
     fc="${fc}."
 fi
 
-#BUGBUG any older data w/o R1/R2 convention?
+
+DS_nosuffix=`echo ${DS} | perl -pe 's/[A-Z]$//g;'`
+readgroup="@RG\\tID:${fc}${DS}\\tLB:${DS}\\tSM:${DS_nosuffix}\\tPL:ILLUMINA"
+if [[ "${readsFq}" =~ ^\/vol\/mauranolab\/flowcells\/fastq\/ ]]; then
+    readgroup_instrument=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Instrument" {print $2}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
+    
+    readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Load date" {print $2}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
+    readgroup_bcs=`awk -v ds=${DS} -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && 0!="" && $2 $3==ds {split($7, bc1, "_"); split($7, bc2, "_"); print bc1[2] "-" bc1[2]}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
+    #BUGBUG BC: shows up in bwa command line but at some point disappears from the bam header
+    readgroup="${readgroup}\\tDT:${readgroup_date}\\tBC:${readgroup_bcs}\\tPU:${fc/./}-${readgroup_bcs}"
+    
+    case "${readgroup_instrument}" in
+    Balin)
+        readgroup="${readgroup}\\tCN:Maurano_Lab\\tPM:NextSeq_500"
+        ;;
+    GTC_NovaSeq)
+        readgroup="${readgroup}\\tCN:NYUMC_GTC\\tPM:NovaSeq_6000"
+        ;;
+    esac
+fi
+
+
 sample2=`echo ${sample1} | perl -pe 's/_R1(_\d+)?$/_R2$1/g;'`
-#BUGBUG note grep -q ${fc} dies on two PATSKI samples but they are SE
 if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "${sample2}" inputs.txt | grep -q "${fc}" ; then
     echo "Found R2 ${sample2}"
     if [ `grep "${sample2}" inputs.txt | grep "${fc}" | wc -l` -gt 1 ]; then
@@ -146,7 +173,7 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
         exit 4
     fi
     
-    echo "Will process reads file ${reads2fq}"
+    echo "Will process R2 reads file ${reads2fq}"
     
     PErun="TRUE"
     curfile=`echo ${sample1} | perl -pe 's/_R1(_\d+)?/_R1R2\1/g;'`
@@ -224,15 +251,11 @@ else
 fi
 
 
-date
-
-
 echo
 echo "Mapping ${readsFq} for ${curfile}"
 echo "userAlnOptions=${userAlnOptions}"
-
-
 echo "Will map to genomes ${genomesToMap}"
+date
 
 
 #On analysis sets
@@ -263,43 +286,16 @@ echo "Will map to genomes ${genomesToMap}"
 for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     echo
     echo "Mapping to reference ${curGenome}"
-    case "${curGenome}" in
-    hg19)
-        #NB not the analysis set
-        bwaIndex=/vol/isg/annotation/bwaIndex/hg19all/hg19all;;
-    hg38_noalt)
-        bwaIndex=/vol/isg/annotation/bwaIndex/hg38_noalt/hg38_noalt;;
-    hg38_full)
-        bwaIndex=/vol/isg/annotation/bwaIndex/hg38_full/hg38_full;;
-    mm10)
-        bwaIndex=/vol/isg/annotation/bwaIndex/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set;;
-    rn6)
-        bwaIndex=/vol/isg/annotation/bwaIndex/rn6/rn6;;
-    hg38_sacCer3)
-        bwaIndex=/vol/isg/annotation/bwaIndex/hg38_sacCer3/hg38_sacCer3;;
-    mm10_sacCer3)
-        bwaIndex=/vol/isg/annotation/bwaIndex/mm10_sacCer3/mm10_sacCer3;;
-    rn6_sacCer3)
-        bwaIndex=/vol/isg/annotation/bwaIndex/rn6_sacCer3/rn6_sacCer3;;
-    cegsvectors)
-        bwaIndex=/vol/isg/annotation/bwaIndex/cegsvectors/cegsvectors;;
-    *)
-        echo "Don't recognize genome ${curGenome}";
-        exit 5;;
-    esac
-    
-    DS_nosuffix=`echo ${DS} | perl -pe 's/[A-Z]$//g;'`
-    #Read group should properly be FC name, lane and barcode but we don't have the BC avail. Should populate BC, CN, DT, PM
-    readgroup="@RG\\tID:${curfile}\\tLB:${DS}\\tSM:${DS_nosuffix}\\tPL:ILLUMINA"
     date
     
+    source ${src}/genomeinfo.sh ${curGenome}
     
     if [[ "${processingCommand}" == "mapBwaAln" ]]; then
         #not sure what -R is, making it lower than samse/pe -n reduces mapped PE tags but not SE tags
         #-Y filters sequences with \d+:Y:... after the space in the read name
         #Originally -n 0.04 seemed to allow upto two mismatches at 36 bp (must have rounded up)
         bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t ${NSLOTS} -Y"
-
+        
         #Other options notes:
         #-q 0.20 does soft clip quality-based trimming of 3' end of reads, but only down to 35 bp
         #http://seqanswers.com/forums/showthread.php?t=5628
@@ -314,16 +310,21 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         bwaAlnExtractOpts="-n 3 -r ${readgroup}"
         if [[ "$PErun" == "TRUE" ]] ; then
             echo -e "\nMapping R2 ${reads2fq} for ${sample2}"
-            bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample2}.fastq > $TMPDIR/${sample2}.${curGenome}.sai
             date
+            echo
+            
+            bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample2}.fastq > $TMPDIR/${sample2}.${curGenome}.sai
             
             #-P didn't have a major effect, but some jobs were ~10-40% faster but takes ~16GB RAM instead of 4GB
             #TODO permit higher insert size for non-DNase?
-            extractcmd="sampe ${bwaAlnExtractOpts} -a 500 ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample2}.${curGenome}.sai $TMPDIR/${sample1}.fastq $TMPDIR/${sample2}.fastq"
+            extractcmd="sampe ${bwaAlnExtractOpts} -a ${maxInsertSize} ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample2}.${curGenome}.sai $TMPDIR/${sample1}.fastq $TMPDIR/${sample2}.fastq"
             
             #Only map unpaired reads if the file nonzero
             if [ -s "$TMPDIR/${curfile}.unpaired.fastq" ]; then
                 echo -e "\nMapping unpaired ${curfile}.unpaired.fastq for ${sample1}"
+                date
+                echo
+                
                 bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${curfile}.unpaired.fastq > $TMPDIR/${curfile}.unpaired.${curGenome}.sai
                 date
                 
@@ -356,34 +357,47 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     echo
     echo "Extracting"
     echo -e "extractcmd=bwa ${extractcmd} | (...)"
-    
-    bwa ${extractcmd} > ${TMPDIR}/${curfile}.${curGenome}.bwaout.bam
-    
     date
     echo
-    echo "Post-processing"
     
-    #calmd
-    #Necessary? It's slow
-    #Fix NM/MD. Appears not to affect mpileup, but still worth it for ease of use (bwa still seems to set NM/MD wrong sporadically)
-    #used to precalculate BAQ with samtools calmd -S -Abr -E, see http://www.biostars.org/p/1268
-    #NB redirecting stderr since calmd is noisy, but you won't see real errors
-    #samtools calmd -S -u - $fa 2> $TMPDIR/${curfile}.${curGenome}.calmd.log |
+    bwa ${extractcmd} > $TMPDIR/${curfile}.${curGenome}.bwaout.bam
+    
+    #Piping straight to sort seems to increase frequency of spurious errors (stale file handles, etc.)
+    
+#    #calmd - this is glacially slow for some reason, not nearly as bad when run interactively
+#    #Fix NM/MD (bwa aln still seems to set NM/MD wrong sporadically) and precalculate BAQ in the parallel thread to speed subsequent variant calling
+#    #See http://www.biostars.org/p/1268
+#    #NB redirecting stderr since calmd can be noisy, but you will miss real errors
+#    samtools calmd -u -r - ${referencefasta} 2> $TMPDIR/${curfile}.${curGenome}.calmd.log |
+    
+    samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${curfile}.sortbyname -l 1 -n $TMPDIR/${curfile}.${curGenome}.bwaout.bam > ${sampleOutdir}/${curfile}.${curGenome}.bam
+    
+    echo
+    echo "Post-processing"
+    date
+    
     
     if [[ "${processingCommand}" == "mapBwaAln" ]]; then
+        if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]]; then
+            unwanted_refs="--failUnwantedRefs"
+        else
+            unwanted_refs=""
+        fi
+        
+        
         #BUGBUG filter_reads.py not working with bwa mem supplementary alignments
-        samtools sort -@ $NSLOTS -m 1500M -O bam -T $TMPDIR/${curfile}.sortbyname -l 1 -n ${TMPDIR}/${curfile}.${curGenome}.bwaout.bam |
         #TODO not really any point in piping this as I don't think sort prints any intermediate results. Perhaps sorting fastq before mapping would be faster? https://www.biostars.org/p/15011/
         #TODO should we really be hard-unmapping unscaffolded contigs, etc.?
-        ${src}/filter_reads.py --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} - - |
-        samtools sort -@ $NSLOTS -m 1500M -O bam -T $TMPDIR/${curfile}.sort -l 1 - > ${TMPDIR}/${curfile}.${curGenome}.bwaout.new.bam && mv ${TMPDIR}/${curfile}.${curGenome}.bwaout.new.bam ${TMPDIR}/${curfile}.${curGenome}.bwaout.bam
+        ${src}/filter_reads.py --reqFullyAligned ${unwanted_refs} --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} --max_insert_size ${maxInsertSize}  ${sampleOutdir}/${curfile}.${curGenome}.bam - > ${sampleOutdir}/${curfile}.${curGenome}.new.bam && mv ${sampleOutdir}/${curfile}.${curGenome}.new.bam ${sampleOutdir}/${curfile}.${curGenome}.bam
         
         echo
         date
     fi
     
     #Add MC tag containing mate CIGAR for duplicate calling
-    java -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar FixMateInformation -INPUT ${TMPDIR}/${curfile}.${curGenome}.bwaout.bam -OUTPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 1
+    #Why do I need this? samblaster can add this itself but seems to miss some?
+    #Needs to be sorted by coordinate
+    #java -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar FixMateInformation -INPUT ${TMPDIR}/${curfile}.${curGenome}.bwaout.bam -OUTPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 1
     
 #    echo
 #    echo "Cleanup"
@@ -391,13 +405,11 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
 #    cp ${curfile}.${curGenome}.bam $TMPDIR/${curfile}.${curGenome}.unclean.bam
 #    #BUGBUG Should fix the ERROR... read errors, but doesn't do anything to first 100000 lines of test case except increment version to 1.4 "@HD   VN:1.4"
 #    java -Xmx2g -jar ${PICARDPATH}/picard.jar/ CleanSam INPUT=${curfile}.${curGenome}.bam OUTPUT=${curfile}.${curGenome}.clean.bam COMPRESSION_LEVEL=1 && mv ${curfile}.${curGenome}.clean.bam ${curfile}.${curGenome}.bam
-#
-#rearranges flag order but doesn't fix problem either
-#    java -Xmx2g -jar ${PICARDPATH}/picard.jar FixMateInformation INPUT=${curfile}.${curGenome}.bam OUTPUT=${curfile}.${curGenome}.clean.bam COMPRESSION_LEVEL=1 VALIDATION_STRINGENCY=LENIENT && mv ${curfile}.${curGenome}.clean.bam ${curfile}.${curGenome}.bam
     
     
     echo
     echo "SAMtools statistics for genome ${curGenome}"
+    date
     samtools flagstat ${sampleOutdir}/${curfile}.${curGenome}.bam
     
     
@@ -409,6 +421,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     
     echo
     echo "Mean quality by cycle"
+    date
     #BUGBUG performs badly for SRR jobs -- some assumption not met?
     java -Xmx3g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MeanQualityByCycle -INPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -OUTPUT $TMPDIR/${curfile}.baseQ.txt -CHART_OUTPUT $TMPDIR/${curfile}.baseQ.pdf -VALIDATION_STRINGENCY LENIENT
     
@@ -469,6 +482,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     echo
     echo
     echo "Gerald's call for mismatched positions"
+    date
     awk 'BEGIN {OFS="\t"; print "cycle", "A", "C", "G", "T", "N"} {errors[$2,$3]++} END {for(i=1; i<=36; i++) {print i, errors[i, "A"], errors[i, "C"], errors[i, "G"], errors[i, "T"], errors[i, "N"]}}' $TMPDIR/${curfile}.mm.txt
 done
 
