@@ -22,12 +22,6 @@ module load hotspot2/2.1.1
 #Common
 qsubargs=""
 
-#Mapping pipelines
-runMap=1
-
-#Aggregation pipelines
-runMerge=1
-
 
 genomesToMap=$1
 analysisType=$2
@@ -41,7 +35,7 @@ src=/vol/mauranolab/mapped/src/
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
-if [[ "${processingCommand}" != "aggregate" ]] && [[ "${processingCommand}" != "aggregateRemarkDups" ]] && [[ "${processingCommand}" != "mapBwaAln" ]] && [[ "${processingCommand}" != "mapBwaMem" ]]; then
+if [[ "${processingCommand}" != "none" ]] && [[ "${processingCommand}" != "aggregate" ]] && [[ "${processingCommand}" != "aggregateRemarkDups" ]] && [[ "${processingCommand}" != "mapBwaAln" ]] && [[ "${processingCommand}" != "mapBwaMem" ]]; then
     echo "ERROR submit: unknown processing command ${processingCommand} in analysisType ${analysisType}"
     exit 1
 fi
@@ -64,7 +58,7 @@ sampleOutdir="${sample}-${DS}"
 mkdir -p ${sampleOutdir}
 
 
-if [[ "${analysisType}" =~ ^map ]] && [[ "${runMap}" == 1 ]]; then
+if [[ "${analysisType}" =~ ^map ]]; then
     numlines=`grep ${DS} inputs.txt | wc -l`
     
     firstline=`grep -n ${DS} inputs.txt | head -1 | awk -F ":" '{print $1}'`
@@ -82,8 +76,8 @@ if [[ "${analysisType}" =~ ^map ]] && [[ "${runMap}" == 1 ]]; then
 fi
 
 
-if [[ "${processingCommand}" =~ ^map ]] && [[ "${runMap}" == 1 ]] || [[ "${processingCommand}" =~ ^aggregate ]] && [[ "${runMerge}" == 1 ]]; then
-    if [[ "${processingCommand}" =~ ^map ]] && [[ "${runMap}" == 1 ]]; then
+if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
+    if [[ "${processingCommand}" =~ ^map ]]; then
         mergeHold="-hold_jid `cat ${sampleOutdir}/sgeid.map.${mapname}`"
     else
         mergeHold=""
@@ -96,29 +90,34 @@ if [[ "${processingCommand}" =~ ^map ]] && [[ "${runMap}" == 1 ]] || [[ "${proce
     done
 fi
 #Clean up sgeid even if we don't run merge
-if [[ "${processingCommand}" =~ ^map ]] && [[ "${runMap}" == 1 ]]; then
+if [[ "${processingCommand}" =~ ^map ]]; then
     rm -f ${sampleOutdir}/sgeid.map.${mapname}
 fi
 
 
 
 for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
-    makeTracksname="${sample}-${DS}.${curGenome}"
+    analysisname="${sample}-${DS}.${curGenome}"
     
-    if [[ "${analysisCommand}" != "none" ]]; then
-        if [[ "${processingCommand}" =~ ^map ]] && [[ "${runMap}" == 1 ]] || [[ "${processingCommand}" =~ ^aggregate ]] && [[ "${runMerge}" == 1 ]]; then
-            makeTracksHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${makeTracksname}`"
+    #Submit job even if none so that the read count stats get run
+    if [[ "1" == "1" ]]; then
+#    if [[ "${analysisCommand}" != "none" ]]; then
+        if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
+            analysisHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${analysisname}`"
         else
-            makeTracksHold=""
+            analysisHold=""
         fi
         
-        echo "${makeTracksname} makeTracks"
-        qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y ${makeTracksHold} -o ${sampleOutdir} -N makeTracks.${makeTracksname} "${src}/makeTracks.sh ${curGenome} ${analysisType} ${sample}-${DS} ${DS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.makeTracks.${makeTracksname}
-        rm -f ${sampleOutdir}/sgeid.makeTracks.${makeTracksname}
+        echo "${analysisname} analysis"
+        qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sample}-${DS} ${DS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
+        
+        cat ${sampleOutdir}/sgeid.analysis.${analysisname} >> sgeid.analysis
+        
+        rm -f ${sampleOutdir}/sgeid.analysis.${analysisname}
     fi
     
-    #Clean up sgeid even if we don't run makeTracks
-    rm -f ${sampleOutdir}/sgeid.merge.${makeTracksname}
+    #Clean up sgeid even if we don't run analysis
+    rm -f ${sampleOutdir}/sgeid.merge.${analysisname}
 done
 
 
