@@ -1,6 +1,12 @@
 #!/bin/bash
 set -eu -o pipefail
 
+shopt -s expand_aliases
+alias bedops='bedops --ec --header'
+alias bedmap='bedmap --ec --header'
+alias starch='starch --header'
+alias closest-features='closest-features --header'
+
 analysisType=$1
 name=$2
 DS=$3
@@ -10,7 +16,6 @@ processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 #analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
 echo "Merging bams (${processingCommand} analysis); output name ${name} (${DS}) against genome ${mappedgenome}"
-
 date
 
 sampleOutdir=${name}
@@ -31,16 +36,16 @@ if [[ "${processingCommand}" =~ ^map ]]; then
         else
             fc="${fc}."
         fi
-    
-    
+        
+        
         f2=`echo ${f1} | perl -pe 's/_R1(_\d+)?/_R2$1/g;'`
         if echo ${f2} | grep -q R2 && grep -q ${f2} inputs.txt ; then
             f1=`echo ${f1} | perl -pe 's/_R1(_\d+)?/_R1R2\1/g;'`
         fi
-    
+        
         curOutputFile=`basename ${f1} .fastq.gz`
         curOutputFile="${sampleOutdir}/${fc}${curOutputFile}.${mappedgenome}.bam"
-    
+        
         if [[ -f "${curOutputFile}" ]]; then
             files="${files} ${curOutputFile}"
             numfiles=$((numfiles+1))
@@ -53,6 +58,16 @@ if [[ "${processingCommand}" =~ ^map ]]; then
 elif [[ "${processingCommand}" =~ ^aggregate ]]; then
     for curOutputFile in `grep ${DS} inputs.txt | grep ${mappedgenome}`; do
         if [[ -f "${curOutputFile}" ]]; then
+            if [[ "${processingCommand}" == "aggregateRemarkDups" ]]; then
+                curOutputFileBase=`basename ${curOutputFile} .bam`
+                #Include random component to avoid name collisions; the usual method using tr returns nonzero exit code
+                curOutputFileBase="${curOutputFileBase}."`head -200 /dev/urandom | cksum | cut -f1 -d " "`
+                echo "sorting ${curOutputFile} by read name"
+                samtools sort -@ $NSLOTS -O bam -m 2500M -T $TMPDIR/${curOutputFileBase}.sortbyname -l 1 -n ${curOutputFile} > ${TMPDIR}/${curOutputFileBase}.sorted.bam
+                #OK to list temporary files since bams don't get deleted at the end of pipeline
+                curOutputFile="${TMPDIR}/${curOutputFileBase}.sorted.bam"
+            fi
+            
             files="${files} ${curOutputFile}"
             numfiles=$((numfiles+1))
         else
@@ -79,14 +94,22 @@ if [[ "${numfiles}" -eq 1 ]]; then
     cp ${files} ${sampleOutdir}/${name}.${mappedgenome}.bam
 else
     echo "merging files"
-    samtools merge -l 1 -@ $NSLOTS ${sampleOutdir}/${name}.${mappedgenome}.bam ${files}
+    
+    if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggregateRemarkDups" ]]; then
+        #mapping pipeline produces bams sorted by read name, or we sorted the individual bams to merge by name above. These will get sorted by coord after marking duplicates
+        mergeOpts="-n -l 1"
+    else
+        mergeOpts="-l 9"
+    fi
+    
+    samtools merge -@ $NSLOTS ${mergeOpts} ${sampleOutdir}/${name}.${mappedgenome}.bam ${files}
 fi
 
 echo "Processing ${name}.${mappedgenome}.bam"
 #TODO AddOrReplaceReadGroups or do bwa -r ""
 
 
-if [[ "${processingCommand}" == "aggregateRemarkDups" ]] || [[ "${processingCommand}" =~ ^map ]]; then
+if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggregateRemarkDups" ]]; then
     echo
     echo "mark dups"
     date
@@ -94,14 +117,13 @@ if [[ "${processingCommand}" == "aggregateRemarkDups" ]] || [[ "${processingComm
     #Used to need VALIDATION_STRINGENCY=LENIENT to avoid SAM validation error: ERROR...MAPQ should be 0 for unmapped read or CIGAR should have zero elements for unmapped read
     #http://seqanswers.com/forums/showthread.php?t=4246
     #BUGBUG Can make huge log files despite these options
-    #Now getting new error: "Ignoring SAM validation error: ERROR: Record 11792763, Read name HISEQ-2500-1:94:C74YHANXX:2:1109:6562:81875, bin field of BAM record does not equal value computed based on alignment start and end, and length of sequence to which read is aligned"
     #http://sourceforge.net/p/samtools/mailman/message/32910359/
     #java -Xmx6g -jar /home/maurano/bin/picard-tools/MarkDuplicates.jar INPUT=${name}.${mappedgenome}.bam OUTPUT=${name}.markedDups.bam METRICS_FILE=$TMPDIR/${name}.picardDups.txt QUIET=TRUE VERBOSITY=ERROR COMPRESSION_LEVEL=9 ASSUME_SORTED=TRUE VALIDATION_STRINGENCY=LENIENT && mv ${name}.markedDups.bam ${name}.${mappedgenome}.bam
 
     ###Samblaster is faster
     #samblaster used an average of 1GB memory mapping ENCODE DNase data to hg38. 10/889 jobs used >5GB.
-    samtools sort -@ $NSLOTS -O sam -m 1750M -T $TMPDIR/${name}.sortbyname -l 1 -n ${sampleOutdir}/${name}.${mappedgenome}.bam |
-    samblaster |
+    samtools view -h ${sampleOutdir}/${name}.${mappedgenome}.bam |
+    samblaster --addMateTags |
     samtools view -Sb - > $TMPDIR/${name}.${mappedgenome}.markedDups.bam
     samtools sort -@ $NSLOTS -O bam -m 2500M -T $TMPDIR/${name}.sort -l 9 $TMPDIR/${name}.${mappedgenome}.markedDups.bam > ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam && mv ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
 fi
