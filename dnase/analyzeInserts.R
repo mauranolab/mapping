@@ -17,10 +17,10 @@ options(bitmapType="cairo")
 maxlength <- 300
 
 
-cat("Loading insert lengths\n")
+cat("Loading insert lengths upto", maxlength, "bp\n")
 results <- NULL
-for(d in c(".")) {
-	for(f in list.files(path=d, pattern=".insertlengths.txt.gz$", recursive=T, full.names=T)) {
+for(d in c(list.dirs(path=".", recursive=F, full.names=T))) {
+	for(f in list.files(path=d, pattern=".insertlengths.txt.gz$", recursive=F, full.names=T)) {
 		cat("Doing", f, "\n")
 		data <- read(f)
 		colnames(data) <- c("sample", "length")
@@ -37,6 +37,7 @@ results$sample <- factor(gsub(".hg38_sacCer3$", "", results$sample))
 results$sample <- factor(gsub(".mm10_sacCer3$", "", results$sample))
 results$sample <- factor(gsub(".rn6_sacCer3$", "", results$sample))
 results$DS <- sapply(as.character(results$sample), function(x) {unlist(strsplit(x, "-"))[2]})
+results$sublibrary <- sapply(results$DS, FUN=function(x) {substr(x, 8, 8)})
 
 
 cat("Saving...\n")
@@ -57,6 +58,7 @@ scale_x_continuous(breaks=c(36, 50, 75, 100, 125, 150, 175, seq.int(200, maxleng
 scale_y_continuous(labels = function(x) {scales::scientific(x, digits=1)}) +
 #facet_grid(polymerase~., scales = "free_x", space = "free_x") +
 guides(color=F, linetype=F) +
+theme(legend.position = c(.85, 0.9)) +
 geom_dl(method=list("top.points", cex=0.8))
 #theme(plot.margin=unit(c(0,0,0,0), "lines"))) #NB top, rt, bot, left
 
