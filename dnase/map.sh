@@ -41,7 +41,7 @@ analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
 
 permittedMismatches=3
-if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]]; then
+if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
     maxInsertSize=500
 else
     maxInsertSize=1000
@@ -123,7 +123,7 @@ trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$S
 
 minMAPQ=20
 trimmomaticSteps="${trimmomaticSteps} MINLEN:27"
-if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]]; then
+if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
     trimmomaticSteps="${trimmomaticSteps} CROP:36"
 fi
 
@@ -378,7 +378,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     
     
     if [[ "${processingCommand}" == "mapBwaAln" ]]; then
-        if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]]; then
+        if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
             unwanted_refs="--failUnwantedRefs"
         else
             unwanted_refs=""

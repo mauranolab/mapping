@@ -40,7 +40,8 @@ if [[ "${processingCommand}" != "none" ]] && [[ "${processingCommand}" != "aggre
     exit 1
 fi
 
-if [[ "${analysisCommand}" != "atac" ]] && [[ "${analysisCommand}" != "dnase" ]] && [[ "${analysisCommand}" != "callsnps" ]] && [[ "${analysisCommand}" != "none" ]]; then 
+#TODO analysisCommand chipseq, main difference is ucsc track name line
+if [[ "${analysisCommand}" != "atac" ]] && [[ "${analysisCommand}" != "dnase" ]] && [[ "${analysisCommand}" != "chipseq" ]] && [[ "${analysisCommand}" != "callsnps" ]] && [[ "${analysisCommand}" != "none" ]]; then 
     echo "ERROR submit: unknown analysis command ${analysisCommand} in analysisType ${analysisType}"
     exit 2
 fi
