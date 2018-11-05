@@ -18,10 +18,24 @@ src=$5
 analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
 
-if [[ "${analysisCommand}" != "none" ]] && [[ "${analysisCommand}" != "atac" ]] && [[ "${analysisCommand}" != "dnase" ]] && [[ "${analysisCommand}" != "callsnps" ]]; then 
+if [[ "${analysisCommand}" != "none" ]] && [[ "${analysisCommand}" != "atac" ]] && [[ "${analysisCommand}" != "dnase" ]] && [[ "${analysisCommand}" != "chipseq" ]] && [[ "${analysisCommand}" != "callsnps" ]]; then 
     echo "ERROR: unknown analysis command ${analysisCommand} in analysisType ${analysisType}"
     exit 1
 fi
+
+#TODO label capture vs. WGS
+case "${analysisCommand}" in
+    callsnps)
+        ucscTrackDescriptionDataType="";;
+    dnase)
+        ucscTrackDescriptionDataType="DNase-seq";;
+    atac)
+        ucscTrackDescriptionDataType="ATAC-seq";;
+    chipseq)
+        ucscTrackDescriptionDataType="ChIP-seq";;
+    *)
+        ucscTrackDescriptionDataType="${analysisCommand}";;
+esac
 
 
 source ${src}/genomeinfo.sh ${mappedgenome}
@@ -276,7 +290,7 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
     
         trackcolor=$(getcolor ${name})
     
-        echo "track name=${name} description=\"${name} ${genomecov}x genomic coverage (${analyzedReadsM}M analyzed reads - BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:500 on=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.coverage.bw"
+        echo "track name=${name} description=\"${name} ${ucscTrackDescriptionDataType} ${genomecov}x genomic coverage (${analyzedReadsM}M analyzed reads) - BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:500 on=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.coverage.bw"
     
     
         #Current documentation at https://samtools.github.io/bcftools/howtos/index.html
@@ -343,14 +357,15 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
     
         echo "track type=bigBed name=${name}-SNVs description=\"${name} SNVs (${analyzedReadsM}M nonredundant reads- BWA alignment\" visibility=pack bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.variants.bb"
     fi
-elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]]; then
+elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
     echo
     echo "Making density track"
-    #BUGBUG double counts fragments where both reads are in window
+    
     
     #Make density track of number of overlapping reads per 150-bp window
     #Normalizes the density to 1M reads, ignores enrichment for now
     #Note the last awk statement makes the exact intervals conform to Richard's convention that the counts are reported in 20bp windows including reads +/-75 from the center of that window
+    #BUGBUG double counts fragments where both reads are in window
     #Remember wig is 1-indexed (groan)
     cat ${chromsizes} | 
     egrep -v "hap|random|^chrUn_|_alt$|scaffold|^C\d+" | grep -v chrM | grep -v chrEBV |
@@ -368,33 +383,36 @@ elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" 
     
     trackcolor=$(getcolor ${name})
     
-    
-    echo "track name=${name} description=\"${name} DNase Density (${analyzedReadsM}M analyzed reads; normalized to 1M)- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.bw"
-    
-    echo "Making cut count track"
-    samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | sam2bed --do-not-sort | 
-    awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrEBV"' |
-    #BUGBUG should just take this from ${sampleOutdir}/${name}.${mappedgenome}.reads.starch, but would need to add strand to output, changing format a bit
-    awk '{if($6=="+"){s=$2; e=$2+1}else{s=$3; e=$3+1} print $1 "\t"s"\t"e"\tid\t1\t"$6 }' | sort-bed - | tee $TMPDIR/${name}.cuts.bed | 
-    bedops --chop 1 - | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' > $TMPDIR/${name}.cuts.loc.bed
-    bedmap --delim '\t' --echo --count $TMPDIR/${name}.cuts.loc.bed $TMPDIR/${name}.cuts.bed | 
-    awk -v analyzedReads=${analyzedReads} -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedReads*100000000; print}' |
-    starch - > ${sampleOutdir}/${name}.${mappedgenome}.perBase.starch
-    
-    #Skip chrM since UCSC doesn't like the cut count to the right of the last bp in a chromosome
-    unstarch ${sampleOutdir}/${name}.${mappedgenome}.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM"' > $TMPDIR/${name}.perBase.bedGraph
-    
-    #Kent tools can't use STDIN
-    bedGraphToBigWig $TMPDIR/${name}.perBase.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.perBase.bw
-    
-    echo "track name=${name} description=\"${name} cut counts (${analyzedReadsM}M nonredundant reads- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.perBase.bw"
+    echo "track name=${name} description=\"${name} ${ucscTrackDescriptionDataType} Density (${analyzedReadsM}M analyzed reads; normalized to 1M)- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.bw"
     
     
-    #echo "Making fragment coverage track"
-    #samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | sam2bed --do-not-sort | 
-    #awk -F "\t" 'BEGIN {OFS="\t"} $11>0 {print $1, $2, $2+$11}' | sort-bed - |
-    #bedmap --delim '\t' --echo --count $TMPDIR/${name}.${mappedgenome}.cuts.loc.bed - | starch - > ${sampleOutdir}/${name}.fragCoverage.starch
-    #right metric?
+    if [[ "${analysisCommand}" != "chipseq" ]]; then
+        echo "Making cut count track"
+        samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | sam2bed --do-not-sort | 
+        awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrEBV"' |
+        #BUGBUG should just take this from ${sampleOutdir}/${name}.${mappedgenome}.reads.starch, but would need to add strand to output, changing format a bit
+        awk '{if($6=="+"){s=$2; e=$2+1}else{s=$3; e=$3+1} print $1 "\t"s"\t"e"\tid\t1\t"$6 }' | sort-bed - | tee $TMPDIR/${name}.cuts.bed | 
+        bedops --chop 1 - | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' > $TMPDIR/${name}.cuts.loc.bed
+        bedmap --delim '\t' --echo --count $TMPDIR/${name}.cuts.loc.bed $TMPDIR/${name}.cuts.bed | 
+        awk -v analyzedReads=${analyzedReads} -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedReads*100000000; print}' |
+        starch - > ${sampleOutdir}/${name}.${mappedgenome}.perBase.starch
+        
+        #Skip chrM since UCSC doesn't like the cut count to the right of the last bp in a chromosome
+        unstarch ${sampleOutdir}/${name}.${mappedgenome}.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM"' > $TMPDIR/${name}.perBase.bedGraph
+        
+        #Kent tools can't use STDIN
+        bedGraphToBigWig $TMPDIR/${name}.perBase.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.perBase.bw
+        
+        echo "track name=${name} description=\"${name} ${ucscTrackDescriptionDataType} cut counts (${analyzedReadsM}M nonredundant reads- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.perBase.bw"
+        
+        
+        #echo "Making fragment coverage track"
+        #samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | sam2bed --do-not-sort | 
+        #awk -F "\t" 'BEGIN {OFS="\t"} $11>0 {print $1, $2, $2+$11}' | sort-bed - |
+        #bedmap --delim '\t' --echo --count $TMPDIR/${name}.${mappedgenome}.cuts.loc.bed - | starch - > ${sampleOutdir}/${name}.fragCoverage.starch
+        #right metric?
+        fi
+    
     
     callHotspots1=1
     callHotspots2=1 
