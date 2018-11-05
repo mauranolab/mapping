@@ -40,6 +40,9 @@ import re
 import pysam
 
 
+version="1.1"
+
+
 def parseRead(read):
     #Fix bwa unmapped bwa reads where MAPQ is incorrectly nonzero
     #fix validation errors: MAPQ should be 0 for unmapped read. prob with chrM reads with one marked as unmapped?
@@ -180,7 +183,7 @@ parser.add_argument("--min_insert_size", action = "store", type = int, default =
 parser.add_argument("--max_insert_size", action = "store", type = int, default = 500, help = "Maximum insert size to pass filter [%(default)s]")
 parser.add_argument("--maxPermittedTrailingOverrun", action = "store", type = int, default = 2, help = "Effectively the number of bp of adapter allowed to be present at end of read (though we don't verify it matches adapter sequence or even mismatches the reference) [%(default)s]")
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
-parser.add_argument('--version', action='version', version='%(prog)s 1.0')
+parser.add_argument('--version', action='version', version='%(prog)s ' + version)
 
 #argparse does not set an exit code upon this error
 #https://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
@@ -220,7 +223,7 @@ print("[filter_reads.py] Processing header", file=sys.stderr)
 newheader = unfiltered_reads.header
 
 #TODO add more detail
-newheader['PG'].append({'ID':'filter_reads.py', 'PN':'filter_reads.py', 'CL':args})
+newheader['PG'].append({'ID':'filter_reads.py', 'PN':'filter_reads.py', 'VN':version, 'CL':args})
 
 filtered_reads = pysam.AlignmentFile(args.filtered_alignment, "wbu", header = newheader) #template = unfiltered_reads
 
