@@ -10,6 +10,11 @@ echo "Postprocessing ${fc}"
 
 
 echo
+echo "Errors in log files"
+grep -i error */*.o*
+
+
+echo
 echo "Total read counts"
 date
 rm -f readcounts.txt; touch readcounts.txt
@@ -34,24 +39,24 @@ echo "Sorted by BS number"
 cat readcounts.txt | awk -F "\t" 'BEGIN {OFS="\t"} $0=="" {exit} {print}' | mlr --tsv sort -f Sample
 
 
-#echo
-#date
-#echo "split fastq into 16M read chunks"
-##TODO parallelize
-#splitreads=16000000
-##bak.fastq shouldn't exist at this point, but exclude it just in case
-#for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="\t"} $0=="" {exit} {print}' | awk -v splitreads=${splitreads} -F "\t" 'BEGIN {OFS="\t"} NR>1 && $1!="." && $3>splitreads*2' | awk '$1~/Project_CEGS/ || $1~/Project_Maurano/' | awk -F "\t" 'BEGIN {OFS="\t"} {print $1 ";" $2}'`; do
-#    project=`echo ${base} | cut -d ";" -f1`
-#    bs=`echo ${base} | cut -d ";" -f2`
-#    echo
-#    echo -e "${project}\t${bs}"
-#    for f1 in `find ${project}/Sample_${bs} -name "*_R1_*.fastq.gz" | grep -v bak.fastq`; do
-#        f2=`echo $f1 | perl -pe 's/_R1_/_R2_/g;'`
-#        echo "$f1 $f2"
-#        #NB assumes PE reads
-#        /vol/mauranolab/flowcells/src/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads} ${project}/Sample_${bs}/bak.fastq
-#    done
-#done
+echo
+date
+echo "split fastq into 16M read chunks"
+#TODO parallelize
+splitreads=16000000
+#bak.fastq shouldn't exist at this point, but exclude it just in case
+for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="\t"} $0=="" {exit} {print}' | awk -v splitreads=${splitreads} -F "\t" 'BEGIN {OFS="\t"} NR>1 && $1!="." && $3>splitreads*2' | awk '$1~/Project_CEGS/ || $1~/Project_Maurano/' | awk -F "\t" 'BEGIN {OFS="\t"} {print $1 ";" $2}'`; do
+    project=`echo ${base} | cut -d ";" -f1`
+    bs=`echo ${base} | cut -d ";" -f2`
+    echo
+    echo -e "${project}\t${bs}"
+    for f1 in `find ${project}/Sample_${bs} -name "*_R1_*.fastq.gz" | grep -v bak.fastq`; do
+        f2=`echo $f1 | perl -pe 's/_R1_/_R2_/g;'`
+        echo "$f1 $f2"
+        #NB assumes PE reads
+        /vol/mauranolab/flowcells/src/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads} ${project}/Sample_${bs}/bak.fastq
+    done
+done
 ##TODO maybe rename files <16M reads for consistency
 
 echo
