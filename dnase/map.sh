@@ -60,7 +60,7 @@ bam2instrument()
 
 
 jobid=$SGE_TASK_ID
-readsFq=`cat inputs.txt | awk -v jobid=$jobid 'NR==jobid'`
+readsFq=`cat ${sampleOutdir}/inputs.map.txt | awk -v jobid=$jobid 'NR==jobid'`
 if [ ! -f "${readsFq}" ]; then
     echo "ERROR: Can not find file ${readsFq}"
     exit 1
@@ -160,14 +160,14 @@ fi
 
 
 sample2=`echo ${sample1} | perl -pe 's/_R1(_\d+)?$/_R2$1/g;'`
-if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "${sample2}" inputs.txt | grep -q "${fc}" ; then
+if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "${sample2}" ${sampleOutdir}/inputs.map.txt | grep -q "${fc}" ; then
     echo "Found R2 ${sample2}"
-    if [ `grep "${sample2}" inputs.txt | grep "${fc}" | wc -l` -gt 1 ]; then
-        echo "ERROR: Multiple R2 files found -- are there duplicate entries in inputs.txt?"
+    if [ `grep "${sample2}" ${sampleOutdir}/inputs.map.txt | grep "${fc}" | wc -l` -gt 1 ]; then
+        echo "ERROR: Multiple R2 files found -- are there duplicate entries in ${sampleOutdir}/inputs.map.txt?"
         exit 3
     fi
     
-    reads2fq=`grep "${sample2}" inputs.txt | grep "${fc}"`
+    reads2fq=`grep "${sample2}" ${sampleOutdir}/inputs.map.txt | grep "${fc}"`
     if [ ! -f "${reads2fq}" ]; then
         echo "ERROR: Can not find R2 file ${reads2fq}"
         exit 4
@@ -385,10 +385,16 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         fi
         
         
+        if [[ "${curGenome}" == "cegsvectors" ]]; then
+            dropUnmappedReads="--dropUnmappedReads"
+        else
+            dropUnmappedReads=""
+        fi
+        
         #BUGBUG filter_reads.py not working with bwa mem supplementary alignments
         #TODO not really any point in piping this as I don't think sort prints any intermediate results. Perhaps sorting fastq before mapping would be faster? https://www.biostars.org/p/15011/
         #TODO should we really be hard-unmapping unscaffolded contigs, etc.?
-        ${src}/filter_reads.py --reqFullyAligned ${unwanted_refs} --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} --max_insert_size ${maxInsertSize}  ${sampleOutdir}/${curfile}.${curGenome}.bam - > ${sampleOutdir}/${curfile}.${curGenome}.new.bam && mv ${sampleOutdir}/${curfile}.${curGenome}.new.bam ${sampleOutdir}/${curfile}.${curGenome}.bam
+        ${src}/filter_reads.py --reqFullyAligned ${unwanted_refs} ${dropUnmappedReads} --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} --max_insert_size ${maxInsertSize}  ${sampleOutdir}/${curfile}.${curGenome}.bam ${sampleOutdir}/${curfile}.${curGenome}.new.bam && mv ${sampleOutdir}/${curfile}.${curGenome}.new.bam ${sampleOutdir}/${curfile}.${curGenome}.bam
         
         echo
         date

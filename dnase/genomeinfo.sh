@@ -15,13 +15,13 @@ hg38_noalt)
     bwaIndex=/vol/isg/annotation/bwaIndex/hg38_noalt/hg38_noalt
     ploidy="--ploidy GRCh38"
     referencefasta=/vol/isg/annotation/fasta/hg38_analysisSet_noalt/hg38_analysisSet_noalt.fa.gz
-    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp150/All_20170710.vcf.gz
+    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/All_20180418.vcf.gz
     ;;
 hg38_full)
     bwaIndex=/vol/isg/annotation/bwaIndex/hg38_full/hg38_full
     ploidy="--ploidy GRCh38"
     referencefasta=/vol/isg/annotation/fasta/hg38_analysisSet_full/hg38_analysisSet_full.fa.gz
-    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp150/All_20170710.vcf.gz
+    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/All_20180418.vcf.gz
     ;;
 mm10)
     bwaIndex=/vol/isg/annotation/bwaIndex/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set
@@ -39,7 +39,7 @@ hg38_sacCer3)
     bwaIndex=/vol/isg/annotation/bwaIndex/hg38_sacCer3/hg38_sacCer3
     ploidy="--ploidy GRCh38"
     referencefasta=/vol/isg/annotation/fasta/hg38_sacCer3/hg38_sacCer3.fa.gz
-    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp150/All_20170710.vcf.gz
+    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/All_20180418.vcf.gz
     ;;
 mm10_sacCer3)
     bwaIndex=/vol/isg/annotation/bwaIndex/mm10_sacCer3/mm10_sacCer3
