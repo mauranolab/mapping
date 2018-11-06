@@ -143,7 +143,7 @@ def process_lines_byGroup(lastGroup, startRow, index, wr):
 
 
 ###Main
-parser = argparse.ArgumentParser(prog = "DeDup_adjacencyOutput", description = "Deduplicate and correct barcodes", add_help=True)
+parser = argparse.ArgumentParser(prog = "DeDup_adjacencyOutput", description = "Deduplicate and correct barcodes", allow_abbrev=False)
 parser.add_argument('inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences (other columns are passed through)')
 parser.add_argument("--col", action='store', type=int, default=1, help = "Column with barcodes in it [%(default)s]")
 parser.add_argument("--groupcol", action='store', type=int, help = "BC will only be collapsed for sequences having the same value in this column. NB: must be sorted on this column. [%(default)s]")

@@ -35,7 +35,7 @@ def process_lines(input_data, wr):
 
 
 ###Main
-parser = argparse.ArgumentParser(prog = "removeOverrepresentedBCs", description = "Removes overrepresented BCs based on frequency", add_help=True)
+parser = argparse.ArgumentParser(prog = "removeOverrepresentedBCs", description = "Removes overrepresented BCs based on frequency", allow_abbrev=False)
 parser.add_argument('inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences (other columns are passed through)')
 parser.add_argument("--col", action='store', type=int, default=1, help = "Column with barcodes in it [%(default)s]")
 parser.add_argument("--freq", action='store', type=float, default=0.01, help = "Mask barcodes present at this frequency or higher [%(default)s]")

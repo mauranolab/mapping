@@ -58,7 +58,7 @@ echo
 echo "Aligning reads"
 userAlnOptions=""
 permittedMismatches=2
-curStrain="hg38"
+curStrain="hg38_noalt"
 bwaAlnOpts="-n $permittedMismatches -l 32 $userAlnOptions -t $NSLOTS -Y"
 
 echo "Will map to reference $curStrain"
@@ -70,12 +70,10 @@ bwaIndexBase=/vol/isg/annotation/bwaIndex
 echo
 echo "Mapping to reference $curStrain"
 case "$curStrain" in
-hg19)
-    bwaIndex=$bwaIndexBase/hg19all/hg19all;;
-hg38)
-    bwaIndex=$bwaIndexBase/hg38all/hg38all;;
+hg38_noalt)
+        bwaIndex=/vol/isg/annotation/bwaIndex/hg38_noalt/hg38_noalt;;
 mm10)
-    bwaIndex=$bwaIndexBase/mm10all/mm10all;;
+    bwaIndex=/vol/isg/annotation/bwaIndex/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set;;
 *)
     echo "Don't recognize strain $curStrain";
     exit 3;;

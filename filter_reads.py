@@ -11,6 +11,7 @@
 #Requirements:
 #pySAM 0.8.2 or higher
 #
+#
 #Input: assumed to be BAM for now
 #
 #Usage:
@@ -25,6 +26,8 @@
 #samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${sample}.sort -l 1 - > $sample.bam
 
 
+#BUGBUG not handling setting unmapped reads when there are supplementary alignments, eg bwa mem. Fundamental problem as processing reads in pairs right now, would need to go through multiple lines each for R1 and R2.
+
 import sys
 if sys.version_info[0] < 3:
     print("Package requires Python 3")
@@ -34,10 +37,6 @@ if sys.version_info[0] < 3:
 import re
 #import getopt
 
-#for local python2 setup
-#sigh
-#sys.path.remove("/net/lebowski/vol1/sw/python/2.7.3/lib/python2.7/site-packages/pysam-0.6-py2.7-linux-x86_64.egg")
-#sys.path.insert(0, "/home/maurano/.local/lib/python2.7/site-packages/pysam")
 import pysam
 
 
@@ -91,6 +90,7 @@ def filterUnwantedChromosomes(read):
             read.reference_start = -1
             read.is_unmapped = True
             read.mapping_quality = 0
+            read.is_supplementary = False #Otherwise picard complains
             #TODO clear CIGAR, other flags, TLEN
 #        else:
 #why BUGBUG not working??
@@ -166,10 +166,9 @@ def validateSingleRead(read):
 import argparse
 
 
-#Can add allow_abbrev=False in python 3.5+
-parser = argparse.ArgumentParser(prog = "filter_reads", description = "manually corrects the flags in a single- or pair-end BAM alignment file")
-parser.add_argument("raw_alignment", type = str, help = "Input raw alignment file (must be sorted by name")
-parser.add_argument("filtered_alignment", type = str, help = "Output filtered alignment file (sorted by name)")
+parser = argparse.ArgumentParser(prog = "filter_reads", description = "manually corrects the flags in a single- or pair-end BAM alignment file", allow_abbrev=False)
+parser.add_argument("raw_alignment", type = str, help = "Input raw alignment file (bam; must be sorted by name")
+parser.add_argument("filtered_alignment", type = str, help = "Output filtered alignment file (uncompressed bam; sorted by name)")
 parser.add_argument("--min_mapq", action = "store", type = int, default = 0, help = "Reads must have at least this MAPQ to pass filter [%(default)s]")
 parser.add_argument("--reqFullyAligned", action = "store_true", default = False, help = "Require full length of read to align without insertions, deletions, or clipping")
 parser.add_argument("--max_mismatches", action = "store", type = int, default = 2, help = "Maximum mismatches to pass filter [%(default)s]")
@@ -209,6 +208,7 @@ totalReads = 0
 totalReadsFailed = 0
 readPairFailureCodes = dict()
 
+#TODO I think newer pysam takes threads argument
 unfiltered_reads = pysam.AlignmentFile(args.raw_alignment, "rb")
 
 print("[filter_reads.py] Processing header", file=sys.stderr)
