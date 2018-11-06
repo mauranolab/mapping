@@ -174,6 +174,7 @@ import argparse
 parser = argparse.ArgumentParser(prog = "filter_reads", description = "manually corrects the flags in a single- or pair-end BAM alignment file", allow_abbrev=False)
 parser.add_argument("raw_alignment", type = str, help = "Input raw alignment file (bam; must be sorted by name")
 parser.add_argument("filtered_alignment", type = str, help = "Output filtered alignment file (uncompressed bam; sorted by name)")
+parser.add_argument("--dropUnmappedReads", action = "store_true", default = True, help = "Omit reads where all segments are unmapped [%(default)s]")
 parser.add_argument("--failUnwantedRefs", action = "store_true", default = True, help = "Reads mapping to unwanted reference sequences will be failed [%(default)s]")
 parser.add_argument("--unwanted_refs_list", action = "store", type = str, default = "hap|random|^chrUn_|_alt$|scaffold|^C\d+", help = "Regex defining unwanted reference sequences [%(default)s]")
 parser.add_argument("--min_mapq", action = "store", type = int, default = 0, help = "Reads must have at least this MAPQ to pass filter [%(default)s]")
@@ -206,6 +207,7 @@ maxTemplateLength = args.max_insert_size
 maxPermittedTrailingOverrun = args.maxPermittedTrailingOverrun
 failUnwantedRefs = args.failUnwantedRefs
 unwanted_refs_list = args.unwanted_refs_list
+dropUnmappedReads = args.dropUnmappedReads
 
 if verbose and args.filtered_alignment=="-":
     print("Can't do verbose and pipe output to STDOUT", file=sys.stderr)
@@ -214,18 +216,16 @@ if verbose and args.filtered_alignment=="-":
 
 totalReads = 0
 totalReadsFailed = 0
+totalReadsDropped = 0
 readPairFailureCodes = dict()
 
 #TODO newer pysam takes threads argument but doesn't seem to do much
 unfiltered_reads = pysam.AlignmentFile(args.raw_alignment, "rb")
 
 print("[filter_reads.py] Processing header", file=sys.stderr)
-newheader = unfiltered_reads.header
-
-#TODO add more detail
+newheader = unfiltered_reads.header.to_dict() #to_dict() is for the changes from version 0.14
 newheader['PG'].append({'ID':'filter_reads.py', 'PN':'filter_reads.py', 'VN':version, 'CL':args})
-
-filtered_reads = pysam.AlignmentFile(args.filtered_alignment, "wbu", header = newheader) #template = unfiltered_reads
+filtered_reads = pysam.AlignmentFile(args.filtered_alignment, "wbu", header = newheader)
 
 
 print("[filter_reads.py] Processing reads", file=sys.stderr)
@@ -258,15 +258,13 @@ while(1):
             validateReadPair(read1, read2)
             
         except ReadException as e:
-            if verbose: print("\tFAIL:", e)
-            
+            if verbose: print("\tFAIL:", e, end="")
             # failed a test above, not properly paired
-            
 #            proper_pair = False
             qc_fail = True
             qc_msg = e.msg
         else:
-            if verbose: print("\tPASS")
+            if verbose: print("\tPASS", end="")
 #            proper_pair = True
             qc_fail = False
             qc_msg = None
@@ -275,10 +273,16 @@ while(1):
             set_qc_fail(read1, qc_fail, qc_msg)
             set_qc_fail(read2, qc_fail, qc_msg)
             
-            # write to file
-            filtered_reads.write(read1)
+            if dropUnmappedReads and read1.is_unmapped and read2.is_unmapped:
+                if verbose: print(" (dropped)")
+                totalReadsDropped+=2
+            else:
+                if verbose: print("")
+                # write to file
+                filtered_reads.write(read1)
+                filtered_reads.write(read2)
+            
             read1 = None
-            filtered_reads.write(read2)
             read2 = None
         
     else:
@@ -296,20 +300,25 @@ while(1):
                     raise ReadException("PE read without mate (though flag says mate was mapped)")
         
         except ReadException as e:
-            if verbose: print("\tFAIL:", e)
+            if verbose: print("\tFAIL:", e, end="")
             qc_fail = True
             qc_msg = e.msg
         
         else:
-            if verbose: print("\tPASS")
+            if verbose: print("\tPASS", end="")
             qc_fail = False
             qc_msg = None
         
         finally:
             set_qc_fail(read1, qc_fail, qc_msg)
             
-            # write to file
-            filtered_reads.write(read1)
+            if dropUnmappedReads and read1.is_unmapped:
+                if verbose: print(" (dropped)")
+                totalReadsDropped+=1
+            else:
+                if verbose: print("")
+                # write to file
+                filtered_reads.write(read1)
             
             #move up read2 since it wasn't processed yet
             read1 = read2
@@ -326,4 +335,4 @@ print("\n[filter_reads.py] Failure codes by read pair (", totalReads, " reads pr
 print("[filter_reads.py]", readPairFailureCodes, file=sys.stderr)
 
 
-print("[filter_reads.py] Done!", totalReadsFailed, "failed reads", file=sys.stderr)
+print("[filter_reads.py] Done!", totalReadsFailed, "failed reads, ", totalReadsDropped, "reads dropped", file=sys.stderr)

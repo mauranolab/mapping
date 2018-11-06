@@ -4,7 +4,7 @@ set -eu -o pipefail
 shopt -s expand_aliases
 alias bedops='bedops --ec --header'
 alias bedmap='bedmap --ec --header'
-alias starch='starch --header'
+#alias starch='starch --header'
 alias closest-features='closest-features --header'
 
 analysisType=$1
@@ -102,7 +102,8 @@ else
         mergeOpts="-l 9"
     fi
     
-    samtools merge -@ $NSLOTS ${mergeOpts} ${sampleOutdir}/${name}.${mappedgenome}.bam ${files}
+    #BUGBUG for runs with split fastq files it's appending hash to make RG IDs unique
+    samtools merge -c -@ $NSLOTS ${mergeOpts} ${sampleOutdir}/${name}.${mappedgenome}.bam ${files}
 fi
 
 echo "Processing ${name}.${mappedgenome}.bam"
