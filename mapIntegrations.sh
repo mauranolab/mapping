@@ -103,7 +103,7 @@ echo -e "extractcmd=bwa $extractcmd | (...)"
 bwa $extractcmd |
 #No need to sort SE data
 #samtools sort -@ $NSLOTS -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
-$src/filter_reads.py --max_mismatches $permittedMismatches - - |
+$src/filter_reads.py --failUnwantedRefs --max_mismatches $permittedMismatches - - |
 samtools view -@ NSLOTS -1 - > $OUTDIR/$sample.bam
 
 

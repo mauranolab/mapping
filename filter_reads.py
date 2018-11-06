@@ -40,7 +40,10 @@ import re
 import pysam
 
 
-def parseUMI(read):
+version="1.1"
+
+
+def parseRead(read):
     #Fix bwa unmapped bwa reads where MAPQ is incorrectly nonzero
     #fix validation errors: MAPQ should be 0 for unmapped read. prob with chrM reads with one marked as unmapped?
     #eg B6CASTF1J-m.B.cell-DS35978A.C57B6
@@ -51,15 +54,23 @@ def parseUMI(read):
     global totalReads
     totalReads += 1
     
+    return parseUMI(read)
+
+def parseUMI(read):
     # strip off the umi, and place it in a custom tag (if it exists)
     
     try:
+        #I think # is the the stam lab convention
+        #/vol/mauranolab/flowcells/fastq/FCH3YVFAFXY/umi/demuxReadsByContent.py and /home/mauram01/.local/bin/umi_tools dedup expect them to be separated from read name by _ (but is configurable)
+        #I think bcl2fastq uses :
         umi_loc = read.query_name.index('#')
     
     except:
         pass
     
     else:
+        #Picard seems to expect RX tag by default https://broadinstitute.github.io/picard/command-line-overview.html#UmiAwareMarkDuplicatesWithMateCigar
+        #UM?
         read.setTag("XD", read.query_name[umi_loc+1:])
         read.query_name = read.query_name[:umi_loc]
     
@@ -67,44 +78,15 @@ def parseUMI(read):
 
 
 def isUnwantedChromosomeName(seqname):
-    if re.search('hap', seqname) is not None or re.search('random', seqname) is not None or re.search('chrUn_', seqname) is not None or re.search('_alt', seqname) is not None or re.search('^scaffold', seqname) is not None or re.search('^C\d+', seqname) is not None:
+    if re.search(unwanted_refs_list, seqname) is not None:
         return True
     else:
         return False
 
 
 def isUnwantedChromosomeID(reference_id):
-    #check for missing mate chromosome name for safety -- sometime bwa forgets to set mate unmapped flag
-    if reference_id == -1:
-        return True
-    
     seqname = unfiltered_reads.getrname(reference_id)
-    
     return isUnwantedChromosomeName(seqname)
-
-
-def filterUnwantedChromosomes(read):
-    if not read.is_unmapped:
-        if isUnwantedChromosomeID(read.reference_id):
-            read.reference_id = -1
-            read.reference_start = -1
-            read.is_unmapped = True
-            read.mapping_quality = 0
-            read.is_supplementary = False #Otherwise picard complains
-            #TODO clear CIGAR, other flags, TLEN
-#        else:
-#why BUGBUG not working??
-#            read.reference_id = filtered_reads.gettid(unfiltered_reads.getrname(read.reference_id))
-    if read.is_paired and not read.mate_is_unmapped:
-        if isUnwantedChromosomeID(read.next_reference_id):
-            read.next_reference_id = -1
-            read.next_reference_start = -1
-            read.mate_is_unmapped = True
-            #TODO set mate_is_reverse, TLEN?
-#        else:
-#why BUGBUG not working??
-#            read.next_reference_id = filtered_reads.gettid(unfiltered_reads.getrname(read.next_reference_id))
-    return read;
 
 
 class ReadException(Exception):
@@ -129,10 +111,6 @@ def set_read_flag(read, flag, mark):
     return read
 
 
-def set_proper_pair(read, mark = True):
-    return set_read_flag(read, 1, mark)
-
-
 def set_qc_fail(read, mark = True, qc_msg = None):
     global readPairFailureCodes
     global totalReadsFailed
@@ -148,6 +126,21 @@ def set_qc_fail(read, mark = True, qc_msg = None):
     return set_read_flag(read, 9, mark)
 
 
+def validateReadPair(read1, read2):
+    if read1.reference_id != read2.reference_id: raise ReadException("Each read must map to the same reference sequence", unfiltered_reads.getrname(read1.reference_id) + "/" + unfiltered_reads.getrname(read2.reference_id))
+    
+    if read1.is_reverse == read2.is_reverse: raise ReadException("Must be mapped to opposite strands (F-R conformation)", str(read1.is_reverse) + "/" + str(read2.is_reverse))
+    
+    #Could also check for positive template lengths on reverse reads
+    if read1.is_reverse and read1.reference_start < read2.reference_start or read2.is_reverse and read2.reference_start < read1.reference_start: raise ReadException("Reads must face each other", str(read1.reference_start) + "-" + str(read2.reference_start))
+    
+    if read1.reference_id != read2.next_reference_id: raise ReadException("Read 1: mate claims to map to different reference sequence" + unfiltered_reads.getrname(read1.reference_id) + "/" + unfiltered_reads.getrname(read2.reference_id))
+    if read2.reference_id != read1.next_reference_id: raise ReadException("Read 2: mate claims to map to different reference sequence" + unfiltered_reads.getrname(read1.reference_id) + "/" + unfiltered_reads.getrname(read2.reference_id))
+    
+    if not abs(read1.template_length) == abs(read2.template_length): raise ReadException("IMPOSSIBLE Template lengths don't match!", str(abs(read1.template_length)) + "/" + str(abs(read2.template_length)))
+    
+    return;
+
 def validateSingleRead(read):
     if read.mapping_quality < min_MAPQ: raise ReadException("Read must have MAPQ greater than cutoff", str(read.mapping_quality))
     
@@ -157,8 +150,20 @@ def validateSingleRead(read):
     #needs pysam 0.8.2
     if read.get_tag("NM") > maxNumMismatches: raise ReadException("Too many mismatches", str(read.get_tag("NM")))
     
+    if failUnwantedRefs and isUnwantedChromosomeID(read.reference_id):
+        raise ReadException("Maps to unwanted reference", unfiltered_reads.getrname(read.reference_id))
+    
     #Allow N for introns
     if reqFullyAligned and re.search('[HSPDI]', read.cigarstring) is not None: raise ReadException("Read contains indels or clipping", read.cigarstring)
+    
+    if read.is_paired:
+        #TODO check reference_length > minReadLength
+        
+        if abs(read.template_length) > maxTemplateLength: raise ReadException("Each read pair must have an insert length below " + str(maxTemplateLength), str(abs(read.template_length)))
+        
+        if abs(read.template_length) < read.query_length - maxPermittedTrailingOverrun: raise ReadException("Each read pair must have an insert length above read length (within " + str(maxPermittedTrailingOverrun) + " bp)", str(abs(read.template_length)))
+        
+        if abs(read.template_length) < minTemplateLength: raise ReadException("Each read pair must have an insert length above " + str(minTemplateLength), str(abs(read.template_length)))
     
     return;
 
@@ -169,6 +174,8 @@ import argparse
 parser = argparse.ArgumentParser(prog = "filter_reads", description = "manually corrects the flags in a single- or pair-end BAM alignment file", allow_abbrev=False)
 parser.add_argument("raw_alignment", type = str, help = "Input raw alignment file (bam; must be sorted by name")
 parser.add_argument("filtered_alignment", type = str, help = "Output filtered alignment file (uncompressed bam; sorted by name)")
+parser.add_argument("--failUnwantedRefs", action = "store_true", default = True, help = "Reads mapping to unwanted reference sequences will be failed [%(default)s]")
+parser.add_argument("--unwanted_refs_list", action = "store", type = str, default = "hap|random|^chrUn_|_alt$|scaffold|^C\d+", help = "Regex defining unwanted reference sequences [%(default)s]")
 parser.add_argument("--min_mapq", action = "store", type = int, default = 0, help = "Reads must have at least this MAPQ to pass filter [%(default)s]")
 parser.add_argument("--reqFullyAligned", action = "store_true", default = False, help = "Require full length of read to align without insertions, deletions, or clipping")
 parser.add_argument("--max_mismatches", action = "store", type = int, default = 2, help = "Maximum mismatches to pass filter [%(default)s]")
@@ -176,7 +183,7 @@ parser.add_argument("--min_insert_size", action = "store", type = int, default =
 parser.add_argument("--max_insert_size", action = "store", type = int, default = 500, help = "Maximum insert size to pass filter [%(default)s]")
 parser.add_argument("--maxPermittedTrailingOverrun", action = "store", type = int, default = 2, help = "Effectively the number of bp of adapter allowed to be present at end of read (though we don't verify it matches adapter sequence or even mismatches the reference) [%(default)s]")
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
-parser.add_argument('--version', action='version', version='%(prog)s 1.0')
+parser.add_argument('--version', action='version', version='%(prog)s ' + version)
 
 #argparse does not set an exit code upon this error
 #https://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
@@ -197,7 +204,8 @@ min_MAPQ = args.min_mapq
 minTemplateLength = args.min_insert_size
 maxTemplateLength = args.max_insert_size
 maxPermittedTrailingOverrun = args.maxPermittedTrailingOverrun
-
+failUnwantedRefs = args.failUnwantedRefs
+unwanted_refs_list = args.unwanted_refs_list
 
 if verbose and args.filtered_alignment=="-":
     print("Can't do verbose and pipe output to STDOUT", file=sys.stderr)
@@ -208,21 +216,14 @@ totalReads = 0
 totalReadsFailed = 0
 readPairFailureCodes = dict()
 
-#TODO I think newer pysam takes threads argument
+#TODO newer pysam takes threads argument but doesn't seem to do much
 unfiltered_reads = pysam.AlignmentFile(args.raw_alignment, "rb")
 
 print("[filter_reads.py] Processing header", file=sys.stderr)
 newheader = unfiltered_reads.header
 
-newheaderRefSequences = list()
-for curSeq in newheader['SQ']:
-    if not isUnwantedChromosomeName(curSeq['SN']):
-         newheaderRefSequences.append(curSeq)
-#why BUGBUG not working??
-#newheader['SQ'] = newheaderRefSequences
-
 #TODO add more detail
-newheader['PG'].append({'ID':'filter_reads.py', 'PN':'filter_reads.py', 'CL':args})
+newheader['PG'].append({'ID':'filter_reads.py', 'PN':'filter_reads.py', 'VN':version, 'CL':args})
 
 filtered_reads = pysam.AlignmentFile(args.filtered_alignment, "wbu", header = newheader) #template = unfiltered_reads
 
@@ -234,21 +235,18 @@ allreads = unfiltered_reads.fetch(until_eof=True) #I believe .next would skip un
 while(1):
     try:
         if read1 == None:
-            read1 = next(allreads)
+            read1 = parseRead(next(allreads))
     except StopIteration:
         break
-    read1 = parseUMI(read1)
-    read1 = filterUnwantedChromosomes(read1)
     
     try:
-        read2 = parseUMI(next(allreads))
-        read2 = filterUnwantedChromosomes(read2)
+        read2 = parseRead(next(allreads))
     except StopIteration:
         read2 = None
     
     
-    if (read1 and read2) and read1.is_paired and read2.is_paired and read1.query_name == read2.query_name:
-        (read1, read2) = (read1, read2) if read1.is_read1 else (read2, read1) 
+    if read2 and read1.query_name == read2.query_name and read1.is_paired and read2.is_paired:
+        (read1, read2) = (read1, read2) if read1.is_read1 else (read2, read1)
         
         #Only need to print first name for PE reads
         if verbose: print("PE\t" + read1.query_name, end="")
@@ -257,49 +255,25 @@ while(1):
         try:
             validateSingleRead(read1)
             validateSingleRead(read2)
-            
-            #PE-specific validation
-            if read1.reference_id != read2.reference_id: raise ReadException("Each read must map to the same reference sequence", unfiltered_reads.getrname(read1.reference_id) + "/" + unfiltered_reads.getrname(read2.reference_id))
-            
-            if read1.is_reverse == read2.is_reverse: raise ReadException("Must be mapped to opposite strands (F-R conformation)", str(read1.is_reverse) + "/" + str(read2.is_reverse))
-            
-            #Could also check for positive template lengths on reverse reads
-            if read1.is_reverse and read1.reference_start < read2.reference_start or read2.is_reverse and read2.reference_start < read1.reference_start: raise ReadException("Reads must face each other", str(read1.reference_start) + "-" + str(read2.reference_start))
-            
-            if read1.reference_id != read2.next_reference_id: raise ReadException("Read 1: mate claims to map to different reference sequence" + unfiltered_reads.getrname(read1.reference_id) + "/" + unfiltered_reads.getrname(read2.reference_id))
-            if read2.reference_id != read1.next_reference_id: raise ReadException("Read 2: mate claims to map to different reference sequence" + unfiltered_reads.getrname(read1.reference_id) + "/" + unfiltered_reads.getrname(read2.reference_id))
-            
-            #TODO
-            #check reference_length > minReadLength
-            
-            if not abs(read1.template_length) == abs(read2.template_length): raise ReadException("IMPOSSIBLE Template lengths don't match!", str(abs(read1.template_length)) + "/" + str(abs(read2.template_length)))
-            
-            if abs(read1.template_length) > maxTemplateLength or abs(read2.template_length) > maxTemplateLength: raise ReadException("Each read pair must have an insert length below " + str(maxTemplateLength), str(abs(read1.template_length)) + "/" + str(abs(read2.template_length)))
-            
-            if abs(read1.template_length) < read1.query_length - maxPermittedTrailingOverrun or abs(read2.template_length) < read2.query_length - maxPermittedTrailingOverrun: raise ReadException("Each read pair must have an insert length above read length (within " + str(maxPermittedTrailingOverrun) + " bp)", str(abs(read1.template_length)) + "/" + str(abs(read2.template_length)))
-            
-            if abs(read1.template_length) < minTemplateLength or abs(read2.template_length) < minTemplateLength: raise ReadException("Each read pair must have an insert length above " + str(minTemplateLength), str(abs(read1.template_length)) + "/" + str(abs(read2.template_length)))
+            validateReadPair(read1, read2)
             
         except ReadException as e:
             if verbose: print("\tFAIL:", e)
             
             # failed a test above, not properly paired
             
-            proper_pair = False
+#            proper_pair = False
             qc_fail = True
             qc_msg = e.msg
         else:
             if verbose: print("\tPASS")
-            proper_pair = True
+#            proper_pair = True
             qc_fail = False
             qc_msg = None
         
         finally:
             set_qc_fail(read1, qc_fail, qc_msg)
-            set_proper_pair(read1, proper_pair)
-            
             set_qc_fail(read2, qc_fail, qc_msg)
-            set_proper_pair(read2, proper_pair)
             
             # write to file
             filtered_reads.write(read1)
@@ -316,10 +290,10 @@ while(1):
             validateSingleRead(read1)
             
             if read1.is_paired:
-                if not read1.mate_is_unmapped:
-                    raise ReadException("PE read without mapped mate (though flag says mate was mapped)")
+                if read1.mate_is_unmapped:
+                    raise ReadException("PE read without mate")
                 else:
-                    raise ReadException("PE read without mapped mate")
+                    raise ReadException("PE read without mate (though flag says mate was mapped)")
         
         except ReadException as e:
             if verbose: print("\tFAIL:", e)
@@ -333,12 +307,11 @@ while(1):
         
         finally:
             set_qc_fail(read1, qc_fail, qc_msg)
-            #can't be properly paired (it's SE)
-            set_proper_pair(read1, False)
-        
+            
             # write to file
             filtered_reads.write(read1)
-        
+            
+            #move up read2 since it wasn't processed yet
             read1 = read2
             read2 = None
 
