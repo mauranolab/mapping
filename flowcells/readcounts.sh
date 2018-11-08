@@ -10,11 +10,6 @@ echo "Postprocessing ${fc}"
 
 
 echo
-echo "Errors in log files"
-grep -i error */*.o*
-
-
-echo
 echo "Total read counts"
 date
 rm -f readcounts.txt; touch readcounts.txt

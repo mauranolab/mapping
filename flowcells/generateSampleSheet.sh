@@ -5,14 +5,16 @@ set -eu -o pipefail
 cat /vol/mauranolab/flowcells/src/SampleSheet.template.txt > SampleSheet.csv
 
 #Now parse the sequencing sheet info from STDIN
-awk -F "\t" 'BEGIN {OFS="\t"; parse=0} {print} $0!~/^#/ && parse==0 {parse=1; print "#Sample Name", "Sample #", "Sub-library", "Lab", "Made By", "Sample Type", "Barcode 1 (i7)", "Barcode 2 (i5)", "R1 Trim (P5)", "R2 Trim (P7)", "Sequencing primer R1", "Indexing primer BC1 (i7)", "Indexing primer BC2 (i5)", "Sequencing primer R2", "Library concentration (pM)", "", "Request Type", "Requested reads (M)", "Read format", "Scale factor", "Relative representation", "Amount put on FC (uL)", "Sequenced reads", "Actual representation"}' |
+awk -F "\t" 'BEGIN {OFS="\t"; parse=0} {print} $0!~/^#/ && parse==0 {parse=1; print "#Sample Name", "Sample #", "Lab", "Made By", "Sample Type", "Species", "Barcode 1 (i7)", "Barcode 2 (i5)", "R1 Trim (P5)", "R2 Trim (P7)", "Sequencing primer R1", "Indexing primer BC1 (i7)", "Indexing primer BC2 (i5)", "Sequencing primer R2", "Library concentration (pM)", "Request Type", "Requested reads (M)", "Read format", "Scale factor", "Relative representation", "Amount put on FC (uL)", "Sequenced reads", "Actual representation"}' |
 #Also creates info.txt
 tee info.txt |
-awk -F "\t" 'BEGIN {OFS=","; split("8,8", bclens, ",")} $1=="#Indices" && $2!="" {split($2, bclens, ",")} $0!~/^#/ && $1!="" {split($7, bc1, "_"); split($8, bc2, "_"); print "Sample_" $2 $3, $2 $3, "", "",  bc1[1], toupper(substr(bc1[2], 0, bclens[1])),  bc2[1], toupper(substr(bc2[2], 0, bclens[2])), "Project_" $4, "";}' >> SampleSheet.csv
+awk -F "\t" 'BEGIN {OFS=","; split("8,8", bclens, ",")} 
+    $1=="#Indices" && $2!="" {split($2, bclens, ",")}
+    $0!~/^#/ && $1!="" && $1 {if(bclens[1]==0) {$7="_"} if(bclens[2]==0) {$8="_"} split($7, bc1, "_"); split($8, bc2, "_"); print "Sample_" $2, $2, "", "",  bc1[1], toupper(substr(bc1[2], 0, bclens[1])),  bc2[1], toupper(substr(bc2[2], 0, bclens[2])), "Project_" $3, "";}' >> SampleSheet.csv
 
-#TODO validate date format
+#validate date format as 
 readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Load date" {print $2}' info.txt`
-if [[ ! "${readgroup_date}" =~ [0-9][0-9]\-[0-9][0-9]\-201[5-9] ]]; then
+if [[ ! "${readgroup_date}" =~ 201[5-9]\-[0-2][0-9]\-[0123][0-9] ]]; then
     echo "WARNING: invalid FC load date ${readgroup_date}"
 fi
 
@@ -30,6 +32,7 @@ strdist <- function(x,y) {
 
 
 maxBC1len <- max(sapply(data[,"index"], FUN=function(x) {nchar(x)}))
+#BUGBUG fails for runs without BC2
 maxBC2len <- max(sapply(data[,"index2"], FUN=function(x) {nchar(x)}))
 minBClen <- 4
 
@@ -77,6 +80,9 @@ for(bc1len in minBClen:maxBC1len) {
         cat("\n")
     }
 }
+
+cat("\nNumber of samples too close by BC sequencing lengths:\n")
+print.data.frame(results, row.names=F)
 EOF
 
 

@@ -26,7 +26,7 @@ except argparse.ArgumentError as exc:
 
 ###Handlers for individual data types
 #Transposon pipeline
-def transposonSamples(sampleName, sampleID, lab, sampleType, r1Trim, r2Trim):
+def transposonSamples(sampleName, sampleID, lab, sampleType, species, r1Trim, r2Trim):
     fullSampleName = sampleID + "-" + sampleName
     fileLocation = basedir + "/fastq/" + flowcellID + "/Project_" + lab + "/Sample_" + sampleID + '/"'
     
@@ -67,14 +67,14 @@ def transposonSamples(sampleName, sampleID, lab, sampleType, r1Trim, r2Trim):
 
 #Chromosome configuration capture
 #TODO fix organism
-def chromConfCapture(sampleName, sampleID, lab):
+def chromConfCapture(sampleName, sampleID, lab, sampleType, species):
     organism = "hg38" 
     fullSampleName = sampleID + "-" + sampleName
     
     qsub = "qsub -S /bin/bash -j y -N submit." + fullSampleName + \
     ' -b y "/home/maagj01/scratch/transposon/src/submitHiC.sh ' +fullSampleName 
     
-    sampleUnique = "/home/maagj01/scratch/transposon/captureC/config/config_Dpn.txt  /home/maagj01/scratch/transposon/captureC/genomeFrag/hg38_dpnii.bed  K562_Dpn " + organism
+    sampleUnique = "/home/maagj01/scratch/transposon/captureC/config/config_Dpn.txt  /home/maagj01/scratch/transposon/captureC/genomeFrag/hg38_dpnii.bed K562_Dpn " + organism
     
     fileLocation = basedir + "/fastq/" + flowcellID + "/Project_" + lab + "/Sample_" + sampleID + '/"'
     
@@ -83,12 +83,11 @@ def chromConfCapture(sampleName, sampleID, lab):
 
 
 #DNase/ ChIP-seq
-def DNase(sampleName, sampleID, lab):
+def DNase(sampleName, sampleID, lab, sampleType, species):
     speciesToGenomeReference = {
         'Human': 'hg38_noalt',
         'Mouse': 'mm10'
     }
-    species = "Human" 
     reference = speciesToGenomeReference[species]
     
     fullSampleName = sampleID + "-" + sampleName
@@ -99,7 +98,8 @@ def DNase(sampleName, sampleID, lab):
     
     return(submitCommand)
 
-def DNA(sampleName, sampleID, lab):
+
+def DNA(sampleName, sampleID, lab, sampleType, species):
     speciesToGenomeReference = {
         'Human': 'hg38_full',
         'Mouse': 'mm10',
@@ -108,7 +108,6 @@ def DNA(sampleName, sampleID, lab):
         'Mouse+yeast': 'mm10_sacCer3',
         'Rat+yeast': 'rn6_sacCer3'
     }
-    species = "Human" 
     reference = speciesToGenomeReference[species]
     fullSampleName = sampleID + "-" + sampleName
     submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + reference + " mapBwaAln,callsnps " + sampleName + " " + sampleID
@@ -125,9 +124,9 @@ def annotateSample(Sample, project):
     try:
         sampleName=Sample["#Sample Name"]
         sampleID=Sample["Sample #"]
-        sublibrary=Sample["Sub-library"]
         lab=Sample["Lab"]
         sampleType=Sample["Sample Type"]
+        species=Sample["Species"]
         r1Trim=str(Sample["R1 Trim (P5)"])
         r2Trim=str(Sample["R2 Trim (P7)"])
         
@@ -139,19 +138,20 @@ def annotateSample(Sample, project):
         if BSnum is None:
             raise Exception("Can't parse " + sampleID + "as BS number")
         
-        if sampleType == "Transposon DNA" or sampleType == "Transposon RNA" or sampleType == "Transposon iPCR" or sampleType == "Transposon iPCR Capture":
-            qsubLine = transposonSamples(sampleName, sampleID + sublibrary, lab, sampleType, r1Trim, r2Trim)
-        elif sampleType == "Hi-C" or sampleType == "3C-seq" or sampleType == "Capture-C":
-            qsubLine =  "#" + chromConfCapture(sampleName, sampleID + sublibrary, lab)
-        elif sampleType == "Nano-DNase" or sampleType == "ChIP-seq" or sampleType == "DNase-seq":
-            qsubLine = DNase(sampleName, sampleID + sublibrary, lab)
-        elif sampleType == "DNA" or sampleType == "DNA Capture":
-            qsubLine = DNA(sampleName, sampleID + sublibrary, lab)
-        else:
-            raise Exception("Don't know how to process " + sampleType)
-        
-        #We have successfully generated the command line
-        print(qsubLine)
+        if sampleType != "Pool":
+            if sampleType == "Transposon DNA" or sampleType == "Transposon RNA" or sampleType == "Transposon iPCR" or sampleType == "Transposon iPCR Capture":
+                qsubLine = transposonSamples(sampleName, sampleID, lab, sampleType, species, r1Trim, r2Trim)
+            elif sampleType == "Hi-C" or sampleType == "3C-seq" or sampleType == "Capture-C":
+                qsubLine =  "#" + chromConfCapture(sampleName, sampleID, lab, sampleType, species)
+            elif sampleType == "Nano-DNase" or sampleType == "ChIP-seq" or sampleType == "DNase-seq":
+                qsubLine = DNase(sampleName, sampleID, lab, sampleType, species)
+            elif sampleType == "DNA" or sampleType == "DNA Capture":
+                qsubLine = DNA(sampleName, sampleID, lab, sampleType, species)
+            else:
+                raise Exception("Don't know how to process " + sampleType)
+            
+            #We have successfully generated the command line
+            print(qsubLine)
     except Exception as e:
         print("WARNING for sample ", sampleName, ":", e, file=sys.stderr)
         print("#Couldn't process " + sampleName + "-" + sampleID)
