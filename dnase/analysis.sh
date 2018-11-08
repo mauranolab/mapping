@@ -73,7 +73,7 @@ bam2instrument()
 #Cheap hack
 printfNA()
 {
-    msg=$1
+    local msg=$1
     shift
     if [ "$1" == "NA" ]; then
         #https://stackoverflow.com/questions/10216340/authoritative-regular-expression-for-sprintf-format-string
@@ -88,6 +88,7 @@ printfNA()
 
 
 getcolor () {
+    local trackcolor
     case "$1" in
         B6129SF1J*)
                    trackcolor="238,54,36";; #red
@@ -240,7 +241,8 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         echo "Calling SNPs"
         date
         
-        unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
+        samtools view -H ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $0~/^@SQ/ {split($2, sn, ":"); print sn[2]}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
+        #unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
         n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
         qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${name} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps
         qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps` -o ${sampleOutdir} -N merge.callsnps.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${DS} ${src}" | perl -pe 's/[^\d].+$//g;'
