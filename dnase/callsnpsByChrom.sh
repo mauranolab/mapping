@@ -79,10 +79,10 @@ bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 
 
-echo "Filter variants"
+echo "Filter and normalize variants"
 date
 bcftools filter -O u -i "INFO/DP>=${minDP} && QUAL>=${minSNPQ} && GQ>=${minGQ}" ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz |
-bcftools norm --threads $NSLOTS --fasta-ref ${referencefasta} --output-type z - > $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
+bcftools norm --threads $NSLOTS --check-ref w --fasta-ref ${referencefasta} --output-type z - > $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 bcftools index $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 
 #Annotate vcf with rsIDs
@@ -99,6 +99,7 @@ else
     bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 fi
 
+rm -f ${name}.${mappedgenome}.${chrom}.vcf.gz.csi ${name}.${mappedgenome}.${chrom}.vcf.gz.tbi
 
 echo
 echo -e "\nDone!"

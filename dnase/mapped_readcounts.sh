@@ -1,6 +1,13 @@
 #!/bin/bash
 set -eu -o pipefail
 
+
+echo
+echo "Errors in log files"
+grep -i error */*.o*
+
+
+
 grep -h -A 11 "Num_sequenced_reads" *BS*/analysis.*.o* | awk 'BEGIN {skip=0} $0=="--" {skip=0;next} $0=="" {skip=1;next} skip==0' | grep -v -e "syntax[ _]error" | grep -v "Num_SE_" | grep -v "Prop_SE_" | 
 #awk '$1!="$1!="Num_hotspots" && SPOT"' |
 perl -p -e's/[ \t]\(?([\d\.]+)\%\)?/\t$1/g;' -e's/ /_/g;' -e's/\-BS/\tBS/g;' | 
