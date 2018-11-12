@@ -9,13 +9,13 @@ alias closest-features='closest-features --header'
 
 analysisType=$1
 name=$2
-DS=$3
+BS=$3
 mappedgenome=$4
 
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 #analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
-echo "Merging bams (${processingCommand} analysis); output name ${name} (${DS}) against genome ${mappedgenome}"
+echo "Merging bams (${processingCommand} analysis); output name ${name} (${BS}) against genome ${mappedgenome}"
 date
 
 sampleOutdir=${name}
@@ -26,7 +26,7 @@ if [[ "${processingCommand}" =~ ^map ]]; then
     #Here we generate a list of expected filenames
     #TODO switch to wildcard matching based on sample, DS and mappedgenome?
     #NB originally checked grep R1 but some old solexa lanes didn't include it
-    for f1 in `grep ${DS} inputs.txt | grep -v _R2`; do
+    for f1 in `grep ${BS} inputs.txt | grep -v _R2`; do
         #First get FC
         #NB This must match exactly what is in map.sh
         #BUGBUG a bit fragile
@@ -56,7 +56,7 @@ if [[ "${processingCommand}" =~ ^map ]]; then
         fi
     done
 elif [[ "${processingCommand}" =~ ^aggregate ]]; then
-    for curOutputFile in `grep ${DS} inputs.txt | grep ${mappedgenome}`; do
+    for curOutputFile in `grep ${BS} inputs.txt | grep ${mappedgenome}`; do
         if [[ -f "${curOutputFile}" ]]; then
             if [[ "${processingCommand}" == "aggregateRemarkDups" ]]; then
                 curOutputFileBase=`basename ${curOutputFile} .bam`

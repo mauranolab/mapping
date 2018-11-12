@@ -19,7 +19,7 @@ alias closest-features='closest-features --header'
 #    src="${sampleOutdir}/.src"
 #    cp -p /vol/mauranolab/mapped/src/* ${src}
 #    
-#    qsub -S /bin/bash -cwd -V -terse -j y -b y -o ${sampleOutdir} -N merge.callsnps.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${DS} ${src}" #| perl -pe 's/[^\d].+$//g;'
+#    qsub -S /bin/bash -cwd -V -terse -j y -b y -o ${sampleOutdir} -N merge.callsnps.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${BS} ${src}" #| perl -pe 's/[^\d].+$//g;'
 #done
 
 
@@ -28,17 +28,17 @@ alias closest-features='closest-features --header'
 mappedgenome=$1
 analysisType=$2
 name=$3
-DS=$4
+BS=$4
 src=$5
 
 source ${src}/genomeinfo.sh ${mappedgenome}
 
 sampleOutdir=${name}
-echo "Merging ${analysisType} analysis for of sample ${name} (${DS}) against genome ${mappedgenome}"
+echo "Merging ${analysisType} analysis for of sample ${name} (${BS}) against genome ${mappedgenome}"
 date
 
 
-DS_nosuffix=`echo ${DS} | perl -pe 's/[A-Z]$//g;'`
+BS_nosuffix=`echo ${BS} | perl -pe 's/[A-Z]$//g;'`
 
 
 #TMPDIR=`pwd`/tmp.makeTracks.${name}
@@ -115,7 +115,7 @@ minAlleleDP=0
 ${src}/parseSamtoolsGenotypesToBedFiles.pl ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz $TMPDIR/variants ${minSNPQ} ${minTotalDP} ${minAlleleDP}
 
 #rsids
-cat $TMPDIR/variants.${DS_nosuffix}.txt | awk -F "\t" 'BEGIN {OFS="\t"; num=0} $4=="." {num++; $4="snv" num} {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}.${mappedgenome}.variants.starch
+cat $TMPDIR/variants.${BS_nosuffix}.txt | awk -F "\t" 'BEGIN {OFS="\t"; num=0} $4=="." {num++; $4="snv" num} {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}.${mappedgenome}.variants.starch
 
 echo
 echo "Making variant track"

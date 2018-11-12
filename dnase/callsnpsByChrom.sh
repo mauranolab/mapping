@@ -99,7 +99,7 @@ else
     bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 fi
 
-rm -f ${name}.${mappedgenome}.${chrom}.vcf.gz.csi ${name}.${mappedgenome}.${chrom}.vcf.gz.tbi
+rm -f ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz.csi ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz.tbi
 
 echo
 echo -e "\nDone!"

@@ -21,7 +21,7 @@ alias closest-features='closest-features --header'
 genomesToMap=$1
 analysisType=$2
 sampleOutdir=$3
-DS=$4
+BS=$4
 src=$5
 
 shift
@@ -32,7 +32,7 @@ shift
 userAlnOptions=$@
 
 
-echo "Output directory: ${sampleOutdir}, DS: ${DS}, Genomes: ${genomesToMap}, analysisType:${analysisType}"
+echo "Output directory: ${sampleOutdir}, BS: ${BS}, Genomes: ${genomesToMap}, analysisType:${analysisType}"
 date
 
 
@@ -40,11 +40,12 @@ processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
 
-permittedMismatches=3
 if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
     maxInsertSize=500
+    permittedMismatches=3
 else
     maxInsertSize=1000
+    permittedMismatches="0.08"
 fi
 
 
@@ -138,13 +139,14 @@ else
 fi
 
 
-DS_nosuffix=`echo ${DS} | perl -pe 's/[A-Z]$//g;'`
-readgroup="@RG\\tID:${fc}${DS}\\tLB:${DS}\\tSM:${DS_nosuffix}\\tPL:ILLUMINA"
-if [[ "${readsFq}" =~ ^\/vol\/mauranolab\/flowcells\/fastq\/ ]]; then
+BS_nosuffix=`echo ${BS} | perl -pe 's/[A-Z]$//g;'`
+readgroup="@RG\\tID:${fc}${BS}\\tLB:${BS}\\tSM:${BS_nosuffix}\\tPL:ILLUMINA"
+if [ -s "/vol/mauranolab/flowcells/data/${fc/./}/info.txt" ]; then
     readgroup_instrument=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Instrument" {print $2}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
     
     readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Load date" {print $2}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
-    readgroup_bcs=`awk -v ds=${DS} -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && 0!="" && $2 $3==ds {split($7, bc1, "_"); split($7, bc2, "_"); print bc1[2] "-" bc1[2]}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
+    #BUGBUG hardcoded column numbers
+    readgroup_bcs=`awk -v ds=${BS} -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && 0!="" && $2==ds {split($7, bc1, "_"); split($8, bc2, "_"); print bc1[2] "-" bc2[2]}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
     #BUGBUG BC: shows up in bwa command line but at some point disappears from the bam header
     readgroup="${readgroup}\\tDT:${readgroup_date}\\tBC:${readgroup_bcs}\\tPU:${fc/./}-${readgroup_bcs}"
     
@@ -257,32 +259,6 @@ echo "userAlnOptions=${userAlnOptions}"
 echo "Will map to genomes ${genomesToMap}"
 date
 
-
-#On analysis sets
-#https://lh3.github.io/2017/11/13/which-human-reference-genome-to-use
-#https://gatkforums.broadinstitute.org/gatk/discussion/7857/reference-genome-components
-
-#- Neither ENCODE hg38_no_alt_analysis_set nor hg38 have PAR masked
-#PAR in hg38 from wikipedia:
-#chrY	10001	2781479	PAR1
-#chrY	56887903	57217415	PAR2
-#mm10 https://www.ncbi.nlm.nih.gov/grc/mouse
-#chrY	90745845 	91644698	PAR
-#Rat is unclear which end of chrX it's on
-#
-#- There are no non-ACGTN in mm10, hg19/38 (from UCSC goldenpath, ENCODE analysis set, or the UCSC-provided NCBI analysis set) or rn6 (UCSC), but NCBI hg38 analysis set has 94
-#zcat /vol/isg/annotation/fasta/mm10/mm10.fa.gz | grep -v "^>" | perl -pe 's/[ACGTN\n]+//ig;' | wc -c
-#
-#UCSC source: http://hgdownload.cse.ucsc.edu/goldenPath/hg38/bigZips/analysisSet/
-#NCBI source (has non-N ambiguous bases and decoys):ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids
-#ftp://ftp.ncbi.nlm.nih.gov/genomes/genbank/vertebrate_mammalian/Homo_sapiens/latest_assembly_versions/GCA_000001405.27_GRCh38.p12
-#
-#- Decided not to use decoy hs38d1 -- couldn't find info on what exactly is in here but I think has EBV, HHV, etc. and other unmapping bits empirically found in HuRef and GM12878 by Heng Li and/or Broad
-
-#Notes
-#- No non-encode analysis set for mm10 seems available
-#- None seem to use latest hg38 (p12 as of 10/15/18), can't find good inventory of changes
-
 for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     echo
     echo "Mapping to reference ${curGenome}"
@@ -376,29 +352,27 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     echo "Post-processing"
     date
     
-    
-    if [[ "${processingCommand}" == "mapBwaAln" ]]; then
-        if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
-            unwanted_refs="--failUnwantedRefs"
-        else
-            unwanted_refs=""
-        fi
-        
-        
-        if [[ "${curGenome}" == "cegsvectors" ]]; then
-            dropUnmappedReads="--dropUnmappedReads"
-        else
-            dropUnmappedReads=""
-        fi
-        
-        #BUGBUG filter_reads.py not working with bwa mem supplementary alignments
-        #TODO not really any point in piping this as I don't think sort prints any intermediate results. Perhaps sorting fastq before mapping would be faster? https://www.biostars.org/p/15011/
-        #TODO should we really be hard-unmapping unscaffolded contigs, etc.?
-        ${src}/filter_reads.py --reqFullyAligned ${unwanted_refs} ${dropUnmappedReads} --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} --max_insert_size ${maxInsertSize}  ${sampleOutdir}/${curfile}.${curGenome}.bam ${sampleOutdir}/${curfile}.${curGenome}.new.bam && mv ${sampleOutdir}/${curfile}.${curGenome}.new.bam ${sampleOutdir}/${curfile}.${curGenome}.bam
-        
-        echo
-        date
+    if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
+        unwanted_refs="--failUnwantedRefs --reqFullyAligned"
+    else
+        unwanted_refs=""
     fi
+    
+    if [[ "${curGenome}" == "cegsvectors" ]]; then
+        dropUnmappedReads="--dropUnmappedReads"
+    else
+        dropUnmappedReads=""
+    fi
+    
+#    if [[ "${processingCommand}" == "mapBwaAln" ]]; then
+#        
+#    fi
+    
+    #TODO not really any point in piping this as I don't think sort prints any intermediate results. Perhaps sorting fastq before mapping would be faster? https://www.biostars.org/p/15011/
+    ${src}/filter_reads.py ${unwanted_refs} ${dropUnmappedReads} --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} --max_insert_size ${maxInsertSize}  ${sampleOutdir}/${curfile}.${curGenome}.bam ${sampleOutdir}/${curfile}.${curGenome}.new.bam && mv ${sampleOutdir}/${curfile}.${curGenome}.new.bam ${sampleOutdir}/${curfile}.${curGenome}.bam
+    
+    echo
+    date
     
     #Add MC tag containing mate CIGAR for duplicate calling
     #Why do I need this? samblaster can add this itself but seems to miss some?
@@ -432,12 +406,12 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     java -Xmx3g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MeanQualityByCycle -INPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -OUTPUT $TMPDIR/${curfile}.baseQ.txt -CHART_OUTPUT $TMPDIR/${curfile}.baseQ.pdf -VALIDATION_STRINGENCY LENIENT
     
     instrument=`bam2instrument ${sampleOutdir}/${curfile}.${curGenome}.bam | uniq | awk 'values[$0] != 1 {print; values[$0]=1}' | perl -pe 's/\n$//g;' | perl -pe 's/\n/;/g;'`
-    awk -v instrument=${instrument} -v fc=${fc} -v sample=${curfile} -v ds=${DS} -v genome=${curGenome} -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $0!="" {if($1=="CYCLE") {$0=tolower($0); $(NF+1)="instrument\tfc\tsample\tDS\tgenome"} else {$(NF+1)=instrument "\t" fc "\t" sample "\t" ds "\t" genome;} print}' $TMPDIR/${curfile}.baseQ.txt > ${sampleOutdir}/${curfile}.${curGenome}.baseQ.txt
+    awk -v instrument=${instrument} -v fc=${fc} -v sample=${curfile} -v ds=${BS} -v genome=${curGenome} -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $0!="" {if($1=="CYCLE") {$0=tolower($0); $(NF+1)="instrument\tfc\tsample\tDS\tgenome"} else {$(NF+1)=instrument "\t" fc "\t" sample "\t" ds "\t" genome;} print}' $TMPDIR/${curfile}.baseQ.txt > ${sampleOutdir}/${curfile}.${curGenome}.baseQ.txt
     
     
     echo
     #Prints positions
-    echo -n -e "Histogram of mismatches to reference by position:\t${instrument}\t${fc}\t${curfile}\t${DS}\t${curGenome}\t"
+    echo -n -e "Histogram of mismatches to reference by position:\t${instrument}\t${fc}\t${curfile}\t${BS}\t${curGenome}\t"
     samflags="-q 20 -F 1548"
     
     #BUGBUG flag 2 not working?
