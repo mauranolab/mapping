@@ -1,11 +1,11 @@
 #!/bin/bash
-set -eu -o pipefail
-
 
 echo
 echo "Errors in log files"
 grep -i error */*.o*
 
+
+set -eu -o pipefail
 
 
 grep -h -A 11 "Num_sequenced_reads" *BS*/analysis.*.o* | awk 'BEGIN {skip=0} $0=="--" {skip=0;next} $0=="" {skip=1;next} skip==0' | grep -v -e "syntax[ _]error" | grep -v "Num_SE_" | grep -v "Prop_SE_" | 

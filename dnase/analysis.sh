@@ -11,7 +11,7 @@ alias closest-features='closest-features --header'
 mappedgenome=$1
 analysisType=$2
 name=$3
-DS=$4
+BS=$4
 src=$5
 
 #processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
@@ -109,7 +109,7 @@ getcolor () {
 
 ###Analysis
 sampleOutdir=${name}
-echo "Running ${analysisType} analysis for sample ${name} (${DS}) against genome ${mappedgenome}"
+echo "Running ${analysisType} analysis for sample ${name} (${BS}) against genome ${mappedgenome}"
 date
 
 #TMPDIR=`pwd`/tmp.makeTracks.${name}
@@ -120,8 +120,8 @@ echo "using $TMPDIR as TMPDIR"
 #BUGBUG define FC
 fc="FC"
 
-if grep ${DS} inputs.txt | grep -q .fastq ; then
-    sequencedReads=`cat inputs.txt | grep ${DS} | sort | uniq | xargs zcat -f | awk 'END {print NR/4}'`
+if grep ${BS} inputs.txt | grep -q .fastq ; then
+    sequencedReads=`cat inputs.txt | grep ${BS} | sort | uniq | xargs zcat -f | awk 'END {print NR/4}'`
 else
     echo "Not merging .fastq files; unable to count total number of sequenced reads"
     sequencedReads="NA"
@@ -132,9 +132,6 @@ if [ ! -s "${sampleOutdir}/${name}.${mappedgenome}.bam" ]; then
     echo "ERROR: can not find file ${sampleOutdir}/${name}.${mappedgenome}.bam"
     exit 2
 fi
-
-DS_nosuffix=`echo ${DS} | perl -pe 's/[A-Z]$//g;'`
-
 
 samflags="-q 20 -F 524"
 
@@ -151,7 +148,10 @@ echo "Making bed file"
 samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | 
 awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrEBV"' |
 awk -F "\t" 'BEGIN {OFS="\t"} { \
-    readlength = length($10); \
+    softclipping = 0; \
+    if(match($6, /^[0-9]+S/)) {softclipping+=substr($6, 1, RLENGTH-1)} \
+    if(match($6, /[0-9]+S$/)) {softclipping+=substr($6, RSTART)} \
+    readlength = length($10) - softclipping; \
     insertlength = $9; \
 #    readSequence = $10; \
 #    color=255; \
@@ -245,7 +245,7 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         #unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
         n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
         qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${name} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps
-        qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps` -o ${sampleOutdir} -N merge.callsnps.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${DS} ${src}" | perl -pe 's/[^\d].+$//g;'
+        qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps` -o ${sampleOutdir} -N merge.callsnps.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;'
         rm -f ${sampleOutdir}/sgeid.callsnps
         
         echo
