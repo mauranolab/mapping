@@ -78,7 +78,8 @@ done
 #echo "Tarballing flowcell data directory"
 #base=${fc}
 #cd /vol/mauranolab/flowcells/data/$fc/
-#echo "https://sequencing:moretags@cascade.isg.med.nyu.edu/sequencing/${base}_data.tar"
+#echo "Your data are available at (user:sequencing, password:moretags)"
+#echo "https://sequencing:moretags@cascade.isg.med.nyu.edu/flowcells/${base}_data.tar"
 #tar cvf /vol/mauranolab/flowcells/public_html/${base}_data.tar .
 
 
