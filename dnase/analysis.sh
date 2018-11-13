@@ -549,9 +549,13 @@ if [[ "${callHotspots2}" == 1 ]]; then
     
     
     if [ -s "${hotspot2fileFDR05}" ] && [ "${numhotspots2}" -gt 0 ]; then
-        numTotalReadsHotspot2=$(unstarch ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.cutcounts.starch | awk '{print $5}'|  awk '{sum+=$1} END {print sum}')
-        numReadsinDHSHotspot2=$(unstarch ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.cutcounts.starch | bedops --header -e -1 - ${hotspot2fileFDR05} | awk '{print $5}' | awk '{sum+=$1} END {print sum}')
-        spot2=$(echo "scale=4; ${numReadsinDHSHotspot2}/${numTotalReadsHotspot2}" | bc)
+        numTotalReadsHotspot2=$(unstarch ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.cutcounts.starch | awk -F "\t" 'BEGIN {OFS="\t"; sum=0} {sum+=$5} END {print sum}')
+        if [ "${numTotalReadsHotspot2}" -gt 0 ]; then
+            numReadsinDHSHotspot2=$(unstarch ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.cutcounts.starch | bedops --header -e -1 - ${hotspot2fileFDR05} | awk -F "\t" 'BEGIN {OFS="\t"; sum=0} {sum+=$5} END {print sum}')
+            spot2=$(echo "scale=4; ${numReadsinDHSHotspot2}/${numTotalReadsHotspot2}" | bc)
+        else
+            spot2="NA"
+        fi
     else
         spot2="NA"
     fi

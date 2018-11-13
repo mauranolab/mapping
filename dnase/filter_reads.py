@@ -177,6 +177,7 @@ def parseUMI(read):
 
 
 def validateReadPair(read1, read2):
+    #TODO should we enforce this for supplementary reads in addition to the primary pair?
     if read1.reference_id != read2.reference_id: raise ReadException("Each read must map to the same reference sequence", unfiltered_reads.getrname(read1.reference_id) + "/" + unfiltered_reads.getrname(read2.reference_id))
     
     if read1.is_reverse == read2.is_reverse: raise ReadException("Must be mapped to opposite strands (F-R conformation)", str(read1.is_reverse) + "/" + str(read2.is_reverse))
