@@ -121,7 +121,7 @@ echo "using $TMPDIR as TMPDIR"
 fc="FC"
 
 if grep ${BS} inputs.txt | grep -q .fastq ; then
-    sequencedReads=`cat inputs.txt | grep ${BS} | sort | uniq | xargs zcat -f | awk 'END {print NR/4}'`
+    sequencedReads=`cat inputs.txt | grep ${BS} | sort | uniq | xargs pigz -dc -f | awk 'END {print NR/4}'`
 else
     echo "Not merging .fastq files; unable to count total number of sequenced reads"
     sequencedReads="NA"
@@ -244,9 +244,9 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         samtools view -H ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $0~/^@SQ/ {split($2, sn, ":"); print sn[2]}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
         #unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
         n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
-        qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${name} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps
-        qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps` -o ${sampleOutdir} -N merge.callsnps.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;'
-        rm -f ${sampleOutdir}/sgeid.callsnps
+        qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${name} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
+        qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N merge.callsnps.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;'
+        rm -f ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
         
         echo
         echo "Collecting picard metrics"
@@ -349,7 +349,6 @@ fi
 if ([ "$callHotspots1" == 1 ] || [ "$callHotspots2" == 1 ]) && [[ "${analyzedReads}" > 0 ]]; then
     echo
     echo "Will call hotspots"
-    date
     
     mappableFile="/vol/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K36.mappable_only.starch"
     #NB this will call hotspots only on the mammalian genome for the *_sacCer3 hybrid indices

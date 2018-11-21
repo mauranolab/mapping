@@ -63,7 +63,7 @@ elif [[ "${processingCommand}" =~ ^aggregate ]]; then
                 #Include random component to avoid name collisions; the usual method using tr returns nonzero exit code
                 curOutputFileBase="${curOutputFileBase}."`head -200 /dev/urandom | cksum | cut -f1 -d " "`
                 echo "sorting ${curOutputFile} by read name"
-                samtools sort -@ $NSLOTS -O bam -m 2500M -T $TMPDIR/${curOutputFileBase}.sortbyname -l 1 -n ${curOutputFile} > ${TMPDIR}/${curOutputFileBase}.sorted.bam
+                samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${curOutputFileBase}.sortbyname -l 1 -n ${curOutputFile} > ${TMPDIR}/${curOutputFileBase}.sorted.bam
                 #OK to list temporary files since bams don't get deleted at the end of pipeline
                 curOutputFile="${TMPDIR}/${curOutputFileBase}.sorted.bam"
             fi
@@ -102,17 +102,12 @@ else
         mergeOpts="-l 9"
     fi
     
-    #BUGBUG for runs with split fastq files it's appending hash to make RG IDs unique
     samtools merge -c -@ $NSLOTS ${mergeOpts} ${sampleOutdir}/${name}.${mappedgenome}.bam ${files}
 fi
 
-echo "Processing ${name}.${mappedgenome}.bam"
-#TODO AddOrReplaceReadGroups or do bwa -r ""
-
-
 if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggregateRemarkDups" ]]; then
     echo
-    echo "mark dups"
+    echo "Marking duplicates"
     date
     ###Obsolete picard version
     #Used to need VALIDATION_STRINGENCY=LENIENT to avoid SAM validation error: ERROR...MAPQ should be 0 for unmapped read or CIGAR should have zero elements for unmapped read
@@ -126,7 +121,7 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggrega
     samtools view -h ${sampleOutdir}/${name}.${mappedgenome}.bam |
     samblaster --addMateTags |
     samtools view -Sb - > $TMPDIR/${name}.${mappedgenome}.markedDups.bam
-    samtools sort -@ $NSLOTS -O bam -m 2500M -T $TMPDIR/${name}.sort -l 9 $TMPDIR/${name}.${mappedgenome}.markedDups.bam > ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam && mv ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${name}.sort -l 9 $TMPDIR/${name}.${mappedgenome}.markedDups.bam > ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam && mv ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
 fi
 
 
