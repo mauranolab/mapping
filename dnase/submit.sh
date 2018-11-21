@@ -16,6 +16,7 @@ module load samblaster/0.1.22
 module load ucsckentutils/10132015
 module load hotspot/4.1
 module load hotspot2/2.1.1
+module add pigz
 
 
 ###Hardcoded configuration options
@@ -26,8 +27,8 @@ qsubargs=""
 genomesToMap=$1
 analysisType=$2
 sample=$3
-DS=$4
-#Files for a given sample will be output to a folder named "${sample}-${DS}-$genome"
+BS=$4
+#Files for a given sample will be output to a folder named "${sample}-${BS}-$genome"
 
 
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
@@ -44,16 +45,16 @@ if [[ "${analysisCommand}" != "atac" ]] && [[ "${analysisCommand}" != "dnase" ]]
     exit 2
 fi
 
-if ! grep -q ${DS} inputs.txt; then
-    echo "submit: Can't find ${DS}"
+if ! grep -q ${BS} inputs.txt; then
+    echo "submit: Can't find ${BS}"
     exit 3
 fi
 
 
-echo "Will process ${sample} (${DS}) using ${analysisType} pipeline for genomes ${genomesToMap}"
+echo "Will process ${sample} (${BS}) using ${analysisType} pipeline for genomes ${genomesToMap}"
 
 
-sampleOutdir="${sample}-${DS}"
+sampleOutdir="${sample}-${BS}"
 mkdir -p ${sampleOutdir}/.src
 
 
@@ -62,12 +63,13 @@ src=`pwd`/${sampleOutdir}/.src
 
 
 if [[ "${analysisType}" =~ ^map ]]; then
-    grep ${DS} inputs.txt > ${sampleOutdir}/inputs.map.txt
+    grep ${BS} inputs.txt > ${sampleOutdir}/inputs.map.txt
     n=`cat ${sampleOutdir}/inputs.map.txt | wc -l`
-    mapname="${sample}-${DS}.${genomesToMap}"
+    mapname="${sample}-${BS}.${genomesToMap}"
     #SGE doesn't accept a -t specification with gaps, so we'll start R2 jobs that will die instantly rather than prune here
     echo "Mapping ${n} jobs for ${mapname}"
-    qsub -S /bin/bash -cwd -V $qsubargs -pe threads 8 -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sample}-${DS} ${DS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
+    #NB running many jobs with threads < 4 can sometimes get memory errors, not quite sure of the culprit
+    qsub -S /bin/bash -cwd -V $qsubargs -pe threads 8 -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sample}-${BS} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
 fi
 
 
@@ -79,9 +81,10 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggrega
     fi
     
     for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
-        mergename="${sample}-${DS}.${curGenome}"
+        mergename="${sample}-${BS}.${curGenome}"
         echo "${mergename} merge"
-        qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sample}-${DS} ${DS} ${curGenome}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
+        #NB compression threads are mulltithreaded but samblaster and index are not. Former is ~1/4 of time and latter is trivial
+        qsub -S /bin/bash -cwd -V $qsubargs -pe threads 3 -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sample}-${BS} ${BS} ${curGenome}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
     done
 fi
 #Clean up sgeid even if we don't run merge
@@ -92,7 +95,7 @@ fi
 
 
 for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
-    analysisname="${sample}-${DS}.${curGenome}"
+    analysisname="${sample}-${BS}.${curGenome}"
     
     #Submit job even if none so that the read count stats get run
     if [[ "1" == "1" ]]; then
@@ -104,7 +107,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         fi
         
         echo "${analysisname} analysis"
-        qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sample}-${DS} ${DS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
+        qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sample}-${BS} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
         
         cat ${sampleOutdir}/sgeid.analysis.${analysisname} >> sgeid.analysis
         

@@ -186,6 +186,7 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     #TODO super slow - replace with cutadapt --nextseq-trim?
     ${src}/filterNextSeqReadsForPolyG.py --inputfileR1 ${readsFq} --inputfileR2 ${reads2fq} --outputfileR1 $TMPDIR/${sample1}.pretrim.fastq.gz --outputfileR2 $TMPDIR/${sample2}.pretrim.fastq.gz --maxPolyG 75
     
+    #java.lang.OutOfMemoryError: unable to create new native thread if run with just 2 threads
     java org.usadellab.trimmomatic.TrimmomaticPE ${trimmomaticBaseOpts} $TMPDIR/${sample1}.pretrim.fastq.gz $TMPDIR/${sample2}.pretrim.fastq.gz $TMPDIR/${sample1}.fastq $TMPDIR/${sample1}.unpaired.fastq $TMPDIR/${sample2}.fastq $TMPDIR/${sample2}.unpaired.fastq ${trimmomaticSteps}
     #TODO why does this output uncompressed fastq? I think it's just so one can test with -s below
     
@@ -200,16 +201,16 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     fi
     
     
-    mkdir -p fastqc
-    fastQcOutdir="fastqc/${fc}${sample1}_qc"
+    mkdir -p ${sampleOutdir}/fastqc
+    fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample1}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
-        #qsub -cwd -V -N ${sample1}.qc -o fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq"
+        #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq"
         mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq
     fi
     
-    fastQcOutdir="fastqc/${fc}${sample2}_qc"
+    fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample2}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
-        #qsub -cwd -V -N ${sample2}.qc -o fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq"
+        #qsub -cwd -V -N ${sample2}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq"
         mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq
     fi
     
@@ -240,10 +241,10 @@ else
     fi
     
     
-    mkdir -p fastqc
-    fastQcOutdir="fastqc/${fc}${sample1}_qc"
+    mkdir -p ${sampleOutdir}/fastqc
+    fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample1}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
-        #qsub -cwd -V -N ${sample1}.qc -o fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq"
+        #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq"
         mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq
     fi
     
@@ -335,22 +336,18 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     echo -e "extractcmd=bwa ${extractcmd} | (...)"
     date
     echo
-    
     bwa ${extractcmd} > $TMPDIR/${curfile}.${curGenome}.bwaout.bam
     
-    #Piping straight to sort seems to increase frequency of spurious errors (stale file handles, etc.)
     
+    echo
+    echo "Post-processing"
+    date
 #    #calmd - this is glacially slow for some reason, not nearly as bad when run interactively
 #    #Fix NM/MD (bwa aln still seems to set NM/MD wrong sporadically) and precalculate BAQ in the parallel thread to speed subsequent variant calling
 #    #See http://www.biostars.org/p/1268
 #    #NB redirecting stderr since calmd can be noisy, but you will miss real errors
 #    samtools calmd -u -r - ${referencefasta} 2> $TMPDIR/${curfile}.${curGenome}.calmd.log |
     
-    samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${curfile}.sortbyname -l 1 -n $TMPDIR/${curfile}.${curGenome}.bwaout.bam > ${sampleOutdir}/${curfile}.${curGenome}.bam
-    
-    echo
-    echo "Post-processing"
-    date
     
     if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
         unwanted_refs="--failUnwantedRefs --reqFullyAligned"
@@ -368,8 +365,9 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
 #        
 #    fi
     
-    #TODO not really any point in piping this as I don't think sort prints any intermediate results. Perhaps sorting fastq before mapping would be faster? https://www.biostars.org/p/15011/
-    ${src}/filter_reads.py ${unwanted_refs} ${dropUnmappedReads} --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} --max_insert_size ${maxInsertSize}  ${sampleOutdir}/${curfile}.${curGenome}.bam ${sampleOutdir}/${curfile}.${curGenome}.new.bam && mv ${sampleOutdir}/${curfile}.${curGenome}.new.bam ${sampleOutdir}/${curfile}.${curGenome}.bam
+    samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${curfile}.sortbyname -l 1 -n $TMPDIR/${curfile}.${curGenome}.bwaout.bam |
+    #not much gain other than avoiding disk IO this as I don't think sort prints any intermediate results. Perhaps sorting fastq before mapping would be faster? https://www.biostars.org/p/15011/
+    ${src}/filter_reads.py ${unwanted_refs} ${dropUnmappedReads} --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} --max_insert_size ${maxInsertSize} - ${sampleOutdir}/${curfile}.${curGenome}.bam
     
     echo
     date
