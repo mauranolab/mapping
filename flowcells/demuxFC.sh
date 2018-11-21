@@ -19,7 +19,7 @@ date
 #https://hpc.nih.gov/apps/bcl2fastq.html says optimal relative allocations but doesn't seem to change runtime much
 #-r 0.25 -w 0.25 -p 0.875
 #I bumped up based on observed CPU usage
-#TODO wouldn't need fastq-compression-level 9 if we always split afterwards
+#TODO set fastq-compression-level 1 if we split everything afterwards
 bcl2fastq --fastq-compression-level 9 --no-lane-splitting --minimum-trimmed-read-length 0 --mask-short-adapter-reads 0 --barcode-mismatches 0 -r $((${NSLOTS}/4)) -w $((${NSLOTS}/4)) -p $((${NSLOTS}/7*8)) --output-dir ../../fastq/${fc} ${userDemuxOptions} > bcl2fastq.log 2>&1
 
 

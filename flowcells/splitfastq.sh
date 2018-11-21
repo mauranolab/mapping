@@ -2,6 +2,10 @@
 set -eu -o pipefail
 
 #Based on stampipes/scripts/fastq/splitfastq.bash
+#Requires sequences/qualities to be on single line
+
+module add pigz
+
 
 SAMPLE_NAME=$1
 R1_FASTQ=$2
@@ -18,13 +22,13 @@ echo "Splitting FASTQ files into ${CHUNK_SIZE} reads using ${TMPDIR}/splitfastq.
 date
 
 echo "Splitting R1 ${R1_FASTQ}"
-zcat ${R1_FASTQ} | split -l ${LINE_CHUNK} -d -a 3 - "${TMPDIR}/splitfastq.${SAMPLE_NAME}/${SAMPLE_NAME}_R1_"
+pigz -dc ${R1_FASTQ} | split -l ${LINE_CHUNK} -d -a 3 - "${TMPDIR}/splitfastq.${SAMPLE_NAME}/${SAMPLE_NAME}_R1_"
 date
 
 #BUGBUG doesn't work with SE fastq file
 if [ true ]; then
     echo "Splitting R2 ${R2_FASTQ}"
-    zcat ${R2_FASTQ} | split -l ${LINE_CHUNK} -d -a 3 - "${TMPDIR}/splitfastq.${SAMPLE_NAME}/${SAMPLE_NAME}_R2_"
+    pigz -dc ${R2_FASTQ} | split -l ${LINE_CHUNK} -d -a 3 - "${TMPDIR}/splitfastq.${SAMPLE_NAME}/${SAMPLE_NAME}_R2_"
     date
 fi
 
@@ -61,9 +65,13 @@ else
         echo "Compressing ${RAW_FILE}"
         date
         mv ${RAW_FILE} ${RAW_FILE}.fastq
-        bgzip -@ $NSLOTS -c ${RAW_FILE}.fastq > ${orig_dir}/${FASTQ_FILENAME}.fastq.gz
+        #TODO worth using -11 (zopfli)?
+        pigz -p $NSLOTS -c -9 ${RAW_FILE}.fastq > ${orig_dir}/${FASTQ_FILENAME}.fastq.gz
+        rm -f ${RAW_FILE}.fastq
     done
 fi
 
+
 echo "Done compressing"
 date
+
