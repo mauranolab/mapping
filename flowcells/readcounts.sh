@@ -2,6 +2,9 @@
 set -eu -o pipefail
 
 module add miller
+module add pigz
+
+#newer version of gnu coreutils would permit single-pass split --bytes=1024M --filter='gzip > $FILE.gz' /path/to/input /path/to/output
 
 fc=$1
 
@@ -19,7 +22,10 @@ for dir in `find .  -maxdepth 1 -name "Project_*" -type d | sort -r | perl -pe '
     for sample1 in ${bs}; do
         echo -e -n "$dir\t$sample1\t" >> readcounts.txt
         files=`find $dir -maxdepth 2 -name "$sample1*.gz"`
-        printf "%'d\n" `zcat $files | awk -F "\t" 'BEGIN {OFS="\t"} END {print NR/4}'` >> readcounts.txt
+        #This is limited by decompression speed
+        #Some profiling info in https://bioinformatics.stackexchange.com/questions/935/fast-way-to-count-number-of-reads-and-number-of-bases-in-a-fastq-file
+        #Requires sequences/qualities to be on single line
+        printf "%'d\n" `pigz -dc $files | awk -F "\t" 'BEGIN {OFS="\t"} END {print NR/4}'` >> readcounts.txt
     done
 done
 
@@ -50,6 +56,7 @@ for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="
         echo "$f1 $f2"
         #NB assumes PE reads
         /vol/mauranolab/flowcells/src/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads} ${project}/Sample_${bs}/bak.fastq
+        #bqsub -j y -N split.${bs} -pe threads 8 "/vol/mauranolab/flowcells/src/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads} ${project}/Sample_${bs}/bak.fastq"
     done
 done
 ##TODO maybe rename files <16M reads for consistency

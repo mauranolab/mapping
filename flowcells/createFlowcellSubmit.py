@@ -104,6 +104,7 @@ def DNA(sampleName, sampleID, lab, sampleType, species):
         'Human': 'hg38_full',
         'Mouse': 'mm10',
         'Rat': 'rn6',
+        'Human+mouse': 'hg38_full,mm10',
         'Human+yeast': 'hg38_sacCer3',
         'Mouse+yeast': 'mm10_sacCer3',
         'Rat+yeast': 'rn6_sacCer3'

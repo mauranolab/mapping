@@ -4,13 +4,15 @@ set -eu -o pipefail
 #Boilerplate header
 cat /vol/mauranolab/flowcells/src/SampleSheet.template.txt > SampleSheet.csv
 
+
 #Now parse the sequencing sheet info from STDIN
 awk -F "\t" 'BEGIN {OFS="\t"; parse=0} {print} $0!="" && parse==0 {parse=1; print "#Sample Name", "Sample #", "Lab", "Made By", "Sample Type", "Species", "Barcode 1 (i7)", "Barcode 2 (i5)", "R1 Trim (P5)", "R2 Trim (P7)", "Sequencing primer R1", "Indexing primer BC1 (i7)", "Indexing primer BC2 (i5)", "Sequencing primer R2", "Library concentration (pM)", "Request Type", "Requested reads (M)", "Read format", "Scale factor", "Relative representation", "Amount put on FC (uL)", "Sequenced reads", "Actual representation"}' |
 #Also creates info.txt
 tee info.txt |
-awk -F "\t" 'BEGIN {OFS=","; split("8,8", bclens, ",")} 
+#NB our sample sheet records RC for BC2, which according to https://support.illumina.com/content/dam/illumina-support/documents/documentation/system_documentation/miseq/indexed-sequencing-overview-guide-15057455-04.pdf is valid for iSeq 100, MiniSeq, NextSeq, HiSeq X, HiSeq 4000, or HiSeq 3000. Therefore for runs on NovaSeqTM 6000, MiSeqTM, HiSeq 2500, and HiSeq 2000, BC2 must be RC back to the original sequence.
+awk -v doRevComp=0 -f ~/lib/revcomp.awk -F "\t" --source  'BEGIN {OFS=","; split("8,8", bclens, ",")} 
     $1=="#Indices" && $2!="" {split($2, bclens, ",")}
-    $0!~/^#/ && $1!="" && $1 {if(bclens[1]==0) {$7="_"} if(bclens[2]==0) {$8="_"} split($7, bc1, "_"); split($8, bc2, "_"); print "Sample_" $2, $2, "", "",  bc1[1], toupper(substr(bc1[2], 0, bclens[1])),  bc2[1], toupper(substr(bc2[2], 0, bclens[2])), "Project_" $3, "";}' >> SampleSheet.csv
+    $0!~/^#/ && $1!="" && $5!="Pool" {if(bclens[1]==0) {$7="_"} if(bclens[2]==0) {$8="_"} split($7, bc1, "_"); split($8, bc2, "_"); if(doRevComp==1) {bc2[2]=revcomp(bc2[2])} print "Sample_" $2, $2, "", "",  bc1[1], toupper(substr(bc1[2], 0, bclens[1])),  bc2[1], toupper(substr(bc2[2], 0, bclens[2])), "Project_" $3, "";}' >> SampleSheet.csv
 
 #validate date format as 
 readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Load date" {print $2}' info.txt`
