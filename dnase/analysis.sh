@@ -108,22 +108,33 @@ getcolor () {
 
 
 ###Analysis
-sampleOutdir=${name}
-echo "Running ${analysisType} analysis for sample ${name} (${BS}) against genome ${mappedgenome}"
-date
-
 #TMPDIR=`pwd`/tmp.makeTracks.${name}
 #mkdir -p $TMPDIR
 echo "using $TMPDIR as TMPDIR"
+
+sampleOutdir=${name}
+echo "Running ${analysisType} analysis for sample ${name} (${BS}) against genome ${mappedgenome}"
+date
 
 
 #BUGBUG define FC
 fc="FC"
 
-if grep ${BS} inputs.txt | grep -q .fastq ; then
-    sequencedReads=`cat inputs.txt | grep ${BS} | sort | uniq | xargs pigz -dc -f | awk 'END {print NR/4}'`
+
+if grep ${BS} inputs.txt | grep -q .fastq; then
+    fastqfiles=`cat inputs.txt | grep ${BS} | grep .fastq | sort | uniq`
+elif grep ${BS} inputs.txt | grep ${mappedgenome} | grep -q .bam; then
+    #Look for inputs.txt one directory up from the bam files and get fastq files from there
+    fastqfiles=`cat inputs.txt | grep ${BS} | grep .bam | grep ${mappedgenome} | xargs -I {} dirname {} | xargs -I {} dirname {} | perl -pe 's/\n/\/inputs.txt\n/g;' | xargs sort | grep .fastq | uniq`
 else
-    echo "Not merging .fastq files; unable to count total number of sequenced reads"
+    fastqfiles=""
+    echo "Couldn't identify source of .fastq files; unable to count total number of sequenced reads"
+fi
+
+if [[ "${fastqfiles}" != "" ]]; then
+    #pigz prints warning but gives exit code of 0 if file doesn't exist
+    sequencedReads=`pigz -dc -f ${fastqfiles} | awk 'END {print NR/4}'`
+else
     sequencedReads="NA"
 fi
 
@@ -144,6 +155,7 @@ samflags="-q 20 -F 524"
 
 
 echo "Making bed file"
+date
 #Coordinates are the 5' end of the read
 samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | 
 awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrEBV"' |
