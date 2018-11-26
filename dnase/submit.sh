@@ -58,6 +58,7 @@ sampleOutdir="${sample}-${BS}"
 mkdir -p ${sampleOutdir}/.src
 
 
+#Run the job from a local copy of the pipeline for archival and to prevent contention issues if the main tree is modified mid-job
 cp -p /vol/mauranolab/mapped/src/* ${sampleOutdir}/.src
 src=`pwd`/${sampleOutdir}/.src
 
