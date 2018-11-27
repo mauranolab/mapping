@@ -56,7 +56,7 @@ awk -F "\t" 'BEGIN {OFS="\t"} \
     } \
 END {curOutputLine++; if(NR!=lastPrinted) {print lastChrom, firstStart, lastEnd, lastScore}}' > $TMPDIR/${name}.${mappedgenome}.${chrom}.coverage.bedGraph
 
-starch $TMPDIR/${name}.${mappedgenome}.${chrom}.coverage.bedGraph > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.coverage.starch
+cat $TMPDIR/${name}.${mappedgenome}.${chrom}.coverage.bedGraph | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $3, ".", $4}' | starch - > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.coverage.starch
 
 
 echo
