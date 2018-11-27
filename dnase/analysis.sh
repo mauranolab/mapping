@@ -122,19 +122,13 @@ fc="FC"
 
 
 if grep ${BS} inputs.txt | grep -q .fastq; then
-    fastqfiles=`cat inputs.txt | grep ${BS} | grep .fastq | sort | uniq`
+    sequencedReads=`cat inputs.txt | grep ${BS} | grep .fastq | sort | uniq | xargs pigz -dc -f ${fastqfiles} | awk 'END {print NR/4}'`
 elif grep ${BS} inputs.txt | grep ${mappedgenome} | grep -q .bam; then
     #Look for inputs.txt one directory up from the bam files and get fastq files from there
-    fastqfiles=`cat inputs.txt | grep ${BS} | grep .bam | grep ${mappedgenome} | xargs -I {} dirname {} | xargs -I {} dirname {} | perl -pe 's/\n/\/inputs.txt\n/g;' | xargs sort | grep .fastq | uniq`
+    #Re-counting fastq files really too slow for large jobs so try to grab the counts from the individual analysis logfiles
+    sequencedReads=`cat inputs.txt | grep ${BS} | grep .bam | grep ${mappedgenome} | xargs -I {} dirname {} | xargs -I {} find {} -name "analysis*.${mappedgenome}.o*" | xargs awk -F "\t" 'BEGIN {OFS="\t"; sum=0} $1== "Num_sequenced_reads" {sum+=$2} END {print sum}'`
 else
-    fastqfiles=""
     echo "Couldn't identify source of .fastq files; unable to count total number of sequenced reads"
-fi
-
-if [[ "${fastqfiles}" != "" ]]; then
-    #pigz prints warning but gives exit code of 0 if file doesn't exist
-    sequencedReads=`pigz -dc -f ${fastqfiles} | awk 'END {print NR/4}'`
-else
     sequencedReads="NA"
 fi
 
