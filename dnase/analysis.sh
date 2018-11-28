@@ -3,7 +3,7 @@ set -eu -o pipefail
 
 shopt -s expand_aliases
 alias bedops='bedops --ec --header'
-alias bedmap='bedmap --ec --header'
+alias bedmap='bedmap --ec --header --sweep-all'
 #alias starch='starch --header'
 alias closest-features='closest-features --header'
 
@@ -122,7 +122,7 @@ fc="FC"
 
 
 if grep ${BS} inputs.txt | grep -q .fastq; then
-    sequencedReads=`cat inputs.txt | grep ${BS} | grep .fastq | sort | uniq | xargs pigz -dc -f ${fastqfiles} | awk 'END {print NR/4}'`
+    sequencedReads=`cat inputs.txt | grep ${BS} | grep .fastq | sort | uniq | xargs pigz -dc -f | awk 'END {print NR/4}'`
 elif grep ${BS} inputs.txt | grep ${mappedgenome} | grep -q .bam; then
     #Look for inputs.txt one directory up from the bam files and get fastq files from there
     #Re-counting fastq files really too slow for large jobs so try to grab the counts from the individual analysis logfiles

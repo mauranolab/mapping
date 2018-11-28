@@ -13,8 +13,8 @@ set -eu -o pipefail
 
 shopt -s expand_aliases
 alias bedops='bedops --ec --header'
-alias bedmap='bedmap --ec --header'
-alias starch='starch --header'
+alias bedmap='bedmap --ec --header --sweep-all'
+#alias starch='starch --header'
 alias closest-features='closest-features --header'
 
 
