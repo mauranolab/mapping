@@ -111,7 +111,7 @@ def DNA(sampleName, sampleID, lab, sampleType, species):
     }
     reference = speciesToGenomeReference[species]
     fullSampleName = sampleID + "-" + sampleName
-    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + reference + " mapBwaAln,callsnps " + sampleName + " " + sampleID
+    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + reference + " mapBwaMem,callsnps " + sampleName + " " + sampleID
     
     global doDNaseCleanup
     doDNaseCleanup = True
