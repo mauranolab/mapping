@@ -600,7 +600,7 @@ PEreads=`cat $TMPDIR/${name}.flagstat.txt | grep "paired in sequencing" | awk '{
 if [[ "${PEreads}" > 0 ]] && [[ "${mappedgenome}" != "cegsvectors" ]]; then
     echo
     echo "Template lengths"
-    samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrM"' | awk -v sample=${name} -F "\t" 'BEGIN {OFS="\t"} $9>0 {print sample, $9}' | sort -k2,2n | tee ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt | cut -f2 |
+    samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrM"' | awk -v sample=${name}.${mappedgenome} -F "\t" 'BEGIN {OFS="\t"} $9>0 {print sample, $9}' | sort -k2,2n | tee ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt | cut -f2 |
     awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {print "Minimum: " $0} {cum+=$0; lengths[NR]=$0; if($0<125) {lastLineUnder125=NR}} END {print "Number of reads: " NR; print "25th percentile: " lengths[int(NR*0.25)]; print "50th percentile: " lengths[int(NR*0.5)]; print "75th percentile: " lengths[int(NR*0.75)]; print "95th percentile: " lengths[int(NR*0.95)]; print "99th percentile: " lengths[int(NR*0.99)]; print "Maximum: " $0; print "Mean: " cum/NR; print "Prop. reads under 125 bp: " lastLineUnder125/NR}'
     gzip -f ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt
 fi
