@@ -43,10 +43,9 @@ cat readcounts.txt | awk -F "\t" 'BEGIN {OFS="\t"} $0=="" {exit} {print}' | mlr 
 echo
 date
 echo "split fastq into 16M read chunks"
-#TODO parallelize
 splitreads=16000000
 #bak.fastq shouldn't exist at this point, but exclude it just in case
-for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="\t"} $0=="" {exit} {print}' | awk -v splitreads=${splitreads} -F "\t" 'BEGIN {OFS="\t"} NR>1 && $1!="." && $3>splitreads*2' | awk '$1~/Project_CEGS/ || $1~/Project_Maurano/' | awk -F "\t" 'BEGIN {OFS="\t"} {print $1 ";" $2}'`; do
+for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="\t"} $0=="" {exit} {print}' | awk -v minsizetosplit=0 -F "\t" 'BEGIN {OFS="\t"} NR>1 && $1!="." && $3>minsizetosplit*2' | awk '$1~/Project_CEGS/ || $1~/Project_Maurano/' | awk -F "\t" 'BEGIN {OFS="\t"} {print $1 ";" $2}'`; do
     project=`echo ${base} | cut -d ";" -f1`
     bs=`echo ${base} | cut -d ";" -f2`
     echo
@@ -55,11 +54,10 @@ for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="
         f2=`echo $f1 | perl -pe 's/_R1_/_R2_/g;'`
         echo "$f1 $f2"
         #NB assumes PE reads
-        /vol/mauranolab/flowcells/src/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads} ${project}/Sample_${bs}/bak.fastq
-        #bqsub -j y -N split.${bs} -pe threads 8 "/vol/mauranolab/flowcells/src/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads} ${project}/Sample_${bs}/bak.fastq"
+        #/vol/mauranolab/flowcells/src/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads} ${project}/Sample_${bs}/bak.fastq
+        bqsub -j y -N split.${bs} -pe threads 4 "/vol/mauranolab/flowcells/src/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads} ${project}/Sample_${bs}/bak.fastq"
     done
 done
-##TODO maybe rename files <16M reads for consistency
 
 echo
 echo "Tarballing collaborator projects"
