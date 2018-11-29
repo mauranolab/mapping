@@ -18,38 +18,35 @@ maxlength <- 300
 
 
 cat("Loading insert lengths upto", maxlength, "bp\n")
+#TODO parallelize?
 results <- NULL
 for(d in c(list.dirs(path=".", recursive=F, full.names=T))) {
 	for(f in list.files(path=d, pattern=".insertlengths.txt.gz$", recursive=F, full.names=T)) {
 		cat("Doing", f, "\n")
 		data <- read(f)
-		colnames(data) <- c("sample", "length")
+		colnames(data) <- c("name", "length")
 		dens <- density(subset(data, length<=maxlength & length>=27)$length, bw=10)
-		results <- rbind(results, data.frame(sample=data[1, "sample"], x=dens$x, y=dens$y, stringsAsFactors=F))
+		#can also get name from data[1, "name"]; though note mappedgenome was only included inside file from 2018-12-29 on
+		results <- rbind(results, data.frame(name=gsub(".insertlengths.txt.gz$", "", basename(f)), x=dens$x, y=dens$y, stringsAsFactors=F))
 	}
 }
 
-results$sample <- factor(gsub(".hg19$", "", results$sample))
-results$sample <- factor(gsub(".hg38$", "", results$sample))
-results$sample <- factor(gsub(".mm10$", "", results$sample))
-results$sample <- factor(gsub(".rn6$", "", results$sample))
-results$sample <- factor(gsub(".hg38_sacCer3$", "", results$sample))
-results$sample <- factor(gsub(".mm10_sacCer3$", "", results$sample))
-results$sample <- factor(gsub(".rn6_sacCer3$", "", results$sample))
-results$DS <- sapply(as.character(results$sample), function(x) {unlist(strsplit(x, "-"))[2]})
-results$sublibrary <- sapply(results$DS, FUN=function(x) {substr(x, 8, 8)})
+results$mappedgenome <- factor(gsub("^.+\\.(hg19|hg38|mm10|rn6)(_full|_noalt|_sacCer3)?$", "\\1\\2", results$name, perl=T))
+results$sample <- factor(gsub(".(hg19|hg38|mm10|rn6)(_full|_noalt|_sacCer3)?$", "", results$name))
+results$BS <- sapply(as.character(results$sample), function(x) {unlist(strsplit(x, "-"))[2]})
+results$sublibrary <- sapply(results$BS, FUN=function(x) {substr(x, 8, 8)})
 
 
 cat("Saving...\n")
 save(list=c("results"), file="insertlengths.RData", compress="bzip2")
 
 #For subsetting
-#results <- subset(results, DS %in% c("BS01403A", "BS01403B", "BS01403C", "BS01403D", "BS01409A", "BS01409B", "BS01409C", "BS01409D"))
+#results <- subset(results, BS %in% c("BS01403A", "BS01403B", "BS01403C", "BS01403D", "BS01409A", "BS01409B", "BS01409C", "BS01409D"))
 #results$cleanup <- sapply(results$sample, FUN=function(x) {unlist(strsplit(as.character(x), "_"))[5]})
 #results$polymerase <- sapply(results$sample, FUN=function(x) {unlist(strsplit(as.character(x), "_"))[6]})
 
 
-p <- ggplot(data=subset(results, x>=27 & x<=maxlength), aes(x=x, y=y, group=DS, label=DS, color=DS)) +
+p <- ggplot(data=subset(results, x>=27 & x<=maxlength), aes(x=x, y=y, group=name, label=BS, color=name)) +
 labs(title="") +
 geom_line() +
 xlab("Fragment length (bp)") +
