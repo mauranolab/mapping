@@ -68,7 +68,7 @@ covfiles=$(getFilesToMerge $covfiles)
 starchcat ${covfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch
 rm -f ${covfiles}
 
-unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch > $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph
+unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch | cut -f1-3,5 > $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph
 
 #Fix problems with reads running off end of chromosome
 bedClip $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph ${chromsizes} $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph
