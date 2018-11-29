@@ -390,7 +390,7 @@ if ([ "$callHotspots1" == 1 ] || [ "$callHotspots2" == 1 ]) && [[ "${analyzedRea
     
         echo "Calling hotspots"
         #BUGBUG I think hotspot1 can use >40GB memory for some large datasets
-        hotspotDens=${outbase}/${sampleOutdir}/hotspots/${name}.density.starch
+        hotspotDens=${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.density.starch
         cd ${sampleOutdir}/hotspots
         ${src}/callHotspots.sh ${hotspotBAM} ${hotspotDens} ${outbase}/${sampleOutdir}/hotspots ${annotationgenome} ${mappableFile} > ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.log 2>&1
     

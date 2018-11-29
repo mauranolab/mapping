@@ -31,7 +31,7 @@ chromFile=$TMPDIR/hotspots.${mappedgenome}.chromInfo.bed
 HOTSPOT_DISTR=/cm/shared/apps/hotspot/4.1/hotspot-master/hotspot-distr/
 
 
-cat <<EOF >  runall.tokens.txt
+cat <<EOF >  runall.tokens.${mappedgenome}.txt
 [script-tokenizer]
 
 #######################################
@@ -149,7 +149,7 @@ EOF
 
 scriptTokBin=$HOTSPOT_DISTR/ScriptTokenizer/src/script-tokenizer.py
 pipeDir=$HOTSPOT_DISTR/pipeline-scripts
-tokenFile=runall.tokens.txt
+tokenFile=runall.tokens.${mappedgenome}.txt
 
 ## Do everything, including badspots and final cleanup
 scripts="$pipeDir/run_badspot
@@ -169,13 +169,13 @@ scripts="$pipeDir/run_badspot
 
 $scriptTokBin \
     --clobber \
-    --output-dir=`pwd` \
+    --output-dir=`pwd`/src.${mappedgenome} \
     $tokenFile \
     $scripts
 
 for script in $scripts
 do
-    ./$(basename $script).tok
+    src.${mappedgenome}/$(basename $script).tok
 done
 
 
