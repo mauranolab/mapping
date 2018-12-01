@@ -24,7 +24,7 @@ colnames(data) <- gsub("^Pct_", "Prop_", colnames(data))
 #gives error for columns with NA
 data[,grepl("^Prop_", colnames(data))] <- apply(data[,grepl("^Prop.", colnames(data))], MARGIN=c(1,2), FUN=function(x) {as.numeric(x)/100})
 
-data <- data[order(data[,"Genome"], data[,"BS"]),]
+data <- data[order(data[,"Genome"], data[,"BS"], decreasing = c(TRUE, FALSE)),]
 print.data.frame(data, row.names=F)
 write.table(data, row.names=F, col.names=T, quote=F, file="readcounts.summary.txt", append=F, sep="\t")
 EOF
