@@ -4,17 +4,25 @@ import re
 import argparse
 import pandas as pd
 
-version="1.1"
-
-doDNaseCleanup = False
-
-parser = argparse.ArgumentParser(prog = "createFlowcellSubmit", description = "Outputs submit commands for all samples from the info.txt located in the flowcell data folder", allow_abbrev=False)
-parser.add_argument('--flowcellID', action='store', type = str, help='Flowcell ID (will look for /vol/mauranolab/flowcells/FCxxx/info.txt)', required=True)
-parser.add_argument('--project', action='store', type = str, help='Only process samples in this project', required=False)
-parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
-parser.add_argument('--version', action='version', version='%(prog)s ' + version)
 
 basedir="/vol/mauranolab/flowcells"
+
+
+###Argument parsing
+version="1.2"
+
+parser = argparse.ArgumentParser(prog = "createFlowcellSubmit", description = "Outputs submit commands for all samples from the info.txt located in the flowcell data folder", allow_abbrev=False)
+
+parser.add_argument('--flowcellIDs', action='store', type = str, help='Flowcell IDs (will look for /vol/mauranolab/flowcells/FCxxx/info.txt, multiple FCs separated by comma)', required=True)
+parser.add_argument('--projects', action='store', type = str, help='Only process samples in these projects (multiple projects separated by comma)', required=False)
+parser.add_argument('--samples', action='store', type = str, help='Only process samples matching this BS number (multiple samples separated by comma)', required=False)
+
+#TODO
+#parser.add_argument("--aggregate", action='store_true', default=False, help = "Aggregate samples")
+#parser.add_argument("--aggregate-sublibrary", action='store_true', default=False, help = "Aggregate samples")
+
+parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
+parser.add_argument('--version', action='version', version='%(prog)s ' + version)
 
 try:
     args = parser.parse_args()
@@ -22,6 +30,21 @@ except argparse.ArgumentError as exc:
     print(exc.message, '\n', exc.argument)
     sys.exit(2)
 
+
+if args.flowcellIDs is None:
+    flowcellIDs = None
+else:
+    flowcellIDs = args.flowcellIDs.split(",")
+
+if args.projects is None:
+    projects = None
+else:
+    projects = args.projects.split(",")
+
+if args.samples is None:
+    samples = None
+else:
+    samples = args.samples.split(",")
 
 
 ###Handlers for individual data types
@@ -121,23 +144,24 @@ def DNA(sampleName, sampleID, lab, sampleType, species):
 
 ###Dispatch appropriate function handler per sample line
 #Takes dict representing a single row from the FC file iterator and returns the processing command line
-def annotateSample(Sample, project):
+def annotateSample(Sampleline, projects, samples):
     try:
-        sampleName=Sample["#Sample Name"]
-        sampleID=Sample["Sample #"]
-        lab=Sample["Lab"]
-        sampleType=Sample["Sample Type"]
-        species=Sample["Species"]
-        r1Trim=str(Sample["R1 Trim (P5)"])
-        r2Trim=str(Sample["R2 Trim (P7)"])
+        sampleName=Sampleline["#Sample Name"]
+        sampleID=Sampleline["Sample #"]
+        lab=Sampleline["Lab"]
+        sampleType=Sampleline["Sample Type"]
+        species=Sampleline["Species"]
+        r1Trim=str(Sampleline["R1 Trim (P5)"])
+        r2Trim=str(Sampleline["R2 Trim (P7)"])
         
-        if project is not None and lab != project:
+        if projects is not None and lab not in projects:
             return
         
-        BS = re.compile(r'BS[0-9]{5}')
-        BSnum = BS.search(sampleID)
-        if BSnum is None:
+        if re.compile(r'BS[0-9]{5}[A-Z]').search(sampleID) is None:
             raise Exception("Can't parse " + sampleID + "as BS number")
+        
+        if samples is not None and sampleID not in samples:
+            return
         
         if sampleType != "Pool":
             if sampleType == "Transposon DNA" or sampleType == "Transposon RNA" or sampleType == "Transposon iPCR" or sampleType == "Transposon iPCR Capture":
@@ -162,26 +186,32 @@ def annotateSample(Sample, project):
 ####
 #Read in flowcell and create a submit script for all samples with BS number
 ####
-flowcellID = args.flowcellID
-project = args.project
-
-flowcellInfoFile = open(basedir + "/data/" + flowcellID + "/info.txt", 'r')
-#flowcellInfoFile = open("/home/maagj01/scratch/transposon/Analysis/Nick_Mamrak/RnaAsDna/march12_RnaAsDNA.tsv", 'r')
-flowcellInfoFile = flowcellInfoFile.readlines()
-flowcellInfoFile = [line.rstrip().split('\t') for line in flowcellInfoFile]
-
-startRow=0
-while(flowcellInfoFile[startRow][0] != "#Sample Name"):
-    startRow+=1
-
-flowcellFile = pd.DataFrame(flowcellInfoFile[startRow:], columns=flowcellInfoFile[startRow]).iloc[1:]
+doDNaseCleanup = False
 
 #TODO Iterate through to generate inputs.txt
 
-for index, Sample in flowcellFile.iterrows():
+
+for flowcellID in flowcellIDs:
+    flowcellInfoFileName = basedir + "/data/" + flowcellID + "/info.txt"
+    flowcellInfoFile = open(flowcellInfoFileName, 'r')
+    #flowcellInfoFile = open("/home/maagj01/scratch/transposon/Analysis/Nick_Mamrak/RnaAsDna/march12_RnaAsDNA.tsv", 'r')
+    flowcellInfoFile = flowcellInfoFile.readlines()
+    flowcellInfoFile = [line.rstrip().split('\t') for line in flowcellInfoFile]
+    
+    startRow=0
+    while(flowcellInfoFile[startRow][0] != "#Sample Name"):
+        startRow+=1
+    
     if args.verbose:
-        print("\nParsing:\n" + str(Sample), file=sys.stderr)
-    annotateSample(Sample, project)
+        print("Reading", flowcellInfoFileName, "starting at line", startRow)
+    
+    flowcellFile = pd.DataFrame(flowcellInfoFile[startRow:], columns=flowcellInfoFile[startRow]).iloc[1:]
+    
+    
+    for index, line in flowcellFile.iterrows():
+        if args.verbose:
+            print("\nParsing:\n" + str(line), file=sys.stderr)
+        annotateSample(line, projects, samples)
 
 
 if doDNaseCleanup:
