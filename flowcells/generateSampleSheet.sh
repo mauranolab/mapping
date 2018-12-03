@@ -5,8 +5,12 @@ set -eu -o pipefail
 cat /vol/mauranolab/flowcells/src/SampleSheet.template.txt > SampleSheet.csv
 
 
-#Now parse the sequencing sheet info from STDIN
-awk -F "\t" 'BEGIN {OFS="\t"; parse=0} {print} $0!="" && parse==0 {parse=1; print "#Sample Name", "Sample #", "Lab", "Made By", "Sample Type", "Species", "Barcode 1 (i7)", "Barcode 2 (i5)", "R1 Trim (P5)", "R2 Trim (P7)", "Sequencing primer R1", "Indexing primer BC1 (i7)", "Indexing primer BC2 (i5)", "Sequencing primer R2", "Library concentration (pM)", "Request Type", "Requested reads (M)", "Read format", "Scale factor", "Relative representation", "Amount put on FC (uL)", "Sequenced reads", "Actual representation"}' |
+###Parse the sequencing sheet info from STDIN
+#Clean up single-line spacer between header and data table
+perl -pe 's/^\t+$//g;' |
+awk -F "\t" 'BEGIN {OFS="\t"; parse=0} {print} $0=="" && parse==0 {parse=1; print "#Sample Name", "Sample #", "Lab", "Made By", "Sample Type", "Species", "Barcode 1 (i7)", "Barcode 2 (i5)", "R1 Trim (P5)", "R2 Trim (P7)", "Sequencing primer R1", "Indexing primer BC1 (i7)", "Indexing primer BC2 (i5)", "Sequencing primer R2", "Library concentration (pM)", "Request Type", "Requested reads (M)", "Read format", "Scale factor", "Relative representation", "Amount put on FC (uL)", "Sequenced reads", "Actual representation"}' |
+#Clean up trailing tabs on comment lines
+perl -pe 's/^(#.+[^\t])\t+$/\1/g;' |
 #Also creates info.txt
 tee info.txt |
 #NB our sample sheet records RC for BC2, which according to https://support.illumina.com/content/dam/illumina-support/documents/documentation/system_documentation/miseq/indexed-sequencing-overview-guide-15057455-04.pdf is valid for iSeq 100, MiniSeq, NextSeq, HiSeq X, HiSeq 4000, or HiSeq 3000. Therefore for runs on NovaSeqTM 6000, MiSeqTM, HiSeq 2500, and HiSeq 2000, BC2 must be RC back to the original sequence.
