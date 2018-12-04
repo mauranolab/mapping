@@ -27,6 +27,8 @@ fi
 
 R --quiet --no-save << 'EOF'
 data <- read.table("SampleSheet.csv", header=T, skip=19, sep=",", comment.char = "", quote = "", strip.white = TRUE, stringsAsFactors = F)
+data[is.na(data[,"index"]),"index"] <- ""
+data[is.na(data[,"index2"]),"index2"] <- ""
 
 #I can't find a builtin hamming distance implementation for R
 strdist <- function(x,y) {
@@ -77,9 +79,21 @@ countBCcollisions <- function(data, bc1len=8, bc2len=8) {
 }
 
 
+if (minBClen <= maxBC1len) {
+    bc1range <- minBClen:maxBC1len
+} else {
+    bc1range <- maxBC1len
+}
+
+if (minBClen <= maxBC2len) {
+    bc2range <- minBClen:maxBC2len
+} else {
+    bc2range <- maxBC2len
+}
+
 results <- data.frame()
-for(bc1len in minBClen:maxBC1len) {
-    for(bc2len in minBClen:maxBC2len) {
+for(bc1len in bc1range) {
+    for(bc2len in bc2range) {
         cat(paste0("bc1len=", bc1len, ";bc2len=", bc2len, ":\n"))
         numSamplesTooClose <- countBCcollisions(data, bc1len, bc2len)
         results <- rbind(results, data.frame(bc1len=bc1len, bc2len=bc2len, numSamplesTooClose=numSamplesTooClose))
