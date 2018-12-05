@@ -59,7 +59,8 @@ mm10)
     bwaIndex=/vol/isg/annotation/bwaIndex/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set
     ploidy="--ploidy-file /vol/isg/annotation/fasta/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set.ploidy.txt"
     referencefasta=/vol/isg/annotation/fasta/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set.fa.gz
-    dbsnpvcf=/dev/null
+    #non-human accession repository has switched from NCBI/dbSNP to EVA as of 9/2017 but I can't find a VCF export, so am using the Sanger mouse genome VCF to annotate variation that segregates among their strains rather the frozen dbSNP export (which I think is here: https://ftp.ncbi.nih.gov/snp/organisms/archive/mouse_10090/VCF/)
+    dbsnpvcf=/vol/mauranolab/mauram01/hybridmice/genotyping/v6/mgp.v6.merged.norm.snp.indels.sfiltered.vcf.gz
     ;;
 rn6)
     bwaIndex=/vol/isg/annotation/bwaIndex/rn6/rn6
@@ -77,7 +78,7 @@ mm10_sacCer3)
     bwaIndex=/vol/isg/annotation/bwaIndex/mm10_sacCer3/mm10_sacCer3
     ploidy="--ploidy-file /vol/isg/annotation/fasta/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set.ploidy.txt"
     referencefasta=/vol/isg/annotation/fasta/mm10_sacCer3/mm10_sacCer3.fa.gz
-    dbsnpvcf=/dev/null
+    dbsnpvcf=/vol/mauranolab/mauram01/hybridmice/genotyping/v6/mgp.v6.merged.norm.snp.indels.sfiltered.vcf.gz
     ;;
 rn6_sacCer3)
     bwaIndex=/vol/isg/annotation/bwaIndex/rn6_sacCer3/rn6_sacCer3
