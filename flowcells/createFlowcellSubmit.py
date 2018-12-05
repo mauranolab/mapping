@@ -188,10 +188,13 @@ def annotateSample(Sampleline, projects, samples):
 ####
 doDNaseCleanup = False
 
+
+print("#", ' '.join(sys.argv), sep="")
 #TODO Iterate through to generate inputs.txt
 
 
 for flowcellID in flowcellIDs:
+    print("\n#Samples from ", flowcellID, sep="")
     flowcellInfoFileName = basedir + "/data/" + flowcellID + "/info.txt"
     flowcellInfoFile = open(flowcellInfoFileName, 'r')
     #flowcellInfoFile = open("/home/maagj01/scratch/transposon/Analysis/Nick_Mamrak/RnaAsDna/march12_RnaAsDNA.tsv", 'r')
@@ -207,7 +210,6 @@ for flowcellID in flowcellIDs:
     
     flowcellFile = pd.DataFrame(flowcellInfoFile[startRow:], columns=flowcellInfoFile[startRow]).iloc[1:]
     
-    
     for index, line in flowcellFile.iterrows():
         if args.verbose:
             print("\nParsing:\n" + str(line), file=sys.stderr)
@@ -216,5 +218,5 @@ for flowcellID in flowcellIDs:
 
 if doDNaseCleanup:
     print()
-    print("rqsub -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeInserts.R\"")
-    print("bqsub -j y -N mapped_readcounts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/mapped_readcounts.sh")
+    print("qsub -S `which Rscript` -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeInserts.R\"")
+    print("qsub -S /bin/bash -j y -N mapped_readcounts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/mapped_readcounts.sh")
