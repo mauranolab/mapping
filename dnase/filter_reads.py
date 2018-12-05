@@ -39,7 +39,7 @@ import pysam
 import argparse
 
 
-version="1.1"
+version="1.2"
 
 
 parser = argparse.ArgumentParser(prog = "filter_reads", description = "manually corrects the flags in a single- or pair-end BAM alignment file", allow_abbrev=False)
@@ -245,7 +245,7 @@ unfiltered_reads = pysam.AlignmentFile(args.raw_alignment, "rb")
 
 print("[filter_reads.py] Processing header", file=sys.stderr)
 newheader = unfiltered_reads.header.to_dict() #to_dict() is for the changes from version 0.14
-newheader['PG'].append({'ID':'filter_reads.py', 'PN':'filter_reads.py', 'VN':version, 'CL':args})
+newheader['PG'].append({'ID':'filter_reads.py', 'PN':'filter_reads.py', 'VN':version, 'CL':' '.join(sys.argv)})
 filtered_reads = pysam.AlignmentFile(args.filtered_alignment, "wbu", header = newheader)
 
 
