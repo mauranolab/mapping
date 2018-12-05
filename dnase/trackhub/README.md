@@ -33,7 +33,7 @@ cd ..
 9) Here it is important to change names to be consistent across all samples. The biosample names chosen here will continue through the whole analysis
 
 ```
-python FindDSnumber.py metadata.tsv -j JSON/ -o SampleIDs.tsv
+python ${src}/trackhub/extractDSfromENCODE_JSON.py metadata.tsv -j JSON/ -o SampleIDs.tsv
 ```
 
 ## Softlinks to fastq files to connect all files from same library
