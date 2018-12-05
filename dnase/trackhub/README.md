@@ -1,7 +1,9 @@
 # DNase pipeline - procedure for mapping ENCODE data
 
+```
 base=/vol/isg/encode/dnase
 src=/vol/mauranolab/mapped/src
+```
 
 ## Download fastq files info and metadata
 
