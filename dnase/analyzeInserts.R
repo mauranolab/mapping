@@ -2,7 +2,7 @@
 
 print(date())
 
-
+suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(directlabels))
 
 old <- theme_set(theme_classic(base_size=7)) #pdf
@@ -13,8 +13,11 @@ old <- theme_update(panel.border = element_blank(), strip.background = element_b
 #Try to work around error "unable to start device PNG" on ISG cluster
 options(bitmapType="cairo") 
 
-
-maxlength <- 300
+if(length(commandArgs(TRUE) == 1)) {
+	maxlength <- as.integer(commandArgs(TRUE)[1])
+} else {
+	maxlength <- 300
+}
 
 
 cat("Loading insert lengths upto", maxlength, "bp\n")
@@ -46,7 +49,7 @@ save(list=c("results"), file="insertlengths.RData", compress="bzip2")
 #results$polymerase <- sapply(results$sample, FUN=function(x) {unlist(strsplit(as.character(x), "_"))[6]})
 
 
-p <- ggplot(data=subset(results, x>=27 & x<=maxlength), aes(x=x, y=y, group=name, label=BS, color=name)) +
+p <- ggplot(data=subset(results, x>=27 & x<=maxlength), aes(x=x, y=y, group=name, label=BS, color=BS)) +
 labs(title="") +
 geom_line() +
 xlab("Fragment length (bp)") +
