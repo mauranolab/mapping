@@ -66,7 +66,7 @@ bam2instrument()
     #Hack to clean up some encodeproject.org data that has underscore in place of colon after sequencer name
     perl -pe 's/_\d+_\d+_\d+_\d+$//g;' | 
     #SRR data
-    perl -pe 's/^(SRR\d+)\.\d+$/$1/g;'
+    perl -pe 's/^(SRR\d+)(\.\d+)+$/$1/g;'
 }
 
 
@@ -254,6 +254,7 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N merge.callsnps.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;'
         rm -f ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
         
+        
         echo
         echo "Collecting picard metrics"
         mkdir -p ${sampleOutdir}/picardmetrics
@@ -273,7 +274,6 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         echo
         echo "UCSC track links (actual tracks will be generated in parallel)"
         date
-        
         #Print track links here for convenience even if the files are not created yet
         trackcolor=$(getcolor ${name})
         
@@ -384,7 +384,7 @@ if ([ "$callHotspots1" == 1 ] || [ "$callHotspots2" == 1 ]) && [[ "${analyzedRea
         fi
 
 
-        #BUGBUG hardcoded chromosome names
+        #BUGBUG hardcoded human chromosome names. Gives warning but continues on mouse.
         samtools view ${samflags} -b -1 -@ $NSLOTS ${sampleAsProportionOfAnalyzedReads} ${sampleOutdir}/${name}.${mappedgenome}.bam chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY > ${hotspotBAM}
     
     

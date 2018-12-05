@@ -56,7 +56,7 @@ bam2instrument()
     #Hack to clean up some encodeproject.org data that has underscore in place of colon after sequencer name
     perl -pe 's/_\d+_\d+_\d+_\d+$//g;' | 
     #SRR data
-    perl -pe 's/^(SRR\d+)\.\d+$/$1/g;'
+    perl -pe 's/^(SRR\d+)(\.\d+)+$/$1/g;'
 }
 
 

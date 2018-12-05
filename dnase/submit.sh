@@ -13,10 +13,10 @@ module load bcftools/1.9
 module load trimmomatic/0.38
 module load python/3.5.0
 module load samblaster/0.1.22
-module load ucsckentutils/10132015
+module load ucsckentutils/12152017
 module load hotspot/4.1
 module load hotspot2/2.1.1
-module add pigz
+module load pigz
 
 
 ###Hardcoded configuration options
@@ -70,7 +70,7 @@ if [[ "${analysisType}" =~ ^map ]]; then
     #SGE doesn't accept a -t specification with gaps, so we'll start R2 jobs that will die instantly rather than prune here
     echo "Mapping ${n} jobs for ${mapname}"
     #NB running many jobs with threads < 4 can sometimes get memory errors, not quite sure of the culprit
-    qsub -S /bin/bash -cwd -V $qsubargs -pe threads 8 -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sample}-${BS} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
+    qsub -S /bin/bash -cwd -V $qsubargs -pe threads 4 -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sample}-${BS} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
 fi
 
 
