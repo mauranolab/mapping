@@ -18,6 +18,10 @@ src=/vol/mauranolab/mapped/src
 head -1 files.txt | xargs wget -O metadata.tsv
 mkdir fastq && cd fastq
 cat ../files.txt | xargs -n1 -P20 -L 1 wget
+
+#verify md5 hashes
+cat metadata.tsv | mlr --tsv --ocsv --headerless-csv-output --ofs "  " --ors lf rename -g -r ' ,_' then cut -o -f md5sum,File_accession then put '$File_accession=$File_accession . ".fastq.gz"' > /tmp/md5.txt
+md5sum -c /tmp/md5.txt
 cd ..
 ```
 
