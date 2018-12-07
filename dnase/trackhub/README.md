@@ -20,7 +20,7 @@ mkdir fastq && cd fastq
 cat ../files.txt | xargs -n1 -P20 -L 1 wget
 
 #verify md5 hashes
-cat metadata.tsv | mlr --tsv --ocsv --headerless-csv-output --ofs "  " --ors lf rename -g -r ' ,_' then cut -o -f md5sum,File_accession then put '$File_accession=$File_accession . ".fastq.gz"' > metadata.md5sum.txt
+cat metadata.tsv | mlr --tsv --ocsv --headerless-csv-output --ofs "  " --ors lf rename -g -r ' ,_' then sort -f File_accession then cut -o -f md5sum,File_accession then put '$File_accession=$File_accession . ".fastq.gz"' > metadata.md5sum.txt
 bqsub -j y -N md5sum.validate "md5sum -c metadata.md5sum.txt"
 
 cd ..
