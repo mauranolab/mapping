@@ -65,6 +65,8 @@ sort -k2,2 | cut -f1 > inputs.txt
 cat ../SampleIDs.tsv |
 perl -pe 's/ /_/g;' -e 's/\-/_/g;' -e "s/[\(\)\'%]//g;" |
 awk -F "\t" '{print "${src}/submit.sh hg38_noalt mapBwaAln,dnase " $3  " " $2}' |
+#Use this line instead for ChIP-seq
+#awk -v src=${src} -F "\t" '{print src "/submit.sh hg38_noalt mapBwaAln,chipseq " $3 "-" $8  " " $2}' |
 sort |
 uniq |
 sort -k4,3 |
