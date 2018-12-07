@@ -40,8 +40,7 @@ for i in `tail -n +2 ../metadata.tsv | awk '{print $1}'`; do echo https://www.en
 python ${src}/trackhub/extractDSfromENCODE_JSON.py metadata.tsv -j JSON/ -o SampleIDs.raw.tsv
 ```
 
-9) Here it is important to change names in the cellType column to be consistent across all samples. The biosample names chosen here will continue through the whole analysis.
-Save the edited file in SampleIDs.tsv
+9) Here it is important to change names in the cellType column to be consistent across all samples. The biosample names chosen here will continue through the whole analysis. Save the edited file in SampleIDs.tsv
 
 ```
 #miller can parse JSON files for ease of viewing, e.g.:
@@ -50,7 +49,6 @@ cd ..
 
 
 ## Softlinks to fastq files to connect all files from same library
-```
 mkdir renamed && cd renamed
 awk  -F'\t' '$1==$6 {print "ln -s ../fastq/" $6 ".fastq.gz " $1 "_" $2 "_R1.fastq.gz"; if($7!="") {print "ln -s ../fastq/" $7 ".fastq.gz " $1 "_" $2 "_R2.fastq.gz"}}' ../SampleIDs.tsv > makelinks.sh  
 source makelinks.sh ;
