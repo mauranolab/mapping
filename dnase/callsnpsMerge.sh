@@ -23,30 +23,28 @@ alias closest-features='closest-features --header'
 #done
 
 
-
 ###Parameters
 mappedgenome=$1
 analysisType=$2
 name=$3
-BS=$4
-src=$5
+src=$4
+
 
 source ${src}/genomeinfo.sh ${mappedgenome}
 
+
 sampleOutdir=${name}
-echo "Merging ${analysisType} analysis for of sample ${name} (${BS}) against genome ${mappedgenome}"
+echo "Merging ${analysisType} analysis for of sample ${name} against genome ${mappedgenome}"
 date
 
-
-BS_nosuffix=`echo ${BS} | perl -pe 's/[A-Z]$//g;'`
 
 
 #TMPDIR=`pwd`/tmp.makeTracks.${name}
 #mkdir -p $TMPDIR
 echo "using $TMPDIR as TMPDIR"
-
-
 date
+
+
 getFilesToMerge()
 {
     local nexpected=`echo $* | perl -pe 's/ /\n/g;' | wc -l`
@@ -60,6 +58,7 @@ getFilesToMerge()
     echo "Found ${nfound} of ${nexpected} files" > /dev/stderr
     echo "${files}"
 }
+
 
 echo "Merge coverage tracks"
 #NB: for hg38_full, many jobs will not generate coverage tracks
@@ -96,36 +95,35 @@ tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
 rm -f ${fltvcffiles}
 
 
-###Further files
 echo
 echo "Parsing VCF track"
 date
-
-#NB left in main thread
-#echo "Making VCF track"
-#echo "track type=vcfTabix name=${name}-vcf description=\"${name} VCF (${analyzedReadsM}M nonredundant reads- BWA alignment\" visibility=pack bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz"
-
-
 #NB repeated from perChrom analysis
 minSNPQ=200
 #
-minTotalDP=20
+minTotalDP=30
 minAlleleDP=0
 
 ${src}/parseSamtoolsGenotypesToBedFiles.pl ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz $TMPDIR/variants ${minSNPQ} ${minTotalDP} ${minAlleleDP}
 
+nvcfsamples=`bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz | wc -l`
 #rsids
-cat $TMPDIR/variants.${BS_nosuffix}.txt | awk -F "\t" 'BEGIN {OFS="\t"; num=0} $4=="." {num++; $4="snv" num} {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}.${mappedgenome}.variants.starch
+for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz`; do
+    if [[ "${nvcfsamples}" = 1 ]]; then
+        vcfsamplename=""
+    else
+        #for multisample calling, include the sample name in the variants file name
+        vcfsamplename=".${sampleid}"
+    fi
+    #BUGBUG labels indels with snv prefix
+    cat $TMPDIR/variants.${sampleid}.txt | awk -F "\t" 'BEGIN {OFS="\t"; num=0} $4=="." {num++; $4="snv" num} {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.variants.starch
+    
+    #NB UCSC link from analysis.sh will be wrong for multisample calling
+    #TODO no ... if truncated
+    unstarch ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.variants.starch | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } {split($8, gt, "/"); print $1, $2, $3, $4 "_" truncgt(gt[1]) "_" truncgt(gt[2]), $5}' > $TMPDIR/${name}${vcfsamplename}.variants.ucsc.bed
 
-echo
-echo "Making variant track"
-#TODO no ... if truncated
-unstarch ${sampleOutdir}/${name}.${mappedgenome}.variants.starch | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } {split($8, gt, "/"); print $1, $2, $3, $4 "_" truncgt(gt[1]) "_" truncgt(gt[2]), $5}' > $TMPDIR/${name}.variants.ucsc.bed
-
-bedToBigBed -type=bed5 $TMPDIR/${name}.variants.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.variants.bb
-
-#NB left in main thread
-#echo "track type=bigBed name=${name}-SNVs description=\"${name} SNVs (${analyzedReadsM}M nonredundant reads- BWA alignment\" visibility=pack bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.variants.bb"
+    bedToBigBed -type=bed5 $TMPDIR/${name}${vcfsamplename}.variants.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.variants.bb
+done
 
 
 echo

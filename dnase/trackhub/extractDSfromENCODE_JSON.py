@@ -32,7 +32,7 @@ def getDS(sample_line):
     sampleName=sample_line['File accession']
     print(sampleName)
     
-    print(sample_line)
+    #print(sample_line)
     try:
         #Hiercheal json python
         data=open(args.jsonD+sampleName).read()
@@ -74,30 +74,37 @@ def getDS(sample_line):
             DSid=m.group(0)
             DSidOut = sampleName, DSid
             print(DSidOut)
-
         elif regexp.search(str(sample_json)) is None:
             DSidOut = sampleName,  sample_json['replicate']['library']['@id'].split('/')[2]
             print(DSidOut)
-            
-            
+        
+        
         sampleCellType = re.sub("Entire_|entire_|Entire|entire", "", sampleCellType)
         if re.search('embryo', str(sample_json['replicate']['experiment']['biosample_summary'])) is not None:
             sampleCellType = 'f' + sampleCellType.capitalize()
         
+        if sample_json['replicate']['experiment']['assay_title'] == "ChIP-seq":
+            sampleAssay = sample_json['replicate']['experiment']['target']['label']
+        else:
+            sampleAssay = sample_json['replicate']['experiment']['assay_title']
+        
+        sampleInstitute = sample_json['lab']['institute_label']
+        sampleAccession = sample_json['replicate']['library']['accession']
+        
         #BUGBUG I think the missing paired_with is obselete
         if sample_line['Run type'] =='paired-ended':
             if sample_line['Paired end'] =='1' and sample_line['Audit ERROR']!='missing paired_with\n':
-                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'],  'paired-ended', sampleName, sample_line['Paired with'],sample_json['replicate']['experiment']['biosample_summary'],sample_json['lab']['institute_label'],sampleAge,  sample_json['replicate']['library']['accession'])
+                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'],  'paired-ended', sampleName, sample_line['Paired with'],sampleAssay,sampleInstitute,sampleAge,  sampleAccession)
                 
             elif sample_line['Paired end'] =='2' and sample_line['Audit ERROR']!='missing paired_with\n':
-                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sample_line['Paired with'], sampleName,sample_json['replicate']['experiment']['biosample_summary'],sample_json['lab']['institute_label'],sampleAge, sample_json['replicate']['library']['accession'])
+                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sample_line['Paired with'], sampleName,sampleAssay,sampleInstitute,sampleAge, sampleAccession)
                 
             #If paired_with is missing
             elif sample_line['Paired end'] =='1' and sample_line['Audit ERROR']=='missing paired_with\n':
-                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sampleName, '',sample_json['replicate']['experiment']['biosample_summary'],sample_json['lab']['institute_label'],sampleAge, sample_json['replicate']['library']['accession'])
+                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sampleName, '',sampleAssay,sampleInstitute,sampleAge, sampleAccession)
                 
         elif sample_line['Run type'] =='single-ended':
-            DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'single-ended', sampleName, '',sample_json['replicate']['experiment']['biosample_summary'],sample_json['lab']['institute_label'],sampleAge, sample_json['replicate']['library']['accession'])
+            DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'single-ended', sampleName, '',sampleAssay,sampleInstitute,sampleAge, sampleAccession)
    
   #print(SidOut1)
         #stripped_sample_line = [s.rstrip() for s in DSidOut]
@@ -108,17 +115,17 @@ def getDS(sample_line):
         print('WARNING')
         if sample_line['Run type'] =='paired-ended':
             if sample_line['Paired end'] =='1' and sample_line['Audit ERROR']!='missing paired_with\n':
-                DSidOut1 =  DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sampleName, sample_line['Paired with'],sample_json['replicate']['experiment']['biosample_summary'],sample_json['lab']['institute_label'],sampleAge, sample_json['replicate']['library']['accession'])
+                DSidOut1 =  DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sampleName, sample_line['Paired with'],sampleAssay,sampleInstitute,sampleAge, sampleAccession)
                 
             elif sample_line['Paired end'] =='2' and sample_line['Audit ERROR']!='missing paired_with\n':
-                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sample_line['Paired with'], sampleName,sample_json['replicate']['experiment']['biosample_summary'],sample_json['lab']['institute_label'],sampleAge, sample_json['replicate']['library']['accession'])
+                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sample_line['Paired with'], sampleName,sampleAssay,sampleInstitute,sampleAge, sampleAccession)
                 
             #If paired_with is missing
             elif sample_line['Paired end'] =='1' and sample_line['Audit ERROR']=='missing paired_with\n':
-                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sampleName, '',sample_json['replicate']['experiment']['biosample_summary'],sample_json['lab']['institute_label'],sampleAge, sample_json['replicate']['library']['accession'])
+                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sampleName, '',sampleAssay,sampleInstitute,sampleAge, sampleAccession)
                 
         elif sample_line['Run type'] =='single-ended':
-            DSidOut1 = DSidOut +  (sampleCellType, sample_line['Biosample term name'], 'single-ended', sampleName, '',sample_json['replicate']['experiment']['biosample_summary'],sample_json['lab']['institute_label'],sampleAge, sample_json['replicate']['library']['accession'])
+            DSidOut1 = DSidOut +  (sampleCellType, sample_line['Biosample term name'], 'single-ended', sampleName, '',sampleAssay,sampleInstitute,sampleAge, sampleAccession)
             
         print(DSidOut1)
         wr.writerows([DSidOut1])
@@ -130,7 +137,8 @@ try:
         outfile = open(args.output, 'w')
         # Pass file handle to csv.writer
         wr = csv.writer(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True)
-        wr.writerow(['SampleID','GroupID','sampleCellType','Name','Single_or_Paired','R1','R2','Assay','Variable','Age', 'Library'])
+        #N.B. nothing downstream seems to use Name or Institution. paired-ended appears to be for legibility alone
+        wr.writerow(['SampleID','GroupID','sampleCellType','Name','Single_or_Paired','R1','R2','Assay','Institution','Age', 'Library'])
         for sample_line in SampleFile_reader:
             getDS(sample_line)
 finally:
