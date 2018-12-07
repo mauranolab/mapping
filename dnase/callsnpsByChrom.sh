@@ -58,23 +58,25 @@ END {curOutputLine++; if(NR!=lastPrinted) {print lastChrom, firstStart, lastEnd,
 
 
 echo
-echo "Calling variants for genome ${mappedgenome} using ploidy ${ploidy} and reference ${referencefasta}. Will annotate dbSNP IDs from $dbsnpvcf"
+echo "Calling variants for genome ${mappedgenome} using ploidy ${ploidy} and reference ${referencefasta}. Will annotate dbSNP IDs from ${dbsnpvcf}"
 date
 
 #Current documentation at https://samtools.github.io/bcftools/howtos/index.html
 
-minSNPQ=200
-minGQ=99
-#hack to get VCF at minDP8, but starch at 12
-minDP=20
-
-
+#TODO do really need --max-depth 10000?
 samtools mpileup -r ${chrom} -u --min-BQ 20 --max-depth 10000 --redo-BAQ -f ${referencefasta} --BCF -t DP,AD ${sampleOutdir}/${name}.${mappedgenome}.bam |
 #NB for some reason if the intermediate file is saved instead of piped, bcftools call outputs a GQ of . for everything
+#TODO specify per-sample sex using --samples-file
 #TODO should use --multiallelic-caller ?
 bcftools call ${ploidy} --keep-alts --consensus-caller --variants-only -f GQ --output-type v | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
+
+
+minSNPQ=200
+minGQ=99
+#hack to get VCF at minDP8, but starch at 12
+minDP=30
 
 
 echo "Filter and normalize variants"

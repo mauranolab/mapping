@@ -5,6 +5,7 @@ set -eu -o pipefail
 #Load modules
 module load picard/2.18.15
 module load FastQC/0.11.4
+module load bedtools/2.25
 module load bedops/2.4.35
 module load bwa/0.7.15
 module load htslib/1.9
@@ -59,7 +60,7 @@ mkdir -p ${sampleOutdir}/.src
 
 
 #Run the job from a local copy of the pipeline for archival and to prevent contention issues if the main tree is modified mid-job
-cp -p /vol/mauranolab/mapped/src/* ${sampleOutdir}/.src
+cp -rp /vol/mauranolab/mapped/src/* ${sampleOutdir}/.src
 src=`pwd`/${sampleOutdir}/.src
 
 
