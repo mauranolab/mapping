@@ -31,6 +31,9 @@ cd ..
 7) To download all JSON files per fastq-file run the following command
 ```
 for i in `tail -n +2 ../metadata.tsv | awk '{print $1}'`; do echo https://www.encodeproject.org/files/${i}/?format=json -O $i;done | xargs -n1 -P20 -L 1 wget
+
+#miller can parse JSON files for ease of viewing, e.g.:
+mlr --json --jvstack head -n 2  JSON/ENCFF001HZO
 cd ..
 ```
 
