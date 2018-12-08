@@ -19,6 +19,9 @@ head -1 files.txt | xargs wget -O metadata.tsv
 mkdir fastq && cd fastq
 cat ../files.txt | xargs -n1 -P20 -L 1 wget
 
+#Re-download files that are missing (I think wget cleans up incomplete downloads but because the stdout is a mess you don't see the error message)
+ls | fgrep -v -f - ../files.txt | xargs -n1 -P20 -L 1 wget
+
 #verify md5 hashes
 cat metadata.tsv | mlr --tsv --ocsv --headerless-csv-output --ofs "  " --ors lf rename -g -r ' ,_' then sort -f File_accession then cut -o -f md5sum,File_accession then put '$File_accession=$File_accession . ".fastq.gz"' > metadata.md5sum.txt
 bqsub -j y -N md5sum.validate "md5sum -c metadata.md5sum.txt"
