@@ -2,13 +2,35 @@
 
 echo
 echo "Errors in log files"
-grep -i error */*.o*
+find . -regextype posix-awk -maxdepth 2 -regex ".+\/[^\/]+(BS|SRR|GSM)[^\/]+\/.+" -and -name "*.o*" | xargs grep -i error
+
+echo
+echo "UCSC track links"
+projectdir=`pwd | perl -pe 's/^\/vol\/mauranolab\/mapped\///g;'`
+projectdir=${projectdir//\//\\/}
+
+echo "Density tracks"
+grep -h "Making density track" -A 1 */analysis.* | grep -v cegsvectors | grep -v "Making density track" | awk '$0!="--"'
+
+echo
+echo "Coverage tracks"
+grep -h "Making coverage track" -A 1 */analysis.* | grep -v cegsvectors | grep -v "Making coverage track" | awk '$0!="--"'
+
+echo
+echo "variant tracks"
+grep -h "variants.bb" */analysis.* | grep -v cegsvectors
+
+echo
+echo "BAM tracks"
+grep -h "Making BAM track" -A 1 */analysis.* | grep -v cegsvectors | grep -v "Making coverage track" | awk '$0!="--"'
 
 
 set -eu -o pipefail
 
 
-find . -regextype posix-awk -maxdepth 2 -regex ".+\/[^\/]+(BS|SRR|GSM)[^\/]+\/.+" -and -name analysis.*.o* | xargs grep -h -A 11 "Num_sequenced_reads" | awk 'BEGIN {skip=0} $0=="--" {skip=0;next} $0=="" {skip=1;next} skip==0' | grep -v -e "syntax[ _]error" | grep -v "Num_SE_" | grep -v "Prop_SE_" | 
+echo
+echo "Read count summaries"
+find . -regextype posix-awk -maxdepth 2 -regex ".+\/[^\/]+(BS|SRR|GSM)[^\/]+\/.+" -and -name "analysis.*.o*" | xargs grep -h -A 11 "Num_sequenced_reads" | awk 'BEGIN {skip=0} $0=="--" {skip=0;next} $0=="" {skip=1;next} skip==0' | grep -v -e "syntax[ _]error" | grep -v "Num_SE_" | grep -v "Prop_SE_" | 
 #awk '$1!="$1!="Num_hotspots" && SPOT"' |
 perl -p -e's/[ \t]\(?([\d\.]+)\%\)?/\t$1/g;' -e's/ /_/g;' -e's/\-(BS|SRR|GSM)/\t\1/g;' | 
 #perl -pe 's/^(Genomic_coverage\t[^\t]+\t)/\1\t/g;' |
