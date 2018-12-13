@@ -117,10 +117,6 @@ echo "Running ${analysisType} analysis for sample ${name} (${BS}) against genome
 date
 
 
-#BUGBUG define FC
-fc="FC"
-
-
 if grep ${BS} inputs.txt | grep -q .fastq; then
     sequencedReads=`cat inputs.txt | grep ${BS} | grep .fastq | sort | uniq | xargs pigz -dc -f | awk 'END {print NR/4}'`
 elif grep ${BS} inputs.txt | grep ${mappedgenome} | grep -q .bam; then
@@ -138,7 +134,18 @@ if [ ! -s "${sampleOutdir}/${name}.${mappedgenome}.bam" ]; then
     exit 2
 fi
 
-samflags="-q 20 -F 524"
+
+projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab)\///g;'`
+if [[ `pwd` =~ ^\/vol\/cegs\/ ]]; then
+    UCSCbaseURL="https://cegs@cascade.isg.med.nyu.edu/cegs/${projectdir}/${sampleOutdir}"
+else
+    UCSCbaseURL="https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/${projectdir}/${sampleOutdir}"
+fi
+
+
+#NB using -F 512 lets filter_reads.py threshold MAPQ/unpapped reads
+samflags="-F 512"
+
 
 #For shorter old Duke data
 #readsLength20bp was never defined here
@@ -229,6 +236,11 @@ else
 fi
 
 
+#Now that we have analyzedReadsM we can print this track line, which is universal for all analysisCommand
+echo
+echo "Making BAM track"
+echo "track type=bam name=${name}-reads description=\"${name} reads (${analyzedReadsM}M nonredundant reads- BWA alignment\" visibility=pack bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.bam pairEndsByName=T visibility=dense maxWindowToDraw=10000"
+
 
 if [[ "${analysisCommand}" == "callsnps" ]]; then
     if [ "${PFalignments}" -lt 50000000 ] && [[ "${analyzedReads}" > 0 ]]; then
@@ -280,13 +292,14 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         
         echo
         echo "Making coverage track"
-        echo "track name=${name} description=\"${name} ${ucscTrackDescriptionDataType} ${genomecov}x genomic coverage (${analyzedReadsM}M analyzed reads) - BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:500 on=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.coverage.bw"
+        echo "track name=${name}-cov description=\"${name} ${genomecov}x genomic coverage (${analyzedReadsM}M analyzed reads) - BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:500 on=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.coverage.bw"
         
         echo
         echo "Making VCF track"
-        echo "track type=vcfTabix name=${name}-vcf description=\"${name} VCF (${analyzedReadsM}M nonredundant reads- BWA alignment\" visibility=pack bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz"
+        echo "track type=vcfTabix name=${name}-vcf description=\"${name} VCF (${analyzedReadsM}M nonredundant reads- BWA alignment\" visibility=pack bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.filtered.vcf.gz"
         
-        echo "track type=bigBed name=${name}-SNVs description=\"${name} SNVs (${analyzedReadsM}M nonredundant reads- BWA alignment\" visibility=pack bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.variants.bb"
+        echo "Making variant track"
+        echo "track type=bigBed name=${name}-variants description=\"${name} variants (${analyzedReadsM}M nonredundant reads- BWA alignment\" visibility=pack bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.variants.bb"
     fi
 elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
     echo
@@ -314,7 +327,7 @@ elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" 
     
     trackcolor=$(getcolor ${name})
     
-    echo "track name=${name} description=\"${name} ${ucscTrackDescriptionDataType} Density (${analyzedReadsM}M analyzed reads; normalized to 1M)- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.bw"
+    echo "track name=${name}-dens description=\"${name} ${ucscTrackDescriptionDataType} Density (${analyzedReadsM}M analyzed reads; normalized to 1M)- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.bw"
     
     
     if [[ "${analysisCommand}" != "chipseq" ]]; then
@@ -334,7 +347,7 @@ elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" 
         #Kent tools can't use STDIN
         bedGraphToBigWig $TMPDIR/${name}.perBase.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.perBase.bw
         
-        echo "track name=${name} description=\"${name} ${ucscTrackDescriptionDataType} cut counts (${analyzedReadsM}M nonredundant reads- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/mapped/${fc}/${sampleOutdir}/${name}.${mappedgenome}.perBase.bw"
+        echo "track name=${name}-cuts description=\"${name} ${ucscTrackDescriptionDataType} cut counts (${analyzedReadsM}M nonredundant reads- BWA alignment\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.perBase.bw"
         
         
         #echo "Making fragment coverage track"
