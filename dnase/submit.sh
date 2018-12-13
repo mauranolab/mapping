@@ -23,6 +23,8 @@ module load pigz
 ###Hardcoded configuration options
 #Common
 qsubargs=""
+#For big jobs:
+#qsubargs="--qos normal -p -500"
 
 
 genomesToMap=$1
@@ -40,7 +42,6 @@ if [[ "${processingCommand}" != "none" ]] && [[ "${processingCommand}" != "aggre
     exit 1
 fi
 
-#TODO analysisCommand chipseq, main difference is ucsc track name line
 if [[ "${analysisCommand}" != "atac" ]] && [[ "${analysisCommand}" != "dnase" ]] && [[ "${analysisCommand}" != "chipseq" ]] && [[ "${analysisCommand}" != "callsnps" ]] && [[ "${analysisCommand}" != "none" ]]; then 
     echo "ERROR submit: unknown analysis command ${analysisCommand} in analysisType ${analysisType}"
     exit 2
