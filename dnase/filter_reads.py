@@ -50,7 +50,7 @@ parser.add_argument("--failUnwantedRefs", action = "store_true", default = False
 parser.add_argument("--unwanted_refs_list", action = "store", type = str, default = "hap|random|^chrUn_|_alt$|scaffold|^C\d+", help = "Regex defining unwanted reference sequences [%(default)s]")
 parser.add_argument("--min_mapq", action = "store", type = int, default = 0, help = "Reads must have at least this MAPQ to pass filter [%(default)s]")
 parser.add_argument("--reqFullyAligned", action = "store_true", default = False, help = "Require full length of read to align without insertions, deletions, or clipping")
-parser.add_argument("--max_mismatches", action = "store", type = float, default = 2, help = "Maximum mismatches to pass filter [%(default)s]")
+parser.add_argument("--max_mismatches", action = "store", type = float, default = 2, help = "Maximum mismatches to pass filter, either an integer representing a fixed cutoff or a decimal [0-1] for a variable cutoff as a proportion of read length [%(default)s]")
 parser.add_argument("--min_insert_size", action = "store", type = int, default = 0, help = "Minimum insert size to pass filter [%(default)s]")
 parser.add_argument("--max_insert_size", action = "store", type = int, default = 500, help = "Maximum insert size to pass filter [%(default)s]")
 parser.add_argument("--maxPermittedTrailingOverrun", action = "store", type = int, default = 2, help = "Effectively the number of bp of adapter allowed to be present at end of read (though we don't verify it matches adapter sequence or even mismatches the reference) [%(default)s]")
@@ -177,7 +177,10 @@ def parseUMI(read):
 
 
 def validateReadPair(read1, read2):
-    #TODO should we enforce this for supplementary reads in addition to the primary pair?
+    #Whether a read is unmapped gets checked in validateSingleRead; here we don't want to repeat that here, just check whether fully mapped reads have additional inconsistencies
+    if read1.is_unmapped or read2.is_unmapped:
+        return
+    
     if read1.reference_id != read2.reference_id: raise ReadException("Each read must map to the same reference sequence", unfiltered_reads.getrname(read1.reference_id) + "/" + unfiltered_reads.getrname(read2.reference_id))
     
     if read1.is_reverse == read2.is_reverse: raise ReadException("Must be mapped to opposite strands (F-R conformation)", str(read1.is_reverse) + "/" + str(read2.is_reverse))
@@ -200,10 +203,15 @@ def validateReadPair(read1, read2):
     return;
 
 def validateSingleRead(read):
-    if read.mapping_quality < min_MAPQ: raise ReadException("Read must have MAPQ greater than cutoff", str(read.mapping_quality))
+    if reqFullyAligned and read.is_supplementary: raise ReadException("Read is supplementary alignment")
     
+    #TODO should we have a separate command line flag to pass unmapped reads? Technically it is orthogonal to MAPQ==0. 
     #Small number of reads with MAPQ>0 but still unmapped
     if read.is_unmapped: raise ReadException("Read must be mapped")
+    
+    if read.mapping_quality < min_MAPQ: raise ReadException("Read must have MAPQ greater than cutoff", str(read.mapping_quality))
+    
+    if failUnwantedRefs and isUnwantedChromosomeID(read.reference_id): raise ReadException("Maps to unwanted reference", unfiltered_reads.getrname(read.reference_id))
     
     if maxNumMismatches < 1:
         #needs pysam 0.8.2
@@ -211,16 +219,11 @@ def validateSingleRead(read):
     else:
         if read.get_tag("NM") > maxNumMismatches: raise ReadException("Too many mismatches", str(read.get_tag("NM")))
     
-    if failUnwantedRefs and isUnwantedChromosomeID(read.reference_id):
-        raise ReadException("Maps to unwanted reference", unfiltered_reads.getrname(read.reference_id))
-    
-    if reqFullyAligned and read.is_supplementary: raise ReadException("Read is supplementary alignment")
-    
     #Allow N for introns
     if reqFullyAligned and re.search('[HSPDI]', read.cigarstring) is not None: raise ReadException("Read contains indels or clipping", read.cigarstring)
     
     #Do some PE template length checks in here for simplicity but they are meaningless if the references don't match
-    if read.is_paired and read.reference_id == read.next_reference_id:
+    if not read.is_unmapped and not read.mate_is_unmapped and read.is_paired and read.reference_id == read.next_reference_id:
         #TODO check reference_length > minReadLength
         
         if abs(read.template_length) > maxTemplateLength: raise ReadException("Each read pair must have an insert length below " + str(maxTemplateLength), str(abs(read.template_length)))
@@ -273,6 +276,7 @@ while(1):
         for read in curreads:
             if not read.is_supplementary and read.is_paired:
                 #Only validate the non-supplementary reads as a pair
+                #TODO should we enforce this for supplementary reads in addition to the primary pair?
                 if read.is_read1:
                     read1=read
                 elif read.is_read2:

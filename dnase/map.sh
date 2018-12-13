@@ -122,7 +122,6 @@ trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$S
 #    echo "No DUKE sequence present"
 
 
-minMAPQ=20
 trimmomaticSteps="${trimmomaticSteps} MINLEN:27"
 if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
     trimmomaticSteps="${trimmomaticSteps} CROP:36"
@@ -184,6 +183,7 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     echo "Filtering out reads with >75% G content"
     #TODO could potentially save R1 where only R2 is dark once it can handle single read. Could patch trimmomatic instead?
     #TODO super slow - replace with cutadapt --nextseq-trim?
+    #BUGBUG only run on on PE data
     ${src}/filterNextSeqReadsForPolyG.py --inputfileR1 ${readsFq} --inputfileR2 ${reads2fq} --outputfileR1 $TMPDIR/${sample1}.pretrim.fastq.gz --outputfileR2 $TMPDIR/${sample2}.pretrim.fastq.gz --maxPolyG 75
     
     #java.lang.OutOfMemoryError: unable to create new native thread if run with just 2 threads
@@ -229,7 +229,7 @@ else
     PErun="FALSE"
     curfile="${fc}${sample1}"
     
-    #TODO missing filterNextSeqReadsForPolyG.py
+    #BUGBUG missing filterNextSeqReadsForPolyG.py for SE data
     
     #BUGBUG wrong adapter files
     java org.usadellab.trimmomatic.TrimmomaticSE ${trimmomaticBaseOpts} ${readsFq} $TMPDIR/${sample1}.fastq ${trimmomaticSteps}
@@ -357,8 +357,10 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     
     if [[ "${curGenome}" == "cegsvectors" ]]; then
         dropUnmappedReads="--dropUnmappedReads"
+        minMAPQ=0
     else
         dropUnmappedReads=""
+        minMAPQ=20
     fi
     
 #    if [[ "${processingCommand}" == "mapBwaAln" ]]; then
