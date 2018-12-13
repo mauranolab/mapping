@@ -56,6 +56,7 @@ R2polyG=0
 R1andR2polyG=0
 
 try:
+    #Buffered reader/writer doesn't speed things up at all despite http://aripollak.com/pythongzipbenchmarks/
     inputfileR1 = gzip.open(args.inputfileR1, 'rt') 
     inputfileR2 = gzip.open(args.inputfileR2, 'rt') 
 
