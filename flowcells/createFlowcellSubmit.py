@@ -130,8 +130,8 @@ def DNA(sampleName, sampleID, lab, sampleType, species):
         'Human+mouse': 'hg38_full,mm10',
         'Human+yeast': 'hg38_sacCer3',
         'Mouse+yeast': 'mm10_sacCer3',
-        'Rat+yeast': 'rn6_sacCer3'
-        'Mouse+rat': 'mm10,rn6',
+        'Rat+yeast': 'rn6_sacCer3',
+        'Mouse+rat': 'mm10,rn6'
     }
     reference = speciesToGenomeReference[species]
     fullSampleName = sampleID + "-" + sampleName
