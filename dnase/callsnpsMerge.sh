@@ -98,10 +98,11 @@ rm -f ${fltvcffiles}
 echo
 echo "Parsing VCF track"
 date
+#No additional filtering, just extract genotypes to starch
 #NB repeated from perChrom analysis
-minSNPQ=200
+minSNPQ=0
 #
-minTotalDP=30
+minTotalDP=0
 minAlleleDP=0
 
 ${src}/parseSamtoolsGenotypesToBedFiles.pl ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz $TMPDIR/variants ${minSNPQ} ${minTotalDP} ${minAlleleDP}

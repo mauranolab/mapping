@@ -63,8 +63,13 @@ date
 
 #Current documentation at https://samtools.github.io/bcftools/howtos/index.html
 
-#TODO do really need --max-depth 10000?
-samtools mpileup -r ${chrom} -u --min-BQ 20 --max-depth 10000 --redo-BAQ -f ${referencefasta} --BCF -t DP,AD ${sampleOutdir}/${name}.${mappedgenome}.bam |
+echo "assuming male sample"
+samtools view -H ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1=="@RG" {for(i=2; i<=NF; i++) {split($i, tag, ":"); if (tag[1]=="SM") {print tag[2], "M"}}}' > $TMPDIR/samplesfile.txt
+ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
+
+
+#TODO --min-BQ 20 --max-depth 10000 were carried over from 2015 nat genet paper -- still useful? Handling of the latter changed in samtools 1.9
+bcftools mpileup -r ${chrom} --redo-BAQ -f ${referencefasta} -a DP,AD -O u ${sampleOutdir}/${name}.${mappedgenome}.bam |
 #NB for some reason if the intermediate file is saved instead of piped, bcftools call outputs a GQ of . for everything
 #TODO specify per-sample sex using --samples-file
 #TODO should use --multiallelic-caller ?
@@ -75,13 +80,12 @@ tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 
 minSNPQ=200
 minGQ=99
-#hack to get VCF at minDP8, but starch at 12
-minDP=30
+minDP=20
 
 
 echo "Filter and normalize variants"
 date
-bcftools filter -O u -i "INFO/DP>=${minDP} && QUAL>=${minSNPQ} && GQ>=${minGQ}" ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz |
+bcftools filter -i "INFO/DP>=${minDP} && QUAL>=${minSNPQ} && GQ>=${minGQ}" -O u ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz |
 bcftools norm --threads $NSLOTS --check-ref w --fasta-ref ${referencefasta} --output-type z - > $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 bcftools index $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 

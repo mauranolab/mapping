@@ -22,7 +22,7 @@ grep -h "variants.bb" */analysis.* | grep -v cegsvectors
 
 echo
 echo "BAM tracks"
-grep -h "Making BAM track" -A 1 */analysis.* | grep -v cegsvectors | grep -v "Making coverage track" | awk '$0!="--"'
+grep -h "Making BAM track" -A 1 */analysis.* | grep -v cegsvectors | grep -v "Making BAM track" | awk '$0!="--"'
 
 
 set -eu -o pipefail
