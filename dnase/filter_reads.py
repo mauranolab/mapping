@@ -274,9 +274,9 @@ while(1):
         read2=None
         allReadsUnmapped=True
         for read in curreads:
-            if not read.is_supplementary and read.is_paired:
-                #Only validate the non-supplementary reads as a pair
-                #TODO should we enforce this for supplementary reads in addition to the primary pair?
+            if not read.is_supplementary and not read.is_secondary and read.is_paired:
+                #Only validate the primary, non-supplementary reads as a pair
+                #TODO should we enforce this for other reads? How can one identify pairs?
                 if read.is_read1:
                     read1=read
                 elif read.is_read2:
