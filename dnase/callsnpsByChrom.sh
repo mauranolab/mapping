@@ -62,8 +62,7 @@ echo "Calling variants for genome ${mappedgenome} using ploidy ${ploidy} and ref
 date
 
 #Current documentation at https://samtools.github.io/bcftools/howtos/index.html
-
-echo "assuming male sample"
+echo "TODO WARNING assuming male sample"
 samtools view -H ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1=="@RG" {for(i=2; i<=NF; i++) {split($i, tag, ":"); if (tag[1]=="SM") {print tag[2], "M"}}}' > $TMPDIR/samplesfile.txt
 ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
 
@@ -71,23 +70,23 @@ ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
 #TODO --min-BQ 20 --max-depth 10000 were carried over from 2015 nat genet paper -- still useful? Handling of the latter changed in samtools 1.9
 bcftools mpileup -r ${chrom} --redo-BAQ -f ${referencefasta} -a DP,AD -O u ${sampleOutdir}/${name}.${mappedgenome}.bam |
 #NB for some reason if the intermediate file is saved instead of piped, bcftools call outputs a GQ of . for everything
-#TODO specify per-sample sex using --samples-file
 #TODO should use --multiallelic-caller ?
 bcftools call ${ploidy} --keep-alts --consensus-caller --variants-only -f GQ --output-type v | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 
 
+echo "Filter and normalize variants"
+date
+
 minSNPQ=200
 minGQ=99
 minDP=20
 
-
-echo "Filter and normalize variants"
-date
 bcftools filter -i "INFO/DP>=${minDP} && QUAL>=${minSNPQ} && GQ>=${minGQ}" -O u ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz |
 bcftools norm --threads $NSLOTS --check-ref w --fasta-ref ${referencefasta} --output-type z - > $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 bcftools index $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
+
 
 #Annotate vcf with rsIDs
 #Can't be piped since it wants an index
