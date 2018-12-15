@@ -80,10 +80,10 @@ cd ..
 ## Annotate samples for trackhub
 ```
 cd ${base}/mapped
-Rscript --vanilla ${src}/trackhub/samplesforTrackhub.R --file ${base}/SampleIDs_20180502_MTM.tsv --out ${base}/SamplesForTrackhub.tsv
+Rscript --vanilla ${src}/trackhub/samplesforTrackhub.R --file ${base}/SampleIDs.tsv --out ${base}/SamplesForTrackhub.tsv
 ```
 ## Create trackhub
-This script creates the hub, and genome file at the output location, and creates a subdirectory names hg38 containing the trackhub.txt  
+This script creates the hub, and genome file at the output location, and creates a subdirectory named hg38 containing the trackhub.txt  
 This should be run after all DNase samples have been processed
 
 (requires python 2.7)
