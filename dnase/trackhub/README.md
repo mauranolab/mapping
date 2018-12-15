@@ -78,6 +78,12 @@ sort |
 uniq |
 sort -k4,3 |
 grep -v GroupID > submitJobs.sh
+
+cat <<EOF >> submitJobs.sh
+
+rqsub -b y -j y -N analyzeInserts -hold_jid \`cat sgeid.analysis | perl -pe 's/\n/,/g;'\` "$src/analyzeInserts.R 500"
+bqsub -j y -N mapped_readcounts -hold_jid \`cat sgeid.analysis | perl -pe 's/\n/,/g;'\` $src/mapped_readcounts.sh
+EOF
 cd ..
 ```
 
