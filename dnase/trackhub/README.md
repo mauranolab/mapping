@@ -94,3 +94,4 @@ mkdir -p trackhub/hg38
 python ${src}/trackhub/DalerTrackhub.py ${base}/SamplesForTrackhub.tsv --output ${base}/Encode_DNase | perl -pe 's/^track/\ntrack/g;' > trackhub/hg38/trackDb.txt
 cd ..
 ```
+For debugging trackhub, add "udcTimeout=1&" to browser URL
