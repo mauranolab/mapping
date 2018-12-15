@@ -52,7 +52,7 @@ cut -f2,3,8 SampleIDs.raw.tsv | sort -k2,2 -k3,3 | uniq | cut -f1 | hist | awk '
 #miller can parse JSON files for ease of viewing, e.g.:
 mlr --json --jvstack head -n 2  JSON/ENCFF001HZO
 cd ..
-
+```
 
 10) Now make softlinks to fastq files to connect all files from same library
 ```
