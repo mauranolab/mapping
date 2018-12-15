@@ -46,6 +46,9 @@ python ${src}/trackhub/extractDSfromENCODE_JSON.py metadata.tsv -j JSON/ -o Samp
 9) Here it is important to change names in the cellType column to be consistent across all samples. The biosample names chosen here will continue through the whole analysis. Save the edited file in SampleIDs.tsv
 
 ```
+#Double check that each library ID is unique for a given combination of cell type and histone mark/assay
+cut -f2,3,8 SampleIDs.raw.tsv | sort -k2,2 -k3,3 | uniq | cut -f1 | hist | awk '$1>1'
+
 #miller can parse JSON files for ease of viewing, e.g.:
 mlr --json --jvstack head -n 2  JSON/ENCFF001HZO
 cd ..
