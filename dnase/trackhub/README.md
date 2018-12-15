@@ -84,7 +84,7 @@ Rscript --vanilla ${src}/trackhub/samplesforTrackhub.R --file ${base}/SampleIDs.
 ```
 ## Create trackhub
 This script creates the hub, and genome file at the output location, and creates a subdirectory named hg38 containing the trackhub.txt  
-This should be run after all DNase samples have been processed
+This should be run after all DNase samples have been processed. You will need to create the trackhub/hub.txt landing page.
 
 (requires python 2.7)
 ```
