@@ -22,7 +22,6 @@ parser.add_argument('-o','--output', action='store', dest='output',default='./',
 
 def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
-#parser.add_argument("--maxPolyG", action='store', type=int, default=75, help = "The minimum percentage of Gs to trim from the sequence [%(default)s].")
 
 try:
     args = parser.parse_args()
@@ -72,17 +71,17 @@ hub, genomes_file, genome, trackdb = default_hub(
 for trackComp in Variable:
     from trackhub import CompositeTrack
     composite = CompositeTrack(
-     name=trackComp.replace(" ", "_"),
-     short_label=trackComp.replace(" ", "_"),
-     long_label=trackComp.replace(" ", "_"),
-     tracktype="bigBed",
-     priority="2",
-     visibility="hide",
-     sortOrder="cellType=+ view=+ replicate=+ DSnumber=+ Age=+",
-     maxItems=100000,
-     autoScale = "off",
-     bigDataUrl ='NULL',
-     maxHeightPixels= "6:32:128")
+        name=trackComp.replace(" ", "_"),
+        short_label=trackComp.replace(" ", "_"),
+        long_label=trackComp.replace(" ", "_"),
+        tracktype="bigBed",
+        priority="2",
+        visibility="hide",
+        sortOrder="cellType=+ view=+ replicate=+ DSnumber=+ Age=+",
+        maxItems=100000,
+        autoScale = "off",
+        bigDataUrl ='NULL',
+        maxHeightPixels= "6:32:128")
     
     #composite.add_params()
     
@@ -91,60 +90,61 @@ for trackComp in Variable:
     ########
     from trackhub import ViewTrack
     NormalizedDensity_view=ViewTrack(
-     name="NormalizedDensity_view_"+trackComp.replace(" ", "_"),
-     view="NormalizedDensity",
-     visibility="full",
-     tracktype="bigWig",
-     viewLimits = "0:3",
-     autoScale='off',
-     maxItems=int(100000),
-     viewUi="off",
-     short_label="NormalizedDensity",
-     long_label="NormalizedDensity")
-     
+        name="NormalizedDensity_view_"+trackComp.replace(" ", "_"),
+        view="NormalizedDensity",
+        visibility="full",
+        tracktype="bigWig",
+        viewLimits = "0:3",
+        autoScale='off',
+        maxItems=int(100000),
+        viewUi="off",
+        short_label="NormalizedDensity",
+        long_label="NormalizedDensity")
+        
+        #BUGBUG do only for DNase tracks
     perBaseCleavage_view=ViewTrack(
-     name="perBaseCleavage_view_"+trackComp.replace(" ", "_"),
-     view="perBaseCleavage",
-     visibility="hide",
-     tracktype="bigWig",
-    viewLimits = "0:2",
-     autoScale='off',
-     maxItems=int(100000),
-     viewUi="off",
-     short_label="perBaseCleavage",
-     long_label="perBaseCleavage")
+        name="perBaseCleavage_view_"+trackComp.replace(" ", "_"),
+        view="perBaseCleavage",
+        visibility="hide",
+        tracktype="bigWig",
+        viewLimits = "0:2",
+        autoScale='off',
+        maxItems=int(100000),
+        viewUi="off",
+        short_label="perBaseCleavage",
+        long_label="perBaseCleavage")
     
     Hotspots_view = ViewTrack(
-     name="Hotspots_view_"+trackComp.replace(" ", "_"),
-     view="Hotspots",
-     visibility="hide",
-     tracktype="bigBed 3",
-     maxItems=100000,
-     viewUi="off",
-     short_label="Hotspots",
-     long_label="Hotspots")
+        name="Hotspots_view_"+trackComp.replace(" ", "_"),
+        view="Hotspots",
+        visibility="hide",
+        tracktype="bigBed 3",
+        maxItems=100000,
+        viewUi="off",
+        short_label="Hotspots",
+        long_label="Hotspots")
     
     Peaks_view = ViewTrack(
-     name="Peaks_view_"+trackComp.replace(" ", "_"),
-     view="Peaks",
-     visibility="hide",
-     tracktype="bigBed 3",
-     maxItems=100000,
-     viewUi="off",
-     short_label="Peaks",
-     long_label="Peaks")
-     
+        name="Peaks_view_"+trackComp.replace(" ", "_"),
+        view="Peaks",
+        visibility="hide",
+        tracktype="bigBed 3",
+        maxItems=100000,
+        viewUi="off",
+        short_label="Peaks",
+        long_label="Peaks")
+        
     Tags_view = ViewTrack(
-     name="Tags_view_"+trackComp.replace(" ", "_"),
-     view="Tags",
-     visibility="hide",
-     tracktype="bam",
-     short_label="Tags",
-     maxItems=100000,
-     viewUi="off",
-     #viewUI = "off",
-     pairEndsByName="on",
-     long_label="Tags")
+        name="Tags_view_"+trackComp.replace(" ", "_"),
+        view="Tags",
+        visibility="hide",
+        tracktype="bam",
+        short_label="Tags",
+        maxItems=100000,
+        viewUi="off",
+        #viewUI = "off",
+        pairEndsByName="on",
+        long_label="Tags")
     
     composite.add_view(perBaseCleavage_view)
     composite.add_view(NormalizedDensity_view)
@@ -232,7 +232,7 @@ for trackComp in Variable:
          color=fn[3],
          )
      NormalizedDensity_view.add_tracks(track)
-     #PerBaseCutCunt
+     #PerBaseCutCount
      track = Track(
          name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '_perBaseCleavage'),
          short_label=cellTypeLR+'_'+fn[1],
