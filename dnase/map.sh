@@ -52,7 +52,9 @@ fi
 bam2instrument()
 {
     samtools view -F 2304 $* |
-    cut -f1 | cut -d ":" -f1 | 
+    cut -f1 | cut -d ":" -f1 |
+    #Hack to clean up some encodeproject.org data that has a hyphen separating FC from read name
+    cut -d "-" -f1 | 
     #Hack to clean up some encodeproject.org data that has underscore in place of colon after sequencer name
     perl -pe 's/_\d+_\d+_\d+_\d+$//g;' | 
     #SRR data
@@ -320,7 +322,12 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         fi
     elif [[ "${processingCommand}" == "mapBwaMem" ]]; then
         #       -V            output the reference FASTA header in the XR tag
-        extractcmd="mem ${userAlnOptions} -t ${NSLOTS} -R ${readgroup} ${bwaIndex} $TMPDIR/${sample1}.fastq"
+        bwaMemOptions=""
+#        if [[ "${curGenome}" == "cegsvectors" ]]; then
+#            Mainly seems to add spurious secondary alignments where one read in the pair maps to a different reference within cegsvectors
+#            bwaMemOptions="-a"
+#        fi
+        extractcmd="mem ${bwaMemOptions} ${userAlnOptions} -t ${NSLOTS} -R ${readgroup} ${bwaIndex} $TMPDIR/${sample1}.fastq"
         if [[ "$PErun" == "TRUE" ]] ; then
             extractcmd="${extractcmd} $TMPDIR/${sample2}.fastq"
         fi

@@ -62,7 +62,9 @@ round()
 bam2instrument()
 {
     samtools view -F 2304 $* |
-    cut -f1 | cut -d ":" -f1 | 
+    cut -f1 | cut -d ":" -f1 |
+    #Hack to clean up some encodeproject.org data that has a hyphen separating FC from read name
+    cut -d "-" -f1 | 
     #Hack to clean up some encodeproject.org data that has underscore in place of colon after sequencer name
     perl -pe 's/_\d+_\d+_\d+_\d+$//g;' | 
     #SRR data
@@ -626,7 +628,8 @@ samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | cut -f10
 
 echo
 echo "read count by sequencing instrument"
-bam2instrument ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk '{names[$0]++} END {for (cur in names) {print names[cur], cur}}' | sort -k2,2
+#The sort -k1,1nr | head -100 caps the number of unique entries (taking the most common), helpful if we have not parsed the read name accurately
+bam2instrument ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk '{names[$0]++} END {for (cur in names) {print names[cur], cur}}' | sort -k1,1nr | head -100 | sort -k2,2
 
 
 echo
