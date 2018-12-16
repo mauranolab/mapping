@@ -68,9 +68,16 @@ ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
 
 
 #TODO --min-BQ 20 --max-depth 10000 were carried over from 2015 nat genet paper -- still useful? Handling of the latter changed in samtools 1.9
-bcftools mpileup -r ${chrom} --redo-BAQ -f ${referencefasta} -a DP,AD -O u ${sampleOutdir}/${name}.${mappedgenome}.bam |
+#from Iyer et al PLoS Genet 2018
+#-C50 -pm2 -F0.05 -d10000
+#  -C, --adjust-MQ INT     adjust mapping quality; recommended:50, disable:0 [0]
+#  -F, --gap-frac FLOAT    minimum fraction of gapped reads [0.002]
+
+bcftools mpileup -r ${chrom} --redo-BAQ -f ${referencefasta} -C50 -F0.05 -d10000 -a DP,AD -O u ${sampleOutdir}/${name}.${mappedgenome}.bam |
 #NB for some reason if the intermediate file is saved instead of piped, bcftools call outputs a GQ of . for everything
-#TODO should use --multiallelic-caller ?
+#Iyer et al PLoS Genet 2018 uses --multiallelic-caller
+#https://sourceforge.net/p/samtools/mailman/message/32931405/
+#https://samtools.github.io/bcftools/call-m.pdf
 bcftools call ${ploidy} --keep-alts --consensus-caller --variants-only -f GQ --output-type v | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
@@ -79,11 +86,12 @@ tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 echo "Filter and normalize variants"
 date
 
-minSNPQ=200
+minSNPQ=10
 minGQ=99
-minDP=20
+minDP=10
 
-bcftools filter -i "INFO/DP>=${minDP} && QUAL>=${minSNPQ} && GQ>=${minGQ}" -O u ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz |
+bcftools filter -i "INFO/DP>=${minDP} && QUAL>=${minSNPQ} && GQ>=${minGQ}" --SnpGap 3 --IndelGap 10 -O u ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz |
+#Iyer et al PLoS Genet 2018 uses -m -any (split multiallelics)
 bcftools norm --threads $NSLOTS --check-ref w --fasta-ref ${referencefasta} --output-type z - > $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 bcftools index $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 
