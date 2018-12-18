@@ -89,7 +89,7 @@ cd ..
 
 ## Annotate samples for trackhub
 ```
-cd ${base}/mapped
+cd ${base}
 Rscript --vanilla ${src}/trackhub/samplesforTrackhub.R --file ${base}/SampleIDs.tsv --out ${base}/SamplesForTrackhub.tsv
 ```
 ## Create trackhub
