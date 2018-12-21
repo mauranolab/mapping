@@ -15,8 +15,15 @@ import io
 from collections import OrderedDict
 import locale
 
-parser = argparse.ArgumentParser(prog = "createTrackhub", description = "Creates a trackhub with Composite and subtracks for all tracks. Columns should be: cellType, DSnumber, Replicate, Colour, Assay, analyzed_reads, SPOT, Hotspots", add_help=True)
-parser.add_argument('Input', action='store', help='Input tsv file with all sample information')
+#TODO parameterize or infer
+mappedgenome = "mm10"
+doDNase = False
+assay="ChIP-seq"
+URLbase = 'https://cascade.isg.med.nyu.edu/mauranolab/encode/mouseencode_chipseq/mapped/'
+
+
+parser = argparse.ArgumentParser(prog = "createTrackhub", description = "Creates a trackhub with Composite and subtracks for all tracks.", add_help=True)
+parser.add_argument('Input', action='store', help='Input tsv file with all sample information for grouping. Columns should be: cellType, DSnumber, Replicate, Colour, Assay, analyzed_reads, SPOT, Hotspots (TODO update)')
 parser.add_argument('-o','--output', action='store', dest='output',default='./',help='Output file for where to store trackhub.')
 
 
@@ -39,7 +46,8 @@ else:
 
 
 print(args.output)
-       
+
+
 ########
 #import files
 ########
@@ -47,6 +55,7 @@ print(args.output)
 #inputfile = open('/home/maagj01/projects/EncodeDNase/testOUT', 'r') 
 input_data = inputfile.readlines()
 input_data = [line.rstrip().split('\t') for line in input_data][1:]#Don't use header for now TODO use header for tracks
+
 
 ########
 #Find all unique cellTypes and create a supertrack for each
@@ -59,7 +68,7 @@ Variable = sorted(set([i[9] for i in input_data]))
 ########
 hub, genomes_file, genome, trackdb = default_hub(
     hub_name="Encode_DNase_201805",
-    genome="hg38",
+    genome=mappedgenome,
     short_label="Encode_DNase",
     long_label="Encode DNase",
     email="maurano@nyu.edu")
@@ -77,8 +86,8 @@ for trackComp in Variable:
         tracktype="bigBed",
         priority="2",
         visibility="hide",
-        sortOrder="cellType=+ view=+ replicate=+ DSnumber=+ Age=+",
-        maxItems=100000,
+        sortOrder="cellType=+ Assay=+ view=+ replicate=+ DSnumber=+ Age=+",
+        maxItems=10000,
         autoScale = "off",
         bigDataUrl ='NULL',
         maxHeightPixels= "6:32:128")
@@ -89,70 +98,71 @@ for trackComp in Variable:
     #Create view track
     ########
     from trackhub import ViewTrack
-    NormalizedDensity_view=ViewTrack(
-        name="NormalizedDensity_view_"+trackComp.replace(" ", "_"),
-        view="NormalizedDensity",
+    Dens_view=ViewTrack(
+        name="Dens_view_"+trackComp.replace(" ", "_"),
+        view="Dens",
         visibility="full",
         tracktype="bigWig",
         viewLimits = "0:3",
         autoScale='off',
-        maxItems=int(100000),
+        maxItems=10000,
         viewUi="off",
-        short_label="NormalizedDensity",
-        long_label="NormalizedDensity")
+        short_label="Dens",
+        long_label="Dens")
+    composite.add_view(Dens_view)
         
-        #BUGBUG do only for DNase tracks
-    perBaseCleavage_view=ViewTrack(
-        name="perBaseCleavage_view_"+trackComp.replace(" ", "_"),
-        view="perBaseCleavage",
-        visibility="hide",
-        tracktype="bigWig",
-        viewLimits = "0:2",
-        autoScale='off',
-        maxItems=int(100000),
-        viewUi="off",
-        short_label="perBaseCleavage",
-        long_label="perBaseCleavage")
+    if doDNase:
+        perBaseCleavage_view=ViewTrack(
+            name="perBaseCleavage_view_"+trackComp.replace(" ", "_"),
+            view="perBaseCleavage",
+            visibility="hide",
+            tracktype="bigWig",
+            viewLimits = "0:2",
+            autoScale='off',
+            maxItems=10000,
+            viewUi="off",
+            short_label="perBaseCleavage",
+            long_label="perBaseCleavage")
+        composite.add_view(perBaseCleavage_view)
     
     Hotspots_view = ViewTrack(
         name="Hotspots_view_"+trackComp.replace(" ", "_"),
         view="Hotspots",
         visibility="hide",
         tracktype="bigBed 3",
-        maxItems=100000,
+        maxItems=10000,
         viewUi="off",
         short_label="Hotspots",
         long_label="Hotspots")
+    composite.add_view(Hotspots_view)
     
     Peaks_view = ViewTrack(
         name="Peaks_view_"+trackComp.replace(" ", "_"),
         view="Peaks",
         visibility="hide",
         tracktype="bigBed 3",
-        maxItems=100000,
+        maxItems=10000,
         viewUi="off",
         short_label="Peaks",
         long_label="Peaks")
+    composite.add_view(Peaks_view)
         
-    Tags_view = ViewTrack(
-        name="Tags_view_"+trackComp.replace(" ", "_"),
-        view="Tags",
+    Reads_view = ViewTrack(
+        name="Reads_view_"+trackComp.replace(" ", "_"),
+        view="Reads",
         visibility="hide",
         tracktype="bam",
-        short_label="Tags",
-        maxItems=100000,
+        short_label="Reads",
+        maxItems=10000,
         viewUi="off",
         #viewUI = "off",
         pairEndsByName="on",
-        long_label="Tags")
+        long_label="Reads")
+    composite.add_view(Reads_view)
     
-    composite.add_view(perBaseCleavage_view)
-    composite.add_view(NormalizedDensity_view)
-    composite.add_view(Hotspots_view)
-    composite.add_view(Peaks_view)
-    composite.add_view(Tags_view)
     for view in composite.views:
      view.add_params(configurable="on")
+    
     ########
     #Create subgroup definitions
     ########
@@ -161,14 +171,18 @@ for trackComp in Variable:
     cellTypes= [re.sub(r'_L$|_R$','',i) for i in cellTypes]
     DSnumbers = sorted(set([i[1] for i in matching]))
     Replicates = sorted(set([i[2] for i in matching]))
+    Assay = sorted(set([i[4] for i in matching]))
     Age = sorted(set([re.sub(' ','_',i[10]) for i in matching]),key=natural_key)
+#    Institute = sorted(set([re.sub(' ','_',i[11]) for i in matching]),key=natural_key)
+    
     
     celltypeDict = dict(zip(cellTypes,cellTypes))
-    
+    dictAssay = dict(zip(Assay,Assay))
     DSdict = dict(zip(DSnumbers,DSnumbers))
-    
     repDict = dict(zip(Replicates,Replicates))
     ageDict= dict(zip(Age,Age))
+#    Instdict= dict(zip(Institute,Institute))
+    
     from trackhub.track import SubGroupDefinition
     subgroups = [
     
@@ -176,6 +190,11 @@ for trackComp in Variable:
          name="cellType",
          label="CellType",
          mapping=OrderedDict(sorted(celltypeDict.items(), key=lambda x: x[1]))),
+    
+        SubGroupDefinition(
+            name="Assay",
+            label="Assay",
+            mapping=OrderedDict(sorted(dictAssay.items(), key=lambda x: x[1]))),
     
      SubGroupDefinition(
          name="replicate",
@@ -192,11 +211,14 @@ for trackComp in Variable:
          name="Age",
          label="Age",
          mapping=OrderedDict(sorted(ageDict.items(), key=lambda x: x[1]))),
+         
+#    SubGroupDefinition(
+#        name="Institute",
+#        label="Institute",
+#        mapping=OrderedDict(sorted(Instdict.items(), key=lambda x: x[1]))),
     
     ]
     composite.add_subgroups(subgroups)
-    
-    
     
     
     
@@ -210,69 +232,79 @@ for trackComp in Variable:
     for fn in matching:
      cellTypeLR = re.sub(r'_L$|_R$','',fn[0])
      track = Track(
-         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '_tags'),
+         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '-reads'),
          short_label=cellTypeLR+'_'+fn[1],
-         long_label="DNase Tags "+cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquely mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
+         long_label=assay + ' Reads '+cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
          autoScale='off',
-         url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38/'+fn[0]+'-'+fn[1]+'.hg38.bam',
-         subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
+         url=URLbase+ fn[11] + '.bam',
+         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
          tracktype='bam',
          
          )
-     Tags_view.add_tracks(track)
-     #NormalizedDensity_view
+     Reads_view.add_tracks(track)
+     
+     #Dens_view
      track = Track(
-         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '_normalizedDensity'),
+         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '-dens'),
          short_label=cellTypeLR+'_'+fn[1],
-         long_label='DNase Density ' + cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquely mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
+         long_label=assay + ' Density ' + cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
          autoScale='off',
-         url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38/'+fn[0]+'-'+fn[1]+'.hg38.bw',
-         subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
+         url=URLbase+ fn[11] + '.bw',
+         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
          tracktype='bigWig',
          color=fn[3],
          )
-     NormalizedDensity_view.add_tracks(track)
-     #PerBaseCutCount
-     track = Track(
-         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '_perBaseCleavage'),
-         short_label=cellTypeLR+'_'+fn[1],
-         long_label='DNase Cut counts ' + cellTypeLR + '_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquely mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
-         autoScale='off',
-         url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38/'+fn[0]+'-'+fn[1]+'.hg38.perBase.bw',
-         subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
-         tracktype='bigWig',
-         color=fn[3],
-         )
-     perBaseCleavage_view.add_tracks(track)
+     Dens_view.add_tracks(track)
+     
+     if doDNase:
+         #PerBaseCutCount
+         track = Track(
+             name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '-cuts'),
+             short_label=cellTypeLR+'_'+fn[1],
+             long_label=assay + ' Cut counts ' + cellTypeLR + '_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
+             autoScale='off',
+             url=URLbase+ fn[11] + '.perBase.bw',
+             subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
+             tracktype='bigWig',
+             color=fn[3],
+             )
+         perBaseCleavage_view.add_tracks(track)
+     
      #Peaks_View
      track = Track(
-         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '_peaks'),
+         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '-peaks'),
          short_label=cellTypeLR+'_'+fn[1],
-         long_label='DNase Peaks ' + cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquely mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
+         long_label=assay + ' Peaks ' + cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
          autoScale='off',
-         url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38'+'/hotspot2/'+fn[0]+'-'+fn[1]+'.hg38.peaks.bb',
-         subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
+         url=URLbase + fn[11].replace("/", "/hotspot2/") + '.peaks.bb',
+         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
          tracktype='bigBed 3',
          color=fn[3],
          )
      Peaks_view.add_tracks(track)
+     
      #Hotspots_view
      track = Track(
-         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '_hotspots'),
+         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '-hotspots'),
          short_label=cellTypeLR + '_'+fn[1],
-         long_label='DNase Hotspots ' + cellTypeLR +'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' uniquely mapped tags, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
+         long_label=assay + ' Hotspots (5% FDR) ' + cellTypeLR +'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
          autoScale='off',
-         url='https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'+fn[0]+'-'+fn[1]+'.hg38'+'/hotspot2/'+fn[0]+'-'+fn[1]+'.hg38.hotspots.fdr0.01.bb',
-         subgroups=dict(cellType=cellTypeLR, replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
+         url=URLbase + fn[11].replace("/", "/hotspot2/") + '.hotspots.fdr0.05.bb',
+         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
          tracktype='bigBed 3',
          color=fn[3],
          )
      Hotspots_view.add_tracks(track)
      
-    for track in NormalizedDensity_view.subtracks:
-     track.add_params(viewLimits='0:3', autoScale='off')
-     
-    composite.add_params( dimensions="dimY=cellType dimA=replicate dimX=Age") #MTM 2018jul30 broke: , dimensionAchecked ="rep1"
+    for track in Dens_view.subtracks:
+        track.add_params(viewLimits='0:3', autoScale='off')
+    
+    #TODO #daler github trackhub/trackhub/track.py doesn't seem to offer dimensionAchecked as option
+    #DNase
+    #composite.add_params(dimensions="dimY=cellType dimA=replicate dimX=Age") #MTM 2018jul30 broke: , dimensionAchecked ="rep1"
+    #ChIP-seq
+    composite.add_params(dimensions="dimY=Assay dimA=replicate dimX=cellType")#, dimensionAchecked ="rep1",  dimensionBchecked="UW"
+        
     print composite 
     trackdb.add_tracks(composite)
 
