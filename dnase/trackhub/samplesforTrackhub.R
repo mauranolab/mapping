@@ -65,8 +65,8 @@ groupnames <- gsub("-.*", '', mappeddirs)
 col <- rep(col, round(length(groupnames)/length(col), 2))[as.factor(unique(groupnames))]	 
 col <- as.data.frame(col, unique(groupnames))
 
-data <- data.frame(matrix(ncol=12, nrow=length(mappeddirs)))
-colnames(data) <- c('cellType', 'DSnumber', 'Replicate', 'Color', 'Assay', 'analyzed_reads', 'SPOT', 'Hotspots', 'Exclude', 'Variable', 'Age', 'Uni')
+data <- data.frame(matrix(ncol=13, nrow=length(mappeddirs)))
+colnames(data) <- c('cellType', 'DSnumber', 'Replicate', 'Color', 'Assay', 'analyzed_reads', 'SPOT', 'Hotspots', 'Exclude', 'Variable', 'Age', 'Uni', "filebase")
 
 #Change cellType names for Fetal tissues
 
@@ -82,7 +82,7 @@ for(i in 1:length(mappeddirs)){
 			SampleIDsplit <- unlist(strsplit(SampleID, "-"))
 			
 			colGroup <- col2rgb(as.character(col[rownames(col) %in% gsub("-.*", '', mappeddirs[i]),][1]))[,1]
-			data$cellType[i] <- paste(SampleIDsplit[-length(SampleIDsplit)], collapse="-")
+			data$cellType[i] <- SampleIDsplit[1]
 			data$DSnumber[i] <- SampleIDsplit[length(SampleIDsplit)]
 			data$Replicate[i] <- 1 #BUGBUG???
 			data$Color[i] <- paste(colGroup[1], colGroup[2], colGroup[3], sep=',')
@@ -98,17 +98,39 @@ for(i in 1:length(mappeddirs)){
 			data$Uni[i] <- df[grep(data$DSnumber[i], df$GroupID), "Institution"]
 			#if there's data in the Variable column, add the information. 
 			if(is.null(df$Variable)) {
-				data$Variable[i] <- " "
+				data$Variable[i] <- "other"
 			} else {
 				#MTM -- what does this do? Is he filling in info from samples with same DS num?
 				data$Variable[i] <- df[grep(data$DSnumber[i], df$GroupID),]$Variable[1]
 			}
-			if(data$Variable[i] != "Duke") {
-				#Divide samples based on category
-				if(length(grep('^f[A-Z]', SampleID))>0){data$Variable[i] <- 'Fetal_Roadmap'}
-				if(length(grep('^CD|^Th|^TH|^hTH|^hTR|^iTH|^th|^GM1|^GM06990|^Jurkat', SampleID))>0){data$Variable[i] <- 'Hematopoietic_lineage'}
-				if(length(grep('^H1|^H7|ES|^H[0-9]|^iPS', SampleID))>0){data$Variable[i] <- 'Pluripotent'}
-				if(length(grep('testis|spinal|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|prostate|intest|medull|[Ll]iver|aggregated_lymphoid_nodule|aorta|artery|psoas|stomach|testes|tibial_artery|vagina|omental_fat_depot|fetal_umbilical_cord|pons|medial_popliteal_nerve|globus|Spleen', SampleID[grep('^f[A-Z]', SampleID, invert=T)], ignore.case=T, invert=F))>0){data$Variable[i] <- 'Tissues'}
+			data$filebase[i] <- paste0(SampleID, "/", paste0(unlist(strsplit(basename(mergedFiles), "\\."))[2:3], collapse="."))
+			
+			if(F) {
+				#Enable for Human DNase
+				if(data$Variable[i] != "Duke") {
+					#Divide samples based on category
+					if(length(grep('^f[A-Z]', SampleID))>0){data$Variable[i] <- 'Fetal_Roadmap'}
+					if(length(grep('^CD|^Th|^TH|^hTH|^hTR|^iTH|^th|^GM1|^GM06990|^Jurkat', SampleID))>0){data$Variable[i] <- 'Hematopoietic_lineage'}
+					if(length(grep('^H1|^H7|ES|^H[0-9]|^iPS', SampleID))>0){data$Variable[i] <- 'Pluripotent'}
+					if(length(grep('testis|spinal|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|prostate|intest|medull|[Ll]iver|aggregated_lymphoid_nodule|aorta|artery|psoas|stomach|testes|tibial_artery|vagina|omental_fat_depot|fetal_umbilical_cord|pons|medial_popliteal_nerve|globus|Spleen', SampleID[grep('^f[A-Z]', SampleID, invert=T)], ignore.case=T, invert=F))>0){data$Variable[i] <- 'Tissues'}
+				}
+			} else {
+				#Enable for Mouse chipseq
+				if(length(grep('^CD|^Th|^TH|^hTH|^iTH|^th|^GM1|B_cell|GM06990|GM08714|GM20000|neutrophil|natural_killer|regulatory_T_cell|MEL|macrophage|CH12LX|G1E',SampleID))>0){data$Variable[i]<-'Hematopoietic_cells'}
+				if(length(grep('^H1|^H7|ES|^H[0-9]|^iPS|E14TG2a4',data$cellType[i]))>0){data$Variable[i]<-'Pluripotent'}
+				if(length(grep('Broad|Duke|HAIB|HMS|Stanford|UMass|USC|UTA|UW|Yale|UCSD', data$Variable[i], ignore.case=T))>0){data$Variable[i]<-'Cell_lines'}
+				if(length(grep('HUES|H54|C2C12|myocyte', data$cellType[i]))>0){data$Variable[i]<-'Cell_lines'}
+				if(length(grep('mesenchymal_stem_cell|trophoblast_cell|testis|spinal|aorta|body|breast|coronary_artery|neural_cell|omental_fat_pad|right_atrium_auricular_region|right_lobe_of_liver|spleen|stomach|tibial_artery|tibial_nerve|vagina|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|oesteoblast|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|liver|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|dendritic_cell|hepatocyte|mid_neurogenesis_radial_glial_cells|neuroepithelial_stem_cell|radial_glial_cell|prostate|intest|medull|thymus|cerebellum|cortical_plate',
+				SampleID,ignore.case=T,invert=F))>0 || length(grep('day',data$Age[i]))>0) {
+					if(length(grep('^H3',data$Assay[i]))>0) {
+						data$Variable[i]<-'Tissues_Histones'
+					} else {
+						data$Variable[i]<-'Tissues_TFs'
+					}
+				}
+				if(length(grep('eGFP|FLAG|MCF10A_Er_Src', SampleID, ignore.case=T))>0){data$Variable[i]<-'Epitope-tagged_TFs'}
+				if(length(grep('control', SampleID, ignore.case=T))>0){data$Variable[i]<-'Control'}
+				if(data$Assay[i] == "CTCF"){data$Variable[i]<-'CTCF'}
 			}
 			#rm(sampleFile)
 			#gc()
@@ -175,4 +197,4 @@ write.table(subset(data, select=-c(Uni)), file=opt$out, sep='\t', col.names=T, r
 
 warnings()
 
-cat("Done!!!")
+cat("Done!!!\n")
