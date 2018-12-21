@@ -95,7 +95,7 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesC) & is.null(opt$samplesB)) {
        BCpairs <- BCpairs[BCpairs$V1!=BCpairs$V2,]
 
        usefulBCs<-data.frame(matrix(ncol=12,nrow=nrow(BCpairs)))
-       colnames(usefulBCs)<-c('A','B','#A','#B','Intersect','Union','Intersect/Union',paste0('#A_',thresholdRNADNA),paste0('#B_',thresholdRNADNA),paste0('Intersect_',thresholdRNADNA),paste0('Union_',thresholdRNADNA),paste0('Intersect_',thresholdRNADNA,'/','Union_',thresholdRNADNA))
+       colnames(usefulBCs)<-c('A','B','#A','#B','#Intersect','#Union','Intersect/Union',paste0('#A_',thresholdRNADNA),paste0('#B_',thresholdRNADNA),paste0('#Intersect_',thresholdRNADNA),paste0('#Union_',thresholdRNADNA),paste0('Intersect_',thresholdRNADNA,'/','Union_',thresholdRNADNA))
        
        for (i in 1:nrow(BCpairs)){
        
@@ -154,7 +154,7 @@ if (!is.null(opt$samplesA) &  is.null(opt$samplesC) & !is.null(opt$samplesB)) {
        cat(samplesB[1], '\n')
        BCpairs <- data.frame("A"=samplesA, "B"=samplesB,stringsAsFactors=F)
        usefulBCs<-data.frame(matrix(ncol=12,nrow=nrow(BCpairs)))
-       colnames(usefulBCs)<-c('A','B','#A','#B','Intersect','Union','Intersect/Union',paste0('#A_',thresholdRNADNA),paste0('#B_',thresholdRNADNA),paste0('Intersect_',thresholdRNADNA),paste0('Union_',thresholdRNADNA),paste0('Intersect_',thresholdRNADNA,'/','Union_',thresholdRNADNA))
+       colnames(usefulBCs)<-c('A','B','#A','#B','#Intersect','#Union','Intersect/Union',paste0('#A_',thresholdRNADNA),paste0('#B_',thresholdRNADNA),paste0('#Intersect_',thresholdRNADNA),paste0('#Union_',thresholdRNADNA),paste0('Intersect_',thresholdRNADNA,'/','Union_',thresholdRNADNA))
        
        for (i in 1:nrow(BCpairs)){
        
