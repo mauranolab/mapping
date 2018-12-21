@@ -12,7 +12,7 @@ from umi_tools._dedup_umi import edit_distance
 
 
 ###Command line arguments
-parser = argparse.ArgumentParser(prog = "extractBarcode.py", description = "Filter fastq.gz files to retain reads with barcodes matching expected sequence in both barcode read and in plasmid read", add_help=True)
+parser = argparse.ArgumentParser(prog = "extractBarcode.py", description = "Filter fastq.gz files to retain reads with barcodes matching expected sequence in both barcode read and in plasmid read", allow_abbrev=False)
 
 bc_parser = parser.add_argument_group()
 bc_parser.add_argument('--BCread', action='store', required=True, help='Read with barcode (fastq.gz file)')
@@ -114,10 +114,11 @@ numWrongBCseq=0
 numlowQual=0
 numWrongBclength=0
 
-BClevenDist = [0] * (bc_start+1)
-PlasmidlevenDist = [0] * (60+1) #TODO limit to read and plasmid length
 
-PlasmidmissmatchLoc = [0] * (60) 
+BClevenDist = [0] * (bc_start+1)
+PlasmidlevenDist = [0] * (referenceSeqLen+1) #Why +1?
+
+PlasmidmissmatchLoc = [0] * (referenceSeqLen) 
 BClmissmatchLoc = [0] * (bc_start)
 BCHammingVsLevensthein = 0
 PlasmidHammingVsLevensthein = 0
