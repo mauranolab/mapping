@@ -81,8 +81,8 @@ for trackComp in Variable:
     from trackhub import CompositeTrack
     composite = CompositeTrack(
         name=trackComp.replace(" ", "_"),
-        short_label=trackComp.replace(" ", "_"),
-        long_label=trackComp.replace(" ", "_"),
+        short_label=trackComp,
+        long_label=trackComp,
         tracktype="bigBed",
         priority="2",
         visibility="hide",
@@ -97,71 +97,69 @@ for trackComp in Variable:
     ########
     #Create view track
     ########
+    #Notes
+    #adding viewUi="off" seems to expand the panel by default, opposite expectations
+    
     from trackhub import ViewTrack
     Dens_view=ViewTrack(
-        name="Dens_view_"+trackComp.replace(" ", "_"),
+        name="Dens_view_" + trackComp.replace(" ", "_"),
         view="Dens",
         visibility="full",
         tracktype="bigWig",
         viewLimits = "0:3",
         autoScale='off',
         maxItems=10000,
-        viewUi="off",
         short_label="Dens",
         long_label="Dens")
     composite.add_view(Dens_view)
         
     if doDNase:
         perBaseCleavage_view=ViewTrack(
-            name="perBaseCleavage_view_"+trackComp.replace(" ", "_"),
+            name="perBaseCleavage_view_" + trackComp.replace(" ", "_"),
             view="perBaseCleavage",
             visibility="hide",
             tracktype="bigWig",
             viewLimits = "0:2",
             autoScale='off',
             maxItems=10000,
-            viewUi="off",
             short_label="perBaseCleavage",
             long_label="perBaseCleavage")
         composite.add_view(perBaseCleavage_view)
     
     Hotspots_view = ViewTrack(
-        name="Hotspots_view_"+trackComp.replace(" ", "_"),
+        name="Hotspots_view_" + trackComp.replace(" ", "_"),
         view="Hotspots",
         visibility="hide",
         tracktype="bigBed 3",
         maxItems=10000,
-        viewUi="off",
         short_label="Hotspots",
         long_label="Hotspots")
     composite.add_view(Hotspots_view)
     
     Peaks_view = ViewTrack(
-        name="Peaks_view_"+trackComp.replace(" ", "_"),
+        name="Peaks_view_" + trackComp.replace(" ", "_"),
         view="Peaks",
         visibility="hide",
         tracktype="bigBed 3",
         maxItems=10000,
-        viewUi="off",
         short_label="Peaks",
         long_label="Peaks")
     composite.add_view(Peaks_view)
         
     Reads_view = ViewTrack(
-        name="Reads_view_"+trackComp.replace(" ", "_"),
+        name="Reads_view_" + trackComp.replace(" ", "_"),
         view="Reads",
         visibility="hide",
         tracktype="bam",
         short_label="Reads",
         maxItems=10000,
-        viewUi="off",
-        #viewUI = "off",
         pairEndsByName="on",
         long_label="Reads")
     composite.add_view(Reads_view)
     
     for view in composite.views:
-     view.add_params(configurable="on")
+        view.add_params(configurable="on")
+    
     
     ########
     #Create subgroup definitions
@@ -230,74 +228,78 @@ for trackComp in Variable:
     #input_data
     #f#n=input_data[0]
     for fn in matching:
-     cellTypeLR = re.sub(r'_L$|_R$','',fn[0])
+     cellTypeLR = re.sub(r'_L$|_R$', '', fn[0])
+     cellTypeLR_trackname = re.sub(r'\W+', '',cellTypeLR) + "-" + fn[1]
      track = Track(
-         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '-reads'),
-         short_label=cellTypeLR+'_'+fn[1],
-         long_label=assay + ' Reads '+cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
+         name=cellTypeLR_trackname + '-reads',
+         short_label=cellTypeLR + "-" + fn[1],
+         long_label=assay + ' Reads ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
          autoScale='off',
          url=URLbase+ fn[11] + '.bam',
          subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
          tracktype='bam',
-         
+         parentonoff="off",
          )
      Reads_view.add_tracks(track)
      
      #Dens_view
      track = Track(
-         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '-dens'),
-         short_label=cellTypeLR+'_'+fn[1],
-         long_label=assay + ' Density ' + cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
+         name=cellTypeLR_trackname + '-dens',
+         short_label=cellTypeLR + "-" + fn[1],
+         long_label=assay + ' Density ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
+         viewLimits='0:3',
          autoScale='off',
          url=URLbase+ fn[11] + '.bw',
          subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
          tracktype='bigWig',
          color=fn[3],
+        parentonoff="off",
          )
      Dens_view.add_tracks(track)
      
      if doDNase:
          #PerBaseCutCount
          track = Track(
-             name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '-cuts'),
-             short_label=cellTypeLR+'_'+fn[1],
-             long_label=assay + ' Cut counts ' + cellTypeLR + '_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
+             name=cellTypeLR_trackname + '-cuts',
+             short_label=cellTypeLR + "-" + fn[1],
+             long_label=assay + ' Cut counts ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
              autoScale='off',
              url=URLbase+ fn[11] + '.perBase.bw',
              subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
              tracktype='bigWig',
              color=fn[3],
+            parentonoff="off",
              )
          perBaseCleavage_view.add_tracks(track)
      
      #Peaks_View
      track = Track(
-         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '-peaks'),
-         short_label=cellTypeLR+'_'+fn[1],
-         long_label=assay + ' Peaks ' + cellTypeLR+'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
+         name=cellTypeLR_trackname + '-peaks',
+         short_label=cellTypeLR + "-" + fn[1],
+         long_label=assay + ' Peaks ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
          autoScale='off',
          url=URLbase + fn[11].replace("/", "/hotspot2/") + '.peaks.bb',
          subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
          tracktype='bigBed 3',
          color=fn[3],
+        parentonoff="off",
          )
      Peaks_view.add_tracks(track)
      
      #Hotspots_view
      track = Track(
-         name=re.sub(r'\W+', '',cellTypeLR + '_' + fn[1] + '-hotspots'),
-         short_label=cellTypeLR + '_'+fn[1],
-         long_label=assay + ' Hotspots (5% FDR) ' + cellTypeLR +'_'+fn[1]+' ('+locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, '+fn[6]+' SPOT, '+locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
+         name=cellTypeLR_trackname + '-hotspots',
+         short_label=cellTypeLR + "-" + fn[1],
+         long_label=assay + ' Hotspots (5% FDR) ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
          autoScale='off',
          url=URLbase + fn[11].replace("/", "/hotspot2/") + '.hotspots.fdr0.05.bb',
          subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
          tracktype='bigBed 3',
          color=fn[3],
+        parentonoff="off",
          )
      Hotspots_view.add_tracks(track)
      
-    for track in Dens_view.subtracks:
-        track.add_params(viewLimits='0:3', autoScale='off')
     
     #TODO #daler github trackhub/trackhub/track.py doesn't seem to offer dimensionAchecked as option
     #DNase
