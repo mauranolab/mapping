@@ -16,10 +16,15 @@ from collections import OrderedDict
 import locale
 
 #TODO parameterize or infer
-mappedgenome = "mm10"
-doDNase = False
-assay="ChIP-seq"
-URLbase = 'https://cascade.isg.med.nyu.edu/mauranolab/encode/mouseencode_chipseq/mapped/'
+#mappedgenome = "mm10"
+#doDNase = False
+#assay="ChIP-seq"
+#URLbase = 'https://cascade.isg.med.nyu.edu/mauranolab/encode/mouseencode_chipseq/mapped/'
+
+mappedgenome = "hg38"
+doDNase = True
+assay="DNase-seq"
+URLbase = 'https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'
 
 
 parser = argparse.ArgumentParser(prog = "createTrackhub", description = "Creates a trackhub with Composite and subtracks for all tracks.", add_help=True)
@@ -109,22 +114,22 @@ for trackComp in Variable:
         viewLimits = "0:3",
         autoScale='off',
         maxItems=10000,
-        short_label="Dens",
-        long_label="Dens")
+        short_label="Density",
+        long_label="Density")
     composite.add_view(Dens_view)
         
     if doDNase:
-        perBaseCleavage_view=ViewTrack(
-            name="perBaseCleavage_view_" + trackComp.replace(" ", "_"),
-            view="perBaseCleavage",
+        Cuts_view=ViewTrack(
+            name="Cuts_view_" + trackComp.replace(" ", "_"),
+            view="Cut counts",
             visibility="hide",
             tracktype="bigWig",
             viewLimits = "0:2",
             autoScale='off',
             maxItems=10000,
-            short_label="perBaseCleavage",
-            long_label="perBaseCleavage")
-        composite.add_view(perBaseCleavage_view)
+            short_label="Cut Counts",
+            long_label="Cut Counts")
+        composite.add_view(Cuts_view)
     
     Hotspots_view = ViewTrack(
         name="Hotspots_view_" + trackComp.replace(" ", "_"),
@@ -236,7 +241,7 @@ for trackComp in Variable:
          long_label=assay + ' Reads ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
          autoScale='off',
          url=URLbase+ fn[11] + '.bam',
-         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
+         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
          tracktype='bam',
          parentonoff="off",
          )
@@ -250,7 +255,7 @@ for trackComp in Variable:
          viewLimits='0:3',
          autoScale='off',
          url=URLbase+ fn[11] + '.bw',
-         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
+         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
          tracktype='bigWig',
          color=fn[3],
         parentonoff="off",
@@ -265,12 +270,12 @@ for trackComp in Variable:
              long_label=assay + ' Cut counts ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ ', Age = ' + fn[10],
              autoScale='off',
              url=URLbase+ fn[11] + '.perBase.bw',
-             subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
+             subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
              tracktype='bigWig',
              color=fn[3],
             parentonoff="off",
              )
-         perBaseCleavage_view.add_tracks(track)
+         Cuts_view.add_tracks(track)
      
      #Peaks_View
      track = Track(
@@ -279,7 +284,7 @@ for trackComp in Variable:
          long_label=assay + ' Peaks ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
          autoScale='off',
          url=URLbase + fn[11].replace("/", "/hotspot2/") + '.peaks.bb',
-         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
+         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
          tracktype='bigBed 3',
          color=fn[3],
         parentonoff="off",
@@ -293,7 +298,7 @@ for trackComp in Variable:
          long_label=assay + ' Hotspots (5% FDR) ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+', Age = ' + fn[10],
          autoScale='off',
          url=URLbase + fn[11].replace("/", "/hotspot2/") + '.hotspots.fdr0.05.bb',
-         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal_Roadmap' else 'NoAge'),
+         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
          tracktype='bigBed 3',
          color=fn[3],
         parentonoff="off",
@@ -302,11 +307,11 @@ for trackComp in Variable:
      
     
     #TODO #daler github trackhub/trackhub/track.py doesn't seem to offer dimensionAchecked as option
-    #DNase
-    #composite.add_params(dimensions="dimY=cellType dimA=replicate dimX=Age") #MTM 2018jul30 broke: , dimensionAchecked ="rep1"
-    #ChIP-seq
-    composite.add_params(dimensions="dimY=Assay dimA=replicate dimX=cellType")#, dimensionAchecked ="rep1",  dimensionBchecked="UW"
-        
+    if doDNase:
+        composite.add_params(dimensions="dimY=cellType dimA=replicate dimX=Age") #MTM 2018jul30 broke: , dimensionAchecked ="rep1"
+    else:
+        composite.add_params(dimensions="dimY=Assay dimA=replicate dimX=cellType")#, dimensionAchecked ="rep1",  dimensionBchecked="UW"
+    
     print composite 
     trackdb.add_tracks(composite)
 

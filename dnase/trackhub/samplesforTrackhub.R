@@ -1,18 +1,18 @@
 #Add variables from command line tsv files of DSnumbers and Institute
-library("optparse")
 library(data.table)
 library(RColorBrewer)
 library(dplyr)
+library(optparse)
+
 option_list = list(
 	make_option(c("-f", "--file"), type="character", default=NULL, 
 		help="dataset file name", metavar="character"),
 	make_option(c("-o", "--out"), type="character", default=NULL, 
 		help="output file name", metavar="character")
-); 
- 
+)
+
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
-
 
 if (is.null(opt$file)){
 	print_help(opt_parser)
@@ -20,38 +20,39 @@ if (is.null(opt$file)){
 }
 
 #for debug
-#opt=list(file="/vol/isg/encode/dnase201805/SampleIDs_20180502_MTM.tsv",out="/vol/isg/encode/dnase201805/SamplesForTrackhub.tsv")
+#opt=list(file="/vol/isg/encode/dnase/SampleIDs.tsv", out="/vol/isg/encode/dnase/SamplesForTrackhub.tsv")
 #opt=list(file="/vol/isg/encode/mouseencode_chipseq_2018/SampleIDs.tsv",out="/vol/isg/encode/mouseencode_chipseq_2018/SamplesForTrackhub.tsv")
+
 
 cat('Input file: ', opt$file,'\n')
 cat('Output file: ', opt$out,'\n')
 
-#df = read.table(opt$file,sep='\t',header=T,stringsAsFactors=F,na.strings=c(""," ","NA"), fill = TRUE, check.names=FALSE,colClasses=c('character',NA))
-#df = read(opt$file,fill=TRUE,header=T, check.names=FALSE,colClasses=c('character',NA))
-df <- fread(opt$file)
-df <- as.data.frame(df)
-df <- df[order(df$GroupID),]
+#inputSampleIDs = read.table(opt$file,sep='\t',header=T,stringsAsFactors=F,na.strings=c(""," ","NA"), fill = TRUE, check.names=FALSE,colClasses=c('character',NA))
+#inputSampleIDs = read(opt$file,fill=TRUE,header=T, check.names=FALSE,colClasses=c('character',NA))
+inputSampleIDs <- fread(opt$file)
+inputSampleIDs <- as.data.frame(inputSampleIDs)
+inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$GroupID),]
 #TODO for now we just use the DS number and Age so we don't have to manually rename all celltypes
 #Age <- fread('../SampleIDs_SampleAge.tsv')
 #Age <- as.data.frame(Age)
 #Age <- Age[order(Age$GroupID),]
 #
-#Age$cellType <- df$cellType
-#df <- Age
+#Age$cellType <- inputSampleIDs$cellType
+#inputSampleIDs <- Age
 pwd <- getwd()
-cat('Dimensions of Input file: ', dim(unique(df)), '\n')
+cat('Dimensions of Input file: ', dim(unique(inputSampleIDs)), '\n')
 
-if (is.null(df$GroupID)){
+if (is.null(inputSampleIDs$GroupID)){
 	stop("GroupID column is required", call.=FALSE)
 } else {
-	cat('Number of unique groups:', length(unique(df$GroupID)),'\n')
+	cat('Number of unique groups:', length(unique(inputSampleIDs$GroupID)),'\n')
 }
 
 
 mappeddirs <- list.dirs(path='.', full.names=F, recursive = F)
 
-cat('Number of unique groups that have a mapped directory: ', length(mappeddirs[grep(paste(unique(df$GroupID),collapse="|"), mappeddirs)]), '\n')
-mappeddirs <- mappeddirs[grep(paste(unique(df$GroupID), collapse="|"), mappeddirs)]
+cat('Number of unique groups that have a mapped directory: ', length(mappeddirs[grep(paste(unique(inputSampleIDs$GroupID),collapse="|"), mappeddirs)]), '\n')
+mappeddirs <- mappeddirs[grep(paste(unique(inputSampleIDs$GroupID), collapse="|"), mappeddirs)]
 #get rid of anything in a bak directory
 mappeddirs <- mappeddirs[grep('bak', mappeddirs, invert=T)]
 
@@ -74,6 +75,7 @@ colnames(data) <- c('cellType', 'DSnumber', 'Replicate', 'Color', 'Assay', 'anal
 for(i in 1:length(mappeddirs)){
 	SampleID <- mappeddirs[i]
 	cat(SampleID, '\n')
+	#NB makeTracks is obsolete naming convention
 	mergedFiles <- list.files(path=paste0(pwd, '/', SampleID), pattern="^(makeTracks|analysis).*")
 	#cat(mergedFiles, '\n')
 	if(length(mergedFiles) > 0)
@@ -87,38 +89,43 @@ for(i in 1:length(mappeddirs)){
 			data$Replicate[i] <- 1 #BUGBUG???
 			data$Color[i] <- paste(colGroup[1], colGroup[2], colGroup[3], sep=',')
 			
-			#TODO hardcoded. Use unlist(strsplit(sampleFile[grep('^Running ', sampleFile)], ","))[2]
-#			data$Assay[i] <- 'DNase'
-			data$Assay[i] <- SampleIDsplit[2]
+			#TODO Use unlist(strsplit(sampleFile[grep('^Running ', sampleFile)], ","))[2] instead?
+			if(length(SampleIDsplit) == 2) {
+				data$Assay[i] <- 'DNase'
+			} else if(length(SampleIDsplit) == 3) {
+				data$Assay[i] <- SampleIDsplit[2]
+			} else {
+				cat("WARNING: can't parse SampleID properly\n")
+				data$Assay[i] <- 'UNKNOWN'
+			}
 			
 			data$analyzed_reads[i] <- strsplit(sampleFile[grep('Num_analyzed_reads\t', sampleFile)], '\t')[[1]][2]
 			data$Hotspots[i] <- strsplit(sampleFile[grep('Num_hotspots2\t', sampleFile)], '\t')[[1]][2]
 			data$SPOT[i] <- strsplit(sampleFile[grep('SPOT2\t', sampleFile)], '\t')[[1]][2]
-			data$Age[i] <- df[grep(data$DSnumber[i], df$GroupID), "Age"]
-			data$Uni[i] <- df[grep(data$DSnumber[i], df$GroupID), "Institution"]
-			#if there's data in the Variable column, add the information. 
-			if(is.null(df$Variable)) {
-				data$Variable[i] <- "other"
-			} else {
-				#MTM -- what does this do? Is he filling in info from samples with same DS num?
-				data$Variable[i] <- df[grep(data$DSnumber[i], df$GroupID),]$Variable[1]
-			}
+			#BUGBUG looking up by GroupID gives multiple results that triggers R warning when multiple fastq files exist per group
+			data$Age[i] <- inputSampleIDs[grep(data$DSnumber[i], inputSampleIDs$GroupID), "Age"]
+			
+			data$Uni[i] <- inputSampleIDs[grep(data$DSnumber[i], inputSampleIDs$GroupID), "Institution"]
+			#pre-populate group field with institution name
+			if(data$Uni[i] == 'UMass') {data$Uni[i] <- 'UW'}
+			data$Variable[i] <- data$Uni[i] 
+			
 			data$filebase[i] <- paste0(SampleID, "/", paste0(unlist(strsplit(basename(mergedFiles), "\\."))[2:3], collapse="."))
 			
-			if(F) {
+			if(TRUE) {
 				#Enable for Human DNase
 				if(data$Variable[i] != "Duke") {
 					#Divide samples based on category
-					if(length(grep('^f[A-Z]', SampleID))>0){data$Variable[i] <- 'Fetal Roadmap'}
-					if(length(grep('^CD|^Th|^TH|^hTH|^hTR|^iTH|^th|^GM1|^GM06990|^Jurkat', SampleID))>0){data$Variable[i] <- 'Hematopoietic cells'}
-					if(length(grep('^H1|^H7|ES|^H[0-9]|^iPS', SampleID))>0){data$Variable[i] <- 'Pluripotent'}
+					if(length(grep('^CD|^[hi]?T[hHR][0-9]+$|^GM[012][0-9][0-9][0-9][0-9]$1|B_cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|macrophage|CH12LX|G1E|mononuclear|dendritic', SampleID))>0){data$Variable[i]<-'Hematopoietic cells'}
+			if(length(grep('ES|^H[0-9]|^iPS|E14TG2a4',data$cellType[i]))>0){data$Variable[i]<-'Pluripotent'}
+					if(length(grep('^f[A-Z]', SampleID))>0){data$Variable[i] <- 'Fetal-REMC'}
 					if(length(grep('testis|spinal|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|prostate|intest|medull|[Ll]iver|aggregated_lymphoid_nodule|aorta|artery|psoas|stomach|testes|tibial_artery|vagina|omental_fat_depot|fetal_umbilical_cord|pons|medial_popliteal_nerve|globus|Spleen', SampleID[grep('^f[A-Z]', SampleID, invert=T)], ignore.case=T, invert=F))>0){data$Variable[i] <- 'Tissues'}
 				}
 			} else {
 				#Enable for Mouse chipseq
-				if(length(grep('^CD|^Th|^TH|^hTH|^iTH|^th|^GM1|B_cell|GM06990|GM08714|GM20000|neutrophil|natural_killer|regulatory_T_cell|MEL|macrophage|CH12LX|G1E',SampleID))>0){data$Variable[i]<-'Hematopoietic cells'}
-				if(length(grep('^H1|^H7|ES|^H[0-9]|^iPS|E14TG2a4',data$cellType[i]))>0){data$Variable[i]<-'Pluripotent'}
 				if(length(grep('Broad|Duke|HAIB|HMS|Stanford|UMass|USC|UTA|UW|Yale|UCSD', data$Variable[i], ignore.case=T))>0){data$Variable[i]<-'Cell lines'}
+				if(length(grep('^CD|^[hi]?T[hHR][0-9]+$|^GM[012][0-9][0-9][0-9][0-9]$1|B_cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|macrophage|CH12LX|G1E|mononuclear|dendritic', SampleID))>0){data$Variable[i]<-'Hematopoietic cells'}
+				if(length(grep('ES|^H[0-9]|^iPS|E14TG2a4',data$cellType[i]))>0){data$Variable[i]<-'Pluripotent'}
 				if(length(grep('HUES|H54|C2C12|myocyte', data$cellType[i]))>0){data$Variable[i]<-'Cell lines'}
 				if(length(grep('mesenchymal_stem_cell|trophoblast_cell|testis|spinal|aorta|body|breast|coronary_artery|neural_cell|omental_fat_pad|right_atrium_auricular_region|right_lobe_of_liver|spleen|stomach|tibial_artery|tibial_nerve|vagina|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|oesteoblast|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|liver|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|dendritic_cell|hepatocyte|mid_neurogenesis_radial_glial_cells|neuroepithelial_stem_cell|radial_glial_cell|prostate|intest|medull|thymus|cerebellum|cortical_plate',
 				SampleID,ignore.case=T,invert=F))>0 || length(grep('day',data$Age[i]))>0) {
@@ -166,8 +173,6 @@ for (i in 1:nrow(Replicates)){
 	data[gsub('_L$|_R$', '', data$cellType)==Replicates$cellType[i] & data$Variable==Replicates$Variable[i],]$Color <- names(tail(table(data[gsub('_L$|_R$', '', data$cellType)==Replicates$cellType[i],]$Color), 1))
 }
 
-data$Variable[data$Variable=='UMass'] <- 'UW'
-data$Uni[data$Uni=='UMass'] <- 'UW'
 
 #Delete to restore from 20180129
 dataRep <- data
