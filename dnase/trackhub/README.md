@@ -100,7 +100,7 @@ This should be run after all DNase samples have been processed. You will need to
 ```
 module remove python
 module add python/2.7.10
-mkdir -p trackhub/hg38
+mkdir -p ${base}/trackhub/hg38
 python ${src}/trackhub/DalerTrackhub.py ${base}/SamplesForTrackhub.tsv --output ${base}/Encode_DNase | perl -pe 's/^track/\ntrack/g;' > ${base}/trackhub/hg38/trackDb.txt
 cd ..
 ```
