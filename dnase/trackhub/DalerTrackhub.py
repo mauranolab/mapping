@@ -1,9 +1,4 @@
 #!/bin/env python
-
-#TODO convert to python3
-#TODO missing newline between root track definitions
-
-#http://genome.isg.med.nyu.edu/cgi-bin/hgTrackUi?hgsid=68_v7cxkrY8qgHBWt4NPi9xStLOu4XD&c=chr12&g=hub_48_composite_mouseencode_chipseq
 #Try to follow outline of /vol/isg/encode/mouseencode/mapped/mm10/trackDb.txt
 from trackhub import Track, default_hub
 #from trackhub.upload import upload_hub, upload_track
@@ -29,7 +24,7 @@ URLbase = 'https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/'
 
 parser = argparse.ArgumentParser(prog = "createTrackhub", description = "Creates a trackhub with Composite and subtracks for all tracks.", add_help=True)
 parser.add_argument('Input', action='store', help='Input tsv file with all sample information for grouping. Columns should be: cellType, DSnumber, Replicate, Colour, Assay, analyzed_reads, SPOT, Hotspots (TODO update)')
-parser.add_argument('-o','--output', action='store', dest='output',default='./',help='Output file for where to store trackhub.')
+#parser.add_argument('-o','--output', action='store', dest='output',default='./',help='Output file for where to store trackhub.')
 
 
 def natural_key(string_):
@@ -38,7 +33,7 @@ def natural_key(string_):
 try:
     args = parser.parse_args()
 except argparse.ArgumentError as exc:
-    print(exc.message, '\n', exc.argument)
+    print(exc.message, '\n', exc.argument, file=sys.stderr)
     sys.exit(2)
 
 ########
@@ -50,7 +45,7 @@ else:
     inputfile = open(args.Input, 'r') 
 
 
-print(args.output)
+#print(args.output, file=sys.stderr)
 
 
 ########
@@ -308,17 +303,18 @@ for trackComp in Variable:
     else:
         composite.add_params(dimensions="dimY=Assay dimA=replicate dimX=cellType")#, dimensionAchecked ="rep1",  dimensionBchecked="UW"
     
-    print composite 
+    print(composite)
+    print("\n")
     trackdb.add_tracks(composite)
 
-hub.local_fn = args.output
-hub.render()
+#hub.local_fn = args.output
+#hub.render()
 
     #supertrack.add_track(track)
 # Demonstrate some post-creation adjustments...here, just make control
 # samples gray
-for track in trackdb.tracks:
-    if 'control' in track.name:
-     track.add_params(color="100,100,100")
+#for track in trackdb.tracks:
+#    if 'control' in track.name:
+#     track.add_params(color="100,100,100")
 
 
