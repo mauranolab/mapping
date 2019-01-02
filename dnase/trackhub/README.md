@@ -95,13 +95,9 @@ Rscript --vanilla ${src}/trackhub/samplesforTrackhub.R --file ${base}/SampleIDs.
 ## Create trackhub
 This script creates the hub, and genome file at the output location, and creates a subdirectory named hg38 containing the trackhub.txt  
 This should be run after all DNase samples have been processed. You will need to create the trackhub/hub.txt and trackhub/genomes.txt landing page.
-
-(requires python 2.7)
 ```
-module remove python
-module add python/2.7.10
 mkdir -p ${base}/trackhub/hg38
-python ${src}/trackhub/DalerTrackhub.py ${base}/SamplesForTrackhub.tsv --output ${base}/Encode_DNase | perl -pe 's/^track/\ntrack/g;' > ${base}/trackhub/hg38/trackDb.txt
+python ${src}/trackhub/DalerTrackhub.py ${base}/SamplesForTrackhub.tsv > ${base}/trackhub/hg38/trackDb.txt
 cd ..
 ```
 For debugging trackhub, add "udcTimeout=1&" to browser URL
