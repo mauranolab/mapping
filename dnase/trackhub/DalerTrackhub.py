@@ -45,9 +45,9 @@ except argparse.ArgumentError as exc:
 ##open file handles
 ########
 if args.Input=="-":
-       inputfile = sys.stdin
+    inputfile = sys.stdin
 else:
-       inputfile = open(args.Input, 'r') 
+    inputfile = open(args.Input, 'r') 
 
 
 print(args.output)
@@ -57,7 +57,6 @@ print(args.output)
 #import files
 ########
 #inputfile = open('/vol/isg/encode/dnase/SamplesForTrackhub.tsv', 'r') 
-#inputfile = open('/home/maagj01/projects/EncodeDNase/testOUT', 'r') 
 input_data = inputfile.readlines()
 input_data = [line.rstrip().split('\t') for line in input_data][1:]#Don't use header for now TODO use header for tracks
 
@@ -97,7 +96,6 @@ for trackComp in Variable:
         bigDataUrl ='NULL',
         maxHeightPixels= "6:32:128")
     
-    #composite.add_params()
     
     ########
     #Create view track
@@ -176,7 +174,7 @@ for trackComp in Variable:
     Replicates = sorted(set([i[2] for i in matching]))
     Assay = sorted(set([i[4] for i in matching]))
     Age = sorted(set([re.sub(' ','_',i[10]) for i in matching]),key=natural_key)
-#    Institute = sorted(set([re.sub(' ','_',i[11]) for i in matching]),key=natural_key)
+#   Institute = sorted(set([re.sub(' ','_',i[11]) for i in matching]),key=natural_key)
     
     
     celltypeDict = dict(zip(cellTypes,cellTypes))
@@ -184,41 +182,41 @@ for trackComp in Variable:
     DSdict = dict(zip(DSnumbers,DSnumbers))
     repDict = dict(zip(Replicates,Replicates))
     ageDict= dict(zip(Age,Age))
-#    Instdict= dict(zip(Institute,Institute))
+#   Instdict= dict(zip(Institute,Institute))
     
     from trackhub.track import SubGroupDefinition
     subgroups = [
     
-     SubGroupDefinition(
-         name="cellType",
-         label="CellType",
-         mapping=OrderedDict(sorted(celltypeDict.items(), key=lambda x: x[1]))),
-    
+        SubGroupDefinition(
+            name="cellType",
+            label="CellType",
+            mapping=OrderedDict(sorted(celltypeDict.items(), key=lambda x: x[1]))),
+        
         SubGroupDefinition(
             name="Assay",
             label="Assay",
             mapping=OrderedDict(sorted(dictAssay.items(), key=lambda x: x[1]))),
     
-     SubGroupDefinition(
-         name="replicate",
-         label="Replicate",
-         mapping=OrderedDict(sorted(repDict.items(), key=lambda x: x[1]))),
-         #mapping=dict(rep1="rep1", rep2="rep2", repOther="repOther")),
-         
-     SubGroupDefinition(
-         name="DSnumber",
-         label="DSnumber",
-         mapping=OrderedDict(sorted(DSdict.items(), key=lambda x: x[1]))),
-         
-     SubGroupDefinition(
-         name="Age",
-         label="Age",
-         mapping=OrderedDict(sorted(ageDict.items(), key=lambda x: x[1]))),
-         
-#    SubGroupDefinition(
-#        name="Institute",
-#        label="Institute",
-#        mapping=OrderedDict(sorted(Instdict.items(), key=lambda x: x[1]))),
+        SubGroupDefinition(
+            name="replicate",
+            label="Replicate",
+            mapping=OrderedDict(sorted(repDict.items(), key=lambda x: x[1]))),
+            #mapping=dict(rep1="rep1", rep2="rep2", repOther="repOther")),
+            
+        SubGroupDefinition(
+            name="DSnumber",
+            label="DSnumber",
+            mapping=OrderedDict(sorted(DSdict.items(), key=lambda x: x[1]))),
+            
+        SubGroupDefinition(
+            name="Age",
+            label="Age",
+            mapping=OrderedDict(sorted(ageDict.items(), key=lambda x: x[1]))),
+            
+#       SubGroupDefinition(
+#           name="Institute",
+#           label="Institute",
+#           mapping=OrderedDict(sorted(Instdict.items(), key=lambda x: x[1]))),
     
     ]
     composite.add_subgroups(subgroups)
@@ -230,81 +228,79 @@ for trackComp in Variable:
     ########
     #Create long label from analyzed reads, SPOTS and Hotspots.Format numbers into 1000's
     locale.setlocale(locale.LC_ALL, 'en_US')
-    #input_data
-    #f#n=input_data[0]
     for fn in matching:
-     cellTypeLR = re.sub(r'_L$|_R$', '', fn[0])
-     cellTypeLR_trackname = re.sub(r'\W+', '',cellTypeLR) + "-" + fn[1]
-     track = Track(
-         name=cellTypeLR_trackname + '-reads',
-         short_label=cellTypeLR + "-" + fn[1],
-         long_label=assay + ' Reads ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ (', Age = ' + fn[10] if trackComp == 'Fetal-REMC' else ''),
-         autoScale='off',
-         url=URLbase+ fn[11] + '.bam',
-         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
-         tracktype='bam',
-         parentonoff="off",
-         )
-     Reads_view.add_tracks(track)
-     
-     #Dens_view
-     track = Track(
-         name=cellTypeLR_trackname + '-dens',
-         short_label=cellTypeLR + "-" + fn[1],
-         long_label=assay + ' Density ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)' + (', Age = ' + fn[10] if trackComp == 'Fetal-REMC' else ''),
-         viewLimits='0:3',
-         autoScale='off',
-         url=URLbase+ fn[11] + '.bw',
-         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
-         tracktype='bigWig',
-         color=fn[3],
-        parentonoff="off",
-         )
-     Dens_view.add_tracks(track)
-     
-     if doDNase:
-         #PerBaseCutCount
-         track = Track(
-             name=cellTypeLR_trackname + '-cuts',
-             short_label=cellTypeLR + "-" + fn[1],
-             long_label=assay + ' Cut counts ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ (', Age = ' + fn[10] if trackComp == 'Fetal-REMC' else ''),
-             autoScale='off',
-             url=URLbase+ fn[11] + '.perBase.bw',
-             subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
-             tracktype='bigWig',
-             color=fn[3],
+        cellTypeLR = re.sub(r'_L$|_R$', '', fn[0])
+        cellTypeLR_trackname = re.sub(r'\W+', '',cellTypeLR) + "-" + fn[1]
+        track = Track(
+            name=cellTypeLR_trackname + '-reads',
+            short_label=cellTypeLR + "-" + fn[1],
+            long_label=assay + ' Reads ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ (', Age = ' + fn[10] if trackComp == 'Fetal-REMC' else ''),
+            autoScale='off',
+            url=URLbase+ fn[11] + '.bam',
+            subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
+            tracktype='bam',
             parentonoff="off",
-             )
-         Cuts_view.add_tracks(track)
-     
-     #Peaks_View
-     track = Track(
-         name=cellTypeLR_trackname + '-peaks',
-         short_label=cellTypeLR + "-" + fn[1],
-         long_label=assay + ' Peaks ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)' + (', Age = ' + fn[10] if trackComp == 'Fetal-REMC' else ''),
-         autoScale='off',
-         url=URLbase + fn[11].replace("/", "/hotspot2/") + '.peaks.bb',
-         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
-         tracktype='bigBed 3',
-         color=fn[3],
+            )
+        Reads_view.add_tracks(track)
+        
+        #Dens_view
+        track = Track(
+            name=cellTypeLR_trackname + '-dens',
+            short_label=cellTypeLR + "-" + fn[1],
+            long_label=assay + ' Density ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)' + (', Age = ' + fn[10] if trackComp == 'Fetal-REMC' else ''),
+            viewLimits='0:3',
+            autoScale='off',
+            url=URLbase+ fn[11] + '.bw',
+            subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
+            tracktype='bigWig',
+            color=fn[3],
         parentonoff="off",
-         )
-     Peaks_view.add_tracks(track)
-     
-     #Hotspots_view
-     track = Track(
-         name=cellTypeLR_trackname + '-hotspots',
-         short_label=cellTypeLR + "-" + fn[1],
-         long_label=assay + ' Hotspots (5% FDR) ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)' + (', Age = ' + fn[10] if trackComp == 'Fetal-REMC' else ''),
-         autoScale='off',
-         url=URLbase + fn[11].replace("/", "/hotspot2/") + '.hotspots.fdr0.05.bb',
-         subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
-         tracktype='bigBed 3',
-         color=fn[3],
+            )
+        Dens_view.add_tracks(track)
+        
+        if doDNase:
+            #PerBaseCutCount
+            track = Track(
+                name=cellTypeLR_trackname + '-cuts',
+                short_label=cellTypeLR + "-" + fn[1],
+                long_label=assay + ' Cut counts ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)'+ (', Age = ' + fn[10] if trackComp == 'Fetal-REMC' else ''),
+                autoScale='off',
+                url=URLbase+ fn[11] + '.perBase.bw',
+                subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
+                tracktype='bigWig',
+                color=fn[3],
+            parentonoff="off",
+                )
+            Cuts_view.add_tracks(track)
+        
+        #Peaks_View
+        track = Track(
+            name=cellTypeLR_trackname + '-peaks',
+            short_label=cellTypeLR + "-" + fn[1],
+            long_label=assay + ' Peaks ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)' + (', Age = ' + fn[10] if trackComp == 'Fetal-REMC' else ''),
+            autoScale='off',
+            url=URLbase + fn[11].replace("/", "/hotspot2/") + '.peaks.bb',
+            subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
+            tracktype='bigBed 3',
+            color=fn[3],
         parentonoff="off",
-         )
-     Hotspots_view.add_tracks(track)
-     
+            )
+        Peaks_view.add_tracks(track)
+        
+        #Hotspots_view
+        track = Track(
+            name=cellTypeLR_trackname + '-hotspots',
+            short_label=cellTypeLR + "-" + fn[1],
+            long_label=assay + ' Hotspots (5% FDR) ' + cellTypeLR + "-" + fn[1] + ' (' + locale.format("%d", int(fn[5]), grouping=True)+' analyzed reads, ' + fn[6] + ' SPOT, ' + locale.format("%d", int(fn[7]), grouping=True)+' Hotspots)' + (', Age = ' + fn[10] if trackComp == 'Fetal-REMC' else ''),
+            autoScale='off',
+            url=URLbase + fn[11].replace("/", "/hotspot2/") + '.hotspots.fdr0.05.bb',
+            subgroups=dict(cellType=cellTypeLR, Assay=fn[4], replicate=fn[2], DSnumber=fn[1], Age=re.sub(' ','_',fn[10]) if trackComp == 'Fetal-REMC' else 'NoAge'),
+            tracktype='bigBed 3',
+            color=fn[3],
+        parentonoff="off",
+            )
+        Hotspots_view.add_tracks(track)
+        
     
     #TODO #daler github trackhub/trackhub/track.py doesn't seem to offer dimensionAchecked as option
     if doDNase:
