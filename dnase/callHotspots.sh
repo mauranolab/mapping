@@ -3,7 +3,7 @@
 #BUGBUG can't handle % in file names
 
 
-if [ "$#" -ne 5 ]; then
+if [ "$#" -ne 6 ]; then
     echo "Wrong number of arguments"
     exit 1
 fi
@@ -14,6 +14,7 @@ dens=$2
 outdir=$3
 mappedgenome=$4
 mappableFile=$5
+chromsizes=$6
 
 date
 echo "Running hotspot"
@@ -22,10 +23,16 @@ echo "dens=$dens"
 echo "outdir=$outdir"
 echo "mappedgenome=$mappedgenome"
 echo "mappableFile=$mappableFile"
+echo "chromsizes=${chromsizes}"
 
 
-awk -v OFS='\t' '{print $1, 0, $2, $1}' /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes | grep -v 'alt\|random\|Un\|hap\|scaffold' | sort-bed - > $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed 
 chromFile=$TMPDIR/hotspots.${mappedgenome}.chromInfo.bed
+awk -v OFS='\t' '{print $1, 0, $2, $1}' ${chromsizes} | grep -v 'alt\|random\|Un\|hap\|scaffold' | sort-bed - > ${chromFile} 
+
+if [ ! -e "${mappableFile}" ]; then
+    echo "WARNING can not find ${mappableFile}"
+    mappableFile="${chromFile}"
+fi
 
 
 HOTSPOT_DISTR=/cm/shared/apps/hotspot/4.1/hotspot-master/hotspot-distr/
