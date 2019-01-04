@@ -191,6 +191,7 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     #java.lang.OutOfMemoryError: unable to create new native thread if run with just 2 threads
     java org.usadellab.trimmomatic.TrimmomaticPE ${trimmomaticBaseOpts} $TMPDIR/${sample1}.pretrim.fastq.gz $TMPDIR/${sample2}.pretrim.fastq.gz $TMPDIR/${sample1}.fastq $TMPDIR/${sample1}.unpaired.fastq $TMPDIR/${sample2}.fastq $TMPDIR/${sample2}.unpaired.fastq ${trimmomaticSteps}
     #TODO why does this output uncompressed fastq? I think it's just so one can test with -s below
+    #BUGBUG java doesn't set nonzero exit code on trimmomatic exception
     
     echo -n "Unpaired reads:"
     #Merge anything unpaired from either R1 or R2
@@ -235,6 +236,7 @@ else
     
     #BUGBUG wrong adapter files
     java org.usadellab.trimmomatic.TrimmomaticSE ${trimmomaticBaseOpts} ${readsFq} $TMPDIR/${sample1}.fastq ${trimmomaticSteps}
+    #BUGBUG java doesn't set nonzero exit code on trimmomatic exception
     
     
     if [ ! -s "$TMPDIR/${sample1}.fastq" ]; then
