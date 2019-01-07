@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-module load trimmomatic/0.36
+module load trimmomatic/0.38
 module load weblogo/3.5.0
 module load ImageMagick
 module load picard/1.140
@@ -38,9 +38,9 @@ extractBCargs=$8
 
 shift 8
 basedir=$@
-echo "Looking for files in $basedir"
-f1=`find $basedir/ -name "*_R1_*.fastq.gz"`
-f2=`find $basedir/ -name "*_R2_*.fastq.gz"`
+echo "Looking for files in ${basedir}"
+f1=`find ${basedir}/ -maxdepth 1 -name "*_R1_*.fastq.gz"`
+f2=`find ${basedir}/ -maxdepth 1 -name "*_R2_*.fastq.gz"`
 
 
 OUTDIR=${sample}

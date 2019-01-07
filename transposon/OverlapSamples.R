@@ -1,9 +1,9 @@
 #!/bin/env Rscript
 
 #TODO change ABC in column headers to DNA,RNA,iPCR and make separate sample column more like https://cascade.isg.med.nyu.edu/~mauram01/blog/tag_transposon.shtml#1535134189
+#BUGBUG why does it replace hyphens in sample names with underscores?
 
-#Add variables from command line tsv files of DSnumbers and Institute
-suppressWarnings(suppressMessages(library("optparse")))
+suppressWarnings(suppressMessages(library(optparse)))
 suppressWarnings(suppressMessages(library(ggplot2)))
 suppressWarnings(suppressMessages(library(RColorBrewer)))
 suppressWarnings(suppressMessages(library(gridExtra)))
@@ -69,9 +69,8 @@ if (is.null(opt$threshold)){
 thresholdIPCR = 1
 
 if (!is.null(opt$samplesA)){
-samplesA <-strsplit(opt$samplesA,split=',')[[1]]
-cat(samplesA[1], '\n')
-
+    samplesA <-strsplit(opt$samplesA,split=',')[[1]]
+    cat(samplesA[1], '\n')
 }
 
 
