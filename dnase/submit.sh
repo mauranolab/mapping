@@ -23,8 +23,14 @@ module load pigz
 ###Hardcoded configuration options
 #Common
 qsubargs=""
+mapThreads=4
+mergeThreads=3
+
 #For big jobs:
 #qsubargs="--qos normal -p -500"
+#Seem to still have some memory problems with mapThreads <3?
+#mapThreads=3
+#mergeThreads=1
 
 
 genomesToMap=$1
@@ -57,12 +63,13 @@ echo "Will process ${sample} (${BS}) using ${analysisType} pipeline for genomes 
 
 
 sampleOutdir="${sample}-${BS}"
-mkdir -p ${sampleOutdir}/.src
-
+mkdir -p ${sampleOutdir}
 
 #Run the job from a local copy of the pipeline for archival and to prevent contention issues if the main tree is modified mid-job
-cp -rp /vol/mauranolab/mapped/src/* ${sampleOutdir}/.src
 src=`pwd`/${sampleOutdir}/.src
+mkdir -p ${src}
+#use cp -p to preserve timestamps
+find /vol/mauranolab/mapped/src -type f | xargs -I {} cp -p {} ${src}
 
 
 if [[ "${analysisType}" =~ ^map ]]; then
@@ -72,7 +79,7 @@ if [[ "${analysisType}" =~ ^map ]]; then
     #SGE doesn't accept a -t specification with gaps, so we'll start R2 jobs that will die instantly rather than prune here
     echo "Mapping ${n} jobs for ${mapname}"
     #NB running many jobs with threads < 4 can sometimes get memory errors, not quite sure of the culprit
-    qsub -S /bin/bash -cwd -V $qsubargs -pe threads 4 -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sample}-${BS} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
+    qsub -S /bin/bash -cwd -V $qsubargs -pe threads ${mapThreads} -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sample}-${BS} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
 fi
 
 
@@ -86,8 +93,8 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggrega
     for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         mergename="${sample}-${BS}.${curGenome}"
         echo "${mergename} merge"
-        #NB compression threads are mulltithreaded but samblaster and index are not. Former is ~1/4 of time and latter is trivial
-        qsub -S /bin/bash -cwd -V $qsubargs -pe threads 3 -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sample}-${BS} ${BS} ${curGenome}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
+        #NB compression threads are multithreaded. However, samblaster and index are not; former is ~1/4 of time and latter is trivial
+        qsub -S /bin/bash -cwd -V $qsubargs -pe threads ${mergeThreads} -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sample}-${BS} ${BS} ${curGenome}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
     done
 fi
 #Clean up sgeid even if we don't run merge
@@ -102,7 +109,6 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     
     #Submit job even if none so that the read count stats get run
     if [[ "1" == "1" ]]; then
-#    if [[ "${analysisCommand}" != "none" ]]; then
         if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
             analysisHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${analysisname}`"
         else

@@ -34,14 +34,14 @@ echo
 echo "Making coverage track"
 date
 #Coordinates are the positions covered by the read
-#NB includes reads marked PCR duplicates
+#NB Doesn't count PCR duplicates
 unstarch ${chrom} ${sampleOutdir}/${name}.${mappedgenome}.reads.starch |
-awk -F "\t" 'BEGIN {OFS="\t"} NR>1 {readlength=$5; if($6=="+") {chromStart=$2} else {chromStart=$2-readlength+1} print $1, chromStart, chromStart+readlength}' |
+awk -F "\t" 'BEGIN {OFS="\t"} !and($7, 1024)  {readlength=$5; if($6=="+") {chromStart=$2} else {chromStart=$2-readlength+1} print $1, chromStart, chromStart+readlength}' |
 sort-bed --max-mem 5G - | 
 starch - > ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withlength.starch
 
-unstarch ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withlength.starch | bedops --chop 1 - |
-bedmap --delim "\t" --bp-ovr 1 --echo --count - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withlength.starch |
+unstarch ${chrom} ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withlength.starch | bedops --chop 1 - |
+bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withlength.starch |
 awk -F "\t" 'BEGIN {OFS="\t"} \
     lastChrom!=$1 || $2!=lastEnd || $4!=lastScore { \
         if(NR>1) { \
@@ -55,6 +55,18 @@ awk -F "\t" 'BEGIN {OFS="\t"} \
         lastStart=$2; lastEnd=$3; \
     } \
 END {curOutputLine++; if(NR!=lastPrinted) {print lastChrom, firstStart, lastEnd, ".", lastScore}}' | starch - > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.coverage.starch
+
+
+echo
+echo "Making windowed coverage track"
+date
+#Make windowed coverage track of number of overlapping reads per fixed 100-bp window
+awk -v chrom=${chrom} -F "\t" 'BEGIN {OFS="\t"} $1==chrom' ${chromsizes} | 
+awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk -v step=100 -v binwidth=100 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
+bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases -  ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withlength.starch |
+#Transform score column into average coverage of base pairs within bin
+awk -v binwidth=100 -F "\t" 'BEGIN {OFS="\t"} {$NF=$NF/binwidth; print}' |
+starch - > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.coverage.binned.starch
 
 
 echo
@@ -72,7 +84,6 @@ ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
 #-C50 -pm2 -F0.05 -d10000
 #  -C, --adjust-MQ INT     adjust mapping quality; recommended:50, disable:0 [0]
 #  -F, --gap-frac FLOAT    minimum fraction of gapped reads [0.002]
-
 bcftools mpileup -r ${chrom} --redo-BAQ -f ${referencefasta} --adjust-MQ 50 --gap-frac 0.05 --max-depth 10000 -a DP,AD -O u ${sampleOutdir}/${name}.${mappedgenome}.bam |
 #NB for some reason if the intermediate file is saved instead of piped, bcftools call outputs a GQ of . for everything
 #Iyer et al PLoS Genet 2018 uses --multiallelic-caller
