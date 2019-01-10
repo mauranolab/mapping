@@ -150,7 +150,7 @@ fi
 trackcolor=$(getcolor ${name})
 
 
-#NB using -F 512 lets filter_reads.py threshold MAPQ/unpapped reads
+#NB using -F 512 delegates the thresholding on MAPQ/unpapped reads to filter_reads.py
 samflags="-F 512"
 
 
@@ -169,6 +169,7 @@ date
 samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | 
 awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrEBV"' |
 awk -F "\t" 'BEGIN {OFS="\t"} { \
+    flag = $2; \
     softclipping = 0; \
     if(match($6, /^[0-9]+S/)) {softclipping+=substr($6, 1, RLENGTH-1)} \
     if(match($6, /[0-9]+S$/)) {softclipping+=substr($6, RSTART)} \
@@ -193,7 +194,7 @@ awk -F "\t" 'BEGIN {OFS="\t"} { \
     #chromEnd=chromStart+readlength; \
     chromEnd=chromStart+1; \
     #print $3, chromStart, chromEnd, readSequence, editdistance, strand, 0, 0, colorString ; \
-    print $3, chromStart, chromEnd, insertlength, readlength, strand; \
+    print $3, chromStart, chromEnd, insertlength, readlength, strand, flag; \
 }' |
 sort-bed --max-mem 5G - | 
 #BUGBUG bedmap not working properly with header
@@ -203,6 +204,7 @@ starch - > ${sampleOutdir}/${name}.${mappedgenome}.reads.starch
 
 echo
 echo "Calculating read counts"
+date
 echo "SAMtools statistics"
 samtools flagstat ${sampleOutdir}/${name}.${mappedgenome}.bam > $TMPDIR/${name}.${mappedgenome}.flagstat.txt
 cat $TMPDIR/${name}.${mappedgenome}.flagstat.txt
@@ -272,7 +274,7 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         #unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
         n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
         qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${name} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
-        qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N merge.callsnps.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${src}" | perl -pe 's/[^\d].+$//g;'
+        qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${src}" | perl -pe 's/[^\d].+$//g;'
         rm -f ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
         
         
@@ -280,6 +282,13 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         echo "Collecting picard metrics"
         mkdir -p ${sampleOutdir}/picardmetrics
         java -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectMultipleMetrics -INPUT ${sampleOutdir}/${name}.${mappedgenome}.bam -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome} -PROGRAM CollectGcBiasMetrics -VERBOSITY WARNING
+        #Can use CollectHsMetrics but needs bait coordinates
+        
+        echo
+        date
+        #Need to make second pass as CollectWgsMetrics can't be run by CollectMultipleMetrics
+        #Exclude flag 512 rather than it's default MAPQ/BQ filters
+        samtools view -h -u ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | java -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectWgsMetrics -INPUT /dev/stdin -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.WgsMetrics.txt -VERBOSITY WARNING -COUNT_UNPAIRED=true
         
         sequencedbases=`awk -v col="PF_HQ_ALIGNED_Q20_BASES" -F "\t" 'BEGIN {OFS="\t"} $1=="CATEGORY" {for(i=1; i<=NF; i++) {if($i==col) {colnum=i; next}}} $1=="PAIR" || $1=="UNPAIRED" {sum+=$colnum} END {print sum}' ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.alignment_summary_metrics`
         #BUGBUG includes non-mappable regions, alt contigs etc.; mappable hg38 is about 82% of chrom sizes length
@@ -309,14 +318,19 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
     fi
 elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
     echo
+    echo "Analyzing ${analysisCommand} data"
+    date
+    
+    echo
     echo "Making density track"
     
     #Make density track of number of overlapping reads per 150-bp window
     #BUGBUG double counts fragments where both reads are in window
     cat ${chromsizes} | 
-    grep -E -v "hap|random|^chrUn_|_alt$|scaffold|^C\d+" | grep -v chrM | grep -v chrEBV |
-    awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk -v step=20 -v binwidth=150 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth} }' | 
-    bedmap --bp-ovr 1 --echo --count - ${sampleOutdir}/${name}.${mappedgenome}.reads.starch | perl -pe 's/\|/\t\t/g;' | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' |
+    awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="chrEBV"' |
+    awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk -v step=20 -v binwidth=150 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
+    #--faster is ok since we are dealing with bins and read starts
+    bedmap --faster --skip-unmapped --delim "\t" --bp-ovr 1 --echo --count - ${sampleOutdir}/${name}.${mappedgenome}.reads.starch |
     #resize intervals down from full bin width to step size
     #Intervals then conform to Richard's convention that the counts are reported in 20bp windows including reads +/-75 from the center of that window
     awk -v step=20 -v binwidth=150 -F "\t" 'BEGIN {OFS="\t"} {offset=(binwidth-step)/2 ; $2+=offset; $3-=offset; print}' |
@@ -337,18 +351,16 @@ elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" 
     if [[ "${analysisCommand}" != "chipseq" ]]; then
         echo
         echo "Making cut count track"
-        samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | sam2bed --do-not-sort | 
+        unstarch ${sampleOutdir}/${name}.${mappedgenome}.reads.starch |
         awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrEBV"' |
-        #BUGBUG should just take this from ${sampleOutdir}/${name}.${mappedgenome}.reads.starch, but would need to add strand to output, changing format a bit
-        awk '{if($6=="+"){s=$2; e=$2+1}else{s=$3; e=$3+1} print $1 "\t"s"\t"e"\tid\t1\t"$6 }' | sort-bed - | tee $TMPDIR/${name}.${mappedgenome}.cuts.bed | 
+        awk -F "\t" 'BEGIN {OFS="\t"} {if($6=="+") {chromStart=$2; chromEnd=$2+1} else {chromStart=$3; chromEnd=$3+1} print $1, chromStart, chromEnd }' | sort-bed - | tee $TMPDIR/${name}.${mappedgenome}.cuts.bed | 
         bedops --chop 1 - | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' > $TMPDIR/${name}.${mappedgenome}.cuts.loc.bed
-        bedmap --delim '\t' --echo --count $TMPDIR/${name}.${mappedgenome}.cuts.loc.bed $TMPDIR/${name}.${mappedgenome}.cuts.bed | 
+        bedmap --faster --delim '\t' --bp-ovr 1 --echo --count $TMPDIR/${name}.${mappedgenome}.cuts.loc.bed $TMPDIR/${name}.${mappedgenome}.cuts.bed | 
         awk -v analyzedReads=${analyzedReads} -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedReads*100000000; print}' |
         starch - > ${sampleOutdir}/${name}.${mappedgenome}.perBase.starch
         
         #Skip chrM since UCSC doesn't like the cut count to the right of the last bp in a chromosome
         unstarch ${sampleOutdir}/${name}.${mappedgenome}.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM"' > $TMPDIR/${name}.${mappedgenome}.perBase.bedGraph
-        
         #Kent tools can't use STDIN
         bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.perBase.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.perBase.bw
         
@@ -374,43 +386,46 @@ fi
 if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyzedReads}" > 0 ]]; then
     echo
     echo "Will call hotspots"
+    date
     
     mappableFile="/vol/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K36.mappable_only.starch"
     #NB this will call hotspots only on the mammalian genome for the *_sacCer3 hybrid indices
     #BUGBUG sacCer3 genomes?
     #For shorter old Duke data
     #      mappableFile="/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch"
-
+    
+    #Neither hotspot filters out reads for -F 512
+    hotspotBAM=$TMPDIR/${name}.${mappedgenome}.bam
+    samtools view ${samflags} -b -1 -@ $NSLOTS ${sampleOutdir}/${name}.${mappedgenome}.bam `unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch | grep -E -v "hap|random|^chrUn_|_alt$|scaffold|^C\d+" | grep -v chrM | grep -v chrEBV` > ${hotspotBAM}
+    
     if [ "${callHotspots1}" == 1 ]; then
+        echo
         echo "Preparing hotspot V1"
         date
         outbase=`pwd`
         mkdir -p ${sampleOutdir}/hotspots
         
-        #BUGBUG name collisions when calling hotspots on 2+ genomes
-        
-        #Force creation of new density file (ours is normalized)
-        hotspotBAM=$TMPDIR/${name}.${mappedgenome}.bam
         #250M is too much for hotspot1, 150M takes 12-24 hrs
         if [ ${analyzedReads} -gt 100000000 ]; then
             echo "${analyzedReads} analyzed reads. Generating hotspots on subsample of 100M reads"
-            #include -s directly in the variable as recent versions of samtools don't accept -s 1
-            sampleAsProportionOfAnalyzedReads="-s "`echo "100000000/${analyzedReads}" | bc -l -q`
+            date
+            #hotspot uses name of bam file as output prefix
+            mkdir -p $TMPDIR/hotspot1
+            hotspot1BAM=$TMPDIR/hotspot1/${name}.${mappedgenome}.bam
+            samtools view -b -1 -@ $NSLOTS -s `echo "100000000/${analyzedReads}" | bc -l -q` ${hotspotBAM} > ${hotspot1BAM}
         else
             echo "${analyzedReads} analyzed reads. Generating hotspots on all reads"
-            
-            sampleAsProportionOfAnalyzedReads=""
+            hotspot1BAM=${hotspotBAM}
         fi
         
-        
-        samtools view ${samflags} -b -1 -@ $NSLOTS ${sampleAsProportionOfAnalyzedReads} ${sampleOutdir}/${name}.${mappedgenome}.bam `unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch | grep -E -v "hap|random|^chrUn_|_alt$|scaffold|^C\d+" | grep -v chrM | grep -v chrEBV` > ${hotspotBAM}
-        
-        
+        echo
         echo "Calling hotspots"
-        #BUGBUG I think hotspot1 can use >40GB memory for some large datasets
-        hotspotDens=${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.density.starch
+        date
+        #NB hotspot1 can use >40GB memory for some large datasets
+        #Force creation of new density file (ours is normalized)
+        hotspot1Dens=$TMPDIR/${name}.${mappedgenome}.hotspotDensity.starch
         cd ${sampleOutdir}/hotspots
-        ${src}/callHotspots.sh ${hotspotBAM} ${hotspotDens} ${outbase}/${sampleOutdir}/hotspots ${annotationgenome} ${mappableFile} ${chromsizes} > ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.log 2>&1
+        ${src}/callHotspots.sh ${hotspot1BAM} ${hotspot1Dens} ${outbase}/${sampleOutdir}/hotspots ${annotationgenome} ${mappableFile} ${chromsizes} > ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.log 2>&1
         
         #Check for results first to avoid nonzero exit code
         if grep -q -i -E "(error)" ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.log; then
@@ -436,21 +451,22 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
         else
             echo "WARNING could not find ${peakfile} to make bigBed"
         fi
-    
+        
         spotout=${sampleOutdir}/hotspots/${name}.${mappedgenome}.spot.out
-    
-    
+        
+        
         #subsample for spot 
         if [ ${analyzedReads} -gt 10000000 ]; then
             echo
             echo "${analyzedReads} analyzed reads. Calculating SPOT score on subsample of 10M reads"
-            sampleAsProportionOfAnalyzedReads=`echo "10000000/${analyzedReads}" | bc -l -q`
-            samtools view ${samflags} -b -1 -@ $NSLOTS -s ${sampleAsProportionOfAnalyzedReads} ${name}/${name}.${mappedgenome}.bam > $TMPDIR/${name}.${mappedgenome}.10Mreads.bam
-        
+            date
+            #Could use ${hotspot1bam} (which is capped at 100M reads but would need to change calculation
+            samtools view -b -1 -@ $NSLOTS -s `echo "10000000/${analyzedReads}" | bc -l -q` ${hotspotBAM} > $TMPDIR/${name}.${mappedgenome}.10Mreads.bam
+            
             mkdir -p $TMPDIR/${name}.${mappedgenome}.hotspots.10Mreads
             cd $TMPDIR/${name}.${mappedgenome}.hotspots.10Mreads
-        
-            #NB dens track doesn't exist
+            
+            #NB dens track doesn't exist yet
             ${src}/callHotspots.sh $TMPDIR/${name}.${mappedgenome}.10Mreads.bam $TMPDIR/${name}.${mappedgenome}.10Mreads.density.starch $TMPDIR/${name}.${mappedgenome}.hotspots.10Mreads ${annotationgenome} ${mappableFile} ${chromsizes} > ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.10Mreads.log 2>&1
             
             #Check for results first to avoid nonzero exit code
@@ -459,11 +475,11 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
             fi
             
             spotout=$TMPDIR/${name}.${mappedgenome}.hotspots.10Mreads/${name}.${mappedgenome}.10Mreads.spot.out
-        
+            
             #NB otherwise prints pwd
             cd - > /dev/null
         fi
-    
+        
         echo "Done calling hotspots"
         date
         echo
@@ -484,7 +500,8 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
         else
             FDRhot2="0.05"
             if (( $(bc -l <<<"${FDRhot2} >=0.05") )); then
-                #COMMENT Hotspot2 calls all hotspots for one FDR threshold. Further filtering is done through the for loop below
+                #NB hotspot2 calls all hotspots for one FDR threshold. Further filtering is done through the for loop below
+                echo
                 echo "Calling hotspot2"
                 date
                 mkdir -p ${sampleOutdir}/hotspot2
@@ -499,7 +516,7 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
                     hotspot2mappableFileArg=""
                 fi
                 
-                hotspot2.sh -c /vol/isg/annotation/bed/${annotationgenome}/hotspots2/${annotationgenome}.chrom.sizes -C ${hotspot2centersites} -F ${FDRhot2} -f ${FDRhot2} ${hotspot2mappableFileArg} ${sampleOutdir}/${name}.${mappedgenome}.bam ${sampleOutdir}/hotspot2 > ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log 2>&1
+                hotspot2.sh -c /vol/isg/annotation/bed/${annotationgenome}/hotspots2/${annotationgenome}.chrom.sizes -C ${hotspot2centersites} -F ${FDRhot2} -f ${FDRhot2} ${hotspot2mappableFileArg} ${hotspotBAM} ${sampleOutdir}/hotspot2 > ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log 2>&1
                 
                 #Check for results first to avoid nonzero exit code
                 if grep -q -i -E "(error|warning)" ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log; then
@@ -523,7 +540,7 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
                 fi
                 
                 #Peaks
-                hotspot2peakfile=${sampleOutdir}/hotspot2/${name}.peaks.starch
+                hotspot2peakfile=${sampleOutdir}/hotspot2/${name}.${mappedgenome}.peaks.starch
                 if [ -s "${hotspot2peakfile}" ] && [ `unstarch --elements ${hotspot2peakfile}` -gt 0 ]; then
                     unstarch ${hotspot2peakfile} | cut -f1-4 > $TMPDIR/${name}.${mappedgenome}.peaks.bed
                     bedToBigBed -type=bed4 $TMPDIR/${name}.${mappedgenome}.peaks.bed ${chromsizes} ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.peaks.bb
@@ -532,6 +549,11 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
                 fi
                 
                 set -e
+                
+                #hotspot2 generates a series of files redundant with our own tracks:
+                #${sampleOutdir}/hotspot2/${name}.${mappedgenome}.density.starch - bins start at 0 instead of 65, counts raw tags, includes 0 bins
+                #${sampleOutdir}/hotspot2/${name}.${mappedgenome}.cutcounts.starch - identical?
+                
                 
                 echo "Done calling hotspot2"
                 date

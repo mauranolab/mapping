@@ -51,7 +51,10 @@ getFilesToMerge()
     local files=""
     for f in $*; do
         if [ -f "${f}" ]; then
-            files="${files} ${f}"
+            if [ ! -z "${files}" ]; then
+                files="${files} "
+            fi
+            files="${files}${f}"
         fi
     done
     local nfound=`echo ${files} | perl -pe 's/ /\n/g;' | wc -l`
@@ -60,10 +63,12 @@ getFilesToMerge()
 }
 
 
+echo
 echo "Merge coverage tracks"
+date
 #NB: for hg38_full, many jobs will not generate coverage tracks
 covfiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.starch"`
-covfiles=$(getFilesToMerge $covfiles)
+covfiles=$(getFilesToMerge ${covfiles})
 starchcat ${covfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch
 rm -f ${covfiles}
 
@@ -77,19 +82,49 @@ bedClip $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph ${chromsizes} $TMPDIR/
 bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.coverage.bw
 
 
+echo
+echo "Merge windowed coverage tracks"
+date
+#NB: for hg38_full, many jobs will not generate coverage tracks
+windowedcovfiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.binned.starch"`
+windowedcovfiles=$(getFilesToMerge ${windowedcovfiles})
+starchcat ${windowedcovfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.binned.starch
+rm -f ${windowedcovfiles}
+
+
+echo
 echo "Merge SNPs"
 date
 fullvcffiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.vcf.gz"`
-fullvcffiles=$(getFilesToMerge $fullvcffiles)
-bcftools concat  --output-type v ${fullvcffiles} | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.vcf.gz
+fullvcffiles=$(getFilesToMerge ${fullvcffiles})
+numfullvcffiles=`echo "${fullvcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
+case "${numfullvcffiles}" in
+0)
+    ;;
+1)
+    #bcftools concat fails when there is only one file
+    cp ${fullvcffiles} ${sampleOutdir}/${name}.${mappedgenome}.vcf.gz;;
+*)
+    bcftools concat --output-type v ${fullvcffiles} | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.vcf.gz;;
+esac
 bcftools index ${sampleOutdir}/${name}.${mappedgenome}.vcf.gz
 tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.vcf.gz
 rm -f ${fullvcffiles}
 
 
 fltvcffiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.filtered.vcf.gz"`
-fltvcffiles=$(getFilesToMerge $fltvcffiles)
-bcftools concat  --output-type v ${fltvcffiles} | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+fltvcffiles=$(getFilesToMerge ${fltvcffiles})
+numfltvcffiles=`echo "${fullvcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
+case "${numfltvcffiles}" in
+0)
+    ;;
+1)
+    #bcftools concat fails when there is only one file
+    cp ${fltvcffiles} ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz;;
+*)
+    bcftools concat --output-type v ${fltvcffiles} | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz;;
+esac
+
 bcftools index ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
 tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
 rm -f ${fltvcffiles}

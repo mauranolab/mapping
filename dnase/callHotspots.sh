@@ -81,7 +81,7 @@ _GENOME_ = $mappedgenome
 ## Tag length
 _K_ = $Kreads
 ## Chromosome coordinates, bed format.
-#$HOTSPOT_DISTR/hotspot-deploy/bin/writeChromInfoBed.pl /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}all.fa && cat $TMPDIR/chromInfo.bed | grep -v hap | grep -v random | grep -v chrUn |grep -v alt| grep -v scaffold > $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed && rm -f $TMPDIR/chromInfo.bed
+#$HOTSPOT_DISTR/hotspot-deploy/bin/writeChromInfoBed.pl /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}all.fa && cat $TMPDIR/chromInfo.bed | grep -v hap | grep -v random | grep -v chrUn | grep -v alt | grep -v scaffold > $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed && rm -f $TMPDIR/chromInfo.bed
 _CHROM_FILE_ = $chromFile
 ## Location of uniquely mappable positions in the genome for this tag length.
 _MAPPABLE_FILE_ = $mappableFile
