@@ -25,6 +25,8 @@ echo "mappedgenome=$mappedgenome"
 echo "mappableFile=$mappableFile"
 echo "chromsizes=${chromsizes}"
 
+name=`basename ${bam} | perl -pe 's/\.bam$//g;'`
+
 
 chromFile=$TMPDIR/hotspots.${mappedgenome}.chromInfo.bed
 awk -v OFS='\t' '{print $1, 0, $2, $1}' ${chromsizes} | grep -v 'alt\|random\|Un\|hap\|scaffold' | sort-bed - > ${chromFile} 
@@ -38,7 +40,7 @@ fi
 HOTSPOT_DISTR=/cm/shared/apps/hotspot/4.1/hotspot-master/hotspot-distr/
 
 
-cat <<EOF >  runall.tokens.${mappedgenome}.txt
+cat <<EOF > runall.tokens.${mappedgenome}.txt
 [script-tokenizer]
 
 #######################################
@@ -187,6 +189,20 @@ done
 
 
 #BUGBUG bob's run_final cleans up pretty well but doesn't leave any peak file with scores
+rm -f ${outdir}/${name}.bed.starch
+
+#Output files are .bed instead of starch
+for f in ${outdir}/${name}-final/*.bed; do
+    base=`basename ${f} .bed`
+    starch ${f} > ${outdir}/${name}-final/${base}.starch
+    rm -f ${f}
+done
+
+#Output files are .txt instead of txt.gz
+for f in ${outdir}/${name}-final/*.txt; do
+    pigz -9 -p ${NSLOTS} ${f}
+done
+
 
 echo
 date
