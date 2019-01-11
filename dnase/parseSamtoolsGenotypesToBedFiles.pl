@@ -37,11 +37,15 @@ while (<IN>) {
             warn "Skipping $chrom $pos with site quality $qual < $min_site_quality_threshold\n";
             next;
         }
-        my %code2base = ( 0 => $ref, 1 => $alt, '.' => 'N' );
-#        if (length($ref) != 1 or length($alt) != 1) {
-#            warn "Skipping $ref/$alt at $chrom $pos\n";
-#            next;
-#        }
+        my %code2base = ( 0 => $ref, '.' => 'N' );
+        #Add multiallelic alleles
+        my @altalleles = split(",", $alt);
+#        warn "\naltalleles $ref / $alt: @altalleles\n";
+        for (my $i = 0; $i < @altalleles; $i++) {
+            $code2base{$i+1} = $altalleles[$i];
+        }
+#        warn "code2base $ref / $alt: $_ $code2base{$_}\n" for keys %code2base;
+        
         my $totalDP = undef;
         my($numRef, $numNonRef) = undef;
         foreach my $infoItem (split /\;/, $info) {
@@ -91,7 +95,6 @@ foreach my $key (keys %outs) {
 }
 %outs = ();
 undef %outs;
-warn "Output files closed safely?\n";
 exit;
 
 sub sampleNamesFromFilenames { 
