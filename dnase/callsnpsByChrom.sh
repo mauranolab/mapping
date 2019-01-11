@@ -89,7 +89,7 @@ bcftools mpileup -r ${chrom} --redo-BAQ -f ${referencefasta} --adjust-MQ 50 --ga
 #Iyer et al PLoS Genet 2018 uses --multiallelic-caller
 #https://sourceforge.net/p/samtools/mailman/message/32931405/
 #https://samtools.github.io/bcftools/call-m.pdf
-bcftools call ${ploidy} --keep-alts --consensus-caller --variants-only -f GQ --output-type v | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
+bcftools call ${ploidy} --keep-alts --multiallelic-caller --variants-only -f GQ --output-type v | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 
