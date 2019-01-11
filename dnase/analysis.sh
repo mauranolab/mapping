@@ -14,6 +14,7 @@ name=$3
 BS=$4
 src=$5
 
+
 #processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
@@ -119,6 +120,18 @@ sampleOutdir=${name}
 echo "Running ${analysisType} analysis for sample ${name} (${BS}) against genome ${mappedgenome}"
 
 
+#Required files
+if [ ! -s "${sampleOutdir}/${name}.${mappedgenome}.bam" ]; then
+    echo "ERROR: can not find file ${sampleOutdir}/${name}.${mappedgenome}.bam"
+    exit 2
+fi
+
+if [ ! -s "${sampleOutdir}/${name}.${mappedgenome}.bam.bai" ]; then
+    echo "ERROR: can not find file ${sampleOutdir}/${name}.${mappedgenome}.bam.bai"
+    exit 2
+fi
+
+
 if grep ${BS} inputs.txt | grep -q .fastq; then
     sequencedReads=`cat inputs.txt | grep ${BS} | grep .fastq | sort | uniq | xargs pigz -dc -f | awk 'END {print NR/4}'`
 elif grep ${BS} inputs.txt | grep ${mappedgenome} | grep -q .bam; then
@@ -128,12 +141,6 @@ elif grep ${BS} inputs.txt | grep ${mappedgenome} | grep -q .bam; then
 else
     echo "Couldn't identify source of .fastq files; unable to count total number of sequenced reads"
     sequencedReads="NA"
-fi
-
-
-if [ ! -s "${sampleOutdir}/${name}.${mappedgenome}.bam" ]; then
-    echo "ERROR: can not find file ${sampleOutdir}/${name}.${mappedgenome}.bam"
-    exit 2
 fi
 
 
@@ -166,40 +173,44 @@ echo
 echo "Making bed file"
 date
 #Coordinates are the 5' end of the read
-samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | 
-awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrEBV"' |
-awk -F "\t" 'BEGIN {OFS="\t"} { \
-    flag = $2; \
-    softclipping = 0; \
-    if(match($6, /^[0-9]+S/)) {softclipping+=substr($6, 1, RLENGTH-1)} \
-    if(match($6, /[0-9]+S$/)) {softclipping+=substr($6, RSTART)} \
-    readlength = length($10) - softclipping; \
-    insertlength = $9; \
-#    readSequence = $10; \
-#    color=255; \
-#    for(i=12; i<=NF; i++) { \
-#        if (match($i, /NM:i:[0-9]+/)) { \
-#            editdistance = substr($i, RSTART+5, RLENGTH-5); \
-#        } \
-#    } \
-    chromStart=$4-1; \
-    if (and($2, 16)) { \
-        strand="-"; \
-        #colorString = color ",0,0" ;  \
-        chromStart=chromStart+readlength-1; \
-    } else { \
-        strand="+"; \
-        #colorString = "0,0," color; \
-    } \
-    #chromEnd=chromStart+readlength; \
-    chromEnd=chromStart+1; \
-    #print $3, chromStart, chromEnd, readSequence, editdistance, strand, 0, 0, colorString ; \
-    print $3, chromStart, chromEnd, insertlength, readlength, strand, flag; \
-}' |
-sort-bed --max-mem 5G - | 
-#BUGBUG bedmap not working properly with header
-#awk -F "\t" 'BEGIN {OFS="\t"; print "#chrom", "chromStart", "chromEnd", "insertlength", "readlength", "strand"} {print}' |
-starch - > ${sampleOutdir}/${name}.${mappedgenome}.reads.starch
+#Do per-chromosome to reduce size of sorts
+for chrom in `samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*" {print $1, 0, 1}' | sort-bed - | cut -f1`; do
+    samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam ${chrom} | 
+    awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrEBV"' |
+    awk -F "\t" 'BEGIN {OFS="\t"} { \
+        flag = $2; \
+        softclipping = 0; \
+        if(match($6, /^[0-9]+S/)) {softclipping+=substr($6, 1, RLENGTH-1)} \
+        if(match($6, /[0-9]+S$/)) {softclipping+=substr($6, RSTART)} \
+        readlength = length($10) - softclipping; \
+        insertlength = $9; \
+    #    readSequence = $10; \
+    #    color=255; \
+    #    for(i=12; i<=NF; i++) { \
+    #        if (match($i, /NM:i:[0-9]+/)) { \
+    #            editdistance = substr($i, RSTART+5, RLENGTH-5); \
+    #        } \
+    #    } \
+        chromStart=$4-1; \
+        if (and($2, 16)) { \
+            strand="-"; \
+            #colorString = color ",0,0" ;  \
+            chromStart=chromStart+readlength-1; \
+        } else { \
+            strand="+"; \
+            #colorString = "0,0," color; \
+        } \
+        #chromEnd=chromStart+readlength; \
+        chromEnd=chromStart+1; \
+        #print $3, chromStart, chromEnd, readSequence, editdistance, strand, 0, 0, colorString ; \
+        print $3, chromStart, chromEnd, insertlength, readlength, strand, flag; \
+    }' |
+    sort-bed --max-mem 5G - | 
+    #BUGBUG bedmap not working properly with header
+    #awk -F "\t" 'BEGIN {OFS="\t"; print "#chrom", "chromStart", "chromEnd", "insertlength", "readlength", "strand"} {print}' |
+    starch - > $TMPDIR/${name}.${mappedgenome}.reads.${chrom}.starch
+done
+starchcat $TMPDIR/${name}.${mappedgenome}.reads.*.starch > ${sampleOutdir}/${name}.${mappedgenome}.reads.starch
 
 
 echo
@@ -210,14 +221,17 @@ samtools flagstat ${sampleOutdir}/${name}.${mappedgenome}.bam > $TMPDIR/${name}.
 cat $TMPDIR/${name}.${mappedgenome}.flagstat.txt
 
 #BUGBUG breaks for DSall or encode reps
-#BUGBUG making multiple passes through bam now
 PFalignments=`cat $TMPDIR/${name}.${mappedgenome}.flagstat.txt | grep "in total" | awk '{print $1+$3}'`
 numMappedReadsMitochondria=`samtools view -c -F 512 ${sampleOutdir}/${name}.${mappedgenome}.bam chrM`
 pctMappedReadsMitochondria=`echo ${numMappedReadsMitochondria}/${PFalignments}*100 | bc -l -q`
 
 #Exclude chrM reads in remaining counts
-dupReads=`samtools view -F 512 -f 1024 ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {count=0} $3!="chrM" {count+=1} END {print count}'`
-analyzedReads=`unstarch ${sampleOutdir}/${name}.${mappedgenome}.reads.starch | awk -F "\t" 'BEGIN {count=0} $1!="chrM" {count+=1} END {print count}'`
+#BUGBUG making 4 passes through full bam below
+#samtools view -c is faster than counting wc -l/awk; have a cleanup awk sum the lines in case xargs breaks it into multiple commands
+dupReads=`samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="*" {print $1}' | xargs samtools view -F 512 -f 1024 -c ${sampleOutdir}/${name}.${mappedgenome}.bam | awk 'BEGIN {sum=0} {sum+=$0} END {print sum}'`
+analyzedReads=`unstarch --list ${sampleOutdir}/${name}.${mappedgenome}.reads.starch | perl -pe 's/ +\|/\t/g;' | awk -F "\t" 'BEGIN {OFS="\t"; sum=0} NR==1 {for(i=1; i<=NF; i++) {if($i=="chr") {chromCol=i} else if($i=="uncompressedLineCount") {uncompressedLineCountCol=i} } } NR>1 && $chromCol!="chrM" {sum+=$uncompressedLineCountCol} END {print sum}'`
+
+
 if [[ "${analyzedReads}" == 0 ]]; then
     pctdupReads="NA"
 else
@@ -237,8 +251,8 @@ else
 fi
 
 #Tally how many reads were recovered from unpaired/SE reads (NB many of these may not even be PF, so are unrepresented)
-PFalignmentsSE=`samtools view -F 1 ${sampleOutdir}/${name}.${mappedgenome}.bam | wc -l`
-analyzedReadsSE=`samtools view -F 513 ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {count=0} $3!="chrM" {count+=1} END {print count}'`
+PFalignmentsSE=`samtools view -F 1 -c ${sampleOutdir}/${name}.${mappedgenome}.bam`
+analyzedReadsSE=`samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="*" {print $1}' | xargs samtools view -F 513 -c ${sampleOutdir}/${name}.${mappedgenome}.bam | awk 'BEGIN {sum=0} {sum+=$0} END {print sum}'`
 if [ "${PFalignmentsSE}" == "0" ]; then
     pctanalyzedReadsSE="NA"
 else
@@ -270,7 +284,7 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         date
         
         #TODO switch to breaking up by coordinate rather than chromosome to split up larger jobs
-        samtools view -H ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $0~/^@SQ/ {split($2, sn, ":"); print sn[2]}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
+        samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*" {print $1}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
         #unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
         n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
         qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${name} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
@@ -551,9 +565,11 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
                 set -e
                 
                 #hotspot2 generates a series of files redundant with our own tracks:
-                #${sampleOutdir}/hotspot2/${name}.${mappedgenome}.density.starch - bins start at 0 instead of 65, counts raw tags, includes 0 bins
-                #${sampleOutdir}/hotspot2/${name}.${mappedgenome}.cutcounts.starch - identical?
-                
+                #   density - bins start at 0 instead of 65, counts raw tags, includes 0 bins
+                #   cutcounts - not 1M-read normalized
+                rm -f ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.density.starch ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.density.bw
+                #could also delete this but it's needed for SPOT calculation
+                #rm -f ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.cutcounts.starch
                 
                 echo "Done calling hotspot2"
                 date
@@ -617,9 +633,10 @@ if [[ "${callHotspots2}" == 1 ]]; then
     
     
     if [ -s "${hotspot2fileFDR05}" ] && [ "${numhotspots2}" -gt 0 ]; then
+        #I believe you can't directly use .SPOT.txt since it is set to the maximum FDR chosen
         numTotalReadsHotspot2=$(unstarch ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.cutcounts.starch | awk -F "\t" 'BEGIN {OFS="\t"; sum=0} {sum+=$5} END {print sum}')
         if [ "${numTotalReadsHotspot2}" -gt 0 ]; then
-            numReadsinDHSHotspot2=$(unstarch ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.cutcounts.starch | bedops --header -e -1 - ${hotspot2fileFDR05} | awk -F "\t" 'BEGIN {OFS="\t"; sum=0} {sum+=$5} END {print sum}')
+            numReadsinDHSHotspot2=$(unstarch ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.cutcounts.starch | bedops -e -1 - ${hotspot2fileFDR05} | awk -F "\t" 'BEGIN {OFS="\t"; sum=0} {sum+=$5} END {print sum}')
             spot2=$(echo "scale=4; ${numReadsinDHSHotspot2}/${numTotalReadsHotspot2}" | bc)
         else
             spot2="NA"
