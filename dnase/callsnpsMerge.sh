@@ -58,7 +58,8 @@ getFilesToMerge()
         fi
     done
     local nfound=`echo ${files} | perl -pe 's/ /\n/g;' | wc -l`
-    echo "Found ${nfound} of ${nexpected} files" > /dev/stderr
+    #NB following line causes funkiness with SLURM output log, overwrites previously printed output
+    #echo "Found ${nfound} of ${nexpected} files" > /dev/stderr
     echo "${files}"
 }
 
