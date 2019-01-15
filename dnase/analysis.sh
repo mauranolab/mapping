@@ -344,7 +344,7 @@ elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" 
     awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="chrEBV"' |
     awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk -v step=20 -v binwidth=150 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
     #--faster is ok since we are dealing with bins and read starts
-    bedmap --faster --skip-unmapped --delim "\t" --bp-ovr 1 --echo --count - ${sampleOutdir}/${name}.${mappedgenome}.reads.starch |
+    bedmap --faster --delim "\t" --bp-ovr 1 --echo --count - ${sampleOutdir}/${name}.${mappedgenome}.reads.starch |
     #resize intervals down from full bin width to step size
     #Intervals then conform to Richard's convention that the counts are reported in 20bp windows including reads +/-75 from the center of that window
     awk -v step=20 -v binwidth=150 -F "\t" 'BEGIN {OFS="\t"} {offset=(binwidth-step)/2 ; $2+=offset; $3-=offset; print}' |
@@ -352,9 +352,11 @@ elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" 
     awk -v analyzedReads=${analyzedReads} -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedReads*1000000; print}' |
     tee $TMPDIR/${name}.${mappedgenome}.density.bed |
     #Remember wig is 1-indexed
-    awk 'lastChr!=$1 {print "fixedStep chrom=" $1 " start=" $2+1 " step=" $3-$2 " span=" $3-$2; lastChr=$1} {print $5}' > $TMPDIR/${name}.${mappedgenome}.wig
+    #NB assumes span == step
+    #TODO would bedgraph be simpler? would variablestep result in smaller .bw file?
+    awk 'lastChrom!=$1 || $2-lastChromStart!=lastChromEnd-lastChromStart {print "fixedStep chrom=" $1 " start=" $2+1 " step=" $3-$2 " span=" $3-$2; lastChrom=$1; lastChromStart=$2; lastChromEnd=$3} {print $5}' > $TMPDIR/${name}.${mappedgenome}.wig
     
-    starch $TMPDIR/${name}.${mappedgenome}.density.bed > ${sampleOutdir}/${name}.${mappedgenome}.density.starch
+    awk -F "\t" 'BEGIN {OFS="\t"} $5!=0' $TMPDIR/${name}.${mappedgenome}.density.bed | starch - > ${sampleOutdir}/${name}.${mappedgenome}.density.starch
     
     #Kent tools can't use STDIN
     wigToBigWig $TMPDIR/${name}.${mappedgenome}.wig ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.bw
@@ -449,18 +451,18 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
         cd ../..
         
         
-        hotspotfile=${sampleOutdir}/hotspots/${name}.${mappedgenome}-final/${name}.${mappedgenome}.fdr0.01.hot.bed
+        hotspotfile=${sampleOutdir}/hotspots/${name}.${mappedgenome}-final/${name}.${mappedgenome}.fdr0.01.hot.starch
         echo "Hotspots for UCSC browser"
         if [ -s "${hotspotfile}" ]; then
-            cut -f1-3 ${hotspotfile} > $TMPDIR/${name}.${mappedgenome}.fdr0.01.hot.bed
+            unstarch ${hotspotfile} | cut -f1-3 > $TMPDIR/${name}.${mappedgenome}.fdr0.01.hot.bed
             bedToBigBed -type=bed3 $TMPDIR/${name}.${mappedgenome}.fdr0.01.hot.bed ${chromsizes} ${sampleOutdir}/hotspots/${name}.${mappedgenome}.fdr0.01.hot.bb
         else
             echo "WARNING could not find ${hotspotfile} to make bigBed"
         fi
     
-        peakfile=${sampleOutdir}/hotspots/${name}.${mappedgenome}-final/${name}.${mappedgenome}.fdr0.01.pks.bed
+        peakfile=${sampleOutdir}/hotspots/${name}.${mappedgenome}-final/${name}.${mappedgenome}.fdr0.01.pks.starch
         if [ -s "${peakfile}" ]; then
-            cut -f1-3 ${peakfile} > $TMPDIR/${name}.${mappedgenome}.fdr0.01.pks.bed
+            unstarch ${peakfile} | cut -f1-3 > $TMPDIR/${name}.${mappedgenome}.fdr0.01.pks.bed
             bedToBigBed -type=bed3 $TMPDIR/${name}.${mappedgenome}.fdr0.01.pks.bed ${chromsizes} ${sampleOutdir}/hotspots/${name}.${mappedgenome}.fdr0.01.pks.bb
         else
             echo "WARNING could not find ${peakfile} to make bigBed"
