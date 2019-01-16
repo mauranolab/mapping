@@ -97,7 +97,7 @@ This script creates the hub, and genome file at the output location, and creates
 This should be run after all DNase samples have been processed. You will need to create the trackhub/hub.txt and trackhub/genomes.txt landing page.
 ```
 mkdir -p ${base}/trackhub/hg38
-python ${src}/trackhub/DalerTrackhub.py ${base}/SamplesForTrackhub.tsv > ${base}/trackhub/hg38/trackDb.txt
+python ${src}/trackhub/DalerTrackhub.py --genome hg38 --assay DNase-seq --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/ ${base}/SamplesForTrackhub.tsv > ${base}/trackhub/hg38/trackDb.txt
 cd ..
 ```
 For debugging trackhub, add "udcTimeout=1&" to browser URL
