@@ -11,7 +11,8 @@ import csv
 
 
 parser = argparse.ArgumentParser(prog = "createTrackhub.py", description = "Creates a trackhub with composite and subtracks for all tracks.", add_help=True)
-parser.add_argument('Input', action='store', help='Input tsv file with all sample information for grouping. Columns should be: cellType, DSnumber, Replicate, Colour, Assay, analyzed_reads, SPOT, Hotspots')
+parser.add_argument('Input', action='store', help='Input tsv file with sample metadata. Name, DS, Replicate, Color, Assay, analyzed_reads, SPOT, Num.hotspots, Group, Age, filebase')
+#NB Exclude not used right now
 parser.add_argument('--genome', action='store', required=True, help='genome assembly name')
 parser.add_argument('--assay', action='store', choices=['DNase-seq', 'ChIP-seq'], required=True, help='Name of assay')
 parser.add_argument('--URLbase', action='store', required=True, help='URL base at which track files are hosted')
@@ -60,13 +61,13 @@ hub, genomes_file, genome, trackdb = default_hub(
 #Create composite track for major groups of samples (e.g. Duke, UW, etc.)
 ########
 #Find all unique cellTypes and create a supertrack for each
-Variable = sorted(set([line['Variable'] for line in input_data]))
+Group = sorted(set([line['Group'] for line in input_data]))
 
-for curVariable in Variable:
+for curGroup in Group:
     composite = CompositeTrack(
-        name=curVariable.replace(" ", "_"),
-        short_label=curVariable,
-        long_label=curVariable,
+        name=curGroup.replace(" ", "_"),
+        short_label=curGroup,
+        long_label=curGroup,
         tracktype="bigBed",
         priority="2",
         visibility="hide",
@@ -84,7 +85,7 @@ for curVariable in Variable:
     #adding viewUi="off" seems to expand the panel by default, opposite expectation
     
     Dens_view=ViewTrack(
-        name="Dens_view_" + curVariable.replace(" ", "_"),
+        name="Dens_view_" + curGroup.replace(" ", "_"),
         view="Density",
         visibility="full",
         tracktype="bigWig",
@@ -97,7 +98,7 @@ for curVariable in Variable:
         
     if doDNase:
         Cuts_view=ViewTrack(
-            name="Cuts_view_" + curVariable.replace(" ", "_"),
+            name="Cuts_view_" + curGroup.replace(" ", "_"),
             view="Cuts",
             visibility="hide",
             tracktype="bigWig",
@@ -109,7 +110,7 @@ for curVariable in Variable:
         composite.add_view(Cuts_view)
     
     Hotspots_view = ViewTrack(
-        name="Hotspots_view_" + curVariable.replace(" ", "_"),
+        name="Hotspots_view_" + curGroup.replace(" ", "_"),
         view="Hotspots",
         visibility="hide",
         tracktype="bigBed 3",
@@ -119,7 +120,7 @@ for curVariable in Variable:
     composite.add_view(Hotspots_view)
     
     Peaks_view = ViewTrack(
-        name="Peaks_view_" + curVariable.replace(" ", "_"),
+        name="Peaks_view_" + curGroup.replace(" ", "_"),
         view="Peaks",
         visibility="hide",
         tracktype="bigBed 3",
@@ -129,7 +130,7 @@ for curVariable in Variable:
     composite.add_view(Peaks_view)
         
     Reads_view = ViewTrack(
-        name="Reads_view_" + curVariable.replace(" ", "_"),
+        name="Reads_view_" + curGroup.replace(" ", "_"),
         view="Reads",
         visibility="hide",
         tracktype="bam",
@@ -146,7 +147,7 @@ for curVariable in Variable:
     ########
     #Create subgroup definitions
     ########
-    matchingSamples = [line for line in input_data if curVariable == line['Variable']]
+    matchingSamples = [line for line in input_data if curGroup == line['Group']]
     cellTypes = sorted(set([line['Name'] for line in matchingSamples]))
     cellTypes= [re.sub(r'_L$|_R$', '', i) for i in cellTypes]
     DSnumbers = sorted(set([line['DS'] for line in matchingSamples]))
@@ -201,8 +202,9 @@ for curVariable in Variable:
         cellTypeLR = re.sub(r'_L$|_R$', '', curSample['Name'])
         cellTypeLR_trackname = re.sub(r'\W+', '',cellTypeLR) + "-" + curSample['DS']
         
-        sampleDescription = cellTypeLR + "-" + curSample['DS'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, ' + curSample['SPOT'] + ' SPOT, ' + locale.format("%d", int(curSample['Num_hotspots']), grouping=True) + ' Hotspots)' + (', Age = ' + curSample['Age'] if curVariable == 'Fetal-REMC' else '')
-        sampleSubgroups = dict(cellType=cellTypeLR, Assay=curSample['Assay'], replicate=curSample['Replicate'], DSnumber=curSample['DS'], Age=re.sub(' ', '_', curSample['Age']) if curVariable == 'Fetal-REMC' else 'NoAge')
+        #BUGBUG age not geting included for mouse ENCODE
+        sampleDescription = cellTypeLR + "-" + curSample['DS'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, ' + curSample['SPOT'] + ' SPOT, ' + locale.format("%d", int(curSample['Num_hotspots']), grouping=True) + ' Hotspots)' + (', Age = ' + curSample['Age'] if curGroup == 'Fetal-REMC' else '')
+        sampleSubgroups = dict(cellType=cellTypeLR, Assay=curSample['Assay'], replicate=curSample['Replicate'], DSnumber=curSample['DS'], Age=re.sub(' ', '_', curSample['Age']) if curGroup == 'Fetal-REMC' else 'NoAge')
         
         track = Track(
             name=cellTypeLR_trackname + '-reads',

@@ -32,12 +32,12 @@ cat('Output file: ', opt$out,'\n')
 inputSampleIDs <- fread(opt$file)
 inputSampleIDs <- as.data.frame(inputSampleIDs)
 inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$GroupID),]
-#TODO for now we just use the DS number and Age so we don't have to manually rename all celltypes
+#TODO for now we just use the DS number and Age so we don't have to manually rename all Names
 #Age <- fread('../SampleIDs_SampleAge.tsv')
 #Age <- as.data.frame(Age)
 #Age <- Age[order(Age$GroupID),]
 #
-#Age$cellType <- inputSampleIDs$cellType
+#Age$Name <- inputSampleIDs$Name
 #inputSampleIDs <- Age
 pwd <- getwd()
 cat('Dimensions of Input file: ', dim(unique(inputSampleIDs)), '\n')
@@ -69,7 +69,7 @@ col <- rep(col, round(length(groupnames)/length(col), 2))[as.factor(unique(group
 col <- as.data.frame(col, unique(groupnames))
 
 data <- data.frame(matrix(ncol=13, nrow=length(mappeddirs)))
-colnames(data) <- c('Name', 'DS', 'Replicate', 'Color', 'Assay', 'analyzed_reads', 'SPOT', 'Num_hotspots', 'Exclude', 'Variable', 'Age', 'Uni', "filebase")
+colnames(data) <- c('Name', 'DS', 'Replicate', 'Color', 'Assay', 'analyzed_reads', 'SPOT', 'Num_hotspots', 'Exclude', 'Group', 'Age', 'Uni', "filebase")
 
 
 for(i in 1:length(mappeddirs)){
@@ -84,8 +84,8 @@ for(i in 1:length(mappeddirs)){
 			SampleIDsplit <- unlist(strsplit(SampleID, "-"))
 			
 			colGroup <- col2rgb(as.character(col[rownames(col) %in% gsub("-.*", '', mappeddirs[i]),][1]))[,1]
-			data$cellType[i] <- SampleIDsplit[1]
-			data$DSnumber[i] <- SampleIDsplit[length(SampleIDsplit)]
+			data$Name[i] <- SampleIDsplit[1]
+			data$DS[i] <- SampleIDsplit[length(SampleIDsplit)]
 			data$Replicate[i] <- 1 #BUGBUG???
 			data$Color[i] <- paste(colGroup[1], colGroup[2], colGroup[3], sep=',')
 			
@@ -100,44 +100,44 @@ for(i in 1:length(mappeddirs)){
 			}
 			
 			data$analyzed_reads[i] <- strsplit(sampleFile[grep('Num_analyzed_reads\t', sampleFile)], '\t')[[1]][2]
-			data$Hotspots[i] <- strsplit(sampleFile[grep('Num_hotspots2\t', sampleFile)], '\t')[[1]][2]
+			data$Num_hotspots[i] <- strsplit(sampleFile[grep('Num_hotspots2\t', sampleFile)], '\t')[[1]][2]
 			data$SPOT[i] <- strsplit(sampleFile[grep('SPOT2\t', sampleFile)], '\t')[[1]][2]
 			#BUGBUG looking up by GroupID gives multiple results that triggers R warning when multiple fastq files exist per group
-			data$Age[i] <- inputSampleIDs[grep(data$DSnumber[i], inputSampleIDs$GroupID), "Age"]
+			data$Age[i] <- inputSampleIDs[grep(data$DS[i], inputSampleIDs$GroupID), "Age"]
 			
-			data$Uni[i] <- inputSampleIDs[grep(data$DSnumber[i], inputSampleIDs$GroupID), "Institution"]
+			data$Uni[i] <- inputSampleIDs[grep(data$DS[i], inputSampleIDs$GroupID), "Institution"]
 			#pre-populate group field with institution name
 			if(data$Uni[i] == 'UMass') {data$Uni[i] <- 'UW'}
-			data$Variable[i] <- data$Uni[i] 
+			data$Group[i] <- data$Uni[i] 
 			
 			data$filebase[i] <- paste0(SampleID, "/", paste0(unlist(strsplit(basename(mergedFiles), "\\."))[2:3], collapse="."))
 			
 			if(TRUE) {
 				#Enable for Human DNase
-				if(data$Variable[i] != "Duke") {
+				if(data$Group[i] != "Duke") {
 					#Divide samples based on category
-					if(length(grep('^CD|^[hi]?T[hHR][0-9]+$|^GM[012][0-9][0-9][0-9][0-9]$1|B_cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|macrophage|CH12LX|G1E|mononuclear|dendritic', SampleID))>0){data$Variable[i]<-'Hematopoietic cells'}
-			if(length(grep('ES|^H[0-9]|^iPS|E14TG2a4',data$cellType[i]))>0){data$Variable[i]<-'Pluripotent'}
-					if(length(grep('^f[A-Z]', SampleID))>0){data$Variable[i] <- 'Fetal-REMC'}
-					if(length(grep('testis|spinal|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|prostate|intest|medull|[Ll]iver|aggregated_lymphoid_nodule|aorta|artery|psoas|stomach|testes|tibial_artery|vagina|omental_fat_depot|fetal_umbilical_cord|pons|medial_popliteal_nerve|globus|Spleen', SampleID[grep('^f[A-Z]', SampleID, invert=T)], ignore.case=T, invert=F))>0){data$Variable[i] <- 'Tissues'}
+					if(length(grep('^CD|^[hi]?T[hHR][0-9]+$|^GM[012][0-9][0-9][0-9][0-9]$1|B_cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|macrophage|CH12LX|G1E|mononuclear|dendritic', SampleID))>0){data$Group[i]<-'Hematopoietic cells'}
+			if(length(grep('ES|^H[0-9]|^iPS|E14TG2a4',data$Name[i]))>0){data$Group[i]<-'Pluripotent'}
+					if(length(grep('^f[A-Z]', SampleID))>0){data$Group[i] <- 'Fetal-REMC'}
+					if(length(grep('testis|spinal|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|prostate|intest|medull|[Ll]iver|aggregated_lymphoid_nodule|aorta|artery|psoas|stomach|testes|tibial_artery|vagina|omental_fat_depot|fetal_umbilical_cord|pons|medial_popliteal_nerve|globus|Spleen', SampleID[grep('^f[A-Z]', SampleID, invert=T)], ignore.case=T, invert=F))>0){data$Group[i] <- 'Tissues'}
 				}
 			} else {
 				#Enable for Mouse chipseq
-				if(length(grep('Broad|Duke|HAIB|HMS|Stanford|UMass|USC|UTA|UW|Yale|UCSD', data$Variable[i], ignore.case=T))>0){data$Variable[i]<-'Cell lines'}
-				if(length(grep('^CD|^[hi]?T[hHR][0-9]+$|^GM[012][0-9][0-9][0-9][0-9]$1|B_cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|macrophage|CH12LX|G1E|mononuclear|dendritic', SampleID))>0){data$Variable[i]<-'Hematopoietic cells'}
-				if(length(grep('ES|^H[0-9]|^iPS|E14TG2a4',data$cellType[i]))>0){data$Variable[i]<-'Pluripotent'}
-				if(length(grep('HUES|H54|C2C12|myocyte', data$cellType[i]))>0){data$Variable[i]<-'Cell lines'}
+				if(length(grep('Broad|Duke|HAIB|HMS|Stanford|UMass|USC|UTA|UW|Yale|UCSD', data$Group[i], ignore.case=T))>0){data$Group[i]<-'Cell lines'}
+				if(length(grep('^CD|^[hi]?T[hHR][0-9]+$|^GM[012][0-9][0-9][0-9][0-9]$1|B_cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|macrophage|CH12LX|G1E|mononuclear|dendritic', SampleID))>0){data$Group[i]<-'Hematopoietic cells'}
+				if(length(grep('ES|^H[0-9]|^iPS|E14TG2a4',data$Name[i]))>0){data$Group[i]<-'Pluripotent'}
+				if(length(grep('HUES|H54|C2C12|myocyte', data$Name[i]))>0){data$Group[i]<-'Cell lines'}
 				if(length(grep('mesenchymal_stem_cell|trophoblast_cell|testis|spinal|aorta|body|breast|coronary_artery|neural_cell|omental_fat_pad|right_atrium_auricular_region|right_lobe_of_liver|spleen|stomach|tibial_artery|tibial_nerve|vagina|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|oesteoblast|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|liver|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|dendritic_cell|hepatocyte|mid_neurogenesis_radial_glial_cells|neuroepithelial_stem_cell|radial_glial_cell|prostate|intest|medull|thymus|cerebellum|cortical_plate',
 				SampleID,ignore.case=T,invert=F))>0 || length(grep('day',data$Age[i]))>0) {
 					if(length(grep('^H3',data$Assay[i]))>0) {
-						data$Variable[i]<-'Tissues-Histone marks'
+						data$Group[i]<-'Tissues-Histone marks'
 					} else {
-						data$Variable[i]<-'Tissues-TFs'
+						data$Group[i]<-'Tissues-TFs'
 					}
 				}
-				if(length(grep('eGFP|FLAG|MCF10A_Er_Src', SampleID, ignore.case=T))>0){data$Variable[i]<-'Epitope-tagged TFs'}
-				if(length(grep('control', SampleID, ignore.case=T))>0){data$Variable[i]<-'Control'}
-				if(data$Assay[i] == "CTCF"){data$Variable[i]<-'CTCF'}
+				if(length(grep('eGFP|FLAG|MCF10A_Er_Src', SampleID, ignore.case=T))>0){data$Group[i]<-'Epitope-tagged TFs'}
+				if(length(grep('control', SampleID, ignore.case=T))>0){data$Group[i]<-'Control'}
+				if(data$Assay[i] == "CTCF"){data$Group[i]<-'CTCF'}
 			}
 			#rm(sampleFile)
 			#gc()
@@ -153,31 +153,30 @@ data$Age[grep('^8 ', data$Age)] <- '08 weeks'
 
 ##Rename the fetal tissues 
 #fetalRename <- data[grep('day|week', data$Age),] %>% 
-#	 filter(!grepl('^f', cellType)) %>%
-#	 filter(!grepl('AG04449|AG04450|IMR_90', cellType)) %>%
-#	 select(DSnumber)
+#	 filter(!grepl('^f', Name)) %>%
+#	 filter(!grepl('AG04449|AG04450|IMR_90', Name)) %>%
+#	 select(DS)
 #	 
 #library(Hmisc)
-#data[data$DSnumber%in%fetalRename$DSnumber,]$cellType <- gsub('^', 'f', capitalize(data[data$DSnumber%in%fetalRename$DSnumber,]$cellType))
-#data[data$DSnumber%in%fetalRename$DSnumber,]$Variable <- 'Fetal_roadmap'
+#data[data$DS%in%fetalRename$DS,]$Name <- gsub('^', 'f', capitalize(data[data$DS%in%fetalRename$DS,]$Name))
+#data[data$DS%in%fetalRename$DS,]$Group <- 'Fetal_roadmap'
 
 
 #Add replicate numbers based on highest number of non redundant reads
-data <- data[!is.na(data$cellType),]
-Replicates <- unique(subset(data, select=c(cellType, Variable)))
-Replicates$cellType <- gsub('_L$|_R$', '', Replicates$cellType)
+data <- data[!is.na(data$Name),]
+Replicates <- unique(subset(data, select=c(Name, Group)))
+Replicates$Name <- gsub('_L$|_R$', '', Replicates$Name)
 for (i in 1:nrow(Replicates)){
-	#cat(Replicates$cellType[i], Replicates$Variable[i])
-	data[gsub('_L$|_R$', '', data$cellType)==Replicates$cellType[i] & data$Variable==Replicates$Variable[i],]$Replicate <- rank(-as.numeric(data[gsub('_L$|_R$', '', data$cellType)==Replicates$cellType[i] & data$Variable==Replicates$Variable[i],]$analyzed_reads))
+	#cat(Replicates$Name[i], Replicates$Group[i])
+	data[gsub('_L$|_R$', '', data$Name)==Replicates$Name[i] & data$Group==Replicates$Group[i],]$Replicate <- rank(-as.numeric(data[gsub('_L$|_R$', '', data$Name)==Replicates$Name[i] & data$Group==Replicates$Group[i],]$analyzed_reads))
 	#Fix color for Left and right tissues
-	data[gsub('_L$|_R$', '', data$cellType)==Replicates$cellType[i] & data$Variable==Replicates$Variable[i],]$Color <- names(tail(table(data[gsub('_L$|_R$', '', data$cellType)==Replicates$cellType[i],]$Color), 1))
+	data[gsub('_L$|_R$', '', data$Name)==Replicates$Name[i] & data$Group==Replicates$Group[i],]$Color <- names(tail(table(data[gsub('_L$|_R$', '', data$Name)==Replicates$Name[i],]$Color), 1))
 }
 
 
-#Delete to restore from 20180129
 dataRep <- data
-dataRep$cellType <- gsub('_L$|_R$', '', dataRep$cellType)
-dataRep <- split(dataRep, dataRep$cellType)
+dataRep$Name <- gsub('_L$|_R$', '', dataRep$Name)
+dataRep <- split(dataRep, dataRep$Name)
 #repDF <- dataRep[[3]]
 dataReplist <- lapply(dataRep, function(repDF) {
 	head(repDF)
@@ -193,7 +192,7 @@ dataReplist <- lapply(dataRep, function(repDF) {
 data <- do.call(rbind, dataReplist)
 
 data[data$Replicate>2,]$Replicate <- 'Other'
-#data$Variable[data$Variable=='UMass'] <- 'UW'
+#data$Group[data$Group=='UMass'] <- 'UW'
 data[is.na(data$Age),]$Age <- 'NoAge'
 data$Replicate <- paste0('rep', data$Replicate)
 #Output file
