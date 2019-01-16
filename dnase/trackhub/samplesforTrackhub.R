@@ -69,7 +69,7 @@ col <- rep(col, round(length(groupnames)/length(col), 2))[as.factor(unique(group
 col <- as.data.frame(col, unique(groupnames))
 
 data <- data.frame(matrix(ncol=13, nrow=length(mappeddirs)))
-colnames(data) <- c('cellType', 'DSnumber', 'Replicate', 'Color', 'Assay', 'analyzed_reads', 'SPOT', 'Hotspots', 'Exclude', 'Variable', 'Age', 'Uni', "filebase")
+colnames(data) <- c('Name', 'DS', 'Replicate', 'Color', 'Assay', 'analyzed_reads', 'SPOT', 'Num_hotspots', 'Exclude', 'Variable', 'Age', 'Uni', "filebase")
 
 
 for(i in 1:length(mappeddirs)){
