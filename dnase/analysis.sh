@@ -161,14 +161,6 @@ trackcolor=$(getcolor ${name})
 samflags="-F 512"
 
 
-#For shorter old Duke data
-#readsLength20bp was never defined here
-#if [ "${sequencedReads}" != "NA" ] && [ `echo "$readsLength20bp/${sequencedReads} >= 0.25" | bc -l` == 1 ]; then 
-#    echo "More than 25% of reads are 20bp - using q10"
-#    samflags="-q 10 -F 524"
-#fi
-
-
 echo
 echo "Making bed file"
 date
@@ -295,6 +287,7 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         echo
         echo "Collecting picard metrics"
         mkdir -p ${sampleOutdir}/picardmetrics
+        #TODO should we exclude flag 512 like for CollectWgsMetrics?
         java -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectMultipleMetrics -INPUT ${sampleOutdir}/${name}.${mappedgenome}.bam -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome} -PROGRAM CollectGcBiasMetrics -VERBOSITY WARNING
         #Can use CollectHsMetrics but needs bait coordinates
         
@@ -304,8 +297,11 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         #Exclude flag 512 rather than it's default MAPQ/BQ filters
         samtools view -h -u ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | java -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectWgsMetrics -INPUT /dev/stdin -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics -VERBOSITY WARNING -COUNT_UNPAIRED=true
         
-        sequencedbases=`awk -v col="PF_HQ_ALIGNED_Q20_BASES" -F "\t" 'BEGIN {OFS="\t"} $1=="CATEGORY" {for(i=1; i<=NF; i++) {if($i==col) {colnum=i; next}}} $1=="PAIR" || $1=="UNPAIRED" {sum+=$colnum} END {print sum}' ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.alignment_summary_metrics`
+        #NB included reads doesn't exactly match our -F 512 or duplicates
+        #but don't have binned coverage track yet
+        #genomecov=`unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.binned.starch | awk -F "\t" 'BEGIN {OFS="\t"; sum=0; count=0} {sum+=$5; count+=1} END {print sum/count}'`
         #BUGBUG includes non-mappable regions, alt contigs etc.; mappable hg38 is about 82% of chrom sizes length
+        sequencedbases=`awk -v col="PF_HQ_ALIGNED_Q20_BASES" -F "\t" 'BEGIN {OFS="\t"} $1=="CATEGORY" {for(i=1; i<=NF; i++) {if($i==col) {colnum=i; next}}} $1=="PAIR" || $1=="UNPAIRED" {sum+=$colnum} END {print sum}' ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.alignment_summary_metrics`
         genomelen=`awk -F "\t" 'BEGIN {OFS="\t"} {sum+=$2} END {print sum}' ${chromsizes}`
         genomecov=`echo "${sequencedbases}/${genomelen}" | bc -l -q`
         genomecov=$(round ${genomecov} 2)

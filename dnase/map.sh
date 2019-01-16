@@ -112,19 +112,19 @@ trimmomaticBaseOpts="-threads $NSLOTS -trimlog $TMPDIR/${sample1}.trim.log.txt"
 trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$SEthresh:$mintrim:$keepReverseReads"
 #MAXINFO:27:0.95 TRAILING:20
 
-#For shorter old Duke data
+
+#For old Duke data
 #Check if samples contain DUKE adapter (TCGTATGCCGTCTTC) and trim to 20bp if more than 25% of reads do
 #sequencedTags=$(zcat ${readsFq} | awk 'NR%4==2' | wc -l)
 #BUGBUG - I think Jesper just took what looks like a readthrough sequence (TCGTATGCCGTCTTC). Not sure why the trimmer isn't dealing with this properly
 #if [ `zcat ${readsFq} | awk -v thresh=0.25 -v sequencedTags=$sequencedTags 'NR%4==2 && $1~/TCGTATGCCGTCTTC/ {readsWithDukeSequence+=1} END {if (readsWithDukeSequence/sequencedTags>thresh) {print 1} else {print 0}}'` ]; then
 #    echo "More than 25% of reads have DUKE sequence (TCGTATGCCGTCTTC) - Hard clip to 20bp reads"
 #    trimmomaticSteps="CROP:20 ${trimmomaticSteps}"
-#    minMAPQ=10
+#    readsLongEnough=0
 #else
 #    echo "No DUKE sequence present"
 
 
-trimmomaticSteps="${trimmomaticSteps} MINLEN:27"
 if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
     trimmomaticSteps="${trimmomaticSteps} CROP:36"
 fi
@@ -182,6 +182,17 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     curfile=`echo ${sample1} | perl -pe 's/_R1(_\d+)?/_R1R2\1/g;'`
     curfile="${fc}${curfile}"
     
+    
+    #This is for older ENCODE data
+    #technically this is less stringent than testing R1 and R2 independently but I doubt it matters
+    readsLongEnough=`pigz -dc -f ${readsFq} ${reads2fq} | awk -v thresh=0.25 -v minReadLength=27 'BEGIN {count=0; readsLongEnough=0} NR % 4 == 2 {count+=1; if(length($0) >= minReadLength) {readsLongEnough+=1}} END {if(readsLongEnough/count>thresh) {print 1} else {print 0}}'`
+    if [ "${readsLongEnough}" -eq 1 ]; then
+        trimmomaticSteps="${trimmomaticSteps} MINLEN:27"
+    else
+        echo "WARNING: <25% reads longer than 27 bp, will reduce MAPQ cutoff"
+    fi
+    
+    
     echo "Filtering out reads with >75% G content"
     #TODO could potentially save R1 where only R2 is dark once it can handle single read. Could patch trimmomatic instead?
     #TODO super slow - replace with cutadapt --nextseq-trim?
@@ -198,8 +209,8 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     cat $TMPDIR/${sample1}.unpaired.fastq $TMPDIR/${sample2}.unpaired.fastq | tee $TMPDIR/${curfile}.unpaired.fastq | wc -l
     
     
-    if [ ! -s "$TMPDIR/${sample1}.fastq" ] && [ ! -s "$TMPDIR/${sample2}.fastq" ]; then
-        echo "No tags passed filtering, quitting successfully"
+    if [ ! -s "$TMPDIR/${sample1}.fastq" ] && [ ! -s "$TMPDIR/${sample2}.fastq" ] && [ ! -s "$TMPDIR/${sample1}.unpaired.fastq" ] && [ ! -s "$TMPDIR/${sample2}.unpaired.fastq" ]; then
+        echo "WARNING: No tags passed filtering, quitting successfully"
         exit 0
     fi
     
@@ -208,13 +219,13 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample1}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
         #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq"
-        mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq
+        mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq
     fi
     
     fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample2}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
         #qsub -cwd -V -N ${sample2}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq"
-        mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq
+        mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq
     fi
     
     echo
@@ -234,6 +245,16 @@ else
     
     #BUGBUG missing filterNextSeqReadsForPolyG.py for SE data
     
+    
+    #This is for older ENCODE data
+    readsLongEnough=`pigz -dc -f ${readsFq} | awk -v thresh=0.25 -v minReadLength=27 'BEGIN {count=0; readsLongEnough=0} NR % 4 == 2 {count+=1; if(length($0) >= minReadLength) {readsLongEnough+=1}} END {if(readsLongEnough/count>thresh) {print 1} else {print 0}}'`
+    if [ "${readsLongEnough}" -eq 1 ]; then
+        trimmomaticSteps="${trimmomaticSteps} MINLEN:27"
+    else
+        echo "WARNING: <25% reads longer than 27 bp, will reduce MAPQ cutoff"
+    fi
+    
+    
     #BUGBUG wrong adapter files
     java org.usadellab.trimmomatic.TrimmomaticSE ${trimmomaticBaseOpts} ${readsFq} $TMPDIR/${sample1}.fastq ${trimmomaticSteps}
     #BUGBUG java doesn't set nonzero exit code on trimmomatic exception
@@ -249,7 +270,7 @@ else
     fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample1}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
         #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq"
-        mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq
+        mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq
     fi
     
     echo
@@ -369,7 +390,11 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         minMAPQ=0
     else
         dropUnmappedReads=""
-        minMAPQ=20
+        if [ "${readsLongEnough}" -eq 1 ]; then
+            minMAPQ=20
+        else
+            minMAPQ=10
+        fi
     fi
     
 #    if [[ "${processingCommand}" == "mapBwaAln" ]]; then
