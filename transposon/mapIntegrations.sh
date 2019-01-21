@@ -1,14 +1,6 @@
 #!/bin/bash
 set -eu -o pipefail
 
-module load trimmomatic/0.36
-module load weblogo/3.5.0
-module load ImageMagick
-module load picard/1.140
-module load FastQC/0.11.4
-module load samtools/1.3.1
-module load bwa/0.7.7 
-
 #NSLOTS=1
 
 src=/vol/mauranolab/transposon/src
@@ -27,7 +19,7 @@ chunksize=$4
 plasmidSeq=$5
 extractBCargs=$6
 
-OUTDIR=$sample
+OUTDIR=${sample}
 jobid=${SGE_TASK_ID}
 #jobid=1
 
@@ -37,7 +29,7 @@ jobid=${SGE_TASK_ID}
 
 echo "Analyzing barcodes"
 #Will read SGE_TASK_ID independently
-$src/extractBCcounts.sh $sample $BCreadSeq $bclen $chunksize $plasmidSeq $extractBCargs
+${src}/extractBCcounts.sh ${sample} $BCreadSeq $bclen $chunksize $plasmidSeq $extractBCargs
 
 
 #TODO f2 is the read containing the primer sequence and the genomic regions. 
@@ -84,27 +76,27 @@ esac
 ##Trim primer before mapping to genome
 R2primerlen=18
 echo "Trimming $R2primerlen bp primer from R2"
-zcat $f2 | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | 
+zcat -f $f2 | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | 
 awk -F "\t" 'BEGIN {OFS="\t"} {if(NR % 4==1 ) {split($0, name, "_"); print name[1]} else {print}}' |
 awk -v trim=$R2primerlen '{if(NR % 4==2 || NR % 4==0) {print substr($0, trim+1)} else if (NR % 4==1) {print $1} else {print}}' | gzip -9 -c > $TMPDIR/${sample}.genome.fastq.gz
 
 
 date
 echo "bwa aln $bwaAlnOpts $bwaIndex ..."
-bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/$sample.genome.fastq.gz > $OUTDIR/$sample.genome.sai
+bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/${sample}.genome.fastq.gz > $OUTDIR/${sample}.genome.sai
 
 
 date
 DS_nosuffix=`echo $DS | perl -pe 's/[A-Z]$//g;'`
 bwaExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
-extractcmd="samse $bwaExtractOpts $bwaIndex $OUTDIR/$sample.genome.sai $TMPDIR/$sample.genome.fastq.gz"
+extractcmd="samse $bwaExtractOpts $bwaIndex $OUTDIR/${sample}.genome.sai $TMPDIR/${sample}.genome.fastq.gz"
 echo "Extracting"
 echo -e "extractcmd=bwa $extractcmd | (...)"
 bwa $extractcmd |
 #No need to sort SE data
 #samtools sort -@ $NSLOTS -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
-$src/filter_reads.py --failUnwantedRefs --max_mismatches $permittedMismatches - - |
-samtools view -@ NSLOTS -1 - > $OUTDIR/$sample.bam
+${src}/filter_reads.py --failUnwantedRefs --max_mismatches $permittedMismatches - - |
+samtools view -@ NSLOTS -1 - > $OUTDIR/${sample}.bam
 
 
 echo "Done!!!"

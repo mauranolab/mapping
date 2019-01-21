@@ -7,6 +7,10 @@ sample=$1
 
 OUTDIR=$sample
 
+hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed
+
+
+
 if [ ! -s "$OUTDIR/$sample.barcodes.txt" ]; then
     echo "analyzeIntegrations.sh ERROR: barcode input file $OUTDIR/$sample.barcodes.txt does not exist!"
     exit 1
@@ -73,7 +77,7 @@ awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"; groupnum=1} { \
     split($0, last); \
 }' |
 #NB no need to sort
-$src/AdjacencyDeDup.py --col 6 --groupcol 8 -o - - |
+${src}/AdjacencyDeDup.py --col 6 --groupcol 8 -o - - |
 #BUGBUG occasionally spits out null barcodes , e.g. from FCHHLLWBGX7/BS01481A-RDL_20180722_K562_pMH022_T0098_GFPpos_iPCR
 #chr12   109074738       109074739       NB501831:111:HHLLWBGX7:4:13407:1923:8064        -
 awk -F "\t" 'BEGIN {OFS="\t"} $6!=""' |
@@ -165,17 +169,16 @@ echo "Histogram of number of reads per barcode"
 cat $OUTDIR/$sample.barcodes.coords.bed | cut -f5 | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 
 
-
-uniqueIntervals=$(tail -n +2 /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed | paste /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed - | awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}' | sed \$d | awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' | bedtools intersect -wa -a - -b $OUTDIR/$sample.barcodes.coords.bed | sort | uniq | wc -l | awk '{print $1}')
-allIntervals=$(wc -l /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed | awk '{print $1}')
+uniqueIntervals=$(tail -n +2 ${hotspotfile} | paste ${hotspotfile} - | awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}' | sed \$d | awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' | bedtools intersect -wa -a - -b $OUTDIR/$sample.barcodes.coords.bed | sort | uniq | wc -l | awk '{print $1}')
+allIntervals=$(wc -l ${hotspotfile} | awk '{print $1}')
 zeroInsertions=`echo $allIntervals-$uniqueIntervals | bc -l`
 
 echo
 echo "Histogram of number of insertions between two neighboring DNase sites"
 echo " "$zeroInsertions 0
 
-tail -n +2 /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed |
-paste /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed - |
+tail -n +2 ${hotspotfile} |
+paste ${hotspotfile} - |
 awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}' |
 sed \$d |
 awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' |
@@ -268,7 +271,7 @@ EOF
 
 echo
 echo "doing DistToDNase"
-sort-bed $OUTDIR/$sample.barcodes.coords.bed | closest-features --dist  --delim '\t' --closest -  /vol/isg/encode/dnase/mapped/K562-DS9764.hg38/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
+sort-bed $OUTDIR/$sample.barcodes.coords.bed | closest-features --dist  --delim '\t' --closest -  ${hotspotfile} | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
 #sort-bed ../aligned.FCH55KHBGX2/$OUTDIR/$sample.barcodes.coords.bed | closest-features --dist  --delim '\t' - /vol/mauranolab/maagj01/transposon/Dpn_REsites/DpnREsort.bed | awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {split if ($6=="-") print $13; else if  ($6=="+") print $20}'  > $TMPDIR/DistDpn.txt
 
 #awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $2}'

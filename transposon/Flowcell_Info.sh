@@ -1,7 +1,7 @@
 #!/bin/bash
 #set -e # -o pipefail
 
-module load samtools/1.3.1
+module load samtools/1.9
 Dir=$1
 Flow=$(basename `pwd` | sed 's/aligned.//g')
 echo $Flow
