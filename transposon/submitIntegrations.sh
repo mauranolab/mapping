@@ -92,7 +92,7 @@ gzip -9 -c $TMPDIR/${sample}.umi.log > $OUTDIR/${sample}.umi.log.gz
 
 echo
 echo "Filtering out reads with >75% G content"
-$src/filterNextSeqReadsForPolyG.py --inputfileR1 $TMPDIR/${sample}.R1.fastq.gz --inputfileR2 $TMPDIR/${sample}.R2.fastq.gz --maxPolyG 75 --outputfileR1 $OUTDIR/${sample}.R1.fastq.gz --outputfileR2 $OUTDIR/${sample}.R2.fastq.gz
+${src}/filterNextSeqReadsForPolyG.py --inputfileR1 $TMPDIR/${sample}.R1.fastq.gz --inputfileR2 $TMPDIR/${sample}.R2.fastq.gz --maxPolyG 75 --outputfileR1 $OUTDIR/${sample}.R1.fastq.gz --outputfileR2 $OUTDIR/${sample}.R2.fastq.gz
 
 
 echo
@@ -152,7 +152,7 @@ convert $TMPDIR/${sample}.plasmid.processed.eps $OUTDIR/${sample}.plasmid.proces
 
 
 ###Finally submit jobs
-numlines=`zcat $OUTDIR/${sample}.trimmed.BC.fastq.gz | wc -l`
+numlines=`zcat -f $OUTDIR/${sample}.trimmed.BC.fastq.gz | wc -l`
 chunksize=2000000 #Split fastq into 500,000 reads for deduplication (500,000 x 4)
 numjobs=`echo "$numlines / $chunksize" | bc -l -q`
 numjobs=$(floor $numjobs)
@@ -162,35 +162,35 @@ echo "$numlines lines to process in chunks of $chunksize"
 
 echo
 echo "Submitting $numjobs jobs"
-qsub -S /bin/bash -t 1-${numjobs} -terse -j y --qos=full -N map.${sample} -o ${sample} -b y "$src/mapIntegrations.sh ${sample} $BCreadSeq $bclen $chunksize $plasmidSeq $extractBCargs" | perl -pe 's/[^\d].+$//g;' > sgeid.${sample}
+qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N map.${sample} -o ${sample} -b y "${src}/mapIntegrations.sh ${sample} ${BCreadSeq} $bclen $chunksize ${plasmidSeq} $extractBCargs" | perl -pe 's/[^\d].+$//g;' > sgeid.${sample}
 
 echo "Will merge $numjobs files"
-bcfiles=`seq 1 $numjobs | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt "`
+bcfiles=`seq 1 $numjobs | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt.gz "`
 echo -e "Will merge barcode files: $bcfiles\n"
 bamfiles=`seq 1 $numjobs | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.bam "`
 echo -e "Will merge bamfiles files: $bamfiles\n"
 cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.${sample}` -j y --qos=full -N ${sample} -b y | perl -pe 's/[^\d].+$//g;' # > sgeid.merge.${sample}
 set -e -o pipefail
 echo "Merging barcodes"
-cat $bcfiles > $OUTDIR/$sample.barcodes.preFilter.txt
-#rm -f $bcfiles
+zcat -f $bcfiles > $OUTDIR/${sample}.barcodes.preFilter.txt
+rm -f $bcfiles
 
-$src/analyzeBCcounts.sh ${sample}
+${src}/analyzeBCcounts.sh ${sample}
 
 
 echo "Merging bam files"
 if [[ `echo $bamfiles | wc | awk '{print $2}'` -gt 1 ]]
 then 
-    samtools merge -f -l 9 $OUTDIR/$sample.bam $bamfiles
+    samtools merge -f -l 9 $OUTDIR/${sample}.bam $bamfiles
 else 
-    cp $bamfiles $OUTDIR/$sample.bam
+    cp $bamfiles $OUTDIR/${sample}.bam
 fi
 
 #TODO sort?
-#samtools index $OUTDIR/$sample.bam
-#rm -f $bamfiles
+#samtools index $OUTDIR/${sample}.bam
+rm -f $bamfiles
 
-$src/analyzeIntegrations.sh ${sample}
+${src}/analyzeIntegrations.sh ${sample}
 EOF
 
 rm -f sgeid.${sample}
