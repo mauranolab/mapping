@@ -24,8 +24,8 @@ if (is.null(opt$file)){
 #opt=list(file="/vol/isg/encode/mouseencode_chipseq_2018/SampleIDs.tsv",out="/vol/isg/encode/mouseencode_chipseq_2018/SamplesForTrackhub.tsv")
 
 
-message('Input file: ', opt$file,'\n')
-message('Output file: ', opt$out,'\n')
+message('Input file: ', opt$file)
+message('Output file: ', opt$out)
 
 #inputSampleIDs = read.table(opt$file,sep='\t',header=T,stringsAsFactors=F,na.strings=c(""," ","NA"), fill = TRUE, check.names=FALSE,colClasses=c('character',NA))
 #inputSampleIDs = read(opt$file,fill=TRUE,header=T, check.names=FALSE,colClasses=c('character',NA))
@@ -40,18 +40,18 @@ inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$GroupID),]
 #Age$Name <- inputSampleIDs$Name
 #inputSampleIDs <- Age
 pwd <- getwd()
-message('Dimensions of Input file: ', dim(unique(inputSampleIDs)), '\n')
+message('Dimensions of Input file: ', dim(unique(inputSampleIDs)))
 
 if (is.null(inputSampleIDs$GroupID)){
 	stop("GroupID column is required", call.=FALSE)
 } else {
-	message('Number of unique groups:', length(unique(inputSampleIDs$GroupID)),'\n')
+	message('Number of unique groups:', length(unique(inputSampleIDs$GroupID)))
 }
 
 
 mappeddirs <- list.dirs(path='.', full.names=F, recursive = F)
 
-message('Number of unique groups that have a mapped directory: ', length(mappeddirs[grep(paste(unique(inputSampleIDs$GroupID),collapse="|"), mappeddirs)]), '\n')
+message('Number of unique groups that have a mapped directory: ', length(mappeddirs[grep(paste(unique(inputSampleIDs$GroupID),collapse="|"), mappeddirs)]))
 mappeddirs <- mappeddirs[grep(paste(unique(inputSampleIDs$GroupID), collapse="|"), mappeddirs)]
 #get rid of anything in a bak directory
 mappeddirs <- mappeddirs[grep('bak', mappeddirs, invert=T)]
@@ -74,10 +74,10 @@ colnames(data) <- c('Name', 'DS', 'Replicate', 'Color', 'Assay', 'analyzed_reads
 
 for(i in 1:length(mappeddirs)){
 	SampleID <- mappeddirs[i]
-	message(SampleID, '\n')
+	message(SampleID)
 	#NB makeTracks is obsolete naming convention
 	mergedFiles <- list.files(path=paste0(pwd, '/', SampleID), pattern="^(makeTracks|analysis).*")
-	#message(mergedFiles, '\n')
+	#message(mergedFiles)
 	if(length(mergedFiles) > 0)
 		sampleFile <- readLines(paste0(pwd, '/', SampleID, '/', mergedFiles), n=2000)
 		if(tail(sampleFile, 2)[1] == 'Done!'){
@@ -95,7 +95,7 @@ for(i in 1:length(mappeddirs)){
 			} else if(length(SampleIDsplit) == 3) {
 				data$Assay[i] <- SampleIDsplit[2]
 			} else {
-				message("WARNING: can't parse SampleID properly\n")
+				message("WARNING: can't parse SampleID properly")
 				data$Assay[i] <- 'UNKNOWN'
 			}
 			
@@ -201,4 +201,4 @@ write.table(subset(data, select=-c(Uni)), file=opt$out, sep='\t', col.names=T, r
 
 message(warnings())
 
-message("Done!!!\n")
+message("Done!!!")
