@@ -6,7 +6,7 @@ library(optparse)
 
 option_list = list(
 	make_option(c("-f", "--file"), type="character", default=NULL, 
-		help="dataset file name", metavar="character"),
+		help="input file name. Tab-delimited file containing GroupID column with ID of samples to be included. Age and Institution columns will be propagated to trachub", metavar="character"),
 	make_option(c("-o", "--out"), type="character", default=NULL, 
 		help="output file name", metavar="character")
 )
@@ -24,8 +24,8 @@ if (is.null(opt$file)){
 #opt=list(file="/vol/isg/encode/mouseencode_chipseq_2018/SampleIDs.tsv",out="/vol/isg/encode/mouseencode_chipseq_2018/SamplesForTrackhub.tsv")
 
 
-cat('Input file: ', opt$file,'\n')
-cat('Output file: ', opt$out,'\n')
+message('Input file: ', opt$file,'\n')
+message('Output file: ', opt$out,'\n')
 
 #inputSampleIDs = read.table(opt$file,sep='\t',header=T,stringsAsFactors=F,na.strings=c(""," ","NA"), fill = TRUE, check.names=FALSE,colClasses=c('character',NA))
 #inputSampleIDs = read(opt$file,fill=TRUE,header=T, check.names=FALSE,colClasses=c('character',NA))
@@ -40,18 +40,18 @@ inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$GroupID),]
 #Age$Name <- inputSampleIDs$Name
 #inputSampleIDs <- Age
 pwd <- getwd()
-cat('Dimensions of Input file: ', dim(unique(inputSampleIDs)), '\n')
+message('Dimensions of Input file: ', dim(unique(inputSampleIDs)), '\n')
 
 if (is.null(inputSampleIDs$GroupID)){
 	stop("GroupID column is required", call.=FALSE)
 } else {
-	cat('Number of unique groups:', length(unique(inputSampleIDs$GroupID)),'\n')
+	message('Number of unique groups:', length(unique(inputSampleIDs$GroupID)),'\n')
 }
 
 
 mappeddirs <- list.dirs(path='.', full.names=F, recursive = F)
 
-cat('Number of unique groups that have a mapped directory: ', length(mappeddirs[grep(paste(unique(inputSampleIDs$GroupID),collapse="|"), mappeddirs)]), '\n')
+message('Number of unique groups that have a mapped directory: ', length(mappeddirs[grep(paste(unique(inputSampleIDs$GroupID),collapse="|"), mappeddirs)]), '\n')
 mappeddirs <- mappeddirs[grep(paste(unique(inputSampleIDs$GroupID), collapse="|"), mappeddirs)]
 #get rid of anything in a bak directory
 mappeddirs <- mappeddirs[grep('bak', mappeddirs, invert=T)]
@@ -74,10 +74,10 @@ colnames(data) <- c('Name', 'DS', 'Replicate', 'Color', 'Assay', 'analyzed_reads
 
 for(i in 1:length(mappeddirs)){
 	SampleID <- mappeddirs[i]
-	cat(SampleID, '\n')
+	message(SampleID, '\n')
 	#NB makeTracks is obsolete naming convention
 	mergedFiles <- list.files(path=paste0(pwd, '/', SampleID), pattern="^(makeTracks|analysis).*")
-	#cat(mergedFiles, '\n')
+	#message(mergedFiles, '\n')
 	if(length(mergedFiles) > 0)
 		sampleFile <- readLines(paste0(pwd, '/', SampleID, '/', mergedFiles), n=2000)
 		if(tail(sampleFile, 2)[1] == 'Done!'){
@@ -95,7 +95,7 @@ for(i in 1:length(mappeddirs)){
 			} else if(length(SampleIDsplit) == 3) {
 				data$Assay[i] <- SampleIDsplit[2]
 			} else {
-				cat("WARNING: can't parse SampleID properly\n")
+				message("WARNING: can't parse SampleID properly\n")
 				data$Assay[i] <- 'UNKNOWN'
 			}
 			
@@ -167,7 +167,7 @@ data <- data[!is.na(data$Name),]
 Replicates <- unique(subset(data, select=c(Name, Group)))
 Replicates$Name <- gsub('_L$|_R$', '', Replicates$Name)
 for (i in 1:nrow(Replicates)){
-	#cat(Replicates$Name[i], Replicates$Group[i])
+	#message(Replicates$Name[i], Replicates$Group[i])
 	data[gsub('_L$|_R$', '', data$Name)==Replicates$Name[i] & data$Group==Replicates$Group[i],]$Replicate <- rank(-as.numeric(data[gsub('_L$|_R$', '', data$Name)==Replicates$Name[i] & data$Group==Replicates$Group[i],]$analyzed_reads))
 	#Fix color for Left and right tissues
 	data[gsub('_L$|_R$', '', data$Name)==Replicates$Name[i] & data$Group==Replicates$Group[i],]$Color <- names(tail(table(data[gsub('_L$|_R$', '', data$Name)==Replicates$Name[i],]$Color), 1))
@@ -199,6 +199,6 @@ data$Replicate <- paste0('rep', data$Replicate)
 write.table(subset(data, select=-c(Uni)), file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)
 
 
-warnings()
+message(warnings())
 
-cat("Done!!!\n")
+message("Done!!!\n")
