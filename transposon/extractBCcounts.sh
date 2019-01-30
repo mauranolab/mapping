@@ -38,20 +38,20 @@ date
 
 
 echo
-echo "Extracting barcodes from $BCreadFile"
+echo "Extracting barcodes from ${BCreadFile}"
 date
-zcat -f $OUTDIR/$PlasmidreadFile | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | gzip -1 -c - > $TMPDIR/${sample}.plasmid.fastq.gz
+zcat -f $OUTDIR/${PlasmidreadFile} | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | gzip -1 -c - > $TMPDIR/${sample}.plasmid.fastq.gz
 
 
-if [[ "$plasmidSeq" == "None" ]]; then
+if [[ "${plasmidSeq}" == "None" ]]; then
     echo "No plasmid sequence provided, will extract barcodes from BC read only"
     plasmidcmd=""
 else
-    plasmidcmd="--plasmidSeq $plasmidSeq --plasmidRead $TMPDIR/${sample}.plasmid.fastq.gz"
+    plasmidcmd="--plasmidSeq ${plasmidSeq} --plasmidRead $TMPDIR/${sample}.plasmid.fastq.gz"
 fi
 
-zcat -f $OUTDIR/$BCreadFile | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-${src}/extractBarcode.py --BCread - --referenceSeq $BCreadSeq --bclen $bclen $plasmidcmd --minBaseQ 30 $extractBCargs | gzip -9 -c > $OUTDIR/${sample}.barcodes.raw.txt.gz
+zcat -f $OUTDIR/${BCreadFile} | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
+${src}/extractBarcode.py --BCread - --referenceSeq $BCreadSeq --bclen $bclen ${plasmidcmd} --minBaseQ 30 ${extractBCargs} | gzip -9 -c > $OUTDIR/${sample}.barcodes.raw.txt.gz
 date
 
 
@@ -74,14 +74,10 @@ if [[ ${#UMIlength} > "4" ]]; then
     ${src}/AdjacencyDeDup.py --col 3 --groupcol 1 -o - - | gzip -9 -c > $OUTDIR/${sample}.barcodes.txt.gz
 else
     #Skip UMI deduplication
-    echo 'UMI too short'
-    echo 'Skip UMI dedup'
+    echo "UMI too short (${#UMIlength}) -- skip UMI deduplicaation"
     zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | gzip -9 -c > $OUTDIR/${sample}.barcodes.txt.gz
 fi
 
-
-#Skip both dedups
-#cp $OUTDIR/${sample}.barcodes.raw.txt.gz $OUTDIR/${sample}.barcodes.txt.gz
 
 echo "Done!!!"
 date

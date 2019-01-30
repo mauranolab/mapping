@@ -176,7 +176,7 @@ try:
             BCHammingVsLevensthein +=1
 
         #Check if the start of the barcode read matches the plasmid
-        if  BCeditDist <= maxEditDist:
+        if BCeditDist <= maxEditDist:
             readBCpassed = True
         else:
             readBCpassed = False
@@ -258,7 +258,7 @@ finally:
         inputplasmidRead.close()
     
     print("\n\nextractBarcode.py statistics:", file=sys.stderr)
-    print("Processed ", numread, " reads. Skipped", numskipped, "of these reads. ", file=sys.stderr)
+    print("Processed", numread, "reads. Skipped", numskipped, "of these reads. ", file=sys.stderr)
     print("Reads with wrong Barcode seq:", numWrongBCseq," (",format(numWrongBCseq/numread*100, '.2f'), '%',")",file=sys.stderr)
     if enforcePlasmidRead:
         print("Reads with wrong Plasmid seq:", numWrongPlasmid," (",format(numWrongPlasmid/numread*100, '.2f'), '%',")",file=sys.stderr)

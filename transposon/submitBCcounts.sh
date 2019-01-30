@@ -56,49 +56,46 @@ date
 
 ###First process all reads together
 echo "Weblogo of raw reads"
-zcat -f $f1 | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
+zcat -f ${f1} | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
 weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R1 raw sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R1.raw.eps
 convert $TMPDIR/${sample}.R1.raw.eps $OUTDIR/${sample}.R1.raw.png
 
-zcat -f $f2 | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
+zcat -f ${f2} | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
 weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R2 raw sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R2.raw.eps
 convert $TMPDIR/${sample}.R2.raw.eps $OUTDIR/${sample}.R2.raw.png
 
 
-echo "Trimming/extracting UMI from R1 files $f1 and R2 files $f2"
-#Get UMI from both reads even if only one is used for further analysis
-if [[ "$R1trim" > "0" ]]; then
-    echo "Trimming $R1trim bp from R1"
-    bc1pattern=`printf 'N%.0s' $(seq 1 $R1trim)`
+echo "Trimming/extracting UMI from R1 files ${f1} and R2 files ${f2}"
+if [[ "${R1trim}" > "0" ]]; then
+    echo "Trimming ${R1trim} bp from R1"
+    bc1pattern=`printf 'N%.0s' $(seq 1 ${R1trim})`
 else
     bc1pattern="X"
 fi
 
-#BUGBUG really?
 #Only extract UMI from R2 for RNA samples where bcread is R1
-if [[ "$R2trim" > "0" && "${bcread}" == "R1" ]]; then
-    echo "Trimming $R2trim bp from R2"
-    bc2pattern=`printf 'N%.0s' $(seq 1 $R2trim)`
-    zcat -f $f2 > $TMPDIR/${sample}.R2.fastq
+if [[ "${R2trim}" > "0" && "${bcread}" == "R1" ]]; then
+    echo "Trimming ${R2trim} bp from R2"
+    bc2pattern=`printf 'N%.0s' $(seq 1 ${R2trim})`
+    zcat -f ${f2} > $TMPDIR/${sample}.R2.fastq
 else
     bc2pattern="X"
-    echo "Removing $R2trim bp from R2"
-    cutadapt --quiet -u $R2trim $f2 > $TMPDIR/${sample}.R2.fastq
+    echo "Removing ${R2trim} bp from R2"
+    cutadapt --quiet -u ${R2trim} ${f2} > $TMPDIR/${sample}.R2.fastq
 fi
 
-if [[ "$bc1pattern" != "" ]]; then
-    bc1pattern="--bc-pattern $bc1pattern"
+#BUGBUG how come this is done differently vs submitIntegrations?
+if [[ "${bc1pattern}" != "" ]]; then
+    bc1pattern="--bc-pattern ${bc1pattern}"
 fi
-if [[ "$bc2pattern" != "" ]]; then
-    bc2pattern=" --bc-pattern2 $bc2pattern"
+if [[ "${bc2pattern}" != "" ]]; then
+    bc2pattern=" --bc-pattern2 ${bc2pattern}"
 fi
-echo "umi_tools extract $bc1pattern $bc2pattern"
+echo "umi_tools extract ${bc1pattern} ${bc2pattern}"
 
-#BUGBUG really?
-#zcat -f $f2 > $TMPDIR/${sample}.R2.fastq
 #/home/mauram01/.local/bin/umi_tools extract --help
 #BUGBUG umi_tools installed in python3.5 module missing matplotlib??? also .local by default is not group-readable
-zcat -f $f1 | /home/mauram01/.local/bin/umi_tools extract $bc1pattern $bc2pattern --read2-in=$TMPDIR/${sample}.R2.fastq --read2-out=$TMPDIR/${sample}.R2.out.fastq -v 0 --log=$TMPDIR/${sample}.umi.log |
+zcat -f ${f1} | /home/mauram01/.local/bin/umi_tools extract ${bc1pattern} ${bc2pattern} --read2-in=$TMPDIR/${sample}.R2.fastq --read2-out=$TMPDIR/${sample}.R2.out.fastq -v 0 --log=$TMPDIR/${sample}.umi.log |
 gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz
 gzip -1 -c $TMPDIR/${sample}.R2.out.fastq > $TMPDIR/${sample}.R2.fastq.gz
 gzip -9 -c $TMPDIR/${sample}.umi.log > $OUTDIR/${sample}.umi.log.gz
@@ -125,12 +122,12 @@ fastqc --outdir $OUTDIR $OUTDIR/${sample}.R2.fastq.gz
 
 echo
 echo "Weblogo of raw UMI"
-#BUGBUG why hardcoded to R2?
 #Use tail to run through to end of file so zcat doesn't throw an error code
-UMIlength=`zcat -f $OUTDIR/${sample}.R2.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print length(readname[2])}' | tail -1`
+#UMI gets put on both fastq, so just look at R1
+UMIlength=`zcat -f $OUTDIR/${sample}.R1.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print length(readname[2])}' | tail -1`
 if [[ "${UMIlength}" > "0" ]]; then
     echo "Making weblogo of UMI"
-    zcat -f $OUTDIR/${sample}.R2.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print readname[2]}' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' | weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R1 UMI sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R1.raw.UMI.eps
+    zcat -f $OUTDIR/${sample}.R1.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print readname[2]}' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' | weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R1 UMI sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R1.raw.UMI.eps
     convert $TMPDIR/${sample}.R1.raw.UMI.eps $OUTDIR/${sample}.R1.raw.UMI.png
 fi
 
@@ -168,28 +165,28 @@ convert $TMPDIR/${sample}.plasmid.processed.eps $OUTDIR/${sample}.plasmid.proces
 ###Finally submit jobs
 numlines=`zcat -f $OUTDIR/${sample}.trimmed.BC.fastq.gz | wc -l`
 chunksize=2000000 #Split fastq into 500,000 reads for deduplication (500,000 x 4)
-numjobs=`echo "$numlines / $chunksize" | bc -l -q`
-numjobs=$(floor $numjobs)
-numjobs=`echo "$numjobs + 1" | bc -l -q`
+numjobs=`echo "${numlines} / ${chunksize}" | bc -l -q`
+numjobs=$(floor ${numjobs})
+numjobs=`echo "${numjobs} + 1" | bc -l -q`
 #BUGBUG verify must be int. what to do with last chunk?
-echo "$numlines lines to process in chunks of $chunksize"
+echo "${numlines} lines to process in chunks of ${chunksize}"
 
 echo
-echo "Submitting $numjobs jobs"
-qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N extract.${sample} -o ${sample} -b y "${src}/extractBCcounts.sh ${sample} ${BCreadSeq} $bclen $chunksize ${plasmidSeq} $extractBCargs" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
-echo "Will merge $numjobs files"
-bcfiles=`seq 1 $numjobs | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt.gz "`
-echo -e "Will merge barcode files: $bcfiles\n"
-cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.map.${sample}` -j y --qos=full -N ${sample} -b y | perl -pe 's/[^\d].+$//g;' # > sgeid.merge.${sample}
-set -e -o pipefail
+echo "Submitting ${numjobs} jobs"
+qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N extract.${sample} -o ${sample} -b y "${src}/extractBCcounts.sh ${sample} ${BCreadSeq} $bclen ${chunksize} ${plasmidSeq} ${extractBCargs}" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
+echo "Will merge ${numjobs} files"
+bcfiles=`seq 1 ${numjobs} | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt.gz "`
+echo -e "Will merge barcode files: ${bcfiles}\n"
+cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.map.${sample}` -j y -N ${sample} -b y | perl -pe 's/[^\d].+$//g;' # >> sgeid.merge
+set -eu -o pipefail
 echo "Merging barcodes"
-zcat -f $bcfiles > $OUTDIR/${sample}.barcodes.preFilter.txt
-rm -f $bcfiles
+zcat -f ${bcfiles} > $OUTDIR/${sample}.barcodes.preFilter.txt
+rm -f ${bcfiles}
 
 ${src}/analyzeBCcounts.sh ${sample}
 EOF
 
-rm -f sgeid.${sample}
+rm -f sgeid.map.${sample}
 
 
 echo "Done!!!"
