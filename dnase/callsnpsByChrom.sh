@@ -31,17 +31,31 @@ echo "using $TMPDIR as TMPDIR"
 
 
 echo
-echo "Making coverage track"
+echo "Extracting reads for coverage track"
 date
 #Coordinates are the positions covered by the read
-#NB Doesn't count PCR duplicates
-unstarch ${chrom} ${sampleOutdir}/${name}.${mappedgenome}.reads.starch |
-awk -F "\t" 'BEGIN {OFS="\t"} !and($7, 1024)  {readlength=$5; if($6=="+") {chromStart=$2} else {chromStart=$2-readlength+1} print $1, chromStart, chromStart+readlength}' |
-sort-bed --max-mem 5G - | 
-starch - > ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withlength.starch
+#NB Doesn't count PCR duplicates or unmapped segments
+samtools view -F 1028 ${sampleOutdir}/${name}.${mappedgenome}.bam ${chrom} | 
+awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrEBV"' |
+awk -F "\t" 'BEGIN {OFS="\t"} { \
+    flag = $2; \
+    softclipping = 0; \
+    if(match($6, /^[0-9]+S/)) {softclipping+=substr($6, 1, RLENGTH-1)} \
+    if(match($6, /[0-9]+S$/)) {softclipping+=substr($6, RSTART)} \
+    readlength = length($10) - softclipping; \
+    chromStart=$4-1; \
+    chromEnd=chromStart+readlength; \
+    print $3, chromStart, chromEnd, flag; \
+}' |
+sort-bed --max-mem 5G - | tee ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withflag.bed |
+awk -F "\t" 'BEGIN {OFS="\t"} !and($4, 512) {print $1, $2, $3}' > ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed
 
-unstarch ${chrom} ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withlength.starch | bedops --chop 1 - |
-bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withlength.starch |
+
+echo
+echo "Making coverage track"
+date
+bedops --chop 1 ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed |
+bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed |
 awk -F "\t" 'BEGIN {OFS="\t"} \
     lastChrom!=$1 || $2!=lastEnd || $4!=lastScore { \
         if(NR>1) { \
@@ -58,12 +72,32 @@ END {curOutputLine++; if(NR!=lastPrinted) {print lastChrom, firstStart, lastEnd,
 
 
 echo
+echo "Making allreads coverage track"
+date
+bedops --chop 1 ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withflag.bed |
+bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withflag.bed |
+awk -F "\t" 'BEGIN {OFS="\t"} \
+    lastChrom!=$1 || $2!=lastEnd || $4!=lastScore { \
+        if(NR>1) { \
+            curOutputLine++; \
+            print lastChrom, firstStart, lastEnd, ".", lastScore; \
+            lastPrinted=NR; \
+        } \
+        lastChrom=$1; firstStart=$2; lastScore=$4; \
+    } \
+    { \
+        lastStart=$2; lastEnd=$3; \
+    } \
+END {curOutputLine++; if(NR!=lastPrinted) {print lastChrom, firstStart, lastEnd, ".", lastScore}}' | starch - > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.coverage.allreads.starch
+
+
+echo
 echo "Making windowed coverage track"
 date
 #Make windowed coverage track of number of overlapping reads per fixed 100-bp window
 awk -v chrom=${chrom} -F "\t" 'BEGIN {OFS="\t"} $1==chrom' ${chromsizes} | 
 awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk -v step=100 -v binwidth=100 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
-bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases -  ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withlength.starch |
+bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed |
 #Transform score column into average coverage of base pairs within bin
 awk -v binwidth=100 -F "\t" 'BEGIN {OFS="\t"} {$NF=$NF/binwidth; print}' |
 starch - > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.coverage.binned.starch
