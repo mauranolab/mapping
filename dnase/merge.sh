@@ -15,6 +15,7 @@ mappedgenome=$4
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 #analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 echo "Merging bams (${processingCommand} analysis); output name ${name} (${BS}) against genome ${mappedgenome}"
 date
 
@@ -102,6 +103,7 @@ else
         mergeOpts="-l 9"
     fi
     
+    #TODO this has massive memory usage for large runs (e.g. a full mouse genome uses 90% of 256 GB)
     samtools merge -c -@ $NSLOTS ${mergeOpts} ${sampleOutdir}/${name}.${mappedgenome}.bam ${files}
 fi
 

@@ -28,8 +28,8 @@ mergeThreads=3
 
 #For big jobs:
 #qsubargs="--qos normal -p -500"
-#Seem to still have some memory problems with mapThreads <3?
-#mapThreads=3
+#Seem to still have some memory problems with mapThreads <3? Maybe analysis.sh has a transient memory peak, say in hotspot?
+#mapThreads=2
 #mergeThreads=1
 
 
