@@ -87,7 +87,7 @@ fi
 #note sample1 is not unique (doesn't contain FC)
 #TMPDIR=tmp/${sampleOutdir}.$jobid
 #mkdir -p $TMPDIR
-echo "using $TMPDIR as TMPDIR"
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
 mkdir -p ${sampleOutdir}
 
@@ -199,6 +199,7 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     #BUGBUG only run on on PE data
     ${src}/filterNextSeqReadsForPolyG.py --inputfileR1 ${readsFq} --inputfileR2 ${reads2fq} --outputfileR1 $TMPDIR/${sample1}.pretrim.fastq.gz --outputfileR2 $TMPDIR/${sample2}.pretrim.fastq.gz --maxPolyG 75
     
+    #seems to have fairly heavy memory requirements
     #java.lang.OutOfMemoryError: unable to create new native thread if run with just 2 threads
     java org.usadellab.trimmomatic.TrimmomaticPE ${trimmomaticBaseOpts} $TMPDIR/${sample1}.pretrim.fastq.gz $TMPDIR/${sample2}.pretrim.fastq.gz $TMPDIR/${sample1}.fastq $TMPDIR/${sample1}.unpaired.fastq $TMPDIR/${sample2}.fastq $TMPDIR/${sample2}.unpaired.fastq ${trimmomaticSteps}
     #TODO why does this output uncompressed fastq? I think it's just so one can test with -s below
@@ -265,13 +266,18 @@ else
         exit 0
     fi
     
-    
+    echo
+    echo "Running fastqc"
+    date
     mkdir -p ${sampleOutdir}/fastqc
     fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample1}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
         #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq"
         mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq
     fi
+    
+    echo
+    date
     
     echo
     echo "Histogram of read lengths"
