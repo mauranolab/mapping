@@ -355,9 +355,9 @@ elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" 
     awk -F "\t" 'BEGIN {OFS="\t"} $5!=0' $TMPDIR/${name}.${mappedgenome}.density.bed | starch - > ${sampleOutdir}/${name}.${mappedgenome}.density.starch
     
     #Kent tools can't use STDIN
-    wigToBigWig $TMPDIR/${name}.${mappedgenome}.density.wig ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.bw
+    wigToBigWig $TMPDIR/${name}.${mappedgenome}.density.wig ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.density.bw
     
-    echo "track name=${name}-dens description=\"${name} ${ucscTrackDescriptionDataType} Density (${analyzedReadsM}M analyzed reads; normalized to 1M)\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.bw"
+    echo "track name=${name}-dens description=\"${name} ${ucscTrackDescriptionDataType} Density (${analyzedReadsM}M analyzed reads; normalized to 1M)\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.density.bw"
     
     
     if [[ "${analysisCommand}" != "chipseq" ]]; then
