@@ -42,7 +42,8 @@ DS="BS00000A"
 
 firstline=`echo "$chunksize * ($jobid - 1) + 1" | bc -l -q`
 lastline=`echo "$chunksize * $jobid" | bc -l -q`
-echo "Running on $HOSTNAME. Output to $OUTDIR. Jobid=$jobid (lines ${firstline}-${lastline})"
+echo "Running on $HOSTNAME. Output to $OUTDIR"
+echo "Jobid=$jobid (lines ${firstline}-${lastline})"
 
 
 
@@ -50,24 +51,24 @@ echo
 echo "Aligning reads"
 userAlnOptions=""
 permittedMismatches=2
-curStrain="hg38_noalt"
-bwaAlnOpts="-n $permittedMismatches -l 32 $userAlnOptions -t $NSLOTS -Y"
+curGenome="hg38_noalt"
+bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t $NSLOTS -Y"
 
-echo "Will map to reference $curStrain"
+echo "Will map to reference ${curGenome}"
 
 
 #NB am losing about 15" to load index when submit multiple jobs
 bwaIndexBase=/vol/isg/annotation/bwaIndex
 
 echo
-echo "Mapping to reference $curStrain"
-case "$curStrain" in
+echo "Mapping to reference ${curGenome}"
+case "${curGenome}" in
 hg38_noalt)
-        bwaIndex=/vol/isg/annotation/bwaIndex/hg38_noalt/hg38_noalt;;
+    bwaIndex=/vol/isg/annotation/bwaIndex/hg38_noalt/hg38_noalt;;
 mm10)
     bwaIndex=/vol/isg/annotation/bwaIndex/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set;;
 *)
-    echo "Don't recognize strain $curStrain";
+    echo "Don't recognize genome ${curGenome}";
     exit 3;;
 esac
 
@@ -82,20 +83,20 @@ awk -v trim=$R2primerlen '{if(NR % 4==2 || NR % 4==0) {print substr($0, trim+1)}
 
 
 date
-echo "bwa aln $bwaAlnOpts $bwaIndex ..."
-bwa aln $bwaAlnOpts $bwaIndex $TMPDIR/${sample}.genome.fastq.gz > $OUTDIR/${sample}.genome.sai
+echo "bwa aln ${bwaAlnOpts} ${bwaIndex} ..."
+bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample}.genome.fastq.gz > $TMPDIR/${sample}.genome.sai
 
 
 date
 DS_nosuffix=`echo $DS | perl -pe 's/[A-Z]$//g;'`
 bwaExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
-extractcmd="samse $bwaExtractOpts $bwaIndex $OUTDIR/${sample}.genome.sai $TMPDIR/${sample}.genome.fastq.gz"
+extractcmd="samse ${bwaExtractOpts} ${bwaIndex} $TMPDIR/${sample}.genome.sai $TMPDIR/${sample}.genome.fastq.gz"
 echo "Extracting"
-echo -e "extractcmd=bwa $extractcmd | (...)"
-bwa $extractcmd |
+echo -e "extractcmd=bwa ${extractcmd} | (...)"
+bwa ${extractcmd} |
 #No need to sort SE data
 #samtools sort -@ $NSLOTS -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
-${src}/filter_reads.py --failUnwantedRefs --max_mismatches $permittedMismatches - - |
+${src}/filter_reads.py --failUnwantedRefs --max_mismatches ${permittedMismatches} - - |
 samtools view -@ NSLOTS -1 - > $OUTDIR/${sample}.bam
 
 
