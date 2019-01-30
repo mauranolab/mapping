@@ -114,7 +114,7 @@ getcolor () {
 ###Analysis
 #TMPDIR=`pwd`/tmp.analysis.${name}
 #mkdir -p $TMPDIR
-echo "using $TMPDIR as TMPDIR"
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
 sampleOutdir=${name}
 echo "Running ${analysisType} analysis for sample ${name} (${BS}) against genome ${mappedgenome}"
@@ -183,7 +183,6 @@ for chrom in `samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | cu
     #            editdistance = substr($i, RSTART+5, RLENGTH-5); \
     #        } \
     #    } \
-        chromStart=$4-1; \
         if (and($2, 16)) { \
             strand="-"; \
             #colorString = color ",0,0" ;  \
@@ -191,10 +190,10 @@ for chrom in `samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | cu
         } else { \
             strand="+"; \
             #colorString = "0,0," color; \
+            chromStart=$4-1; \
         } \
         #chromEnd=chromStart+readlength; \
         chromEnd=chromStart+1; \
-        #print $3, chromStart, chromEnd, readSequence, editdistance, strand, 0, 0, colorString ; \
         print $3, chromStart, chromEnd, insertlength, readlength, strand, flag; \
     }' |
     sort-bed --max-mem 5G - | 
@@ -295,6 +294,7 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         date
         #Need to make second pass as CollectWgsMetrics can't be run by CollectMultipleMetrics
         #Exclude flag 512 rather than it's default MAPQ/BQ filters
+        #NB I often see this using 4-5% of memory, about twice the available per-job average
         samtools view -h -u ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | java -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectWgsMetrics -INPUT /dev/stdin -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics -VERBOSITY WARNING -COUNT_UNPAIRED=true
         
         #NB included reads doesn't exactly match our -F 512 or duplicates
@@ -349,13 +349,13 @@ elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" 
     tee $TMPDIR/${name}.${mappedgenome}.density.bed |
     #Remember wig is 1-indexed
     #NB assumes span == step
-    #TODO would bedgraph be simpler? would variablestep result in smaller .bw file?
-    awk 'lastChrom!=$1 || $2-lastChromStart!=lastChromEnd-lastChromStart {print "fixedStep chrom=" $1 " start=" $2+1 " step=" $3-$2 " span=" $3-$2; lastChrom=$1; lastChromStart=$2; lastChromEnd=$3} {print $5}' > $TMPDIR/${name}.${mappedgenome}.wig
+    #bedgraph would be simpler but produces 5x larger file. Would variablestep result in smaller .bw file?
+    awk -F "\t" 'lastChrom!=$1 || $2 != lastChromEnd || $3-$2 != curspan {curstep=$3-$2; curspan=curstep; print "fixedStep chrom=" $1 " start=" $2+1 " step=" curstep " span=" curspan} {lastChrom=$1; lastChromStart=$2; lastChromEnd=$3; print $5}' > $TMPDIR/${name}.${mappedgenome}.density.wig
     
     awk -F "\t" 'BEGIN {OFS="\t"} $5!=0' $TMPDIR/${name}.${mappedgenome}.density.bed | starch - > ${sampleOutdir}/${name}.${mappedgenome}.density.starch
     
     #Kent tools can't use STDIN
-    wigToBigWig $TMPDIR/${name}.${mappedgenome}.wig ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.bw
+    wigToBigWig $TMPDIR/${name}.${mappedgenome}.density.wig ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.bw
     
     echo "track name=${name}-dens description=\"${name} ${ucscTrackDescriptionDataType} Density (${analyzedReadsM}M analyzed reads; normalized to 1M)\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.bw"
     
