@@ -84,6 +84,26 @@ bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph ${chr
 
 
 echo
+echo "Merge allreads coverage tracks"
+date
+#NB: for hg38_full, many jobs will not generate coverage tracks
+allreadscovfiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.allreads.starch"`
+allreadscovfiles=$(getFilesToMerge ${allreadscovfiles})
+starchcat ${allreadscovfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.starch
+rm -f ${allreadscovfiles}
+
+unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.starch | cut -f1-3,5 > $TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph
+
+#Fix problems with reads running off end of chromosome
+bedClip $TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph ${chromsizes} $TMPDIR/${name}.${mappedgenome}.coverage.allreads.clipped.bedGraph
+
+#Kent tools can't use STDIN
+#gets error if run on empty file: needLargeMem: trying to allocate 0 bytes (limit: 100000000000)
+bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.coverage.allreads.clipped.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.bw
+
+
+#TODO would going through wig instead of bedGraph save space here?
+echo
 echo "Merge windowed coverage tracks"
 date
 #NB: for hg38_full, many jobs will not generate coverage tracks
