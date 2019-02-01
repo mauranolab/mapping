@@ -441,6 +441,7 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
         
         #Check for results first to avoid nonzero exit code
         if grep -q -i -E "(error)" ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.log; then
+            echo "Hotspot logfile:"
             cat ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.log | grep -i -E "(error)"
         fi
         
@@ -483,6 +484,7 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
             
             #Check for results first to avoid nonzero exit code
             if grep -q -i -E "(error)" ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.10Mreads.log; then
+                echo "Hotspot logfile:"
                 cat ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.10Mreads.log | grep -i -E "(error)"
             fi
             
@@ -531,8 +533,9 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
                 hotspot2.sh -c /vol/isg/annotation/bed/${annotationgenome}/hotspots2/${annotationgenome}.chrom.sizes -C ${hotspot2centersites} -F ${FDRhot2} -f ${FDRhot2} ${hotspot2mappableFileArg} ${hotspotBAM} ${sampleOutdir}/hotspot2 > ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log 2>&1
                 
                 #Check for results first to avoid nonzero exit code
-                if grep -q -i -E "(error|warning)" ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log; then
-                    cat ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log | grep -i -E "(error|warning)"
+                if grep -q -i -E "(error)" ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log; then
+                    echo "Hotspot2 logfile:"
+                    cat ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log | grep -i -E "(error)"
                 fi
                 
                 for FDR in {0.05,0.01,0.005,0.001}; do
