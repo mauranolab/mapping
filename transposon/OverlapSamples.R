@@ -89,20 +89,20 @@ dir.create(dirname(opt$output))
 #####
 if (!is.null(opt$samplesA) & is.null(opt$samplesC) & is.null(opt$samplesB)) {
 	BCpairs <- as.data.frame(combinations(n = length(samplesA), r = 2, v = samplesA, repeats.allowed = FALSE))
-	BCpairs$V1 <- as.character(BCpairs$V1)
-	BCpairs$V2 <- as.character(BCpairs$V2)
-	BCpairs <- BCpairs[BCpairs$V1!=BCpairs$V2,]
+	BCpairs$A <- as.character(BCpairs$A)
+	BCpairs$B <- as.character(BCpairs$B)
+	BCpairs <- BCpairs[BCpairs$A != BCpairs$B,]
 	
 	usefulBCs <- data.frame(matrix(ncol=12, nrow=nrow(BCpairs)))
 	colnames(usefulBCs) <- c('A', 'B', '#A', '#B', '#Intersect', '#Union', 'Intersect/Union', paste0('#A_', thresholdRNADNA), paste0('#B_', thresholdRNADNA), paste0('#Intersect_', thresholdRNADNA), paste0('#Union_', thresholdRNADNA), paste0('Intersect_', thresholdRNADNA, '/', 'Union_', thresholdRNADNA))
 	
 	for (i in 1:nrow(BCpairs)){
-		cat(BCpairs$V1[i], BCpairs$V2[i], '\n')
+		cat(BCpairs$A[i], BCpairs$B[i], '\n')
 		
-		samA_BC <- fread(paste0(BCpairs$V1[i], '/', gsub('.*/', '', BCpairs$V1[i]), '.barcode.counts.UMI.corrected.txt'), header=F, stringsAsFactors=F)
+		samA_BC <- fread(paste0(BCpairs$A[i], '/', gsub('.*/', '', BCpairs$A[i]), '.barcode.counts.UMI.corrected.txt'), header=F, stringsAsFactors=F)
 		colnames(samA_BC) <- c("bc", "count")
 		
-		samB_BC <- fread(paste0(BCpairs$V2[i], '/', gsub('.*/', '', BCpairs$V2[i]), '.barcode.counts.UMI.corrected.txt'), header=F, stringsAsFactors=F)
+		samB_BC <- fread(paste0(BCpairs$B[i], '/', gsub('.*/', '', BCpairs$B[i]), '.barcode.counts.UMI.corrected.txt'), header=F, stringsAsFactors=F)
 		colnames(samB_BC) <- c("bc", "count")
 		
 		
@@ -115,8 +115,8 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesC) & is.null(opt$samplesB)) {
 		samA_samB_10 <- intersect(samA_BC10$bc, samB_BC10$bc)
 		usamA_samB_10 <- union(samA_BC10$bc, samB_BC10$bc)
 		#Populate data frame
-		usefulBCs[,1][i] <- gsub('_', '-', gsub('.*/', '', BCpairs$V1[i]))
-		usefulBCs[,2][i] <- gsub('_', '-', gsub('.*/', '', BCpairs$V2[i]))
+		usefulBCs[,1][i] <- gsub('_', '-', gsub('.*/', '', BCpairs$A[i]))
+		usefulBCs[,2][i] <- gsub('_', '-', gsub('.*/', '', BCpairs$B[i]))
 		usefulBCs[,3][i] <- nrow(samA_BC)
 		usefulBCs[,4][i] <- nrow(samB_BC)
 		usefulBCs[,5][i] <- length(samA_samB)
@@ -163,7 +163,7 @@ if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & is.null(opt$samplesC)) {
 		
 		samA_samB <- intersect(samA_BC$bc, samB_BC$bc)
 		usamA_samB <- union(samA_BC$bc, samB_BC$bc)
-	
+		
 		samA_BC10 <- samA_BC[samA_BC$count >= thresholdRNADNA,]
 		samB_BC10 <- samB_BC[samB_BC$count >= thresholdRNADNA,]
 		
