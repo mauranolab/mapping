@@ -63,7 +63,7 @@ bam2instrument()
 
 
 jobid=$SGE_TASK_ID
-readsFq=`cat ${sampleOutdir}/inputs.map.txt | awk -v jobid=$jobid 'NR==jobid'`
+readsFq=`awk -v jobid=$jobid 'NR==jobid' ${sampleOutdir}/inputs.map.txt`
 if [ ! -f "${readsFq}" ]; then
     echo "ERROR: Can not find file ${readsFq}"
     exit 1
