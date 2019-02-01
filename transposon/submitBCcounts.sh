@@ -177,7 +177,7 @@ qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N extract.${sample} -o ${sample} 
 echo "Will merge ${numjobs} files"
 bcfiles=`seq 1 ${numjobs} | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt.gz "`
 echo -e "Will merge barcode files: ${bcfiles}\n"
-cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.map.${sample}` -j y -N ${sample} -b y | perl -pe 's/[^\d].+$//g;' # >> sgeid.merge
+cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.map.${sample}` -j y -N ${sample} -o ${sample} -b y | perl -pe 's/[^\d].+$//g;' # >> sgeid.merge
 set -eu -o pipefail
 echo "Merging barcodes"
 zcat -f ${bcfiles} > $OUTDIR/${sample}.barcodes.preFilter.txt
