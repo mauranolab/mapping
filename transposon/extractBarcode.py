@@ -168,23 +168,25 @@ try:
         BCeditDist = edit_distance(BCread[1][0:bc_start].encode(), referenceSeq[:bc_start].encode())
         BCeditDistHamming = edit_distance(BCread[1][0:bc_start].encode(), referenceSeq[:bc_start].encode())
         BClevenDist[BCeditDist] += 1
-
+        
         for BCmis in list(map(int, BCmismatchPosition)):
             BClmissmatchLoc[BCmis] += 1
         
         if BCeditDistHamming != BCeditDist:
             BCHammingVsLevensthein +=1
-
+        
         #Check if the start of the barcode read matches the plasmid
         if BCeditDist <= maxEditDist:
             readBCpassed = True
         else:
             readBCpassed = False
-
-
-
+        
+        
+        
         #Minimum length of plasmid read
         if enforcePlasmidRead:
+            #TODO permit readthrough into barcode region
+            
             PlasmidminLen = min(len(PLread[1]), len(plasmidSeq))
             #Find mismatch position
             PlasmidmismatchPosition = [i for i in range(PlasmidminLen) if PLread[1][0:PlasmidminLen][i] != plasmidSeq[0:PlasmidminLen][i]]
@@ -219,8 +221,8 @@ try:
             readLengthpassed = True
         else:
             readLengthpassed = False
-
-
+        
+        
         if readBCpassed and readPlasmidpassed and readMinbaseQpassed and readLengthpassed and (enforcePlasmidRead or readPlasmidpassed):
             UMI_Seq = readname[1]
             print(bc_seq, readname[0], UMI_Seq, sep="\t")
@@ -233,7 +235,7 @@ try:
         if not readBCpassed:
             numWrongBCseq += 1
             if args.verbose:
-                print("Barcode read doesn't match plasmid start. Levenshtein distance is ",BCeditDist, file=sys.stderr, sep="")
+                print("Barcode read doesn't match plasmid start. Levenshtein distance is ", BCeditDist, file=sys.stderr, sep="")
         if enforcePlasmidRead:
             if not readPlasmidpassed:
                 numWrongPlasmid += 1
