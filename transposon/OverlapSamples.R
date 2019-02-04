@@ -10,7 +10,6 @@ suppressWarnings(suppressMessages(library(gridExtra)))
 suppressWarnings(suppressMessages(library(scales)))
 suppressWarnings(suppressMessages(library(reshape2)))
 suppressWarnings(suppressMessages(library(dplyr)))
-suppressWarnings(suppressMessages(library(data.table)))
 suppressWarnings(suppressMessages(library(gtools)))
 options(bitmapType="cairo") 
 
@@ -41,16 +40,16 @@ if (is.null(opt$samplesA) & is.null(opt$samplesC2)){
 }
 
 if (!is.null(opt$samplesB)){
-	cat("Samples B are provided\n")
+	message("Samples B are provided\n")
 }
 
 if (!is.null(opt$samplesC)){
-	cat("Samples C are provided \n")
+	message("Samples C are provided \n")
 }
 
 
 if (!is.null(opt$samplesC2)){
-	cat("Samples C2 are provided \n")
+	message("Samples C2 are provided \n")
 }
 
 
@@ -59,15 +58,15 @@ if (is.null(opt$output)){
 }
 
 if (is.null(opt$threshold)){
-	thresholdRNADNA <- 1
+	thresholdRNADNA <- 10
 } else { 
 	thresholdRNADNA <- opt$threshold
 }
-thresholdIPCR = 1
+thresholdiPCR = 1
 
 if (!is.null(opt$samplesA)){
 	samplesA <-strsplit(opt$samplesA, split=',')[[1]]
-	cat(samplesA[1], '\n')
+	message(samplesA[1], '\n')
 }
 
 
@@ -83,45 +82,55 @@ dir.create(dirname(opt$output))
 #samplesA <-strsplit(samplesA, split=',')[[1]]
 
 
+loadBCfile <- function(filename, type) {
+	if(type=="iPCR") {
+		suffix <- ".barcodes.coords.bed"
+		col.names <- c("chrom", "chromStart", "chromEnd", "bc", "count", "strand")
+	} else if (type %in% c("DNA", "RNA")) {
+		suffix <- ".barcode.counts.UMI.corrected.txt"
+		col.names <- c("bc", "count")
+	} else {
+		stop("Do not recognize file type", type)
+	}
+	data <- read(paste0(filename, '/', basename(filename), suffix), header=F)
+	colnames(data) <- col.names
+	return(data)
+}
 
-rnadnapair <- function(BCpairs) {
-	usefulBCs <- data.frame(matrix(ncol=12, nrow=nrow(BCpairs)))
-	colnames(usefulBCs) <- c('A', 'B', '#A', '#B', '#Intersect', '#Union', 'Intersect/Union', paste0('#A_', thresholdRNADNA), paste0('#B_', thresholdRNADNA), paste0('#Intersect_', thresholdRNADNA), paste0('#Union_', thresholdRNADNA), paste0('Intersect_', thresholdRNADNA, '/', 'Union_', thresholdRNADNA))
+#TODO no arg handling
+rnadnapair <- function(BCpairs, typeA, typeB, threshA, threshB) {
+	message("\nComparing ", typeA, " vs. ", typeB, ". Thresholds=", threshA, "/", threshB)
+	
+	usefulBCs <- data.frame(matrix(ncol=6, nrow=nrow(BCpairs)))
+	colnames(usefulBCs) <- c("Sample", paste0("#A_", typeA, "_", threshA), paste0("#B_", typeB, "_", threshB), paste0("#Intersect_A", threshA, "_B", threshB), paste0("#Union_A", threshA, "_B", threshB), paste0("Intersect/Union_A", threshA, "_B", threshB))
 	
 	for (i in 1:nrow(BCpairs)){
-		cat(BCpairs$A[i], BCpairs$B[i], '\n')
+		sampleA <- basename(BCpairs$A[i])
+		sampleB <- basename(BCpairs$B[i])
 		
-		samA_BC <- fread(paste0(BCpairs$A[i], '/', gsub('.*/', '', BCpairs$A[i]), '.barcode.counts.UMI.corrected.txt'), header=F, stringsAsFactors=F)
-		colnames(samA_BC) <- c("bc", "count")
+		#TODO need better sample name than gsub with typeA
+		sample <- gsub(paste0('_', typeA), '', unlist(strsplit(sampleA, split='-'))[2])
+		bsA <- unlist(strsplit(sampleA, split='-'))[1]
+		bsB <- unlist(strsplit(sampleB, split='-'))[1]
 		
-		samB_BC <- fread(paste0(BCpairs$B[i], '/', gsub('.*/', '', BCpairs$B[i]), '.barcode.counts.UMI.corrected.txt'), header=F, stringsAsFactors=F)
-		colnames(samB_BC) <- c("bc", "count")
+		cat(sample, bsA, bsB, '\n')
 		
+		sampleA_BC <- loadBCfile(BCpairs$A[i], type=typeA)
+		sampleB_BC <- loadBCfile(BCpairs$B[i], type=typeB)
 		
-		samA_samB <- intersect(samA_BC$bc, samB_BC$bc)
-		usamA_samB <- union(samA_BC$bc, samB_BC$bc)
+		sampleA_BC <- sampleA_BC[sampleA_BC$count >= threshA,]
+		sampleB_BC <- sampleB_BC[sampleB_BC$count >= threshB,]
 		
-		samA_BC10 <- samA_BC[samA_BC$count >= thresholdRNADNA,]
-		samB_BC10 <- samB_BC[samB_BC$count >= thresholdRNADNA,]
+		sampleA_sampleB <- intersect(sampleA_BC$bc, sampleB_BC$bc)
+		usampleA_sampleB <- union(sampleA_BC$bc, sampleB_BC$bc)
 		
-		samA_samB_10 <- intersect(samA_BC10$bc, samB_BC10$bc)
-		usamA_samB_10 <- union(samA_BC10$bc, samB_BC10$bc)
-		#Populate data frame
-		usefulBCs[,1][i] <- gsub('_', '-', gsub('.*/', '', BCpairs$A[i]))
-		usefulBCs[,2][i] <- gsub('_', '-', gsub('.*/', '', BCpairs$B[i]))
-		usefulBCs[,3][i] <- nrow(samA_BC)
-		usefulBCs[,4][i] <- nrow(samB_BC)
-		usefulBCs[,5][i] <- length(samA_samB)
-		usefulBCs[,6][i] <- length(usamA_samB)
-		usefulBCs[,7][i] <- round(length(samA_samB)/length(usamA_samB), 2)
-		usefulBCs[,8][i] <- nrow(samA_BC10)
-		usefulBCs[,9][i] <- nrow(samB_BC10)
-		usefulBCs[,10][i] <- length(samA_samB_10)
-		usefulBCs[,11][i] <- length(usamA_samB_10)
-		usefulBCs[,12][i] <- round(length(samA_samB_10)/length(usamA_samB_10), 2)
-	}
-	for (i in c(3:6, 8:11)){
-		usefulBCs[,i] <- format(as.numeric(usefulBCs[,i]), big.mark=",", trim=TRUE)
+		usefulBCs[,1][i] <- sample
+		#TODO split out BS numbers for each sample
+		usefulBCs[,2][i] <- format(as.numeric(nrow(sampleA_BC)), big.mark=",", trim=TRUE)
+		usefulBCs[,3][i] <- format(as.numeric(nrow(sampleB_BC)), big.mark=",", trim=TRUE)
+		usefulBCs[,4][i] <- format(as.numeric(length(sampleA_sampleB)), big.mark=",", trim=TRUE)
+		usefulBCs[,5][i] <- format(as.numeric(length(usampleA_sampleB)), big.mark=",", trim=TRUE)
+		usefulBCs[,6][i] <- format(as.numeric(round(length(sampleA_sampleB)/length(usampleA_sampleB), 2)), big.mark=",", trim=TRUE)
 	}
 	return(usefulBCs)
 }
@@ -136,12 +145,8 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesB) & is.null(opt$samplesC)) {
 	BCpairs$A <- as.character(BCpairs$A)
 	BCpairs$B <- as.character(BCpairs$B)
 	BCpairs <- BCpairs[BCpairs$A != BCpairs$B,]
-	usefulBCs <- rnadnapair(BCpairs)
-#	for (i in 1:ncol(usefulBCs)) {
-#		if (diff(as.numeric(factor(usefulBCs[,i])))[-1]==0) {
-#			usefulBCs[c(FALSE, diff(as.numeric(factor(usefulBCs[,i])))==0),][,i] <- '"'
-#		}
-#	}
+	usefulBCs <- rnadnapair(BCpairs, "DNA", "DNA", 0, 0)
+	usefulBCs <- merge(usefulBCs, rnadnapair(BCpairs, "DNA", "DNA", thresholdRNADNA, thresholdRNADNA), by="Sample")
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=opt$output, row.names=F, sep='\t', quote=F)
 }
 
@@ -151,9 +156,10 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesB) & is.null(opt$samplesC)) {
 #####
 if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & is.null(opt$samplesC)) {
 	samplesB <- strsplit(opt$samplesB, split=',')[[1]]
-	cat(samplesB[1], '\n')
+	message(samplesB[1], '\n')
 	BCpairs <- data.frame("A"=samplesA, "B"=samplesB, stringsAsFactors=F)
-	usefulBCs <- rnadnapair(BCpairs)
+	usefulBCs <- rnadnapair(BCpairs, "DNA", "RNA", 0, 0)
+	usefulBCs <- merge(usefulBCs, rnadnapair(BCpairs, "DNA", "RNA", thresholdRNADNA, thresholdRNADNA), by="Sample")
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=opt$output, row.names=F, sep='\t', quote=F)
 }
 
@@ -164,23 +170,32 @@ if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & is.null(opt$samplesC)) {
 ######
 if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & !is.null(opt$samplesC)) {
 	samplesB <- strsplit(opt$samplesB, split=',')[[1]]
-	cat(samplesB[1], '\n')
+	message(samplesB[1], '\n')
 	samplesC <- strsplit(opt$samplesC, split=',')[[1]]
 	BCpairs <- data.frame("A"=samplesA, "B"=samplesB, "C"=samplesC, stringsAsFactors=F)
+
+
+#TODO too many columns
+#usefulBCs <- rnadnapair(BCpairs, "DNA", "RNA", thresholdRNADNA, thresholdRNADNA)
+#usefulBCs <- rnadnapair(BCpairs, "DNA", "iPCR", thresholdRNADNA, thresholdiPCR)
+#usefulBCs <- rnadnapair(BCpairs, "RNA", "iPCR", thresholdRNADNA, thresholdiPCR)
+#missing 3way
+
+###
 	usefulBCs <- data.frame(matrix(ncol=13, nrow=nrow(BCpairs)))
-	colnames(usefulBCs) <- c('A', 'B', 'C', '#A', '#B', '#C_mapped', paste0('#A_', thresholdRNADNA), paste0('#B_', thresholdRNADNA), paste0('#C_', thresholdIPCR), paste0('#Intersect_A', thresholdRNADNA, '_B', thresholdRNADNA), paste0('#Intersect_A', thresholdRNADNA, '_C', thresholdIPCR), paste0('#Intersect_B', thresholdRNADNA, '_C', thresholdIPCR), paste0('#Intersect_A', thresholdRNADNA, '_B', thresholdRNADNA, '_C', thresholdIPCR))
+	colnames(usefulBCs) <- c('A', 'B', 'C', '#A', '#B', '#C_mapped', paste0('#A_', thresholdRNADNA), paste0('#B_', thresholdRNADNA), paste0('#C_', thresholdiPCR), paste0('#Intersect_A', thresholdRNADNA, '_B', thresholdRNADNA), paste0('#Intersect_A', thresholdRNADNA, '_C', thresholdiPCR), paste0('#Intersect_B', thresholdRNADNA, '_C', thresholdiPCR), paste0('#Intersect_A', thresholdRNADNA, '_B', thresholdRNADNA, '_C', thresholdiPCR))
 	
 	for (i in 1:nrow(BCpairs)) {
-		samA_BC <- fread(paste0(BCpairs$A[i], '/', gsub('.*/', '', BCpairs$A[i]), '.barcode.counts.UMI.corrected.txt'), header=F, stringsAsFactors=F)
+		samA_BC <- read(paste0(BCpairs$A[i], '/', gsub('.*/', '', BCpairs$A[i]), '.barcode.counts.UMI.corrected.txt'), header=F)
 		colnames(samA_BC) <- c("bc", "count")
 		
-		samB_BC <- fread(paste0(BCpairs$B[i], '/', gsub('.*/', '', BCpairs$B[i]), '.barcode.counts.UMI.corrected.txt'), header=F, stringsAsFactors=F)
+		samB_BC <- read(paste0(BCpairs$B[i], '/', gsub('.*/', '', BCpairs$B[i]), '.barcode.counts.UMI.corrected.txt'), header=F)
 		colnames(samB_BC) <- c("bc", "count")
 		
-		samC <- fread(paste0(BCpairs$C[i], '/', gsub('.*/', '', BCpairs$C[i]), '.barcodes.coords.bed'), header=F, stringsAsFactors=F)
+		samC <- read(paste0(BCpairs$C[i], '/', gsub('.*/', '', BCpairs$C[i]), '.barcodes.coords.bed'), header=F)
 		colnames(samC) <- c("chrom", "chromStart", "chromEnd", "bc", "count", "strand")
 		
-		samC_BC1 <- samC[samC$count >= thresholdIPCR,]
+		samC_BC1 <- samC[samC$count >= thresholdiPCR,]
 		samA_BC10 <- samA_BC[samA_BC$count >= thresholdRNADNA,]
 		samB_BC10 <- samB_BC[samB_BC$count >= thresholdRNADNA,]
 		
@@ -213,6 +228,11 @@ if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & !is.null(opt$samplesC)) {
 	for (i in c(4:13)) {
 		usefulBCs[,i] <- format(as.numeric(usefulBCs[,i]), big.mark=",", trim=TRUE)
 	}
+	
+	usefulBCs <- rnadnapair(BCpairs, "DNA", "RNA", 0, 0)
+###
+	
+	
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=opt$output, row.names=F, sep='\t', quote=F)
 }
 
@@ -223,45 +243,10 @@ if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & !is.null(opt$samplesC)) {
 #####
 if (!is.null(opt$samplesA) & is.null(opt$samplesB) & !is.null(opt$samplesC)) {
 	samplesC <- strsplit(opt$samplesC, split=',')[[1]]
-	cat(samplesC[1], '\n')
+	message(samplesC[1], '\n')
 	BCpairs <- data.frame("A"=samplesA, "B"=samplesC, stringsAsFactors=F)
-	usefulBCs <- data.frame(matrix(ncol=12, nrow=nrow(BCpairs)))
-	colnames(usefulBCs) <- c('A', 'C', '#A', '#C', 'Intersect', 'Union', 'Intersect/Union', paste0('#A_', thresholdRNADNA), paste0('#C_', thresholdRNADNA), paste0('Intersect_', thresholdRNADNA), paste0('Union_', thresholdRNADNA), paste0('Intersect_', thresholdRNADNA, '/', 'Union_', thresholdRNADNA))
-	
-	for (i in 1:nrow(BCpairs)) {
-		cat(BCpairs$A[i], BCpairs$B[i], '\n')
-		
-		samA_BC <- fread(paste0(BCpairs$A[i], '/', gsub('.*/', '', BCpairs$A[i]), '.barcode.counts.UMI.corrected.txt'), header=F, stringsAsFactors=F)
-		colnames(samA_BC) <- c("bc", "count")
-		
-		samC_BC <- fread(paste0(BCpairs$B[i], '/', gsub('.*/', '', BCpairs$B[i]), '.barcodes.coords.bed'), header=F, stringsAsFactors=F)
-		colnames(samC_BC) <- c("chrom", "chromStart", "chromEnd", "bc", "count", "strand")
-		
-		
-		samA_samC <- intersect(samA_BC$bc, samC_BC$bc)
-		usamA_samC <- union(samA_BC$bc, samC_BC$bc)
-		
-		samA_BC10 <- samA_BC[samA_BC$count >= thresholdRNADNA,]
-		
-		samA_samC_10 <- intersect(samA_BC10$bc, samC_BC$bc)
-		usamA_samC_10 <- union(samA_BC10$bc, samC_BC$bc)
-		#Populate data frame
-		usefulBCs[,1][i] <- gsub('_', '-', gsub('.*/', '', BCpairs$A[i]))
-		usefulBCs[,2][i] <- gsub('_', '-', gsub('.*/', '', BCpairs$B[i]))
-		usefulBCs[,3][i] <- nrow(samA_BC)
-		usefulBCs[,4][i] <- nrow(samC_BC)
-		usefulBCs[,5][i] <- length(samA_samC)
-		usefulBCs[,6][i] <- length(usamA_samC)
-		usefulBCs[,7][i] <- round(length(samA_samC)/length(usamA_samC), 2)
-		usefulBCs[,8][i] <- nrow(samA_BC10)
-		usefulBCs[,9][i] <- nrow(samC_BC)
-		usefulBCs[,10][i] <- length(samA_samC_10)
-		usefulBCs[,11][i] <- length(usamA_samC_10)
-		usefulBCs[,12][i] <- round(length(samA_samC_10)/length(usamA_samC_10), 2)
-	}
-	for (i in c(3:6, 8:11)){
-		usefulBCs[,i] <- format(as.numeric(usefulBCs[,i]), big.mark=",", trim=TRUE)
-	}
+	usefulBCs <- rnadnapair(BCpairs, "DNA", "iPCR", 0, 0)
+	usefulBCs <- merge(usefulBCs, rnadnapair(BCpairs, "DNA", "iPCR", thresholdRNADNA, thresholdiPCR), by="Sample")
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=opt$output, row.names=F, sep='\t', quote=F)
 }
 
@@ -272,37 +257,9 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesB) & !is.null(opt$samplesC)) {
 if (is.null(opt$samplesC2) & !is.null(opt$samplesC) & !is.null(opt$samplesC2)) {
 	samplesC <- strsplit(opt$samplesC, split=',')[[1]]
 	samplesC2 <- strsplit(opt$samplesC2, split=',')[[1]]
-	cat(samplesC[1], '\n')
+	message(samplesC[1], '\n')
 	BCpairs <- data.frame("C"=samplesC, "C2"=samplesC2, stringsAsFactors=F)
-	usefulBCs <- data.frame(matrix(ncol=7, nrow=nrow(BCpairs)))
-	colnames(usefulBCs) <- c('A', 'B', '#A', '#B', 'Intersect', 'Union', 'Intersect/Union')
-	
-	for (i in 1:nrow(BCpairs)){
-		cat(BCpairs$C[i], BCpairs$C2[i], '\n')
-		
-		samC_BC <- fread(paste0(BCpairs$C[i], '/', gsub('.*/', '', BCpairs$C[i]), '.barcodes.coords.bed'), header=F, stringsAsFactors=F)
-		colnames(samC_BC) <- c("chrom", "chromStart", "chromEnd", "bc", "count", "strand")
-		
-		samC2_BC <- fread(paste0(BCpairs$C2[i], '/', gsub('.*/', '', BCpairs$C2[i]), '.barcodes.coords.bed'), header=F, stringsAsFactors=F)
-		colnames(samC2_BC) <- c("chrom", "chromStart", "chromEnd", "bc", "count", "strand")
-		
-		samA_samB <- intersect(samC_BC$bc, samC2_BC$bc)
-		usamA_samB <- union(samC_BC$bc, samC2_BC$bc)
-		
-		samA_samB_10 <- intersect(samC_BC$bc, samC2_BC$bc)
-		usamA_samB_10 <- union(samC_BC$bc, samC2_BC$bc)
-		#Populate data frame
-		usefulBCs[,1][i] <- gsub('_', '-', gsub('.*/', '', BCpairs$C[i]))
-		usefulBCs[,2][i] <- gsub('_', '-', gsub('.*/', '', BCpairs$C2[i]))
-		usefulBCs[,3][i] <- nrow(samC_BC)
-		usefulBCs[,4][i] <- nrow(samC2_BC)
-		usefulBCs[,5][i] <- length(samA_samB)
-		usefulBCs[,6][i] <- length(usamA_samB)
-		usefulBCs[,7][i] <- round(length(samA_samB)/length(usamA_samB), 2)
-	}
-	for (i in c(3:6)){
-		usefulBCs[,i] <- format(as.numeric(usefulBCs[,i]), big.mark=",", trim=TRUE)
-	}
+	usefulBCs <- rnadnapair(BCpairs, "iPCR", "iPCR", thresholdiPCR, thresholdiPCR)
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=opt$output, row.names=F, sep='\t', quote=F)
 }
 
