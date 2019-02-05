@@ -4,9 +4,7 @@ import sys
 import re
 import argparse
 import csv
-#import numpy as np
 import collections
-#import pandas as pd 
 import os
 import cython
 import leven 
@@ -16,6 +14,7 @@ from umi_tools._dedup_umi import edit_distance
 
 #This takes in the barcode file and counts the number of occurences of each barcode.
 #It then uses the directional adjacency https://cgatoxford.files.wordpress.com/2015/08/schematic_25-e1443714121688.png
+#Based on https://github.com/CGATOxford/UMI-tools
 
 
 #TODO Make sure to ignore input lines with "" barcode
