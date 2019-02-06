@@ -678,23 +678,23 @@ samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "
 
 
 PEreads=`cat $TMPDIR/${name}.${mappedgenome}.flagstat.txt | grep "paired in sequencing" | awk '{print $1+$3}'`
-if [[ "${PEreads}" > 0 ]] && [[ "${mappedgenome}" != "cegsvectors" ]]; then
+if [[ "${PEreads}" -gt 0 ]] && [[ "${mappedgenome}" != "cegsvectors" ]]; then
     echo
     echo "Template lengths"
-    samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrM"' | awk -v sample=${name}.${mappedgenome} -F "\t" 'BEGIN {OFS="\t"} $9>0 {print sample, $9}' | sort -k2,2n | tee ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt | cut -f2 |
+    samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrM"' | awk -F "\t" 'BEGIN {OFS="\t"} $9>0 {print $9}' | sort -k2,2n | tee ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt |
     awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {print "Minimum: " $0} {cum+=$0; lengths[NR]=$0; if($0<125) {lastLineUnder125=NR}} END {print "Number of reads: " NR; print "25th percentile: " lengths[int(NR*0.25)]; print "50th percentile: " lengths[int(NR*0.5)]; print "75th percentile: " lengths[int(NR*0.75)]; print "95th percentile: " lengths[int(NR*0.95)]; print "99th percentile: " lengths[int(NR*0.99)]; print "Maximum: " $0; print "Mean: " cum/NR; print "Prop. reads under 125 bp: " lastLineUnder125/NR}'
-    gzip -f ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt
+    pigz -9 -p ${NSLOTS} -f ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt
+
+    echo
+    echo "read lengths:"
+    samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | cut -f10 | awk '{lengths[length($0)]++} END {for (l in lengths) {print lengths[l], l}}' | sort -k2,2g
+
+
+    echo
+    echo "read count by sequencing instrument"
+    #The sort -k1,1nr | head -100 caps the number of unique entries (taking the most common), helpful if we have not parsed the read name accurately
+    bam2instrument ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk '{names[$0]++} END {for (cur in names) {print names[cur], cur}}' | sort -k1,1nr | head -100 | sort -k2,2
 fi
-
-echo
-echo "read lengths:"
-samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | cut -f10 | awk '{lengths[length($0)]++} END {for (l in lengths) {print lengths[l], l}}' | sort -k2,2g
-
-
-echo
-echo "read count by sequencing instrument"
-#The sort -k1,1nr | head -100 caps the number of unique entries (taking the most common), helpful if we have not parsed the read name accurately
-bam2instrument ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk '{names[$0]++} END {for (cur in names) {print names[cur], cur}}' | sort -k1,1nr | head -100 | sort -k2,2
 
 
 echo

@@ -200,8 +200,8 @@ done
 
 #Output files are .txt instead of txt.gz
 for f in ${outdir}/${name}-final/*.txt; do 
-    #BUGBUG See intermittent pigz: abort: write error on >file> (Inappropriate ioctl for device)
-    pigz -9 -p ${NSLOTS} ${f}
+    #Getting intermittent pigz: abort: write error on >file> (Inappropriate ioctl for device). Tried switching to gzip to see if that fixes it.
+    gzip -9 ${NSLOTS} ${f}
 done
 
 
