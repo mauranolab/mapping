@@ -10,9 +10,9 @@ import argparse
 
 
 parser = argparse.ArgumentParser(prog = "Decode ENCODE metadata", description = "Decodes ENCODE metadata and finds paired reads, biodata and matching libraries", add_help=True)
-parser.add_argument('ENCODEmetadata', action='store', help='Barcode file')
-parser.add_argument('-o','--output', action='store', dest='output',help='Decoded metadata')
-parser.add_argument('-j','--JSONdirectory', action='store', dest='jsonD', help='JSON directory')
+parser.add_argument('ENCODEmetadata', action='store', help='metadata.tsv from encodeproject.org')
+parser.add_argument('-o', '--output', action='store', dest='output', help='Decoded metadata')
+parser.add_argument('-j', '--JSONdirectory', action='store', dest='jsonD', help='JSON directory')
 
 try:
     args = parser.parse_args()
@@ -29,106 +29,81 @@ if args.ENCODEmetadata=="-":
 
 
 def getDS(sample_line):
-    sampleName=sample_line['File accession']
-    print(sampleName)
-    
+    sampleAccession = sample_line['File accession']
     #print(sample_line)
-    try:
-        #Hiercheal json python
-        data=open(args.jsonD+sampleName).read()
-        sample_json = json.loads(data)
-        if sample_json['replicate']['experiment']['biosample_summary'] is not None:
-            sampleAge = sample_json['replicate']['experiment']['biosample_summary']
-            try: 
-                sampleAge = sampleAge[sampleAge.index("(") + 1:sampleAge.rindex(")")]
-            except:
-                sampleAge = 'NA'
-        print(sampleAge)
-        #keyword = 'human '
-        regexp = re.compile(r'DS[0-9]{5}|DS[0-9]{4}')
-        before_keyword, keyword, after_keyword = sample_json['replicate']['experiment']['biosample_summary'].partition('human ')
-        sampleCellType = after_keyword.split(' ')[0].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
-        if not sampleCellType and regexp.search(str(sample_json)) is not None:
-            if len(sample_json['replicate']['experiment']['biosample_synonyms'])>=1:
-                sampleCellType=sample_json['replicate']['experiment']['biosample_synonyms'][0].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
-            elif len(sample_json['replicate']['experiment']['biosample_synonyms'])==0:
-                sampleCellType = sample_line['Biosample term name'].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
-        elif not sampleCellType and regexp.search(str(sample_json)) is None:
+    
+    data = open(args.jsonD+sampleAccession).read()
+    sample_json = json.loads(data)
+    
+    #keyword = 'human '
+    regexp = re.compile(r'DS[0-9]{5}|DS[0-9]{4}')
+    before_keyword, keyword, after_keyword = sample_json['replicate']['experiment']['biosample_summary'].partition('human ')
+    sampleCellType = after_keyword.split(' ')[0].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
+    if not sampleCellType and regexp.search(str(sample_json)) is not None:
+        if len(sample_json['replicate']['experiment']['biosample_synonyms'])>=1:
+            sampleCellType=sample_json['replicate']['experiment']['biosample_synonyms'][0].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
+        elif len(sample_json['replicate']['experiment']['biosample_synonyms'])==0:
             sampleCellType = sample_line['Biosample term name'].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
-        #sample_json['replicate']['experiment']['description']
-        #print(sample_json['replicate']['experiment']['description'])
-        # submitted_file_name DS number is here
-        #replicate/library/aliases OR in aliases
-        if regexp.search(str(sample_json['replicate']['library']['aliases'])) is not None:
-            m=re.search(regexp, str(sample_json['replicate']['library']['aliases']))
-            DSid = DSid=m.group(0)
-            DSidOut = sampleName, DSid
-            print(DSidOut)
-        elif regexp.search(str(sample_json['aliases'])) is not None:
-            m=re.search(regexp, str(sample_json['aliases']))
-            DSid=m.group(0)
-            DSidOut = sampleName, DSid 
-            print(DSidOut)
-        elif 'submitted_file_name' in sample_json and regexp.search(str(sample_json['submitted_file_name'])) is not None:
-            m=re.search(regexp, str(sample_json['submitted_file_name']))
-            DSid=m.group(0)
-            DSidOut = sampleName, DSid
-            print(DSidOut)
-        elif regexp.search(str(sample_json)) is None:
-            DSidOut = sampleName,  sample_json['replicate']['library']['@id'].split('/')[2]
-            print(DSidOut)
-        
-        
-        sampleCellType = re.sub("Entire_|entire_|Entire|entire", "", sampleCellType)
-        if re.search('embryo', str(sample_json['replicate']['experiment']['biosample_summary'])) is not None:
-            sampleCellType = 'f' + sampleCellType.capitalize()
-        
-        if sample_json['replicate']['experiment']['assay_title'] == "ChIP-seq":
-            sampleAssay = sample_json['replicate']['experiment']['target']['label']
-        else:
-            sampleAssay = sample_json['replicate']['experiment']['assay_title']
-        
-        sampleInstitute = sample_json['lab']['institute_label']
-        sampleAccession = sample_json['replicate']['library']['accession']
-        
-        #BUGBUG I think the missing paired_with is obselete
-        if sample_line['Run type'] =='paired-ended':
-            if sample_line['Paired end'] =='1' and sample_line['Audit ERROR']!='missing paired_with\n':
-                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'],  'paired-ended', sampleName, sample_line['Paired with'],sampleAssay,sampleInstitute,sampleAge,  sampleAccession)
-                
-            elif sample_line['Paired end'] =='2' and sample_line['Audit ERROR']!='missing paired_with\n':
-                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sample_line['Paired with'], sampleName,sampleAssay,sampleInstitute,sampleAge, sampleAccession)
-                
-            #If paired_with is missing
-            elif sample_line['Paired end'] =='1' and sample_line['Audit ERROR']=='missing paired_with\n':
-                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sampleName, '',sampleAssay,sampleInstitute,sampleAge, sampleAccession)
-                
-        elif sample_line['Run type'] =='single-ended':
-            DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'single-ended', sampleName, '',sampleAssay,sampleInstitute,sampleAge, sampleAccession)
-   
-  #print(SidOut1)
-        #stripped_sample_line = [s.rstrip() for s in DSidOut]
-        #print([stripped_sample_line])
-        wr.writerows([DSidOut1])
-    except Exception: 
-        pass
-        print('WARNING')
-        if sample_line['Run type'] =='paired-ended':
-            if sample_line['Paired end'] =='1' and sample_line['Audit ERROR']!='missing paired_with\n':
-                DSidOut1 =  DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sampleName, sample_line['Paired with'],sampleAssay,sampleInstitute,sampleAge, sampleAccession)
-                
-            elif sample_line['Paired end'] =='2' and sample_line['Audit ERROR']!='missing paired_with\n':
-                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sample_line['Paired with'], sampleName,sampleAssay,sampleInstitute,sampleAge, sampleAccession)
-                
-            #If paired_with is missing
-            elif sample_line['Paired end'] =='1' and sample_line['Audit ERROR']=='missing paired_with\n':
-                DSidOut1 = DSidOut + (sampleCellType, sample_line['Biosample term name'], 'paired-ended', sampleName, '',sampleAssay,sampleInstitute,sampleAge, sampleAccession)
-                
-        elif sample_line['Run type'] =='single-ended':
-            DSidOut1 = DSidOut +  (sampleCellType, sample_line['Biosample term name'], 'single-ended', sampleName, '',sampleAssay,sampleInstitute,sampleAge, sampleAccession)
-            
-        print(DSidOut1)
-        wr.writerows([DSidOut1])
+    elif not sampleCellType and regexp.search(str(sample_json)) is None:
+        sampleCellType = sample_line['Biosample term name'].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
+    #sample_json['replicate']['experiment']['description']
+    #print(sample_json['replicate']['experiment']['description'])
+    # submitted_file_name DS number is here
+    #replicate/library/aliases OR in aliases
+    if regexp.search(str(sample_json['replicate']['library']['aliases'])) is not None:
+        m=re.search(regexp, str(sample_json['replicate']['library']['aliases']))
+        DSid = DSid=m.group(0)
+    elif regexp.search(str(sample_json['aliases'])) is not None:
+        m=re.search(regexp, str(sample_json['aliases']))
+        DSid = m.group(0)
+    elif 'submitted_file_name' in sample_json and regexp.search(str(sample_json['submitted_file_name'])) is not None:
+        m=re.search(regexp, str(sample_json['submitted_file_name']))
+        DSid = m.group(0)
+    elif regexp.search(str(sample_json)) is None:
+        DSid = sample_json['replicate']['library']['@id'].split('/')[2]
+    sampleCellType = re.sub("Entire_|entire_|Entire|entire", "", sampleCellType)
+    if re.search('embryo', str(sample_json['replicate']['experiment']['biosample_summary'])) is not None:
+        sampleCellType = 'f' + sampleCellType.capitalize()
+    
+    #Used to be output as column "Name" but was largely redundant with sampleCellType and never used downstream
+    #sampleName = sample_line['Biosample term name']
+    
+    #BUGBUG I think the missing paired_with is obselete
+    if sample_line['Run type'] =='paired-ended':
+        singleOrPaired = 'paired-ended'
+        if sample_line['Paired end'] =='1' and sample_line['Audit ERROR']!='missing paired_with\n':
+            R1sampleAccession = sampleAccession
+            R2sampleAccession = sample_line['Paired with']
+        elif sample_line['Paired end'] =='2' and sample_line['Audit ERROR']!='missing paired_with\n':
+            R1sampleAccession = sample_line['Paired with']
+            R2sampleAccession = sampleAccession
+        #If paired_with is missing
+        elif sample_line['Paired end'] =='1' and sample_line['Audit ERROR']=='missing paired_with\n':
+            R1sampleAccession = sampleAccession
+            R2sampleAccession = ''
+    elif sample_line['Run type'] =='single-ended':
+        singleOrPaired = 'single-ended'
+        R1sampleAccession = sampleAccession
+        R2sampleAccession = ''
+    
+    if sample_json['replicate']['experiment']['assay_title'] == "ChIP-seq":
+        sampleAssay = sample_json['replicate']['experiment']['target']['label']
+    else:
+        sampleAssay = sample_json['replicate']['experiment']['assay_title']
+    
+    sampleInstitution = sample_json['lab']['institute_label']
+    
+    if sample_json['replicate']['experiment']['biosample_summary'] is not None:
+        sampleAge = sample_json['replicate']['experiment']['biosample_summary']
+        try: 
+            sampleAge = sampleAge[sampleAge.index("(") + 1:sampleAge.rindex(")")]
+        except:
+            sampleAge = 'NA'
+    
+    libraryAccession = sample_json['replicate']['library']['accession']
+    
+    print(sampleAccession, DSid, sampleAge)
+    wr.writerow([sampleAccession, libraryAccession, DSid, sampleCellType, singleOrPaired, R1sampleAccession, R2sampleAccession, sampleAssay, sampleInstitution, sampleAge])
 
 try:
     with open(args.ENCODEmetadata, 'r') as SampleFile:
@@ -137,8 +112,8 @@ try:
         outfile = open(args.output, 'w')
         # Pass file handle to csv.writer
         wr = csv.writer(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True)
-        #N.B. nothing downstream seems to use Name or Institution. paired-ended appears to be for legibility alone
-        wr.writerow(['SampleID','GroupID','sampleCellType','Name','Single_or_Paired','R1','R2','Assay','Institution','Age', 'Library'])
+        #N.B. Library provides ENCODE accession for samples with a DS number. paired-ended appears to be for legibility alone
+        wr.writerow(['SampleAccession', 'LibraryAccession', 'GroupID', 'Name', 'Single_or_Paired', 'R1', 'R2', 'Assay', 'Institution', 'Age'])
         for sample_line in SampleFile_reader:
             getDS(sample_line)
 finally:
