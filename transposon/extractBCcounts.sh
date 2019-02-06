@@ -64,7 +64,7 @@ date
 #Only merge UMIs if the length is over 4
 #Go through entire file with awk despite only looking at first line so zcat terminates properly
 UMIlength=$(zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {print $3}')
-if [[ ${#UMIlength} > "4" ]]; then
+if [[ "${#UMIlength}" -gt "4" ]]; then
     echo "Deduping UMIs"
     echo "Merging similar UMIs per barcode"
     date
@@ -74,7 +74,7 @@ if [[ ${#UMIlength} > "4" ]]; then
     ${src}/AdjacencyDeDup.py --col 3 --groupcol 1 -o - - | gzip -9 -c > $OUTDIR/${sample}.barcodes.txt.gz
 else
     #Skip UMI deduplication
-    echo "UMI too short (${#UMIlength}) -- skip UMI deduplicaation"
+    echo "UMI too short (${#UMIlength}) -- skip UMI deduplication"
     zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | gzip -9 -c > $OUTDIR/${sample}.barcodes.txt.gz
 fi
 

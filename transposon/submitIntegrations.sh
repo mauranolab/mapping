@@ -67,13 +67,13 @@ convert $TMPDIR/${sample}.R2.raw.eps $OUTDIR/${sample}.R2.raw.png
 
 
 echo "Trimming/extracting UMI from R1 files ${f1} and R2 files ${f2}"
-if [[ "${R1trim}" > "0" ]]; then
+if [[ "${R1trim}" -gt 0 ]]; then
     echo "Trimming ${R1trim} bp from R1"
     bc1pattern="--bc-pattern "`printf 'N%.0s' $(seq 1 ${R1trim})`
 else
     bc1pattern="--bc-pattern X"
 fi
-if [[ "${R2trim}" > "0" ]]; then
+if [[ "${R2trim}" -gt 0 ]]; then
     echo "Trimming ${R2trim} bp from R2"
     bc2pattern=" --bc-pattern2 "`printf 'N%.0s' $(seq 1 ${R2trim})`
 else
@@ -114,7 +114,7 @@ echo "Weblogo of raw UMI"
 #Use tail to run through to end of file so zcat doesn't throw an error code
 #UMI gets put on both fastq, so just look at R1
 UMIlength=`zcat -f $OUTDIR/${sample}.R1.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print length(readname[2])}' | tail -1`
-if [[ "${UMIlength}" > "0" ]]; then
+if [[ "${UMIlength}" -gt 0 ]]; then
     echo "Making weblogo of UMI"
     zcat -f $OUTDIR/${sample}.R1.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print readname[2]}' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' | weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R1 UMI sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R1.raw.UMI.eps
     convert $TMPDIR/${sample}.R1.raw.UMI.eps $OUTDIR/${sample}.R1.raw.UMI.png
@@ -168,8 +168,9 @@ echo "Will merge ${numjobs} files"
 bcfiles=`seq 1 ${numjobs} | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt.gz "`
 echo -e "Will merge barcode files: ${bcfiles}\n"
 bamfiles=`seq 1 ${numjobs} | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.bam "`
-echo -e "Will merge bamfiles files: $bamfiles\n"
-cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.map.${sample}` -j y -N ${sample} -o ${sample} -b y | perl -pe 's/[^\d].+$//g;' # >> sgeid.merge
+echo -e "Will merge bamfiles files: ${bamfiles}\n"
+#-o ${sample} breaks Jesper's Flowcell_Info.sh
+cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.map.${sample}` -j y -N ${sample} -b y | perl -pe 's/[^\d].+$//g;' # >> sgeid.merge
 set -eu -o pipefail
 echo "Merging barcodes"
 zcat -f ${bcfiles} > $OUTDIR/${sample}.barcodes.preFilter.txt
@@ -179,16 +180,16 @@ ${src}/analyzeBCcounts.sh ${sample}
 
 
 echo "Merging bam files"
-if [[ `echo $bamfiles | wc | awk '{print $2}'` -gt 1 ]]
+if [[ `echo ${bamfiles} | wc | awk '{print $2}'` -gt 1 ]]
 then 
-    samtools merge -f -l 9 $OUTDIR/${sample}.bam $bamfiles
+    samtools merge -f -l 9 $OUTDIR/${sample}.bam ${bamfiles}
 else 
-    cp $bamfiles $OUTDIR/${sample}.bam
+    cp ${bamfiles} $OUTDIR/${sample}.bam
 fi
 
 #TODO sort?
 #samtools index $OUTDIR/${sample}.bam
-rm -f $bamfiles
+rm -f ${bamfiles}
 
 ${src}/analyzeIntegrations.sh ${sample}
 EOF
