@@ -181,6 +181,7 @@ for curGroup in Group:
     Assay = sorted(set([line['Assay'] for line in matchingSamples]))
     Age = sorted(set([re.sub(' ', '_', line['Age']) for line in matchingSamples]), key=natural_key)
     
+    #TODO make Replicate and Age optional
     
     celltypeDict = dict(zip(cellTypes, cellTypes))
     dictAssay = dict(zip(Assay, Assay))

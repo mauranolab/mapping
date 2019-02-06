@@ -119,7 +119,7 @@ col <- as.data.frame(col, unique(groupnames))
 
 # Initialize "data" with just column names.  We'll be adding rows to this later on in the code.
 data <- data.frame(matrix(ncol=14, nrow=1))
-colnames(data) <- c('Name', 'DS', 'Replicate', 'Color', 'Assay', 'analyzed_reads', 'SPOT', 'Num_hotspots', 'Exclude', 'Genomic_coverage', 'Group', 'Age', 'Uni', "filebase")
+colnames(data) <- c('Name', 'DS', 'Replicate', 'Color', 'Assay', 'analyzed_reads', 'Genomic_coverage', 'SPOT', 'Num_hotspots', 'Exclude', 'Group', 'Age', 'Institution', "filebase")
 
 i <- 0            # This will be our "data" output variable index.
 for(curdir in mappeddirs){
@@ -173,22 +173,22 @@ for(curdir in mappeddirs){
 			data$Assay[i] <- curAssay
 			data$analyzed_reads[i] <- strsplit(sampleFile[grep('Num_analyzed_reads\t', sampleFile)], '\t')[[1]][2]
 			
+			if(any(grepl('Genomic_coverage', sampleFile))) {
+				data$Genomic_coverage[i] <- strsplit(sampleFile[grep('Genomic_coverage\t', sampleFile)], '\t')[[1]][2]
+			} else {
+				data$Genomic_coverage[i] <- NA
+			}
+			
 			if(any(grepl('Num_hotspots2', sampleFile))) {
 				data$Num_hotspots[i] <- strsplit(sampleFile[grep('Num_hotspots2\t', sampleFile)], '\t')[[1]][2]
 			} else {
 				data$Num_hotspots[i] <- NA
 			}
-
+			
 			if(any(grepl('SPOT2', sampleFile))) {
 				data$SPOT[i] <- strsplit(sampleFile[grep('SPOT2\t', sampleFile)], '\t')[[1]][2]
 			} else {
 				data$SPOT[i] <- NA
-			}
-
-			if(any(grepl('Genomic_coverage', sampleFile))) {
-				data$Genomic_coverage[i] <- strsplit(sampleFile[grep('Genomic_coverage\t', sampleFile)], '\t')[[1]][2]
-			} else {
-				data$Genomic_coverage[i] <- NA
 			}
 			
 			data$Exclude[i] <- NA
@@ -198,16 +198,16 @@ for(curdir in mappeddirs){
 				# Could put Age in the input file too, if needed.
 				data$Age[i] <- "NoAge"
 				data$Group[i] <- unlist(strsplit(curdir, "/"))[1] #use FC name
-				data$Uni[i]  <- inputSampleIDs[inputSampleIDs[,"GroupID"]==data$Group[i], "Institution"]
+				data$Institution[i]  <- inputSampleIDs[inputSampleIDs[,"GroupID"]==data$Group[i], "Institution"]
 			} else {
 				data$Age[i] <- inputSampleIDs[grep(data$DS[i], inputSampleIDs$GroupID), "Age"]
-				data$Uni[i] <- inputSampleIDs[grep(data$DS[i], inputSampleIDs$GroupID), "Institution"]
+				data$Institution[i] <- inputSampleIDs[grep(data$DS[i], inputSampleIDs$GroupID), "Institution"]
 				
 				#pre-populate group field with institution name
 				if(project=="humanENCODEdnase") {
-					if(data$Uni[i] == 'UMass') {data$Uni[i] <- 'UW'}
+					if(data$Institution[i] == 'UMass') {data$Institution[i] <- 'UW'}
 				}
-				data$Group[i] <- data$Uni[i]
+				data$Group[i] <- data$Institution[i]
 			}
 			
 			if(project=="CEGS") {
@@ -283,9 +283,9 @@ if(project %in% c("humanENCODEdnase", "mouseENCODEchipseq")) {
 	dataReplist <- lapply(dataRep, function(repDF) {
 		head(repDF)
 		#repDF$Replicate <- NA
-		if ( nrow(repDF[grep('UW', repDF$Uni),]) >0 ) {
-			 repDF[grep('UW', repDF$Uni),]$Replicate <- rank(-as.numeric(repDF[grep('UW', repDF$Uni),]$analyzed_reads))
-			 repDF[grep('UW', repDF$Uni, invert=T),]$Replicate <- rank(-as.numeric(repDF[grep('UW', repDF$Uni , invert=T),]$analyzed_reads)) + nrow(repDF[grep('UW', repDF$Uni),])
+		if ( nrow(repDF[grep('UW', repDF$Institution),]) >0 ) {
+			 repDF[grep('UW', repDF$Institution),]$Replicate <- rank(-as.numeric(repDF[grep('UW', repDF$Institution),]$analyzed_reads))
+			 repDF[grep('UW', repDF$Institution, invert=T),]$Replicate <- rank(-as.numeric(repDF[grep('UW', repDF$Institution , invert=T),]$analyzed_reads)) + nrow(repDF[grep('UW', repDF$Institution),])
 		} else {
 			repDF$Replicate <- rank(-as.numeric(repDF$analyzed_reads))
 		}
@@ -304,7 +304,7 @@ if(project %in% c("humanENCODEdnase", "mouseENCODEchipseq")) {
 
 
 #Output file:
-write.table(subset(data, select=-c(Uni)), file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)
+write.table(data, file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)
 
 # message(warnings())
 
