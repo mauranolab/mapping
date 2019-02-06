@@ -139,7 +139,9 @@ for(curdir in mappeddirs){
 		sampleFile <- readLines(paste0(pwd, '/', curdir, '/', mergedFile), n=2000)
 		
 		
-		#TODO Use unlist(strsplit(sampleFile[grep('^Running ', sampleFile)], ","))[2] instead?
+		#TODO Use unlist(strsplit(sampleFile[grep('^Running ', sampleFile)], ","))[2] to autodetect assay types
+		#eg: "Running mapBwaAln,chipseq analysis for sample MEL-UBTF-ENCLB554CKJ (ENCLB554CKJ) against genome mm10"
+		#chipseq, callsnps or dnase
 		if(project=="CEGS") {
 			# Check for DNase analysis files.
 			if(any(grepl('dnase analysis', sampleFile))) next;

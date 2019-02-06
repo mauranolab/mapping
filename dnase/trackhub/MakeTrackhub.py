@@ -61,7 +61,8 @@ hub, genomes_file, genome, trackdb = default_hub(
 Group = sorted(set([line['Group'] for line in input_data]))
 
 for curGroup in Group:
-    curGroup_trackname = re.sub(r'\W+', '', curGroup) 
+    curGroup_trackname = args.genome + "_" + curGroup
+    curGroup_trackname = re.sub(r'\W+', '', curGroup_trackname) 
     
     composite = CompositeTrack(
         name=curGroup_trackname,
@@ -136,7 +137,7 @@ for curGroup in Group:
             view="Coverage",
             visibility="hide",
             tracktype="bigWig",
-            viewLimits = "0:3",
+            viewLimits = "0:500",
             autoScale='off',
             maxItems=10000,
             short_label="Coverage",
@@ -205,7 +206,6 @@ for curGroup in Group:
             name="replicate",
             label="Replicate",
             mapping=OrderedDict(sorted(repDict.items(), key=lambda x: x[1]))),
-            #mapping=dict(rep1="rep1", rep2="rep2", repOther="repOther")),
             
         SubGroupDefinition(
             name="DSnumber",
@@ -227,9 +227,7 @@ for curGroup in Group:
     locale.setlocale(locale.LC_ALL, 'en_US')
     for curSample in matchingSamples:
         cellTypeLR = re.sub(r'_L$|_R$', '', curSample['Name'])
-        cellTypeLR_trackname = cellTypeLR + "_" + curSample['DS']
-        if True:
-            cellTypeLR_trackname = curGroup + "_" + cellTypeLR_trackname
+        cellTypeLR_trackname = args.genome + "_" + curGroup + "_" + cellTypeLR + "_" + curSample['DS']
         #TODO track Must begin with a letter and contain only the following chars: [a-zA-Z0-9_].
         cellTypeLR_trackname = re.sub(r'\W+', '', cellTypeLR_trackname)
         cellTypeLR_trackname = re.sub(r'-', '_', cellTypeLR_trackname)
@@ -283,7 +281,7 @@ for curGroup in Group:
                 name=cellTypeLR_trackname + '_cov',
                 short_label=cellTypeLR + "-" + curSample['DS'],
                 long_label=args.assay + ' Coverage ' + sampleDescription,
-                viewLimits='0:3',
+                viewLimits='0:500',
                 autoScale='off',
                 url=args.URLbase + curSample['filebase'] + '.coverage.bw',
                 subgroups=sampleSubgroups, 
@@ -358,12 +356,12 @@ for curGroup in Group:
     
     #TODO #daler github trackhub/trackhub/track.py doesn't seem to offer dimensionAchecked as option
     if (args.assay == "DNase-seq"):
-        composite.add_params(dimensions="dimY=cellType dimA=replicate dimX=Age") #MTM 2018jul30 broke: , dimensionAchecked ="rep1"
+        composite.add_params(dimensions="dimY=cellType dimA=replicate dimX=Age")
     elif (args.assay == "DNA"):
-        composite.add_params(dimensions="dimY=cellType")#, dimensionAchecked ="rep1",  dimensionBchecked="UW"
+        composite.add_params(dimensions="dimY=cellType")
     else:
         # ChIP-seq
-        composite.add_params(dimensions="dimY=Assay dimA=replicate dimX=cellType")#, dimensionAchecked ="rep1",  dimensionBchecked="UW"
+        composite.add_params(dimensions="dimY=Assay dimA=replicate dimX=cellType")
     
     
     # Demonstrate some post-creation adjustments...here, just make control samples gray
