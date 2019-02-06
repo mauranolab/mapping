@@ -90,14 +90,16 @@ cd ..
 ## Annotate samples for trackhub
 ```
 cd ${base}/mapped
-Rscript --vanilla ${src}/trackhub/samplesforTrackhub.R --file ${base}/SampleIDs.tsv --out ${base}/SamplesForTrackhub.tsv
+project=humanENCODEdnase
+#project=mouseENCODEchipseq
+Rscript --vanilla ${src}/trackhub/samplesforTrackhub.R --file ${base}/SampleIDs.tsv --project ${project} --out ${base}/SamplesForTrackhub.tsv
 ```
 ## Create trackhub
 This script creates the hub, and genome file at the output location, and creates a subdirectory named hg38 containing the trackhub.txt  
 This should be run after all DNase samples have been processed. You will need to create the trackhub/hub.txt and trackhub/genomes.txt landing page.
 ```
 mkdir -p ${base}/trackhub/hg38
-python ${src}/trackhub/DalerTrackhub.py --genome hg38 --assay DNase-seq --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/ ${base}/SamplesForTrackhub.tsv > ${base}/trackhub/hg38/trackDb.txt
+python ${src}/trackhub/MakeTrackhub.py --genome hg38 --assay DNase-seq --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/ ${base}/SamplesForTrackhub.tsv > ${base}/trackhub/hg38/trackDb.txt
 cd ..
 ```
 For debugging trackhub, add "udcTimeout=1&" to browser URL
