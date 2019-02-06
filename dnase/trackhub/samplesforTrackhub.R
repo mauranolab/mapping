@@ -162,8 +162,6 @@ for(curdir in mappeddirs){
 			# We need to add a new row to "data".  The values will be set within this for loop.
 			data[i,] <- NA
 			
-            # Need to test that this is working as intended in all cases.
-			#colGroup <- col2rgb(as.character(col[rownames(col) %in% gsub("-.*", '', mappeddirs[j]),][1]))[,1]
 			colGroup <- col2rgb(as.character(col[rownames(col) %in% gsub("-.*", '', curdir),][1]))[,1]
 			
 			data$Name[i] <- SampleIDsplit[1]
@@ -213,7 +211,6 @@ for(curdir in mappeddirs){
 			if(project=="CEGS") {
 				data$filebase[i] <- paste0(curdir, "/", paste0(unlist(strsplit(basename(mergedFile), "\\."))[2:3], collapse="."))
 			} else {
-                # Needs to be tested
 				data$filebase[i] <- paste0(SampleID, "/", paste0(unlist(strsplit(basename(mergedFile), "\\."))[2:3], collapse="."))
 			}
 			
