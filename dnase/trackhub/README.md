@@ -47,7 +47,7 @@ python ${src}/trackhub/extractDSfromENCODE_JSON.py metadata.tsv -j JSON/ -o Samp
 
 ```
 #Double check that each library ID is unique for a given combination of cell type and histone mark/assay
-cut -f2,3,8 SampleIDs.raw.tsv | sort -k2,2 -k3,3 | uniq | cut -f1 | hist | awk '$1>1'
+mlr --tsv cut -f SampleAccession,Name,Assay then sort -f Name,Assay SampleIDs.raw.tsv | uniq | cut -f1 | hist | awk '$1>1'
 
 #miller can parse JSON files for ease of viewing, e.g.:
 mlr --json --jvstack head -n 2  JSON/ENCFF001HZO
@@ -57,7 +57,7 @@ cd ..
 10) Now make softlinks to fastq files to connect all files from same library
 ```
 mkdir renamed && cd renamed
-awk  -F'\t' '$1==$6 {print "ln -s ../fastq/" $6 ".fastq.gz " $1 "_" $2 "_R1.fastq.gz"; if($7!="") {print "ln -s ../fastq/" $7 ".fastq.gz " $1 "_" $2 "_R2.fastq.gz"}}' ../SampleIDs.tsv > makelinks.sh  
+awk  -F'\t' '$1==$6 {print "ln -s ../fastq/" $6 ".fastq.gz " $1 "_" $3 "_R1.fastq.gz"; if($7!="") {print "ln -s ../fastq/" $7 ".fastq.gz " $1 "_" $3 "_R2.fastq.gz"}}' ../SampleIDs.tsv > makelinks.sh  
 source makelinks.sh ;
 cd ..  
 ```
@@ -66,14 +66,14 @@ cd ..
 ## Mapped folder with inputs.txt and submit.sh
 ```
 mkdir mapped && cd mapped
-awk -v base="${base}/renamed" -F "\t" 'BEGIN {OFS="\t"} $1==$6 {print base "/" $1 "_" $2 "_R1.fastq.gz", $2; if($7!="") {print base "/" $1 "_" $2 "_R2.fastq.gz", $2}}' ../SampleIDs.tsv |
+awk -v base="${base}/renamed" -F "\t" 'BEGIN {OFS="\t"} $1==$6 {print base "/" $1 "_" $3 "_R1.fastq.gz", $3; if($7!="") {print base "/" $1 "_" $3 "_R2.fastq.gz", $2}}' ../SampleIDs.tsv |
 sort -k2,2 | cut -f1 > inputs.txt 
 
 cat ../SampleIDs.tsv |
 perl -pe 's/ /_/g;' -e 's/\-/_/g;' -e "s/[\(\)\'%]//g;" |
-awk -v src=${src} -F "\t" '{print src "/submit.sh hg38_noalt mapBwaAln,dnase " $3  " " $2}' |
+awk -v src=${src} -F "\t" '{print src "/submit.sh hg38_noalt mapBwaAln,dnase " $4  " " $3}' |
 #Use this line instead for ChIP-seq
-#awk -v src=${src} -F "\t" '{print src "/submit.sh hg38_noalt mapBwaAln,chipseq " $3 "-" $8  " " $2}' |
+#awk -v src=${src} -F "\t" '{print src "/submit.sh hg38_noalt mapBwaAln,chipseq " $4 "-" $8  " " $3}' |
 sort |
 uniq |
 sort -k4,3 |
