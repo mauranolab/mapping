@@ -37,21 +37,21 @@ opt = parse_args(opt_parser);
 
 if(is.null(opt$samplesA)){
 	print_help(opt_parser)
-	stop("Samples A must be provided\n", call.=FALSE)
+	stop("Samples A must be provided", call.=FALSE)
 }
 if(is.null(opt$typeA)){
 	print_help(opt_parser)
-	stop("Samples A type must be provided\n", call.=FALSE)
+	stop("Samples A type must be provided", call.=FALSE)
 }
 samplesA <- strsplit(opt$samplesA, split=',')[[1]]
 message(samplesA[1], '\n')
 
 if(!is.null(opt$samplesB)){
-	message("Samples B are provided\n")
+	message("Samples B are provided")
 	
 	if(is.null(opt$typeB)){
 		print_help(opt_parser)
-		stop("Samples B type must be provided\n", call.=FALSE)
+		stop("Samples B type must be provided", call.=FALSE)
 	}
 	
 	samplesB <- strsplit(opt$samplesB, split=',')[[1]]
@@ -59,13 +59,13 @@ if(!is.null(opt$samplesB)){
 }
 
 if(!is.null(opt$samplesC)){
-	message("Samples C are provided \n")
+	message("Samples C are provided")
 	if(is.null(opt$typeC)){
 		print_help(opt_parser)
-		stop("Samples C type must be provided\n", call.=FALSE)
+		stop("Samples C type must be provided", call.=FALSE)
 	}
 	if(is.null(opt$samplesB)){
-		stop("Samples B must be provided\n", call.=FALSE)
+		stop("Samples B must be provided", call.=FALSE)
 	}
 	samplesC <- strsplit(opt$samplesC, split=',')[[1]]
 	message(samplesC[1], '\n')
@@ -113,7 +113,11 @@ thresholdiPCR = 1
 
 getThreshold <- function(type, applyThreshold) {
 	if(applyThreshold) {
-		if(type=="iPCR") { thresh=thresholdiPCR } else {thresh=thresholdRNADNA}
+		if(type=="iPCR") {
+			thresh=thresholdiPCR
+		} else {
+			thresh=thresholdRNADNA
+		}
 	} else {
 		thresh=0
 	}
@@ -121,7 +125,7 @@ getThreshold <- function(type, applyThreshold) {
 }
 
 #TODO no arg handling
-rnadnapair <- function(BCpairs, typeA, typeB, applyThreshold=FALSE) {
+comparePair <- function(BCpairs, typeA, typeB, applyThreshold=FALSE) {
 	threshA = getThreshold(typeA, applyThreshold)
 	threshB = getThreshold(typeB, applyThreshold)
 	
@@ -170,8 +174,8 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesB) & is.null(opt$samplesC)) {
 	BCpairs$A <- as.character(BCpairs$A)
 	BCpairs$B <- as.character(BCpairs$B)
 	BCpairs <- BCpairs[BCpairs$A != BCpairs$B,]
-	usefulBCs <- rnadnapair(BCpairs, opt$typeA, opt$typeA, applyThreshold=F)
-	usefulBCs <- merge(usefulBCs, rnadnapair(BCpairs, opt$typeA, opt$typeA), by=c("Sample", "BS_A", "BS_B"))
+	usefulBCs <- comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=F)
+	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=T), by=c("Sample", "BS_A", "BS_B"))
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=opt$output, row.names=F, sep='\t', quote=F)
 }
 
@@ -181,8 +185,8 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesB) & is.null(opt$samplesC)) {
 #####
 if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & is.null(opt$samplesC)) {
 	BCpairs <- data.frame("A"=samplesA, "B"=samplesB, stringsAsFactors=F)
-	usefulBCs <- rnadnapair(BCpairs, opt$typeA, opt$typeB, applyThreshold=F)
-	usefulBCs <- merge(usefulBCs, rnadnapair(BCpairs, opt$typeA, opt$typeB), by=c("Sample", "BS_A", "BS_B"))
+	usefulBCs <- comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=F)
+	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=T), by=c("Sample", "BS_A", "BS_B"))
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=opt$output, row.names=F, sep='\t', quote=F)
 }
 
