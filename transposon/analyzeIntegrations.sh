@@ -194,7 +194,7 @@ echo "doing DistToTSS"
 closest-features --closest --dist --no-ref $OUTDIR/${sample}.uniqcoords.bed /vol/isg/annotation/bed/hg38/refseq_gene/refGene.CombinedTxStarts.bed | awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $2}' > $OUTDIR/DistToTSS.txt
 
 R --quiet --no-save << EOF
-#Work around error "unable to start device PNG" on ISG cluster
+#Work around "unable to start device PNG" on ISG cluster
 options(bitmapType="cairo") 
 
 filename <- "$OUTDIR/DistToTSS.txt"
@@ -224,7 +224,7 @@ echo "doing DisttoDpn"
 sort-bed $OUTDIR/${sample}.barcodes.coords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/Dpn/Dpn.bed | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
 
 R --quiet --no-save << EOF
-#Work around error "unable to start device PNG" on ISG cluster
+#Work around "unable to start device PNG" on ISG cluster
 options(bitmapType="cairo") 
 
 filename <- "$OUTDIR/DistDpn.bed"
@@ -250,7 +250,7 @@ echo "doing DisttoMspI"
 sort-bed $OUTDIR/${sample}.barcodes.coords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/MspI/MspI.bed | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
 
 R --quiet --no-save << EOF
-#Work around error "unable to start device PNG" on ISG cluster
+#Work around "unable to start device PNG" on ISG cluster
 options(bitmapType="cairo") 
 
 filename <- "$OUTDIR/DistDpn.bed"
@@ -277,7 +277,7 @@ sort-bed $OUTDIR/${sample}.barcodes.coords.bed | closest-features --dist  --deli
 
 #awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $2}'
 R --quiet --no-save << EOF
-#Work around error "unable to start device PNG" on ISG cluster
+#Work around "unable to start device PNG" on ISG cluster
 options(bitmapType="cairo") 
 
 filename <- "$OUTDIR/DistToDNase.bed"
