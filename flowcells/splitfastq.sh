@@ -46,16 +46,6 @@ if [[ "${orig_dir}" != "${orig_dir2}" ]]; then
     exit 2
 fi
 
-if [ -z "${FASTQ_BAK}" ]; then
-    echo "Removing original files"
-    rm -f ${R1_FASTQ} ${R2_FASTQ}
-else
-    echo "Backing up files to ${FASTQ_BAK}"
-    mkdir -p ${FASTQ_BAK}
-    mv ${R1_FASTQ} ${FASTQ_BAK}
-    mv ${R2_FASTQ} ${FASTQ_BAK}
-fi
-
 for RAW_FILE in `find ${TMPDIR}/splitfastq.${SAMPLE_NAME} -name "${SAMPLE_NAME}_R?_???"`; do
     FASTQ_FILENAME=`basename ${RAW_FILE}`
     if [ -e "${orig_dir}/${FASTQ_FILENAME}.fastq.gz" ]; then
@@ -69,6 +59,17 @@ for RAW_FILE in `find ${TMPDIR}/splitfastq.${SAMPLE_NAME} -name "${SAMPLE_NAME}_
     pigz -p ${NSLOTS} -c -9 ${RAW_FILE}.fastq > ${orig_dir}/${FASTQ_FILENAME}.fastq.gz
     rm -f ${RAW_FILE}.fastq
 done
+
+
+if [ -z "${FASTQ_BAK}" ]; then
+    echo "Removing original files"
+    rm -f ${R1_FASTQ} ${R2_FASTQ}
+else
+    echo "Backing up files to ${FASTQ_BAK}"
+    mkdir -p ${FASTQ_BAK}
+    mv ${R1_FASTQ} ${FASTQ_BAK}
+    mv ${R2_FASTQ} ${FASTQ_BAK}
+fi
 
 
 echo "Done compressing"
