@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eu -o pipefail
 
+echo "Paste in a full flowcell entry (including #header lines, followed by a newline and CTRL-D"
+
 #Boilerplate header
 cat /vol/mauranolab/flowcells/src/SampleSheet.template.txt > SampleSheet.csv
 
@@ -23,6 +25,12 @@ readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Load date" {print $2}' info.
 if [[ ! "${readgroup_date}" =~ 201[5-9]\-[0-2][0-9]\-[0123][0-9] ]]; then
     echo "WARNING: invalid FC load date ${readgroup_date}"
 fi
+
+
+#TODO not sure how to get a single quote inside
+cat info.txt | awk -F "\t" 'BEGIN {OFS="\t"; inheader=1}
+$1=="#Sample Name" && inheader==1 { inheader=0; next}
+inheader==0 && $1~/[\-%\(\)\"\/\. ]/ { print "WARNING: Sample name for " $1 "-" $2 " contains invalid characters" }'
 
 
 R --quiet --no-save << 'EOF'
