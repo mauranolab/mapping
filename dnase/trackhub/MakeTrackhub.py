@@ -97,7 +97,7 @@ for assay_type in assays:
     for curGroup in Group:
         # Suppress Replicate and/or Age in the Track Settings screen if they are all NAs.
         # SortOrder controls what is displayed, even if we retain all the subgroup definitions.
-        SortOrder = "cellType=+ DSnumber=+ view=+ "
+        SortOrder = "cellType=+ DS=+ view=+ "
         
         uniqueReplicates = [line['Replicate'] for line in input_data if(line['Group'] == curGroup)]
         if(not all(x == 'NA' for x in uniqueReplicates)):
@@ -272,7 +272,7 @@ for assay_type in assays:
             # Kent converts the underscores to spaces for display purposes.
             # Hyphens seem to be retained though.
             SubGroupDefinition(
-                name="DSnumber",
+                name="DS",
                 label="Sample_ID",
                 mapping=OrderedDict(sorted(DSdict.items(), key=lambda x: x[1]))),
                 
@@ -294,7 +294,8 @@ for assay_type in assays:
             cellTypeLR = re.sub(r'_L$|_R$', '', curSample['Name'])
             
             # Adding suffix
-            cellTypeLR_trackname = args.genome + "_" + curGroup + "_" + assay_suffix + "_" + cellTypeLR + "_" + curSample['DS'] + "_"
+            #BUGBUG assay_suffix needs to be the actual Assay for ChIP-seq tracks
+            cellTypeLR_trackname = args.genome + "_" + curGroup + "_" + assay_suffix + "_" + cellTypeLR + "_" + curSample['DS']
             #TODO track Must begin with a letter and contain only the following chars: [a-zA-Z0-9_].
             cellTypeLR_trackname = re.sub(r'\W+', '', cellTypeLR_trackname)
             cellTypeLR_trackname = re.sub(r'-', '_', cellTypeLR_trackname)
@@ -310,7 +311,7 @@ for assay_type in assays:
                     sampleDescriptionNumHotspots = locale.format("%d", int(curSample['Num_hotspots']), grouping=True) 
                 sampleDescription = cellTypeLR + "-" + curSample['DS'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, ' + curSample['SPOT'] + ' SPOT, ' + sampleDescriptionNumHotspots + ' Hotspots)' + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
             
-            sampleSubgroups = dict(cellType=cellTypeLR, Assay=curSample['Assay'], replicate=curSample['Replicate'], DSnumber=curSample['DS'], Age=re.sub(' ', '_', curSample['Age']))
+            sampleSubgroups = dict(cellType=cellTypeLR, Assay=curSample['Assay'], replicate=curSample['Replicate'], DS=curSample['DS'], Age=re.sub(' ', '_', curSample['Age']))
             
             
             track = Track(
