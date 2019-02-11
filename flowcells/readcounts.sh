@@ -55,7 +55,8 @@ for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="
         echo "$f1 $f2"
         #NB assumes PE reads
         #/vol/mauranolab/flowcells/src/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads} ${project}/Sample_${bs}/bak.fastq
-        qsub -S /bin/bash -j y -N split.${bs} -pe threads 4 "/vol/mauranolab/flowcells/src/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads} ${project}/Sample_${bs}/bak.fastq"
+        #add ${project}/Sample_${bs}/bak.fastq to make backup
+        qsub -S /bin/bash -j y -N split.${bs} -pe threads 4 "/vol/mauranolab/flowcells/src/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads}"
     done
 done
 
