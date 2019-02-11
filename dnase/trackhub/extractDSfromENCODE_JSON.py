@@ -113,7 +113,7 @@ try:
         # Pass file handle to csv.writer
         wr = csv.writer(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True)
         #N.B. Library provides ENCODE accession for samples with a DS number. paired-ended appears to be for legibility alone
-        wr.writerow(['SampleAccession', 'LibraryAccession', 'GroupID', 'Name', 'Single_or_Paired', 'R1', 'R2', 'Assay', 'Institution', 'Age'])
+        wr.writerow(['SampleAccession', 'LibraryAccession', 'DS', 'Name', 'Single_or_Paired', 'R1', 'R2', 'Assay', 'Institution', 'Age'])
         for sample_line in SampleFile_reader:
             getDS(sample_line)
 finally:
