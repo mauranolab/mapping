@@ -165,6 +165,9 @@ for(curdir in mappeddirs){
 			
 			data$Name[i] <- SampleIDsplit[1]
 			data$DS[i] <- SampleIDsplit[length(SampleIDsplit)]
+			if(project=="CEGS") {
+				data$Name[i] <- paste(data$Name[i], data$DS[i], sep="-")
+			}
 			data$Replicate[i] <- NA
 			data$Color[i] <- paste(colGroup[1], colGroup[2], colGroup[3], sep=',')
 			data$analyzed_reads[i] <- strsplit(analysisFileContents[grep('^Num_analyzed_(tags|reads)\t', analysisFileContents)], '\t')[[1]][2] #Tags is for old pipeline
