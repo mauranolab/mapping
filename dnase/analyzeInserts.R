@@ -10,7 +10,7 @@ old <- theme_update(panel.grid.major = element_blank(), panel.grid.minor = eleme
 old <- theme_update(panel.border = element_blank(), strip.background = element_blank()) #remove facet panel border
 
 
-#Try to work around error "unable to start device PNG" on ISG cluster
+#Try to work around "unable to start device PNG" on ISG cluster
 options(bitmapType="cairo") 
 
 if(length(commandArgs(TRUE) == 1)) {
