@@ -14,6 +14,7 @@ version="1.2"
 parser = argparse.ArgumentParser(prog = "createFlowcellSubmit", description = "Outputs submit commands for all samples from the info.txt located in the flowcell data folder", allow_abbrev=False)
 
 parser.add_argument('--flowcellIDs', action='store', type = str, help='Flowcell IDs (will look for /vol/mauranolab/flowcells/FCxxx/info.txt, multiple FCs separated by comma)', required=True)
+parser.add_argument('--sampletypes', action='store', type = str, help='Only process samples of this type (multiple projects separated by comma)', required=False)
 parser.add_argument('--projects', action='store', type = str, help='Only process samples in these projects (multiple projects separated by comma)', required=False)
 parser.add_argument('--samples', action='store', type = str, help='Only process samples matching this BS number (multiple samples separated by comma)', required=False)
 
@@ -41,6 +42,11 @@ if args.projects is None:
 else:
     projects = args.projects.split(",")
 
+if args.sampletypes is None:
+    sampletypes = None
+else:
+    sampletypes = args.sampletypes.split(",")
+
 if args.samples is None:
     samples = None
 else:
@@ -53,6 +59,7 @@ def transposonSamples(sampleName, sampleID, lab, sampleType, species, r1Trim, r2
     fullSampleName = sampleID + "-" + sampleName
     fileLocation = basedir + "/fastq/" + flowcellID + "/Project_" + lab + "/Sample_" + sampleID + '/"'
     
+    #Would like to put submit logfile in sample directory bu would need to mkdir first, or change qsub to do mkdir on -o: ' -o ' + fullSampleName + 
     qsub = "qsub -S /bin/bash -j y -N submit." + fullSampleName + ' -b y "/vol/mauranolab/transposon/src/'
     
     #default parameters that can be overriden below
@@ -60,29 +67,34 @@ def transposonSamples(sampleName, sampleID, lab, sampleType, species, r1Trim, r2
     bclen = "16"
     
     #Unique line to each library 
-    if sampleType == "Transposon DNA":
+    if sampleType == "Transposon DNA" or sampleType == "Transposon RNA":
         program= "submitBCcounts.sh"
-        bcread = "R2"
         plasmidSeq="AGCTGCACAGCAACACCGAGCTGGGCATCGTGGAGTACCAGCACGCCTTCAAGACCCCCATCGCCTTCGCCAGATC"
         extractBCargs="--no-BCrevcomp"
-    elif sampleType == "Transposon RNA":
-        program = "submitBCcounts.sh"
-        bcread = "R1"
-        plasmidSeq="AGCTGCACAGCAACACCGAGCTGGGCATCGTGGAGTACCAGCACGCCTTCAAGACCCCCATCGCCTTCGCCAGATC"
-        extractBCargs="--no-BCrevcomp"
-    elif sampleType == "Transposon iPCR":
+        if sampleType == "Transposon DNA":
+            bcread = "R2"
+        elif sampleType == "Transposon RNA":
+            bcread = "R1"
+        else:
+            raise Exception("IMPOSSIBLE")
+    elif sampleType == "Transposon iPCR" or sampleType == "Transposon iPCR Capture":
         program = "submitIntegrations.sh"
-        bcread = "R1"
-        plasmidSeq="CTTCCGACTTCAACTGTA"
-        extractBCargs="--no-BCrevcomp"
-    elif sampleType == "Transposon iPCR Capture":
-        program = "submitIntegrations.sh"
-        BCreadSeq="AAAGATCCCACAACTAGCBBBBBBBBBBBBBBBBCCTAATTGCCTAGAAAGGAGCAGACG"
-        bcread = "R2"
-        plasmidSeq="None"
-        extractBCargs="--BCrevcomp"
+        if sampleType == "Transposon iPCR":
+            bcread = "R1"
+            plasmidSeq="CTTCCGACTTCAACTGTA"
+            extractBCargs="--no-BCrevcomp"
+        elif sampleType == "Transposon iPCR Capture":
+            BCreadSeq="AAAGATCCCACAACTAGCBBBBBBBBBBBBBBBBCCTAATTGCCTAGAAAGGAGCAGACG"
+            bcread = "R2"
+            plasmidSeq="None"
+            extractBCargs="--BCrevcomp"
+        else:
+            raise Exception("IMPOSSIBLE")
     else:
         raise Exception("Can't handle sampleType" + sampleType)
+    
+    global doTransposonCleanup
+    doTransposonCleanup = True
     
     submitCommand = ' '.join([qsub + program, fullSampleName, BCreadSeq, str(r1Trim), str(r2Trim), bclen, bcread, plasmidSeq, extractBCargs, fileLocation])
     return(submitCommand)
@@ -145,7 +157,7 @@ def DNA(sampleName, sampleID, lab, sampleType, species):
 
 ###Dispatch appropriate function handler per sample line
 #Takes dict representing a single row from the FC file iterator and returns the processing command line
-def annotateSample(Sampleline, projects, samples):
+def annotateSample(Sampleline, projects, sampletypes, samples):
     try:
         sampleName=Sampleline["#Sample Name"]
         sampleID=Sampleline["Sample #"]
@@ -154,6 +166,9 @@ def annotateSample(Sampleline, projects, samples):
         species=Sampleline["Species"]
         r1Trim=str(Sampleline["R1 Trim (P5)"])
         r2Trim=str(Sampleline["R2 Trim (P7)"])
+        
+        if sampletypes is not None and sampleType not in sampletypes:
+            return
         
         if projects is not None and lab not in projects:
             return
@@ -188,6 +203,7 @@ def annotateSample(Sampleline, projects, samples):
 #Read in flowcell and create a submit script for all samples with BS number
 ####
 doDNaseCleanup = False
+doTransposonCleanup = False
 
 
 print("#", ' '.join(sys.argv), sep="")
@@ -214,10 +230,18 @@ for flowcellID in flowcellIDs:
     for index, line in flowcellFile.iterrows():
         if args.verbose:
             print("\nParsing:\n" + str(line), file=sys.stderr)
-        annotateSample(line, projects, samples)
+        annotateSample(line, projects, sampletypes, samples)
 
 
 if doDNaseCleanup:
     print()
-    print("qsub -S `which Rscript` -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeInserts.R\"")
+    print("qsub -S /bin/bash -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeInserts.R\"")
     print("qsub -S /bin/bash -j y -N mapped_readcounts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/mapped_readcounts.sh")
+    print("rm -f sgeid.analysis")
+
+
+#BUGBUG doesn't work since we don't have the pid of the final job at submission time
+#if doTransposonCleanup:
+#    print()
+#    print("qsub -S /bin/bash -b y -j y -N transposon_info -hold_jid `cat sgeid.merge | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/transposon/src/Flowcell_Info.sh /home/mauram01/public_html/flowcellInfo/\"")
+#    print("rm -f sgeid.merge")
