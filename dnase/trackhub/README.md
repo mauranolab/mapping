@@ -92,7 +92,7 @@ cd ..
 cd ${base}/mapped
 project=humanENCODEdnase
 #project=mouseENCODEchipseq
-Rscript --vanilla ${src}/trackhub/samplesforTrackhub.R --file ${base}/SampleIDs.tsv --project ${project} --out ${base}/SamplesForTrackhub.tsv
+${src}/trackhub/samplesforTrackhub.R --file ${base}/SampleIDs.tsv --project ${project} --out ${base}/SamplesForTrackhub.tsv
 ```
 ## Create trackhub
 This script creates the hub, and genome file at the output location, and creates a subdirectory named hg38 containing the trackhub.txt  
