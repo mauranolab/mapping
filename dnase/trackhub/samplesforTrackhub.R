@@ -219,30 +219,30 @@ for(curdir in mappeddirs){
 					data$Group[i] <- paste0(flowcell_dates[[curFC]] , "_" , data$Group[i]) #Group values will now be in the form of YYYMMDD_<flowcell>
 				}
 			} else if(project=="humanENCODEdnase") {
-				if(data$Institution[i] != "Duke") {
-					#Divide samples based on category
-					if(length(grep('^CD|^[hi]?T[hHR][0-9]+$|^GM[012][0-9][0-9][0-9][0-9]|B_cell|neutrophil|natural_killer|regulatory_T_cell|macrophage|CH12LX|G1E|mononuclear|dendritic', data$Name[i]))>0){data$Group[i]<-'Hematopoietic cells'}
-					if(length(grep('ES|^H[0-9]|^iPS|E14TG2a4',data$Name[i]))>0){data$Group[i]<-'Pluripotent'}
-					if(length(grep('^f[A-Z]', data$Name[i]))>0){data$Group[i] <- 'Fetal-REMC'}
-					if(length(grep('testis|spinal|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|prostate|intest|medull|[Ll]iver|aggregated_lymphoid_nodule|aorta|artery|psoas|stomach|testes|tibial_artery|vagina|omental_fat_depot|fetal_umbilical_cord|pons|medial_popliteal_nerve|globus|Spleen', data$Name[i][grep('^f[A-Z]', data$Name[i], invert=T)], ignore.case=T, invert=F))>0){data$Group[i] <- 'Tissues'}
+				if(data$Institution[i] == "Duke") {
+					data$Group[i] <- data$Institution[i]
+				} else {
+					if(grepl('^CD|^[hi]?T[hHR][0-9]+$|^GM[012][0-9][0-9][0-9][0-9]|B_cell|neutrophil|natural_killer|regulatory_T_cell|macrophage|CH12LX|G1E|mononuclear|dendritic', data$Name[i])){data$Group[i] <- 'Hematopoietic cells'}
+					if(grepl('ES|^H[0-9]|^iPS|E14TG2a4', data$Name[i])){data$Group[i] <- 'Pluripotent'}
+					if(grepl('^f[A-Z]', data$Name[i])){data$Group[i] <- 'Fetal-REMC'}
+					if(grepl('^[^f](testis|spinal|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|prostate|intest|medull|[Ll]iver|aggregated_lymphoid_nodule|aorta|artery|psoas|stomach|testes|tibial_artery|vagina|omental_fat_depot|fetal_umbilical_cord|pons|medial_popliteal_nerve|globus|Spleen)', data$Name[i], ignore.case=T)){data$Group[i] <- 'Tissues'}
 				}
 			} else if(project=="mouseENCODEchipseq"){
-				if(length(grep('Broad|Duke|HAIB|HMS|Stanford|UMass|USC|UTA|UW|Yale|UCSD', data$Group[i], ignore.case=T))>0){data$Group[i]<-'Cell lines'}
-				if(length(grep('^CD|^[hi]?T[hHR][0-9]+$|^GM[012][0-9][0-9][0-9][0-9]|B_cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|macrophage|CH12LX|G1E|mononuclear|dendritic', data$Name[i]))>0){data$Group[i]<-'Hematopoietic cells'}
-				if(length(grep('ES|^H[0-9]|^iPS|E14TG2a4' ,data$Name[i]))>0){data$Group[i]<-'Pluripotent'}
-				if(length(grep('HUES|H54|C2C12|myocyte', data$Name[i]))>0){data$Group[i]<-'Cell lines'}
-				if(length(grep('mesenchymal_stem_cell|trophoblast_cell|testis|spinal|aorta|body|breast|coronary_artery|neural_cell|omental_fat_pad|right_atrium_auricular_region|right_lobe_of_liver|spleen|stomach|tibial_artery|tibial_nerve|vagina|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|oesteoblast|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|liver|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|dendritic_cell|hepatocyte|mid_neurogenesis_radial_glial_cells|neuroepithelial_stem_cell|radial_glial_cell|prostate|intest|medull|thymus|cerebellum|cortical_plate', data$Name[i],ignore.case=T,invert=F))>0 || length(grep('day',data$Age[i]))>0) {
-					if(length(grep('^H3',data$Assay[i]))>0) {
-						data$Group[i]<-'Tissues-Histone marks'
+				if(grepl('Broad|Duke|HAIB|HMS|Stanford|UMass|USC|UTA|UW|Yale|UCSD', data$Group[i], ignore.case=T)){data$Group[i] <- 'Cell lines'}
+				if(grepl('^CD|^[hi]?T[hHR][0-9]+$|^GM[012][0-9][0-9][0-9][0-9]|B_cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|macrophage|CH12LX|G1E|mononuclear|dendritic', data$Name[i])){data$Group[i] <- 'Hematopoietic cells'}
+				if(grepl('ES|^H[0-9]|^iPS|E14TG2a4', data$Name[i])){data$Group[i] <- 'Pluripotent'}
+				if(grepl('HUES|H54|C2C12|myocyte', data$Name[i])){data$Group[i] <- 'Cell lines'}
+				if(grepl('mesenchymal_stem_cell|trophoblast_cell|testis|spinal|aorta|body|breast|coronary_artery|neural_cell|omental_fat_pad|right_atrium_auricular_region|right_lobe_of_liver|spleen|stomach|tibial_artery|tibial_nerve|vagina|Skin|bladder|urothelia|ventriculus|colon|limb|placenta|heart|cortex|kidney|bone|oesteoblast|pancrea|cardia|eye|renal|gonad|muscle|osteo|medulla|brain|ovary|olfact|uteru|fibroblast|lung|tongue|bowel|putamen|liver|esopha|gastro|ammon|derm|nucleus|gast|glom|gyrus|thyroid|adipo|neuron|dendritic_cell|hepatocyte|mid_neurogenesis_radial_glial_cells|neuroepithelial_stem_cell|radial_glial_cell|prostate|intest|medull|thymus|cerebellum|cortical_plate', data$Name[i], ignore.case=T) || grepl('day', data$Age[i])) {
+					if(grepl('^H3',data$Assay[i])) {
+						data$Group[i] <- 'Tissues-Histone marks'
 					} else {
-						data$Group[i]<-'Tissues-TFs'
+						data$Group[i] <- 'Tissues-TFs'
 					}
 				}
-				if(length(grep('eGFP|FLAG|MCF10A_Er_Src', data$Name[i], ignore.case=T))>0){data$Group[i]<-'Epitope-tagged TFs'}
-				if(length(grep('control', SampleID, ignore.case=T))>0){data$Group[i]<-'Control'}
-				if(data$Assay[i] == "CTCF"){data$Group[i]<-'CTCF'}
+				if(grepl('eGFP|FLAG|MCF10A_Er_Src', data$Name[i], ignore.case=T)){data$Group[i] <- 'Epitope-tagged TFs'}
+				if(grepl('control', SampleID, ignore.case=T)){data$Group[i] <- 'Control'}
+				if(data$Assay[i] == "CTCF"){data$Group[i] <- 'CTCF'}
 			} else {
-				#pre-populate group field with institution name
 				data$Group[i] <- data$Institution[i]
 			}
 			
@@ -256,7 +256,7 @@ if(project %in% c("humanENCODEdnase", "mouseENCODEchipseq")) {
 	#Fix sample age. 
 	#Only keep first entry e.g. male (week 7) male (week8)
 	data$Age <- gsub(').*', '', data$Age)
-	data$Age[grep('day', data$Age)] <- paste0(round(as.numeric(gsub(' day| days', '', data$Age[grep('day', data$Age)]))/7), ' weeks')
+	data$Age[grep('^[0-9]+ days?$', data$Age)] <- paste0(round(as.numeric(gsub(' days?', '', data$Age[grep('^[0-9]+ days?$', data$Age)]))/7), ' weeks')
 	
 	#Seems to be obselete
 	#Add replicate numbers based on highest number of non redundant reads
