@@ -219,7 +219,7 @@ for(curdir in mappeddirs){
 					data$Group[i] <- paste0(flowcell_dates[[curFC]] , "_" , data$Group[i]) #Group values will now be in the form of YYYMMDD_<flowcell>
 				}
 			} else if(project=="humanENCODEdnase") {
-				if(data$Group[i] != "Duke") {
+				if(data$Institution[i] != "Duke") {
 					#Divide samples based on category
 					if(length(grep('^CD|^[hi]?T[hHR][0-9]+$|^GM[012][0-9][0-9][0-9][0-9]|B_cell|neutrophil|natural_killer|regulatory_T_cell|macrophage|CH12LX|G1E|mononuclear|dendritic', data$Name[i]))>0){data$Group[i]<-'Hematopoietic cells'}
 					if(length(grep('ES|^H[0-9]|^iPS|E14TG2a4',data$Name[i]))>0){data$Group[i]<-'Pluripotent'}
