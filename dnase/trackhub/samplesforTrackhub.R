@@ -204,19 +204,16 @@ for(curdir in mappeddirs){
 			if(!is.null(inputSampleIDs)) {
 				#Matching the DS number from the analysis file to inputSampleIDs can give multiple results, so just pick the first
 				inputSampleIDrow <- which(inputSampleIDs[,"DS"] == data$DS[i])[1]
-				# Returns integer(0) when there is no match.
 			}
 			
 			if("Age" %in% colnames(inputSampleIDs)) {
 				data$Age[i] <- inputSampleIDs[inputSampleIDrow, "Age"]
-				# Returns NA for inputSampleIDrow = integer(0)
 			} else {
 				data$Age[i] <- NA
 			}
 			
 			if("Institution" %in% colnames(inputSampleIDs)) {
 				data$Institution[i] <- inputSampleIDs[inputSampleIDrow, "Institution"]
-				# Returns NA for inputSampleIDrow = integer(0)
 				if(project=="humanENCODEdnase") {
 					if(data$Institution[i] == 'UMass') {data$Institution[i] <- 'UW'}
 				}
