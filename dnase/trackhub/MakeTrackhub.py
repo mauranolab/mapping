@@ -15,6 +15,7 @@ parser.add_argument('Input', action='store', help='Input tsv file with sample me
 #NB Exclude not used right now 
 parser.add_argument('--genome', action='store', required=True, help='genome assembly name')
 parser.add_argument('--URLbase', action='store', required=True, help='URL base at which track files are hosted')
+parser.add_argument('--supertrack', action='store', required=False, help='Encompass all composite tracks generated within supertrack. Supertrack name specifiied as parameter.')
 
 
 def natural_key(string_):
@@ -51,9 +52,6 @@ for assay_type in set([line.get('Assay') for line in input_data_all]):
         #NB this will pick up any samples whose type doesn't match the above
         assays.add("ChIP-seq")
 
-# If there are multiple assay types, wrap everything in a supertrack. TODO better as command line opt?
-doSuperTrack = len(assays) > 1
-
 
 ########
 #Create hub file
@@ -67,12 +65,12 @@ hub, genomes_file, genome, trackdb = default_hub(
     email="maurano@nyu.edu")
 
 
-if doSuperTrack:
-    super01 = SuperTrack(
-        name="super01",
-        short_label="Flowcells",
-        long_label="Flowcells")
-    trackdb.add_tracks(super01)
+if(args.supertrack is not None):
+    supertrack = SuperTrack(
+        name=args.supertrack,
+        short_label=args.supertrack,
+        long_label=args.supertrack)
+    trackdb.add_tracks(supertrack)
 
 
 # Now build the composites, and add them all to the supertrack.
@@ -444,8 +442,8 @@ for assay_type in assays:
         #    if 'control' in track.name:
         #     track.add_params(color="100,100,100")
         
-        if doSuperTrack:
-            super01.add_tracks(composite)
+        if(args.supertrack is not None):
+            supertrack.add_tracks(composite)
         else:
             trackdb.add_tracks(composite)
 
@@ -453,5 +451,3 @@ for assay_type in assays:
 #print("\n")
 print(trackdb)
 print("\n")
-
-

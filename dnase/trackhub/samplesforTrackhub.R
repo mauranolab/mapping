@@ -52,8 +52,9 @@ if(!is.null(opt$inputfile)) {
 		inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$DS),]
 		message('Number of unique DS numbers: ', length(unique(inputSampleIDs$DS)))
 	}
-	message('Dimensions of Input file: ', nrow(unique(inputSampleIDs)), ' rows x ', nrow(unique(inputSampleIDs)))
+	message('Dimensions of Input file: ', nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
 } else {
+	# This is the case for project==CEGS
 	inputSampleIDs <- NULL
 }
 
@@ -66,20 +67,24 @@ if(project=="CEGS") {
 	flowcell_dates = list()
 	for(flowcell in list.dirs(path=pwd, full.names=F, recursive = F)) {
 		# To temporarily skip flowcell directories which are incomplete.
-		# if(flowcell=='FCH75CLAFXY') next;
+		# if(flowcell=='FCH2NNMBBXY') next;
 		
 		projectdirs <- append(projectdirs, paste0(flowcell, "/", list.dirs(path=paste0(pwd, "/", flowcell, "/"), full.names=F, recursive = F)))
 		
 		# Get flowcell date
 		infofile <- paste('/vol/mauranolab/flowcells/data/', flowcell, '/info.txt', sep="")
-		if(exists(infofile)) {
+		if(file.exists(infofile)) {
 			infofile_lines <- readLines(infofile)
 			flowcell_dates[[flowcell]] <- gsub(unlist(strsplit(infofile_lines[grep("#Load date", infofile_lines)], '\t'))[2], pattern='-', replacement='')
-		} 
+		} else { 
+			message("WARNING No info.txt file found for ", infofile)
+			flowcell_dates[[flowcell]] <- NA
+		}
 	}
 } else {
 	projectdirs <- "."
 }
+
 
 # Get paths of sample directories relative to pwd
 mappeddirs <- NULL
@@ -96,10 +101,9 @@ mappeddirs <- mappeddirs[grep('Project_CEGS/new', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('bak', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('trash', mappeddirs, invert=TRUE)]
 
-#Thes should show up in old pipeline
+#These should show up in old pipeline
 mappeddirs <- mappeddirs[grep('hotspots', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('fastqc', mappeddirs, invert=TRUE)]
-
 
 message('Mapped directories to process: ', length(mappeddirs))
 
@@ -115,6 +119,8 @@ col <- gsub('#FFFFFF', '#BEAED4', col)
 groupnames <- gsub("-.*", '', mappeddirs)
 col <- rep(col, round(length(groupnames)/length(col), 2))[as.factor(unique(groupnames))]	 
 col <- as.data.frame(col, unique(groupnames))
+# For testing, note that col depends on the number of group names. 
+# This will vary as new flowcells & samples become active.
 
 
 # Initialize "data" with just column names.  We'll be adding rows to this later on in the code.
@@ -131,6 +137,7 @@ for(curdir in mappeddirs){
 	
 	if(length(analysisFiles)==0) {
 		message("WARNING No analysis files found in ", curdir)
+		next # Nothing follows here except for the long 'for(analysisFile...' loop.
 	}
 	
 	for(analysisFile in analysisFiles) {
@@ -150,6 +157,7 @@ for(curdir in mappeddirs){
 				#assume dnase for old pipeline
 				analysisCommand <- "dnase"
 			}
+			
 			if(analysisCommand=="dnase") {
 				data$Assay[i] <- "DNase-seq"
 			} else if(analysisCommand=="callsnps") {
@@ -157,7 +165,7 @@ for(curdir in mappeddirs){
 			} else if(analysisCommand=="chipseq") {
 				data$Assay[i] <- SampleIDsplit[2]
 			} else {
-				message("WARNING: can't parse SampleID properly")
+				message("WARNING: can't parse SampleID properly. analysisCommand is: ", analysisCommand)
 				data$Assay[i] <- NA
 			}
 			
@@ -168,6 +176,7 @@ for(curdir in mappeddirs){
 			if(project=="CEGS") {
 				data$Name[i] <- paste(data$Name[i], data$DS[i], sep="-")
 			}
+			
 			data$Replicate[i] <- NA
 			data$Color[i] <- paste(colGroup[1], colGroup[2], colGroup[3], sep=',')
 			data$analyzed_reads[i] <- strsplit(analysisFileContents[grep('^Num_analyzed_(tags|reads)\t', analysisFileContents)], '\t')[[1]][2] #Tags is for old pipeline
@@ -195,16 +204,19 @@ for(curdir in mappeddirs){
 			if(!is.null(inputSampleIDs)) {
 				#Matching the DS number from the analysis file to inputSampleIDs can give multiple results, so just pick the first
 				inputSampleIDrow <- which(inputSampleIDs[,"DS"] == data$DS[i])[1]
+				# Returns integer(0) when there is no match.
 			}
 			
 			if("Age" %in% colnames(inputSampleIDs)) {
 				data$Age[i] <- inputSampleIDs[inputSampleIDrow, "Age"]
+				# Returns NA for inputSampleIDrow = integer(0)
 			} else {
 				data$Age[i] <- NA
 			}
 			
 			if("Institution" %in% colnames(inputSampleIDs)) {
 				data$Institution[i] <- inputSampleIDs[inputSampleIDrow, "Institution"]
+				# Returns NA for inputSampleIDrow = integer(0)
 				if(project=="humanENCODEdnase") {
 					if(data$Institution[i] == 'UMass') {data$Institution[i] <- 'UW'}
 				}
@@ -213,6 +225,8 @@ for(curdir in mappeddirs){
 			}
 			
 			if(project=="CEGS") {
+				data$Institution[i] <- "NYU" # Since we will stop using input file for project==CEGS
+				
 				curFC <- unlist(strsplit(curdir, "/"))[1] 
 				data$Group[i] <- curFC
 				if(curFC %in% names(flowcell_dates)) {
@@ -297,4 +311,3 @@ write.table(data, file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)
 # message(warnings())
 
 message("Done!!!")
-
