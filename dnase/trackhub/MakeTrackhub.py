@@ -292,7 +292,6 @@ for assay_type in assays:
             cellTypeLR = re.sub(r'_L$|_R$', '', curSample['Name'])
             
             # Adding suffix
-            #BUGBUG assay_suffix needs to be the actual Assay for ChIP-seq tracks
             cellTypeLR_trackname = args.genome + "_" + curGroup + "_" + curSample['Assay'] + "_" + cellTypeLR + "_" + curSample['DS']
             #TODO track Must begin with a letter and contain only the following chars: [a-zA-Z0-9_]. Make this consistent with the rest below (e.g. Age)
             cellTypeLR_trackname = re.sub(r'\W+', '', cellTypeLR_trackname)
