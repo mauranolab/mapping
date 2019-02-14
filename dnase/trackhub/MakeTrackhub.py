@@ -293,12 +293,10 @@ for assay_type in assays:
             
             # Adding suffix
             #BUGBUG assay_suffix needs to be the actual Assay for ChIP-seq tracks
-            cellTypeLR_trackname = args.genome + "_" + curGroup + "_" + assay_suffix + "_" + cellTypeLR + "_" + curSample['DS']
-            #TODO track Must begin with a letter and contain only the following chars: [a-zA-Z0-9_].
+            cellTypeLR_trackname = args.genome + "_" + curGroup + "_" + curSample['Assay'] + "_" + cellTypeLR + "_" + curSample['DS']
+            #TODO track Must begin with a letter and contain only the following chars: [a-zA-Z0-9_]. Make this consistent with the rest below (e.g. Age)
             cellTypeLR_trackname = re.sub(r'\W+', '', cellTypeLR_trackname)
             cellTypeLR_trackname = re.sub(r'-', '_', cellTypeLR_trackname)
-            
-            #BUGBUG age not geting included for mouse ENCODE
             
             if assay_type == "DNA":
                 sampleDescription = cellTypeLR + "-" + curSample['DS'] + ' ' + curSample['Genomic_coverage'] + 'x Genomic Coverage (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads)' + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
