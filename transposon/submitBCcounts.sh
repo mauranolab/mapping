@@ -84,22 +84,30 @@ else
     cutadapt --quiet -u ${R2trim} ${f2} > $TMPDIR/${sample}.R2.fastq
 fi
 
-#BUGBUG how come this is done differently vs submitIntegrations?
-if [[ "${bc1pattern}" != "" ]]; then
-    bc1pattern="--bc-pattern ${bc1pattern}"
-fi
-if [[ "${bc2pattern}" != "" ]]; then
-    bc2pattern=" --bc-pattern2 ${bc2pattern}"
-fi
-echo "umi_tools extract ${bc1pattern} ${bc2pattern}"
 
-#/home/mauram01/.local/bin/umi_tools extract --help
-#BUGBUG umi_tools installed in python3.5 module missing matplotlib??? also .local by default is not group-readable
-zcat -f ${f1} | /home/mauram01/.local/bin/umi_tools extract ${bc1pattern} ${bc2pattern} --read2-in=$TMPDIR/${sample}.R2.fastq --read2-out=$TMPDIR/${sample}.R2.out.fastq -v 0 --log=$TMPDIR/${sample}.umi.log |
-gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz
-gzip -1 -c $TMPDIR/${sample}.R2.out.fastq > $TMPDIR/${sample}.R2.fastq.gz
-gzip -9 -c $TMPDIR/${sample}.umi.log > $OUTDIR/${sample}.umi.log.gz
-
+if [[ "${bc1pattern}" == "X" && "${bc2pattern}" == "X" ]]; then
+    echo "No UMI -- just concatenating files"
+    #umi_tools extract requires at least 1 bp of UMI
+    zcat -f ${f1} | gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz
+    gzip -1 -c $TMPDIR/${sample}.R2.fastq > $TMPDIR/${sample}.R2.fastq.gz
+else
+    #BUGBUG how come this is done differently vs submitIntegrations?
+    if [[ "${bc1pattern}" != "X" ]]; then
+        bc1pattern="--bc-pattern ${bc1pattern}"
+    fi
+    if [[ "${bc2pattern}" != "X" ]]; then
+        bc2pattern="--bc-pattern2 ${bc2pattern}"
+    fi
+    
+    echo "umi_tools extract ${bc1pattern} ${bc2pattern}"
+    
+    #/home/mauram01/.local/bin/umi_tools extract --help
+    #BUGBUG umi_tools installed in python3.5 module missing matplotlib??? also .local by default is not group-readable
+    zcat -f ${f1} | /home/mauram01/.local/bin/umi_tools extract ${bc1pattern} ${bc2pattern} --read2-in=$TMPDIR/${sample}.R2.fastq --read2-out=$TMPDIR/${sample}.R2.out.fastq -v 0 --log=$TMPDIR/${sample}.umi.log |
+    gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz
+    gzip -1 -c $TMPDIR/${sample}.R2.out.fastq > $TMPDIR/${sample}.R2.fastq.gz
+    gzip -9 -c $TMPDIR/${sample}.umi.log > $OUTDIR/${sample}.umi.log.gz
+fi
 
 echo
 echo "Filtering out reads with >75% G content"
