@@ -403,10 +403,6 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         fi
     fi
     
-#    if [[ "${processingCommand}" == "mapBwaAln" ]]; then
-#        
-#    fi
-    
     samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${curfile}.sortbyname -l 1 -n $TMPDIR/${curfile}.${curGenome}.bwaout.bam |
     #not much gain other than avoiding disk IO this as I don't think sort prints any intermediate results. Perhaps sorting fastq before mapping would be faster? https://www.biostars.org/p/15011/
     ${src}/filter_reads.py ${unwanted_refs} ${dropUnmappedReads} --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} --max_insert_size ${maxInsertSize} - ${sampleOutdir}/${curfile}.${curGenome}.bam
