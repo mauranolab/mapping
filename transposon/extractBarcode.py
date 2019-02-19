@@ -224,7 +224,10 @@ try:
         
         
         if readBCpassed and readPlasmidpassed and readMinbaseQpassed and readLengthpassed and (enforcePlasmidRead or readPlasmidpassed):
-            UMI_Seq = readname[1]
+            if(len(readname)>1):
+                UMI_Seq = readname[1]
+            else:
+                UMI_Seq = ""
             print(bc_seq, readname[0], UMI_Seq, sep="\t")
         else:
             numskipped += 1 
