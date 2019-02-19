@@ -54,6 +54,7 @@ awk -F "\t" 'BEGIN {OFS="\t"} !and($4, 512) {print $1, $2, $3}' > ${TMPDIR}/${na
 echo
 echo "Making coverage track"
 date
+#This track excludes PCR duplicates, unmapped segments, and QC fail reads
 bedops --chrom ${chrom} --chop 1 ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed |
 bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed |
 awk -F "\t" 'BEGIN {OFS="\t"} \
@@ -74,6 +75,7 @@ END {curOutputLine++; if(NR!=lastPrinted) {print lastChrom, firstStart, lastEnd,
 echo
 echo "Making allreads coverage track"
 date
+#This track excludes PCR duplicates and unmapped segments
 bedops --chrom ${chrom} --chop 1 ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withflag.bed |
 bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withflag.bed |
 awk -F "\t" 'BEGIN {OFS="\t"} \
