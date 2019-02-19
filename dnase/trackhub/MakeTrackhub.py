@@ -360,8 +360,7 @@ for assay_type in assays:
                     long_label=assay_type + ' Density ' + sampleDescription,
                     viewLimits='0:3',
                     autoScale='off',
-                    #TODO pipeline has switched to .density.bw
-                    url=args.URLbase + curSample['filebase'] + '.bw',
+                    url=args.URLbase + curSample['filebase'] + '.density.bw',
                     subgroups=sampleSubgroups, 
                     tracktype='bigWig',
                     color=curSample['Color'],
