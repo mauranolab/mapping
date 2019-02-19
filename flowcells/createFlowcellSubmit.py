@@ -126,7 +126,7 @@ def DNase(sampleName, sampleID, lab, sampleType, species):
     reference = speciesToGenomeReference[species]
     
     fullSampleName = sampleID + "-" + sampleName
-    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + reference + " mapBwaAln,dnase " + sampleName + " " + sampleID
+    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + reference + " mapBwaAln," + ("chipseq" if sampleType == "ChIP-seq" else "dnase") + " " + sampleName + " " + sampleID
     
     global doDNaseCleanup
     doDNaseCleanup = True
@@ -235,7 +235,7 @@ for flowcellID in flowcellIDs:
 
 if doDNaseCleanup:
     print()
-    print("qsub -S /bin/bash -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeInserts.R\"")
+    print("qsub -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeInserts.R\"")
     print("qsub -S /bin/bash -j y -N mapped_readcounts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/mapped_readcounts.sh")
     print("rm -f sgeid.analysis")
 
