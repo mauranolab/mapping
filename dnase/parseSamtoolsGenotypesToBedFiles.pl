@@ -47,7 +47,8 @@ while (<IN>) {
 #        warn "code2base $ref / $alt: $_ $code2base{$_}\n" for keys %code2base;
         
         my $totalDP = undef;
-        my($numRef, $numNonRef) = undef;
+        my $numRef = "NA";
+        my $numNonRef = "NA";
         foreach my $infoItem (split /\;/, $info) {
             my ($key,$value) = split /\=/, $infoItem;
             if ("DP" eq $key) {
@@ -60,14 +61,14 @@ while (<IN>) {
                 $numNonRef = $nonrefFwd+$nonrefRev;
             }
         }
-        unless (defined($totalDP) and defined($numRef) and defined($numNonRef) ) {
-            die "Failed to parse DP or DP4 from INFO ($info) in $_\n";
+        unless (defined($totalDP)) {
+            die "Failed to parse DP from INFO ($info) in $_\n";
         }
         #if ($totalDP < $min_total_depth_threshold) {
         #    #warn "Skipping $chrom $pos with total depth $totalDP < $min_total_depth_threshold\n";
         #    next;
         #}
-        if ($min_allele_depth_threshold > 0 and ($numRef < $min_allele_depth_threshold or $numNonRef < $min_allele_depth_threshold)) {
+        if ($min_allele_depth_threshold > 0 and (($numRef ne "NA" and $numRef < $min_allele_depth_threshold) or ($numNonRef ne "NA" and $numNonRef < $min_allele_depth_threshold))) {
             #warn "Skipping $chrom $pos with ref/nonref depth $numRef/$numNonRef < $min_allele_depth_threshold\n";
             next;
         }
@@ -115,6 +116,7 @@ sub sampleNamesFromFilenames {
 }
 
 sub parseGenotype {
+    #TODO generalize this rather than hardcoding format strings
     my ($format, $genotype, $code2base) = @_;
     my ($GT, $PL, $qualityScore, $readDepth);
     if ($format eq "GT:PL:GQ") {
@@ -127,6 +129,12 @@ sub parseGenotype {
         $qualityScore = $GQ;
         $GT = $GT1;
         $PL = $PL1;
+    } elsif ($format eq "GT:AD:DP:GQ:PP") {
+        my ($GT1,$AD,$DP,$GQ,$PP) = split /\:/, $genotype;
+        $readDepth = $DP;
+        $qualityScore = $GQ;
+        $GT = $GT1;
+        $PL = "NA";
     } elsif ($format eq "GT:PL:DP:SP:GQ") {
         my ($GT1,$PL1,$DP,$SP,$GQ) = split /\:/, $genotype;
         $readDepth = $DP;
