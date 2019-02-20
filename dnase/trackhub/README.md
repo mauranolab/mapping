@@ -40,7 +40,8 @@ for i in `tail -n +2 ../metadata.tsv | awk '{print $1}'`; do echo https://www.en
 ## SampleID file
 8) This step takes the metadata file as input, the folder with all JSON files, and a output filename  
 ```
-${src}/trackhub/extractDSfromENCODE_JSON.py metadata.tsv -j JSON/ -o SampleIDs.raw.tsv
+${src}/trackhub/extractDSfromENCODE_JSON.py metadata.tsv -j JSON/ -o /tmp/SampleIDs.raw.tsv
+mlr --tsv sort -f Name,Assay,DS /tmp/SampleIDs.raw.tsv > SampleIDs.raw.tsv
 ```
 
 9) Here it is important to change names in the sampleCellType column to be consistent across all samples. The biosample names chosen here will continue through the whole analysis. Save the edited file in SampleIDs.tsv
