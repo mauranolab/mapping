@@ -80,6 +80,8 @@ if(project=="CEGS") {
 			message("WARNING No info.txt file found for ", infofile)
 			flowcell_dates[[flowcell]] <- NA
 		}
+		
+		#TODO John -- generate FC summary .html files here
 	}
 } else {
 	projectdirs <- "."
