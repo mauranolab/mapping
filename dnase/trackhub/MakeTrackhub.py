@@ -10,13 +10,14 @@ import locale
 import csv
 import os
 
-parser = argparse.ArgumentParser(prog = "MakeTrackhub.py", description = "Creates a trackhub with composite and subtracks for all tracks.", add_help=True)
-parser.add_argument('Input', action='store', help='Input tsv file with sample metadata. Name, DS, Replicate, Color, Assay, analyzed_reads, SPOT, Num_hotspots, Exclude, Genomic_coverage, Group, Age, filebase')
+parser = argparse.ArgumentParser(prog = "MakeTrackhub.py", description = "Creates a trackhub with composite and subtracks for all tracks.", add_help = True)
+parser.add_argument('Input', action = 'store', help = 'Input tsv file with sample metadata. Name, DS, Replicate, Color, Assay, analyzed_reads, SPOT, Num_hotspots, Exclude, Genomic_coverage, Group, Age, filebase')
 #NB Exclude not used right now 
-parser.add_argument('--genome', action='store', required=True, help='genome assembly name')
-parser.add_argument('--URLbase', action='store', required=True, help='URL base at which track files are hosted')
-parser.add_argument('--supertrack', action='store', required=False, help='Encompass all composite tracks generated within supertrack. Supertrack name specifiied as parameter.')
-
+parser.add_argument('--genome', action = 'store', required = True, help = 'genome assembly name')
+parser.add_argument('--URLbase', action = 'store', required = True, help = 'URL base at which track files are hosted')
+parser.add_argument('--supertrack', action = 'store', required = False, help = 'Encompass all composite tracks generated within supertrack. Supertrack name specifiied as parameter.')
+#TODO John
+parser.add_argument('--generateHTMLdescription', action = 'store_true', default = False, help = 'Link to HTML descriptions for composite tracks, assumed to be present at [group name]_descriptions/[group name].html')
 
 def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
@@ -137,6 +138,7 @@ for assay_type in assays:
             visibility="hide",
             sortOrder=SortOrder,
             autoScale = "off",
+            #TODO John
             bigDataUrl ='NULL',
             maxHeightPixels= "100:32:8")
         
@@ -147,7 +149,7 @@ for assay_type in assays:
         #adding viewUi="off" seems to expand the panel by default, opposite expectation
         
         if (assay_type == "DNase-seq") or (assay_type == "ChIP-seq"):
-            Dens_view=ViewTrack(
+            Dens_view = ViewTrack(
                 name="Dens_view_" + curGroup_trackname,
                 view="Density",
                 visibility="full",
@@ -159,7 +161,7 @@ for assay_type in assays:
             composite.add_view(Dens_view)
             
         if (assay_type == "DNase-seq"):
-            Cuts_view=ViewTrack(
+            Cuts_view = ViewTrack(
                 name="Cuts_view_" + curGroup_trackname,
                 view="Cuts",
                 visibility="hide",
@@ -196,10 +198,10 @@ for assay_type in assays:
             Coverage_view = ViewTrack(
                 name="Coverage_view_" + curGroup_trackname,
                 view="Coverage",
-                visibility="hide",
+                visibility="full",
                 tracktype="bigWig",
                 viewLimits = "0:500",
-                autoScale='off',
+                autoScale='on',
                 short_label="Coverage",
                 long_label="Coverage")
             composite.add_view(Coverage_view)
@@ -313,9 +315,8 @@ for assay_type in assays:
                 name=cellTypeLR_trackname + '_reads',
                 short_label=cellTypeLR + "-" + curSample['DS'],
                 long_label=assay_type + ' Reads ' + sampleDescription,
-                autoScale='off',
                 url=args.URLbase + curSample['filebase'] + '.bam',
-                subgroups=sampleSubgroups, 
+                subgroups=sampleSubgroups,
                 tracktype='bam',
                 parentonoff="off",
                 )
@@ -327,11 +328,10 @@ for assay_type in assays:
                     name=cellTypeLR_trackname + '_var',
                     short_label=cellTypeLR + "-" + curSample['DS'],
                     long_label=assay_type + ' Variants ' + sampleDescription,
-                    autoScale='off',
                     url=args.URLbase + curSample['filebase'] + '.variants.bb',
-                    subgroups=sampleSubgroups, 
-                    color=curSample['Color'],
+                    subgroups=sampleSubgroups,
                     tracktype='bigBed',
+                    color=curSample['Color'],
                     parentonoff="off",
                     )
                 Variants_view.add_tracks(track)
@@ -342,12 +342,10 @@ for assay_type in assays:
                     name=cellTypeLR_trackname + '_cov',
                     short_label=cellTypeLR + "-" + curSample['DS'],
                     long_label=assay_type + ' Coverage ' + sampleDescription,
-                    viewLimits='0:500',
-                    autoScale='off',
                     url=args.URLbase + curSample['filebase'] + '.coverage.bw',
-                    subgroups=sampleSubgroups, 
-                    color=curSample['Color'],
+                    subgroups=sampleSubgroups,
                     tracktype='bigWig',
+                    color=curSample['Color'],
                     parentonoff="off",
                     )
                 Coverage_view.add_tracks(track)
@@ -358,8 +356,6 @@ for assay_type in assays:
                     name=cellTypeLR_trackname + '_dens',
                     short_label=cellTypeLR + "-" + curSample['DS'],
                     long_label=assay_type + ' Density ' + sampleDescription,
-                    viewLimits='0:3',
-                    autoScale='off',
                     url=args.URLbase + curSample['filebase'] + '.density.bw',
                     subgroups=sampleSubgroups, 
                     tracktype='bigWig',
@@ -374,9 +370,8 @@ for assay_type in assays:
                     name=cellTypeLR_trackname + '_cuts',
                     short_label=cellTypeLR + "-" + curSample['DS'],
                     long_label=assay_type + ' Cut counts ' + sampleDescription,
-                    autoScale='off',
                     url=args.URLbase + curSample['filebase'] + '.perBase.bw',
-                    subgroups=sampleSubgroups, 
+                    subgroups=sampleSubgroups,
                     tracktype='bigWig',
                     color=curSample['Color'],
                     parentonoff="off",
@@ -393,9 +388,8 @@ for assay_type in assays:
                     name=cellTypeLR_trackname + '_peaks',
                     short_label=cellTypeLR + "-" + curSample['DS'],
                     long_label=assay_type + ' Peaks ' + sampleDescription,
-                    autoScale='off',
                     url=args.URLbase + hotspot_path  + '.peaks.bb',
-                    subgroups=sampleSubgroups, 
+                    subgroups=sampleSubgroups,
                     tracktype='bigBed 3',
                     color=curSample['Color'],
                     parentonoff="off",
@@ -412,7 +406,6 @@ for assay_type in assays:
                     name=cellTypeLR_trackname + '_hotspots',
                     short_label=cellTypeLR + "-" + curSample['DS'],
                     long_label=assay_type + ' Hotspots (5% FDR) ' + sampleDescription,
-                    autoScale='off',
                     url=args.URLbase + hotspot_path + '.hotspots.fdr0.05.bb',
                     subgroups=sampleSubgroups,
                     tracktype='bigBed 3',
