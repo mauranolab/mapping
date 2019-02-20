@@ -40,7 +40,7 @@ for i in `tail -n +2 ../metadata.tsv | awk '{print $1}'`; do echo https://www.en
 ## SampleID file
 8) This step takes the metadata file as input, the folder with all JSON files, and a output filename  
 ```
-python ${src}/trackhub/extractDSfromENCODE_JSON.py metadata.tsv -j JSON/ -o SampleIDs.raw.tsv
+${src}/trackhub/extractDSfromENCODE_JSON.py metadata.tsv -j JSON/ -o SampleIDs.raw.tsv
 ```
 
 9) Here it is important to change names in the sampleCellType column to be consistent across all samples. The biosample names chosen here will continue through the whole analysis. Save the edited file in SampleIDs.tsv
@@ -99,7 +99,7 @@ This script creates the hub, and genome file at the output location, and creates
 This should be run after all DNase samples have been processed. You will need to create the trackhub/hub.txt and trackhub/genomes.txt landing page.
 ```
 mkdir -p ${base}/trackhub/hg38
-python ${src}/trackhub/MakeTrackhub.py --genome hg38 --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/ ${base}/SamplesForTrackhub.tsv > ${base}/trackhub/hg38/trackDb.txt
+${src}/trackhub/MakeTrackhub.py --genome hg38 --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/ ${base}/SamplesForTrackhub.tsv > ${base}/trackhub/hg38/trackDb.txt
 cd ..
 ```
 For debugging trackhub, add "udcTimeout=1&" to browser URL
