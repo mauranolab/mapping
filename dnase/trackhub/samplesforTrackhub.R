@@ -80,6 +80,8 @@ if(project=="CEGS") {
 			message("WARNING No info.txt file found for ", infofile)
 			flowcell_dates[[flowcell]] <- NA
 		}
+		
+		#TODO John -- generate FC summary .html files here
 	}
 } else {
 	projectdirs <- "."
@@ -101,26 +103,22 @@ mappeddirs <- mappeddirs[grep('Project_CEGS/new', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('bak', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('trash', mappeddirs, invert=TRUE)]
 
-#These should show up in old pipeline
+#NB These show up in old pipeline
 mappeddirs <- mappeddirs[grep('hotspots', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('fastqc', mappeddirs, invert=TRUE)]
 
 message('Mapped directories to process: ', length(mappeddirs))
 
 
-#pick colors
+#Initialize color palette
 set.seed(12345)
-col <- c(brewer.pal(n=9, 'Set1'), brewer.pal(n=8, 'Dark2'), brewer.pal(n=12, 'Paired')[c(FALSE, TRUE)])
-col <- gsub('#FFFF33', '#F0027F', col)
-col <- gsub('#FFFFFF', '#BEAED4', col)
-
-#Color by groups
-#TODO permit coloring by assay?
-groupnames <- gsub("-.*", '', mappeddirs)
-col <- rep(col, round(length(groupnames)/length(col), 2))[as.factor(unique(groupnames))]	 
-col <- as.data.frame(col, unique(groupnames))
-# For testing, note that col depends on the number of group names. 
-# This will vary as new flowcells & samples become active.
+colorPalette <- c(brewer.pal(n=9, 'Set1'), brewer.pal(n=8, 'Dark2'), brewer.pal(n=12, 'Paired')[c(FALSE, TRUE)])
+colorPalette <- gsub('#FFFF33', '#F0027F', colorPalette)
+colorPalette <- gsub('#FFFFFF', '#BEAED4', colorPalette)
+colorPalette <- sapply(colorPalette, FUN=function(x) { paste(col2rgb(x), collapse=',') })
+#Store as 0-indexed so that %% works, and add 1 to access color
+nextColorFromPalette <- 0
+colorAssignments <- NULL
 
 
 # Initialize "data" with just column names.  We'll be adding rows to this later on in the code.
@@ -143,8 +141,9 @@ for(curdir in mappeddirs){
 	for(analysisFile in analysisFiles) {
 		analysisFileContents <- readLines(paste0(pwd, '/', curdir, '/', analysisFile), n=2000)
 		
-		# If Done! is not there, we move on to the next analysisFile in the for loop.
-		if(tail(analysisFileContents, 2)[1] == "Done!"){
+		if(tail(analysisFileContents, 2)[1] != "Done!"){
+			message("WARNING ", analysisFile, " appears not to have completed successfully")
+		} else {
 			i <- i+1
 			# We need to add a new row to "data".  The values will be set within this for loop.
 			data[i,] <- NA
@@ -165,20 +164,26 @@ for(curdir in mappeddirs){
 			} else if(analysisCommand=="chipseq") {
 				data$Assay[i] <- SampleIDsplit[2]
 			} else {
-				message("WARNING: don't recognize analysisCommand: ", analysisCommand)
+				message("WARNING don't recognize analysisCommand: ", analysisCommand)
 				data$Assay[i] <- NA
 			}
 			
-			colGroup <- col2rgb(as.character(col[rownames(col) %in% gsub("-.*", '', curdir),][1]))[,1]
-			
 			data$Name[i] <- SampleIDsplit[1]
+			
 			data$DS[i] <- SampleIDsplit[length(SampleIDsplit)]
 			if(project=="CEGS") {
 				data$Name[i] <- paste(data$Name[i], data$DS[i], sep="-")
 			}
 			
 			data$Replicate[i] <- NA
-			data$Color[i] <- paste(colGroup[1], colGroup[2], colGroup[3], sep=',')
+			
+			#TODO parameterize setting a different key for color lookup
+			if(is.null(colorAssignments) || !data$Name[i] %in% colorAssignments$group) {
+				colorAssignments <- rbind(colorAssignments, data.frame(group=data$Name[i], rgb=colorPalette[nextColorFromPalette+1], stringsAsFactors=F))
+				nextColorFromPalette <- (nextColorFromPalette + 1) %% length(colorPalette)
+			}
+			data$Color[i] <- colorAssignments[colorAssignments$group == data$Name[i], "rgb"]
+			
 			data$analyzed_reads[i] <- strsplit(analysisFileContents[grep('^Num_analyzed_(tags|reads)\t', analysisFileContents)], '\t')[[1]][2] #Tags is for old pipeline
 			
 			if(any(grepl('^Genomic_coverage', analysisFileContents))) {
@@ -266,7 +271,7 @@ for(curdir in mappeddirs){
 }
 
 
-if(project %in% c("humanENCODEdnase", "mouseENCODEchipseq")) {
+if(project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipseq", "mouseENCODEchipseq")) {
 	#Fix sample age. 
 	#Only keep first entry e.g. male (week 7) male (week8)
 	data$Age <- gsub(').*', '', data$Age)
@@ -288,7 +293,7 @@ if(project %in% c("humanENCODEdnase", "mouseENCODEchipseq")) {
 	dataRep <- data
 	dataRep$splitBy <- paste(gsub('_L$|_R$', '', dataRep$Name), dataRep$Assay, sep="-")
 	dataRep <- split(dataRep, dataRep$splitBy)
-	dataReplist <- lapply(dataRep, function(repDF) {
+	dataRepList <- lapply(dataRep, function(repDF) {
 		if( nrow(repDF[grep('UW', repDF$Institution),]) >0 ) {
 			repDF[grep('UW', repDF$Institution),]$Replicate <- rank(-as.numeric(repDF[grep('UW', repDF$Institution),]$analyzed_reads))
 			repDF[grep('UW', repDF$Institution, invert=T),]$Replicate <- rank(-as.numeric(repDF[grep('UW', repDF$Institution , invert=T),]$analyzed_reads)) + nrow(repDF[grep('UW', repDF$Institution),])
@@ -297,7 +302,8 @@ if(project %in% c("humanENCODEdnase", "mouseENCODEchipseq")) {
 		}
 		return(repDF)
 	})
-	data <- do.call(rbind, dataReplist)
+	data <- do.call(rbind, dataRepList)
+	data <- data[,!colnames(data)=="splitBy"]
 	
 	data[data$Replicate>=3,]$Replicate <- 'Other'
 	#data$Group[data$Group=='UMass'] <- 'UW'
