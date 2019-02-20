@@ -20,6 +20,12 @@ if(length(commandArgs(TRUE) == 1)) {
 }
 
 
+if (maxlength <= 300) {
+	breaks <- c(36, 50, 75, 100, 125, 150, 175, seq.int(200, maxlength, 50))
+} else {
+	breaks <- seq.int(50, maxlength, 50)
+}
+
 cat("Loading insert lengths upto", maxlength, "bp\n")
 #TODO parallelize?
 results <- NULL
@@ -60,7 +66,7 @@ labs(title="") +
 geom_line() +
 xlab("Fragment length (bp)") +
 ylab("Density") +
-scale_x_continuous(breaks=c(36, 50, 75, 100, 125, 150, 175, seq.int(200, maxlength, 50)), limits=c(27,maxlength)) +
+scale_x_continuous(breaks=breaks, limits=c(27,maxlength)) +
 scale_y_continuous(labels = function(x) {scales::scientific(x, digits=1)}) +
 #facet_grid(polymerase~., scales = "free_x", space = "free_x") +
 guides(color=F, linetype=F) +

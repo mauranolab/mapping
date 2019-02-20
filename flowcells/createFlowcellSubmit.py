@@ -131,6 +131,11 @@ def DNase(sampleName, sampleID, lab, sampleType, species):
     global doDNaseCleanup
     doDNaseCleanup = True
     
+    global DNaseFragmentLengthPlot
+    fragmentLengths = { 'DNase-seq': 300, 'ChIP-seq': 500, 'DNA': 750 }
+    if fragmentLengths[sampleType] > DNaseFragmentLengthPlot:
+        DNaseFragmentLengthPlot = fragmentLengths[sampleType]
+    
     return(submitCommand)
 
 
@@ -151,6 +156,11 @@ def DNA(sampleName, sampleID, lab, sampleType, species):
     
     global doDNaseCleanup
     doDNaseCleanup = True
+    
+    global DNaseFragmentLengthPlot
+    fragmentLengths = { 'DNase-seq': 300, 'ChIP-seq': 500, 'DNA': 750 }
+    if fragmentLengths[sampleType] > DNaseFragmentLengthPlot:
+        DNaseFragmentLengthPlot = fragmentLengths[sampleType]
     
     return(submitCommand)
 
@@ -203,6 +213,7 @@ def annotateSample(Sampleline, projects, sampletypes, samples):
 #Read in flowcell and create a submit script for all samples with BS number
 ####
 doDNaseCleanup = False
+DNaseFragmentLengthPlot = 0
 doTransposonCleanup = False
 
 
@@ -235,7 +246,9 @@ for flowcellID in flowcellIDs:
 
 if doDNaseCleanup:
     print()
-    print("qsub -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeInserts.R\"")
+    #Just use max fragment length for now
+    #TODO run separate plots for each sample type?
+    print("qsub -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeInserts.R " + str(DNaseFragmentLengthPlot) + "\"")
     print("qsub -S /bin/bash -j y -N mapped_readcounts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/mapped_readcounts.sh")
     print("rm -f sgeid.analysis")
 
