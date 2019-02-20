@@ -57,8 +57,8 @@ mlr --json --jvstack head -n 2  JSON/ENCFF001HZO
 10) Now make softlinks to fastq files to connect all files from same library
 ```
 mkdir renamed && cd renamed
-awk  -F'\t' '$1==$6 {print "ln -s ../fastq/" $6 ".fastq.gz " $1 "_" $3 "_R1.fastq.gz"; if($7!="") {print "ln -s ../fastq/" $7 ".fastq.gz " $1 "_" $3 "_R2.fastq.gz"}}' ../SampleIDs.tsv > makelinks.sh  
-source makelinks.sh ;
+awk  -F'\t' '$1==$7 {print "ln -s ../fastq/" $7 ".fastq.gz " $1 "_" $3 "_R1.fastq.gz"; if($8!="") {print "ln -s ../fastq/" $8 ".fastq.gz " $1 "_" $3 "_R2.fastq.gz"}}' ../SampleIDs.tsv > makelinks.sh  
+source makelinks.sh
 cd ..  
 ```
 
