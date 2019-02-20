@@ -240,7 +240,7 @@ for(curdir in mappeddirs){
 					data$Group[i] <- "Tissues"
 				}
 				if(grepl('^CD|^[hi]?T[hHR][0-9]*$|^GM[012][0-9][0-9][0-9][0-9]|B_cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|macrophage|CH12LX|G1E|mononuclear|dendritic', data$Name[i])) { data$Group[i] <- 'Hematopoietic cells' }
-				if(grepl('ES|^H[0-9]|^iPS|E14TG2a4|^trophoblastic_cell$|^mesendoderm$|^endodermal_cell$|^ectodermal_cell$|^mesodermal_cell$', data$Name[i])) { data$Group[i] <- 'Pluripotent' }
+				if(grepl('ES|^H[0-9]|^iPS|E14TG2a4|^trophoblastic_cell$|^mesendoderm$|^endodermal_cell$|^ectodermal_cell$|^mesodermal_cell$|^WW6$|^ZHBTc4$', data$Name[i])) { data$Group[i] <- 'Pluripotent' }
 				if(project=="humanENCODEdnase") {
 					if(is.na(data$Group[i]) || data$Institution[i] == "Duke") {
 						data$Group[i] <- data$Institution[i]
