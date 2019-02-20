@@ -44,7 +44,7 @@ ${src}/trackhub/extractDSfromENCODE_JSON.py metadata.tsv -j JSON/ -o /tmp/Sample
 mlr --tsv sort -f Name,Assay,DS /tmp/SampleIDs.raw.tsv > SampleIDs.raw.tsv
 ```
 
-9) Here it is important to change names in the sampleCellType column to be consistent across all samples. The biosample names chosen here will continue through the whole analysis. Save the edited file in SampleIDs.tsv
+9) Here it is important to change names in the Name column to be consistent across all samples. The biosample names chosen here will continue through the whole analysis. Save the edited file in SampleIDs.tsv
 
 ```
 #Double check that each library ID is unique for a given combination of cell type and histone mark/assay
