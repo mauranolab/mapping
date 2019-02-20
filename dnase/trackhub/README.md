@@ -52,7 +52,6 @@ mlr --tsv cut -f SampleAccession,Name,Assay then sort -f Name,Assay SampleIDs.ra
 
 #miller can parse JSON files for ease of viewing, e.g.:
 mlr --json --jvstack head -n 2  JSON/ENCFF001HZO
-cd ..
 ```
 
 10) Now make softlinks to fastq files to connect all files from same library
