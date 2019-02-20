@@ -68,37 +68,28 @@ convert $TMPDIR/${sample}.R2.raw.eps $OUTDIR/${sample}.R2.raw.png
 echo "Trimming/extracting UMI from R1 files ${f1} and R2 files ${f2}"
 if [[ "${R1trim}" -gt 0 ]]; then
     echo "Trimming ${R1trim} bp from R1"
-    bc1pattern=`printf 'N%.0s' $(seq 1 ${R1trim})`
+    bc1pattern="--bc-pattern "`printf 'N%.0s' $(seq 1 ${R1trim})`
 else
-    bc1pattern="X"
+    bc1pattern="--bc-pattern X"
 fi
 
-#Only extract UMI from R2 for RNA samples where bcread is R1
+#Only extract UMI from R2 for RNA samples (bcread is R1), throw it away for DNA samples
 if [[ "${R2trim}" -gt 0 && "${bcread}" == "R1" ]]; then
     echo "Trimming ${R2trim} bp from R2"
-    bc2pattern=`printf 'N%.0s' $(seq 1 ${R2trim})`
+    bc2pattern="--bc-pattern2 "`printf 'N%.0s' $(seq 1 ${R2trim})`
     zcat -f ${f2} > $TMPDIR/${sample}.R2.fastq
 else
-    bc2pattern="X"
+    bc2pattern="--bc-pattern2 X"
     echo "Removing ${R2trim} bp from R2"
     cutadapt --quiet -u ${R2trim} ${f2} > $TMPDIR/${sample}.R2.fastq
 fi
 
-
-if [[ "${bc1pattern}" == "X" && "${bc2pattern}" == "X" ]]; then
+if [[ "${bc1pattern}" == "--bc-pattern X" && "${bc2pattern}" == "--bc-pattern2 X" ]]; then
     echo "No UMI -- just concatenating files"
     #umi_tools extract requires at least 1 bp of UMI
     zcat -f ${f1} | gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz
     gzip -1 -c $TMPDIR/${sample}.R2.fastq > $TMPDIR/${sample}.R2.fastq.gz
 else
-    #BUGBUG how come this is done differently vs submitIntegrations?
-    if [[ "${bc1pattern}" != "X" ]]; then
-        bc1pattern="--bc-pattern ${bc1pattern}"
-    fi
-    if [[ "${bc2pattern}" != "X" ]]; then
-        bc2pattern="--bc-pattern2 ${bc2pattern}"
-    fi
-    
     echo "umi_tools extract ${bc1pattern} ${bc2pattern}"
     
     #/home/mauram01/.local/bin/umi_tools extract --help
