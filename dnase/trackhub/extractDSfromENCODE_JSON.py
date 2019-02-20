@@ -35,14 +35,14 @@ def getDS(sample_line):
     data = open(args.jsonD+sampleAccession).read()
     sample_json = json.loads(data)
     
-    #keyword = 'human '
     regexp = re.compile(r'DS[0-9]{5}|DS[0-9]{4}')
+    #I don't think this works for the mouse data (e.g. "C57BL/6 liver male adult (8 weeks)")
     before_keyword, keyword, after_keyword = sample_json['replicate']['experiment']['biosample_summary'].partition('human ')
     sampleCellType = after_keyword.split(' ')[0].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
     if not sampleCellType and regexp.search(str(sample_json)) is not None:
-        if len(sample_json['replicate']['experiment']['biosample_synonyms'])>=1:
-            sampleCellType=sample_json['replicate']['experiment']['biosample_synonyms'][0].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
-        elif len(sample_json['replicate']['experiment']['biosample_synonyms'])==0:
+        if 'biosample_synonyms' in sample_json['replicate']['experiment']:
+            sampleCellType = sample_json['replicate']['experiment']['biosample_synonyms'][0].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
+        else:
             sampleCellType = sample_line['Biosample term name'].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
     elif not sampleCellType and regexp.search(str(sample_json)) is None:
         sampleCellType = sample_line['Biosample term name'].replace(' ', '_').replace('-','_').replace('+','').replace(',','').replace('.','').replace('\\)','')
@@ -65,20 +65,17 @@ def getDS(sample_line):
     if re.search('embryo', str(sample_json['replicate']['experiment']['biosample_summary'])) is not None:
         sampleCellType = 'f' + sampleCellType.capitalize()
     
-    #Used to be output as column "Name" but was largely redundant with sampleCellType and never used downstream
-    #sampleName = sample_line['Biosample term name']
-    
     #BUGBUG I think the missing paired_with is obselete
-    if sample_line['Run type'] =='paired-ended':
+    if sample_line['Run type'] == 'paired-ended':
         singleOrPaired = 'paired-ended'
-        if sample_line['Paired end'] =='1' and sample_line['Audit ERROR']!='missing paired_with\n':
+        if sample_line['Paired end'] == '1' and sample_line['Audit ERROR'] != 'missing paired_with\n':
             R1sampleAccession = sampleAccession
             R2sampleAccession = sample_line['Paired with']
-        elif sample_line['Paired end'] =='2' and sample_line['Audit ERROR']!='missing paired_with\n':
+        elif sample_line['Paired end'] == '2' and sample_line['Audit ERROR'] != 'missing paired_with\n':
             R1sampleAccession = sample_line['Paired with']
             R2sampleAccession = sampleAccession
         #If paired_with is missing
-        elif sample_line['Paired end'] =='1' and sample_line['Audit ERROR']=='missing paired_with\n':
+        elif sample_line['Paired end'] == '1' and sample_line['Audit ERROR'] == 'missing paired_with\n':
             R1sampleAccession = sampleAccession
             R2sampleAccession = ''
     elif sample_line['Run type'] =='single-ended':
@@ -103,7 +100,7 @@ def getDS(sample_line):
     libraryAccession = sample_json['replicate']['library']['accession']
     
     print(sampleAccession, DSid, sampleAge)
-    wr.writerow([sampleAccession, libraryAccession, DSid, sampleCellType, singleOrPaired, R1sampleAccession, R2sampleAccession, sampleAssay, sampleInstitution, sampleAge])
+    wr.writerow([sampleAccession, libraryAccession, DSid, sampleCellType, sampleCellType, singleOrPaired, R1sampleAccession, R2sampleAccession, sampleAssay, sampleInstitution, sampleAge])
 
 try:
     with open(args.ENCODEmetadata, 'r') as SampleFile:
@@ -113,7 +110,8 @@ try:
         # Pass file handle to csv.writer
         wr = csv.writer(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True)
         #N.B. Library provides ENCODE accession for samples with a DS number. paired-ended appears to be for legibility alone
-        wr.writerow(['SampleAccession', 'LibraryAccession', 'DS', 'Name', 'Single_or_Paired', 'R1', 'R2', 'Assay', 'Institution', 'Age'])
+        #Provide "Automatic Name" as information so that it's easy to recover names which have been manually changed from the automatic ones
+        wr.writerow(['SampleAccession', 'LibraryAccession', 'DS', 'Automatic Name', 'Name', 'Single_or_Paired', 'R1', 'R2', 'Assay', 'Institution', 'Age'])
         for sample_line in SampleFile_reader:
             getDS(sample_line)
 finally:
