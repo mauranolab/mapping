@@ -69,11 +69,11 @@ mkdir mapped && cd mapped
 awk -v base="${base}/renamed" -F "\t" 'BEGIN {OFS="\t"} $1==$7 {print base "/" $1 "_" $3 "_R1.fastq.gz", $3; if($8!="") {print base "/" $1 "_" $3 "_R2.fastq.gz", $2}}' ../SampleIDs.tsv |
 sort -k2,2 | cut -f1 > inputs.txt 
 
-cat ../SampleIDs.tsv |
+tail +2 ../SampleIDs.tsv |
 perl -pe 's/ /_/g;' -e 's/\-/_/g;' -e "s/[\(\)\'%]//g;" |
-awk -v src=${src} -F "\t" '{print src "/submit.sh hg38_noalt mapBwaAln,dnase " $4  " " $3}' |
+awk -v src=${src} -F "\t" '{print src "/submit.sh hg38_noalt mapBwaAln,dnase " $5  " " $3}' |
 #Use this line instead for ChIP-seq
-#awk -v src=${src} -F "\t" '{print src "/submit.sh hg38_noalt mapBwaAln,chipseq " $4 "-" $9  " " $3}' |
+#awk -v src=${src} -F "\t" '{print src "/submit.sh hg38_noalt mapBwaAln,chipseq " $5 "-" $9  " " $3}' |
 sort |
 uniq |
 sort -k4,3 |
