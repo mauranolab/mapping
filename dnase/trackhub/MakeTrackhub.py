@@ -15,6 +15,7 @@ parser.add_argument('Input', action = 'store', help = 'Input tsv file with sampl
 #NB Exclude not used right now 
 parser.add_argument('--genome', action = 'store', required = True, help = 'genome assembly name')
 parser.add_argument('--URLbase', action = 'store', required = True, help = 'URL base at which track files are hosted')
+parser.add_argument('--includeSampleIDinSampleCol', action = 'store_true', default = False, help = 'Append the Sample ID in the Sample column')
 parser.add_argument('--supertrack', action = 'store', required = False, help = 'Encompass all composite tracks generated within supertrack. Supertrack name specifiied as parameter.')
 #TODO John
 parser.add_argument('--generateHTMLdescription', action = 'store_true', default = False, help = 'Link to HTML descriptions for composite tracks, assumed to be present at [group name]_descriptions/[group name].html')
@@ -27,6 +28,14 @@ try:
 except argparse.ArgumentError as exc:
     print(exc.message, '\n', exc.argument, file=sys.stderr)
     sys.exit(2)
+
+
+#track name must contain only the following chars: [a-zA-Z0-9_]
+def cleanTrackName(x):
+    x = re.sub(r'\W+', '', x)
+    x = re.sub(r'-', '_', x)
+    x = re.sub(r'[^a-zA-Z0-9_]', '', x)
+    return x
 
 
 ########
@@ -90,13 +99,13 @@ for assay_type in assays:
     # Create composite track for major groups of samples (e.g. Duke, UW, etc.)
     # These are flowcell IDs for assay_type == "DNA"
     ########
-    #Find all unique cellTypes and create a supertrack for each
+    #Find all unique sampleNames and create a supertrack for each
     Group = sorted(set([line['Group'] for line in input_data]), reverse=True)
     
     for curGroup in Group:
         # Suppress Replicate and/or Age in the Track Settings screen if they are all NAs.
         # SortOrder controls what is displayed, even if we retain all the subgroup definitions.
-        SortOrder = "cellType=+ DS=+ view=+ "
+        SortOrder = "sampleName=+ DS=+ view=+ "
         
         uniqueReplicates = [line['Replicate'] for line in input_data if(line['Group'] == curGroup)]
         if(not all(x == 'NA' for x in uniqueReplicates)):
@@ -107,8 +116,7 @@ for assay_type in assays:
             SortOrder = SortOrder + "Age=+ "
         
         # Adding suffix
-        curGroup_trackname = args.genome + "_" + curGroup + "_" + assay_suffix
-        curGroup_trackname = re.sub(r'\W+', '', curGroup_trackname) 
+        curGroup_trackname = cleanTrackName(args.genome + "_" + curGroup + "_" + assay_suffix)
         
         # Do something like this later.
         # mydate = re.split(r'_', curGroup)[0]
@@ -237,14 +245,13 @@ for assay_type in assays:
         #Create subgroup definitions
         ########
         matchingSamples = [line for line in input_data if curGroup == line['Group']]
-        cellTypes = sorted(set([line['Name'] for line in matchingSamples]))
-        cellTypes= [re.sub(r'_L$|_R$', '', i) for i in cellTypes]
+        sampleNames = sorted(set([re.sub(r'_L$|_R$', '', line['Name']) + ('-' + line['DS'] if args.includeSampleIDinSampleCol else '') for line in matchingSamples]))
         DSnumbers = sorted(set([line['DS'] for line in matchingSamples]))
         Replicates = sorted(set([line['Replicate'] for line in matchingSamples]))
         Assay = sorted(set([line['Assay'] for line in matchingSamples]))
         Age = sorted(set([re.sub(' ', '_', line['Age']) for line in matchingSamples]), key=natural_key)
         
-        celltypeDict = dict(zip(cellTypes, cellTypes))
+        sampleNameDict = dict(zip(sampleNames, sampleNames))
         dictAssay = dict(zip(Assay, Assay))
         DSdict = dict(zip(DSnumbers, DSnumbers))
         repDict = dict(zip(Replicates, Replicates))
@@ -253,9 +260,9 @@ for assay_type in assays:
         from trackhub.track import SubGroupDefinition
         subgroups = [
             SubGroupDefinition(
-                name="cellType",
+                name="sampleName",
                 label="Sample",
-                mapping=OrderedDict(sorted(celltypeDict.items(), key=lambda x: x[1]))),
+                mapping=OrderedDict(sorted(sampleNameDict.items(), key=lambda x: x[1]))),
             
             SubGroupDefinition(
                 name="Assay",
@@ -290,35 +297,32 @@ for assay_type in assays:
         #Create long label from analyzed reads, SPOTS and Hotspots. Format numbers into 1000's
         locale.setlocale(locale.LC_ALL, 'en_US')
         for curSample in matchingSamples:
-            # Here we set the label in the 1st column
-            cellTypeLR = re.sub(r'_L$|_R$', '', curSample['Name'])
+            sampleName = re.sub(r'_L$|_R$', '', curSample['Name'])
             
-            #track name must be unique within the Genome Browser or dataHub and must begin with a letter and contain only the following chars: [a-zA-Z0-9_]
+            #shortLabel must be <= 17 printable characters (sampleName + DS)
+            sampleShortLabel = sampleName + "-" + curSample['DS']
+            
+            #Internal track name (never displayed) must be unique within the Genome Browser or dataHub and must begin with a letter
             #There is a length limit of 128 characters, but in practice some are used for an internal prefix/suffix
-            #TODO Probably could omit cellTypeLR here
-            cellTypeLR_trackname = args.genome + "_" + curGroup + "_" + cellTypeLR + "_" + curSample['DS']
-            cellTypeLR_trackname = re.sub(r'\W+', '', cellTypeLR_trackname)
-            cellTypeLR_trackname = re.sub(r'-', '_', cellTypeLR_trackname)
-            cellTypeLR_trackname = re.sub(r'[^a-zA-Z0-9_]', '', cellTypeLR_trackname)
+            #Probably could omit sampleName here to save space
+            sampleName_trackname = cleanTrackName(args.genome + "_" + curGroup + "_" + sampleName + "_" + curSample['DS'])
             
-            #TODO restrictions on other fields below? (e.g. Age)
-            #shortLabel must be <= 17 printable characters
             #longLabel must be <= 76 printable characters
             if assay_type == "DNA":
-                sampleDescription = cellTypeLR + "-" + curSample['DS'] + ' ' + curSample['Genomic_coverage'] + 'x Genomic Coverage (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads)' + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
+                sampleDescription = sampleShortLabel + ' ' + curSample['Genomic_coverage'] + 'x Genomic Coverage (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads)' + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
             else:
                 if curSample['Num_hotspots'] == "NA":
                     sampleDescriptionNumHotspots = "no"
                 else:
                     sampleDescriptionNumHotspots = locale.format("%d", int(curSample['Num_hotspots']), grouping=True) 
-                sampleDescription = cellTypeLR + "-" + curSample['DS'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, ' + curSample['SPOT'] + ' SPOT, ' + sampleDescriptionNumHotspots + ' Hotspots)' + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
+                sampleDescription = sampleShortLabel + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, ' + curSample['SPOT'] + ' SPOT, ' + sampleDescriptionNumHotspots + ' Hotspots)' + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
             
-            sampleSubgroups = dict(cellType=cellTypeLR, Assay=curSample['Assay'], replicate=curSample['Replicate'], DS=curSample['DS'], Age=re.sub(' ', '_', curSample['Age']))
+            sampleSubgroups = dict(sampleName=sampleName + ('-' + curSample['DS'] if args.includeSampleIDinSampleCol else ''), Assay=curSample['Assay'], replicate=curSample['Replicate'], DS=curSample['DS'], Age=re.sub(' ', '_', curSample['Age']))
             
             
             track = Track(
-                name=cellTypeLR_trackname + '_bam',
-                short_label=cellTypeLR + "-" + curSample['DS'],
+                name=sampleName_trackname + '_bam',
+                short_label=sampleShortLabel,
                 long_label=assay_type + ' Reads ' + sampleDescription,
                 url=args.URLbase + curSample['filebase'] + '.bam',
                 subgroups=sampleSubgroups,
@@ -330,8 +334,8 @@ for assay_type in assays:
             #Variants_view
             if (assay_type == "DNA"):
                 track = Track(
-                    name=cellTypeLR_trackname + '_var',
-                    short_label=cellTypeLR + "-" + curSample['DS'],
+                    name=sampleName_trackname + '_var',
+                    short_label=sampleShortLabel,
                     long_label=assay_type + ' Variants ' + sampleDescription,
                     url=args.URLbase + curSample['filebase'] + '.variants.bb',
                     subgroups=sampleSubgroups,
@@ -344,8 +348,8 @@ for assay_type in assays:
             #Coverage_view
             if (assay_type == "DNA"):
                 track = Track(
-                    name=cellTypeLR_trackname + '_cov',
-                    short_label=cellTypeLR + "-" + curSample['DS'],
+                    name=sampleName_trackname + '_cov',
+                    short_label=sampleShortLabel,
                     long_label=assay_type + ' Coverage ' + sampleDescription,
                     url=args.URLbase + curSample['filebase'] + '.coverage.bw',
                     subgroups=sampleSubgroups,
@@ -358,8 +362,8 @@ for assay_type in assays:
             #Dens_view
             if (assay_type == "DNase-seq") or (assay_type == "ChIP-seq"):
                 track = Track(
-                    name=cellTypeLR_trackname + '_dens',
-                    short_label=cellTypeLR + "-" + curSample['DS'],
+                    name=sampleName_trackname + '_dens',
+                    short_label=sampleShortLabel,
                     long_label=assay_type + ' Density ' + sampleDescription,
                     url=args.URLbase + curSample['filebase'] + '.density.bw',
                     subgroups=sampleSubgroups, 
@@ -372,8 +376,8 @@ for assay_type in assays:
             #PerBaseCutCount
             if (assay_type == "DNase-seq"):
                 track = Track(
-                    name=cellTypeLR_trackname + '_cuts',
-                    short_label=cellTypeLR + "-" + curSample['DS'],
+                    name=sampleName_trackname + '_cuts',
+                    short_label=sampleShortLabel,
                     long_label=assay_type + ' Cut counts ' + sampleDescription,
                     url=args.URLbase + curSample['filebase'] + '.perBase.bw',
                     subgroups=sampleSubgroups,
@@ -390,8 +394,8 @@ for assay_type in assays:
                 hotspot_path = hotspot_dir + "/hotspot2/" + hotspot_base
                 
                 track = Track(
-                    name=cellTypeLR_trackname + '_pks',
-                    short_label=cellTypeLR + "-" + curSample['DS'],
+                    name=sampleName_trackname + '_pks',
+                    short_label=sampleShortLabel,
                     long_label=assay_type + ' Peaks ' + sampleDescription,
                     url=args.URLbase + hotspot_path  + '.peaks.bb',
                     subgroups=sampleSubgroups,
@@ -408,8 +412,8 @@ for assay_type in assays:
                 hotspot_path = hotspot_dir + "/hotspot2/" + hotspot_base
                 
                 track = Track(
-                    name=cellTypeLR_trackname + '_hot',
-                    short_label=cellTypeLR + "-" + curSample['DS'],
+                    name=sampleName_trackname + '_hot',
+                    short_label=sampleShortLabel,
                     long_label=assay_type + ' Hotspots (5% FDR) ' + sampleDescription,
                     url=args.URLbase + hotspot_path + '.hotspots.fdr0.05.bb',
                     subgroups=sampleSubgroups,
@@ -423,12 +427,12 @@ for assay_type in assays:
         #TODO needs to pick the dimensions better
         #TODO #daler github trackhub/trackhub/track.py doesn't seem to offer dimensionAchecked as option
         if (assay_type == "DNase-seq"):
-            composite.add_params(dimensions="dimY=cellType dimA=replicate dimX=Age")
+            composite.add_params(dimensions="dimY=sampleName dimA=replicate dimX=Age")
         elif (assay_type == "DNA"):
-            composite.add_params(dimensions="dimY=cellType")
+            composite.add_params(dimensions="dimY=sampleName")
         else:
             # ChIP-seq
-            composite.add_params(dimensions="dimY=Assay dimA=replicate dimX=cellType")
+            composite.add_params(dimensions="dimY=Assay dimA=replicate dimX=sampleName")
         
         
         # Demonstrate some post-creation adjustments...here, just make control samples gray
