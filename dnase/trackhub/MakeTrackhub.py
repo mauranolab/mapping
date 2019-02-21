@@ -293,12 +293,17 @@ for assay_type in assays:
             # Here we set the label in the 1st column
             cellTypeLR = re.sub(r'_L$|_R$', '', curSample['Name'])
             
-            # Adding suffix
-            cellTypeLR_trackname = args.genome + "_" + curGroup + "_" + curSample['Assay'] + "_" + cellTypeLR + "_" + curSample['DS']
-            #TODO track Must begin with a letter and contain only the following chars: [a-zA-Z0-9_]. Make this consistent with the rest below (e.g. Age)
+            #track name must be unique within the Genome Browser or dataHub and must begin with a letter and contain only the following chars: [a-zA-Z0-9_]
+            #There is a length limit of 128 characters, but in practice some are used for an internal prefix/suffix
+            #TODO Probably could omit cellTypeLR here
+            cellTypeLR_trackname = args.genome + "_" + curGroup + "_" + cellTypeLR + "_" + curSample['DS']
             cellTypeLR_trackname = re.sub(r'\W+', '', cellTypeLR_trackname)
             cellTypeLR_trackname = re.sub(r'-', '_', cellTypeLR_trackname)
+            cellTypeLR_trackname = re.sub(r'[^a-zA-Z0-9_]', '', cellTypeLR_trackname)
             
+            #TODO restrictions on other fields below? (e.g. Age)
+            #shortLabel must be <= 17 printable characters
+            #longLabel must be <= 76 printable characters
             if assay_type == "DNA":
                 sampleDescription = cellTypeLR + "-" + curSample['DS'] + ' ' + curSample['Genomic_coverage'] + 'x Genomic Coverage (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads)' + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
             else:
@@ -312,7 +317,7 @@ for assay_type in assays:
             
             
             track = Track(
-                name=cellTypeLR_trackname + '_reads',
+                name=cellTypeLR_trackname + '_bam',
                 short_label=cellTypeLR + "-" + curSample['DS'],
                 long_label=assay_type + ' Reads ' + sampleDescription,
                 url=args.URLbase + curSample['filebase'] + '.bam',
@@ -385,7 +390,7 @@ for assay_type in assays:
                 hotspot_path = hotspot_dir + "/hotspot2/" + hotspot_base
                 
                 track = Track(
-                    name=cellTypeLR_trackname + '_peaks',
+                    name=cellTypeLR_trackname + '_pks',
                     short_label=cellTypeLR + "-" + curSample['DS'],
                     long_label=assay_type + ' Peaks ' + sampleDescription,
                     url=args.URLbase + hotspot_path  + '.peaks.bb',
@@ -403,7 +408,7 @@ for assay_type in assays:
                 hotspot_path = hotspot_dir + "/hotspot2/" + hotspot_base
                 
                 track = Track(
-                    name=cellTypeLR_trackname + '_hotspots',
+                    name=cellTypeLR_trackname + '_hot',
                     short_label=cellTypeLR + "-" + curSample['DS'],
                     long_label=assay_type + ' Hotspots (5% FDR) ' + sampleDescription,
                     url=args.URLbase + hotspot_path + '.hotspots.fdr0.05.bb',
