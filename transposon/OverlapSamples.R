@@ -109,7 +109,7 @@ loadBCfile <- function(filename, type, thresh) {
 }
 
 thresholdRNADNA <- 10
-thresholdiPCR = 1
+thresholdiPCR = 2
 
 getThreshold <- function(type, applyThreshold) {
 	if(applyThreshold) {
@@ -206,7 +206,7 @@ if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & !is.null(opt$samplesC)) {
 	threshB = getThreshold(typeB, applyThreshold=TRUE)
 	threshC = getThreshold(typeC, applyThreshold=TRUE)
 	
-	outputCols <- c("Sample", "BS_A", "BS_B", "BS_C", paste0('#A_', threshA), paste0('#B_', threshB), paste0('#C_', threshC), paste0('#Intersect_A', threshA, '_B', threshB), paste0('#Intersect_A', threshA, '_C', threshC), paste0('#Intersect_B', threshB, '_C', threshC), paste0('#Intersect_A', threshA, '_B', threshB, '_C', threshC), paste0('#Union_A', threshA, '_B', threshB, '_C', threshC))
+	outputCols <- c("Sample", "BS_A", "BS_B", "BS_C", paste0("#A_", typeA, "_", threshA), paste0("#B_", typeB, "_", threshB), paste0("#C_", typeC, "_", threshC), paste0("#Intersect_A", threshA, "_B", threshB), paste0("#Intersect_A", threshA, "_C", threshC), paste0("#Intersect_B", threshB, "_C", threshC), paste0("#Intersect_A", threshA, "_B", threshB, "_C", threshC), paste0("#Union_A", threshA, "_B", threshB, "_C", threshC))
 	usefulBCs <- data.frame(matrix(ncol=length(outputCols), nrow=nrow(BCpairs)))
 	colnames(usefulBCs) <- outputCols
 	
