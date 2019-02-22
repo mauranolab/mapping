@@ -37,7 +37,7 @@ cat $TMPDIR/${sample}.flagstat.txt | grep "in total" | awk '{print $1}'
 
 echo
 echo "Merge mapping and barcodes"
-samflags="-q 30 -F 516" #CHANGE from 30 to 1 for 101A and 102A. Otherwise run 30 on all other samples 
+samflags="-F 512"
 samtools view $samflags $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
     readlength = length($10); \
     if (and($2, 16)) { \
@@ -65,7 +65,13 @@ echo -e -n "Number of tags passing all filters and having barcodes assigned\t"
 cat $OUTDIR/${sample}.barcodes.readnames.coords.raw.bed | wc -l
 
 
-#TODO dedup? BC/site
+echo
+echo "Histogram of barcode reads before coordinate-based deduping"
+cat $OUTDIR/${sample}.barcodes.readnames.coords.raw.bed | cut -f6 | sort | uniq -c | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+
+
+echo
+echo "Coordinate-based deduping"
 cat $OUTDIR/${sample}.barcodes.readnames.coords.raw.bed | cut -f1-7 |
 awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"; groupnum=1} { \
     if( NR>1 && (last[1] != $1 || $2 - last[2] > maxstep || $3 - last[3] > maxstep || last[5] != $5 )) { \
@@ -94,7 +100,7 @@ cat $OUTDIR/${sample}.barcodes.readnames.coords.bed | cut -f6 | sort | uniq -c |
 minUMIlength=5
 if [[ `awk -v minUMIlength=${minUMIlength} -F "\t" 'BEGIN {OFS="\t"} length($3) >= minUMIlength {found=1} END {print found}' $OUTDIR/${sample}.barcodes.txt` == 1 ]]; then
     echo
-    echo "Analyzing UMIs"
+    echo "Coordinate-based UMI deduping"
     
     cat $OUTDIR/${sample}.barcodes.readnames.coords.bed | cut -f1-2,5-7 | sort -k1,1 -k2,2g -k4,4 -k5,5 | uniq -c |
     awk 'BEGIN {OFS="\t"} {print $2, $3, $5, $1, $4}' > $TMPDIR/${sample}.coords.collapsedUMI.bed
@@ -140,8 +146,10 @@ awk -v minReads=1 -F "\t" 'BEGIN {OFS="\t"} $5>=minReads' > $OUTDIR/${sample}.ba
 #columns: chrom, start, end, readname, strand, BC seq, count (coords are of integration site)
 
 
-#TODO make second pass?
+#TODO make second dedup pass after collapsing nearby sites? Or perhaps change group column above to include BCs at sites within maxstep?
 
+
+echo "Generating UCSC track"
 awk -v sample=${sample} -F "\t" 'BEGIN {OFS="\t"; print "track name=" sample " description=" sample "-integrations"} {print}' $OUTDIR/${sample}.barcodes.coords.bed > $OUTDIR/${sample}.barcodes.coords.ucsc.bed
 
 
@@ -273,9 +281,7 @@ EOF
 echo
 echo "doing DistToDNase"
 sort-bed $OUTDIR/${sample}.barcodes.coords.bed | closest-features --dist  --delim '\t' --closest -  ${hotspotfile} | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
-#sort-bed ../aligned.FCH55KHBGX2/$OUTDIR/${sample}.barcodes.coords.bed | closest-features --dist  --delim '\t' - /vol/mauranolab/maagj01/transposon/Dpn_REsites/DpnREsort.bed | awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {split if ($6=="-") print $13; else if  ($6=="+") print $20}'  > $TMPDIR/DistDpn.txt
 
-#awk -F "|" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $2}'
 R --quiet --no-save << EOF
 #Work around "unable to start device PNG" on ISG cluster
 options(bitmapType="cairo") 

@@ -57,16 +57,15 @@ bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t $NSLOTS -Y"
 echo "Will map to reference ${curGenome}"
 
 
-#NB am losing about 15" to load index when submit multiple jobs
 bwaIndexBase=/vol/isg/annotation/bwaIndex
 
 echo
 echo "Mapping to reference ${curGenome}"
 case "${curGenome}" in
 hg38_noalt)
-    bwaIndex=/vol/isg/annotation/bwaIndex/hg38_noalt/hg38_noalt;;
+    bwaIndex=${bwaIndexBase}/hg38_noalt/hg38_noalt;;
 mm10)
-    bwaIndex=/vol/isg/annotation/bwaIndex/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set;;
+    bwaIndex=${bwaIndexBase}/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set;;
 *)
     echo "Don't recognize genome ${curGenome}";
     exit 3;;
@@ -75,6 +74,7 @@ esac
 
 #Now set up for the iPCR-specific parts
 ##Trim primer before mapping to genome
+#BUGBUG hardcoded primer length
 R2primerlen=18
 echo "Trimming $R2primerlen bp primer from R2"
 zcat -f $f2 | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | 
@@ -96,7 +96,8 @@ echo -e "extractcmd=bwa ${extractcmd} | (...)"
 bwa ${extractcmd} |
 #No need to sort SE data
 #samtools sort -@ $NSLOTS -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
-${src}/filter_reads.py --failUnwantedRefs --max_mismatches ${permittedMismatches} - - |
+#TODO UMIs don't seem to be in format filter_reads.py expects so they are not getting passed into bam
+${src}/filter_reads.py --reqFullyAligned --failUnwantedRefs --max_mismatches ${permittedMismatches} --min_mapq 10 - - |
 samtools view -@ NSLOTS -1 - > $OUTDIR/${sample}.bam
 
 
