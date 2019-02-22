@@ -181,19 +181,19 @@ for(curdir in mappeddirs){
 			
 			data$analyzed_reads[i] <- strsplit(analysisFileContents[grep('^Num_analyzed_(tags|reads)\t', analysisFileContents)], '\t')[[1]][2] #Tags is for old pipeline
 			
-			if(any(grepl('^Genomic_coverage', analysisFileContents))) {
+			if(any(grepl('^Genomic_coverage\t', analysisFileContents))) {
 				data$Genomic_coverage[i] <- strsplit(analysisFileContents[grep('^Genomic_coverage\t', analysisFileContents)], '\t')[[1]][2]
 			} else {
 				data$Genomic_coverage[i] <- NA
 			}
 			
-			if(any(grepl('^Num_hotspots2', analysisFileContents))) {
+			if(any(grepl('^Num_hotspots2\t', analysisFileContents))) {
 				data$Num_hotspots[i] <- strsplit(analysisFileContents[grep('^Num_hotspots2\t', analysisFileContents)], '\t')[[1]][2]
 			} else {
 				data$Num_hotspots[i] <- NA
 			}
 			
-			if(any(grepl('^SPOT', analysisFileContents))) {
+			if(any(grepl('^SPOT\t', analysisFileContents))) {
 				data$SPOT[i] <- strsplit(analysisFileContents[grep('^SPOT\t', analysisFileContents)], '\t')[[1]][2]
 			} else {
 				data$SPOT[i] <- NA
