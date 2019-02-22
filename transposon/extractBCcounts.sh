@@ -61,7 +61,7 @@ date
 zcat $OUTDIR/${sample}.barcodes.raw.txt.gz | python ${src}/AdjacencyDeDup.py --col 1 -o - -  | gzip -c -9 > $TMPDIR/${sample}.barcodes.deduped.txt.gz
 date
 
-#Only merge UMIs if the length is over 4
+#Only dedup UMIs if the length is over 4
 #Go through entire file with awk despite only looking at first line so zcat terminates properly
 UMIlength=$(zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {print $3}')
 if [[ "${#UMIlength}" -gt "4" ]]; then
