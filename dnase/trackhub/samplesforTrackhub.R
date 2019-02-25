@@ -244,16 +244,18 @@ for(curdir in mappeddirs){
 				} else if(project %in% c("mouseENCODEdnase", "mouseENCODEchipseq", "humanENCODEchipseq")) {
 					if(is.na(data$Group[i])) { data$Group[i] <- "Cell lines" }
 					if(data$Group[i]=="GM12878") { data$Group[i] <- "Cell lines" }
-					if(grepl("[Tt]issues$", data$Group[i])) {
-						if(grepl('^H[234][ABFK]', data$Assay[i])) {
-							data$Group[i] <- paste0(data$Group[i], "-Histone marks")
-						} else {
-							data$Group[i] <- paste0(data$Group[i], "-TFs")
+					if(project %in% c("mouseENCODEchipseq", "humanENCODEchipseq")) {
+						if(grepl("[Tt]issues$", data$Group[i])) {
+							if(grepl('^H[234][ABFK]', data$Assay[i])) {
+								data$Group[i] <- paste0(data$Group[i], "-Histone marks")
+							} else {
+								data$Group[i] <- paste0(data$Group[i], "-TFs")
+							}
 						}
+						if(grepl('eGFP|(3x)?FLAG', data$Assay[i], ignore.case=T)) { data$Group[i] <- 'Epitope-tagged TFs' }
+						if(grepl('control', data$Assay[i], ignore.case=T)) { data$Group[i] <- 'Control' }
+						if(data$Assay[i] == "CTCF") { data$Group[i] <- 'CTCF' }
 					}
-					if(grepl('eGFP|(3x)?FLAG', data$Assay[i], ignore.case=T)) { data$Group[i] <- 'Epitope-tagged TFs' }
-					if(grepl('control', data$Assay[i], ignore.case=T)) { data$Group[i] <- 'Control' }
-					if(data$Assay[i] == "CTCF") { data$Group[i] <- 'CTCF' }
 				}
 			} else {
 				data$Group[i] <- data$Institution[i]
