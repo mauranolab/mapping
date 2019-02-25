@@ -51,13 +51,13 @@ def getDS(sample_line):
     # submitted_file_name DS number is here
     #replicate/library/aliases OR in aliases
     if regexp.search(str(sample_json['replicate']['library']['aliases'])) is not None:
-        m=re.search(regexp, str(sample_json['replicate']['library']['aliases']))
+        m = re.search(regexp, str(sample_json['replicate']['library']['aliases']))
         DSid = DSid=m.group(0)
     elif regexp.search(str(sample_json['aliases'])) is not None:
-        m=re.search(regexp, str(sample_json['aliases']))
+        m = re.search(regexp, str(sample_json['aliases']))
         DSid = m.group(0)
     elif 'submitted_file_name' in sample_json and regexp.search(str(sample_json['submitted_file_name'])) is not None:
-        m=re.search(regexp, str(sample_json['submitted_file_name']))
+        m = re.search(regexp, str(sample_json['submitted_file_name']))
         DSid = m.group(0)
     elif regexp.search(str(sample_json)) is None:
         DSid = sample_json['replicate']['library']['@id'].split('/')[2]
@@ -94,8 +94,10 @@ def getDS(sample_line):
         sampleAge = sample_json['replicate']['experiment']['biosample_summary']
         try: 
             sampleAge = sampleAge[sampleAge.index("(") + 1:sampleAge.rindex(")")]
+            #could also use decimal https://stackoverflow.com/questions/11227620/drop-trailing-zeros-from-decimal
         except:
             sampleAge = 'NA'
+        sampleAge = re.sub('(\d+\.\d*[1-9])0+', r'\1', sampleAge)
     
     libraryAccession = sample_json['replicate']['library']['accession']
     
