@@ -305,7 +305,6 @@ for i in `ls $OUTDIR/Weblogos_UMI/*.UMIs.png | sort | awk -F'/' '{print $NF}'`; 
 #Summarize flowcell info
 #####
 mkdir -p $OUTDIR/FlowcellSummary
-mkdir -p $OUTDIR/QC_RNA_DNA
 ${src}/FlowcellSummary.R $OUTDIR
 
 #Convert to Excel
