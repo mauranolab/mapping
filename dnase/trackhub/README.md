@@ -87,20 +87,33 @@ EOF
 cd ..
 ```
 
-## Annotate samples for trackhub
+## Annotate samples and create trackhub
+This should be run after all DNase samples have been processed. 
+samplesforTrackhub.R combines metadata from SamplesForTrackhub.tsv with the pipeline output of analysis.sh.
 ```
-cd ${base}/mapped
-project=humanENCODEdnase
-#project=mouseENCODEchipseq
-${src}/trackhub/samplesforTrackhub.R --inputfile ${base}/SampleIDs.tsv --project ${project} --out ${base}/SamplesForTrackhub.tsv
+#Prep annotation
+cd /vol/isg/encode/dnase/mapped/
+${src}/trackhub/samplesforTrackhub.R --inputfile ../SampleIDs.tsv --project humanENCODEdnase --out ../SamplesForTrackhub.tsv 2>&1 | grep -E -i "(warning|error)"
+
+cd /vol/isg/encode/chipseq/mapped/
+${src}/trackhub/samplesforTrackhub.R --inputfile ../SampleIDs.tsv --project humanENCODEchipseq --out ../SamplesForTrackhub.tsv 2>&1 | grep -E -i "(warning|error)"
+
+cd /vol/isg/encode/mouseencode_2019/mapped/
+${src}/trackhub/samplesforTrackhub.R --inputfile ../SampleIDs.tsv --project mouseENCODEdnase --out ../SamplesForTrackhub.tsv 2>&1 | grep -E -i "(warning|error)"
+
+cd /vol/isg/encode/mouseencode_chipseq/mapped/
+${src}/trackhub/samplesforTrackhub.R --inputfile ../SampleIDs.tsv --project mouseENCODEchipseq --out ../SamplesForTrackhub.tsv 2>&1 | grep -E -i "(warning|error)"
 ```
-## Create trackhub
-This script creates the hub, and genome file at the output location, and creates a subdirectory named hg38 containing the trackhub.txt  
-This should be run after all DNase samples have been processed. You will need to create the trackhub/hub.txt and trackhub/genomes.txt landing page.
+MakeTrackhub.py creates the trackdb file. You will need to create the trackhub/hub.txt and trackhub/genomes.txt landing page.
 ```
-mkdir -p ${base}/trackhub/hg38
-${src}/trackhub/MakeTrackhub.py --genome hg38 --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/ ${base}/SamplesForTrackhub.tsv > ${base}/trackhub/hg38/trackDb.txt
-cd ..
+#Make hub
+mkdir -p /vol/isg/encode/trackhub/mm10 /vol/isg/encode/trackhub/hg38
+cd /vol/isg/encode/trackhub
+${src}/trackhub/MakeTrackhub.py --genome mm10 --supertrack ENCODE_DNase-seq --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/mouseencode/mapped/ /vol/isg/encode/mouseencode/SamplesForTrackhub.tsv > mm10/trackDb.txt
+${src}/trackhub/MakeTrackhub.py --genome mm10 --supertrack ENCODE_ChIP-seq --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/mouseencode_chipseq/mapped/ /vol/isg/encode/mouseencode_chipseq/SamplesForTrackhub.tsv >> mm10/trackDb.txt
+
+${src}/trackhub/MakeTrackhub.py --genome hg38 --supertrack ENCODE_DNase-seq --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/ /vol/isg/encode/dnase/SamplesForTrackhub.tsv > hg38/trackDb.txt
+${src}/trackhub/MakeTrackhub.py --genome hg38 --supertrack ENCODE_ChIP-seq --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/chipseq/mapped/ /vol/isg/encode/chipseq/SamplesForTrackhub.tsv >> hg38/trackDb.txt
 ```
 For debugging trackhub, add "udcTimeout=1&" to browser URL
 
