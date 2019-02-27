@@ -47,9 +47,9 @@ getReadsPerSite <- function(Sample) {
 
 
 ###
-Barcodes <- list.files('./', pattern='^BS', include.dirs = FALSE)
+Barcodes <- list.files('./', pattern='\\.o[0-9]+$', include.dirs = FALSE)
+Barcodes <- Barcodes[grep('^submit\\.', Barcodes, invert=T)]
 Barcodes <- Barcodes[file.info(Barcodes)$size>200]#Removes files with errors
-Barcodes <- Barcodes[grep('\\.o[0-9]', Barcodes)]
 outputCols <- c("Flowcell", "BS", "Name", "Type", "Total reads", "Total barcodes", "BC+UMI", "UMI length", "Unique BC", "BC length", "Complexity", "Mapped reads", "Mapped+BC reads", "Unique sites", "Unique sites +-5bp", "#BC 1 site", "#BC 2+ sites", "Prop 2+")
 sumBarcode <- as.data.frame(matrix(ncol=length(outputCols), nrow=length(Barcodes)))
 colnames(sumBarcode) <- outputCols
@@ -113,6 +113,6 @@ for (i in 5:ncol(sumBarcode)) {
 }
 
 
-SumHTMLtable <- tableHTML(sumBarcode, rownames=F, footer='N.B.: Unique BC counts BCs with 10+ reads, integration sites require 2+ reads') %>% add_css_row(css = list('background-color', 'lightblue'), rows = odd(1:nrow(sumBarcode)))
+SumHTMLtable <- tableHTML(sumBarcode, rownames=F, footer='N.B.: Unique BC requires 10+ reads, integration sites require 2+ reads') %>% add_css_row(css = list('background-color', 'lightblue'), rows = odd(1:nrow(sumBarcode)))
 write_tableHTML(SumHTMLtable, file = paste0(outdir, "/FlowcellSummary/index.html"))
 write.table(sumBarcode, file = paste0(outdir, "/FlowcellSummary/summaryflowcell.tsv"), sep='\t', quote=F, col.names=T, row.names=F)
