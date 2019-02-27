@@ -66,6 +66,9 @@ if(project=="CEGS") {
 	# Loop over all the flowcells to find sample directories.
 	flowcell_dates = list()
 	for(flowcell in list.dirs(path=pwd, full.names=F, recursive = F)) {
+	    if(flowcell=='src') next;
+		if(flowcell=='trackhub') next;
+
 		# To temporarily skip flowcell directories which are incomplete.
 		# if(flowcell=='FCH2NNMBBXY') next;
 		
