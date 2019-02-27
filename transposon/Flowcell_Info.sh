@@ -1,14 +1,18 @@
 #!/bin/bash
-#set -e # -o pipefail
+set -eu  -o pipefail
 
 src="/vol/mauranolab/transposon/src"
 
 module load samtools/1.9
-Dir=$1
-Flow=$(basename `pwd` | sed 's/aligned.//g')
-echo $Flow
-OUTDIR=$Dir/$Flow
+
+
+fc=$(basename `pwd`)
+
+OUTDIR=$1/${fc}
 mkdir -p $OUTDIR
+
+echo "Output to $OUTDIR"
+
 
 
 #####
@@ -17,8 +21,7 @@ mkdir -p $OUTDIR
 #######
 #HiC data
 ######
-if [[ `find -maxdepth 1 -type d | grep -v bak | grep 'HiC\|CapC\|dsDNA\|3C'| wc -l` -ge 1 ]]
-then
+if [[ `find -maxdepth 1 -type d | grep -v bak | grep 'HiC\|CapC\|dsDNA\|3C'| wc -l` -ge 1 ]]; then
     echo 'HiC samples found'
     mkdir -p $OUTDIR/HiC/
     
@@ -82,7 +85,7 @@ then
 #        mappedR1=$(samtools view -F4 -q30 ${HiC}/${HiC}_R1.sorted.bam | wc -l); \
 #        mappedR2=$(samtools view -F4 -q30 ${HiC}/${HiC}_R2.sorted.bam | wc -l); \
 #        dangling=$(grep Dangling ${HiC}/hic_results/data/${HiC}/${HiC}.mRSstat | awk '{print $2}'); \
-#        echo $Flow $HiC $reads $adapter $mappedR1 $mappedR2 $gatcR1 $gatcR2 $numLinkR1 $numLinkR2 $dangling $validPairs $validPairsSameChrom  ; done | awk -v OFS='\t' '{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' > $OUTDIR/HiC/HiC_summary.tsv
+#        echo ${fc} $HiC $reads $adapter $mappedR1 $mappedR2 $gatcR1 $gatcR2 $numLinkR1 $numLinkR2 $dangling $validPairs $validPairsSameChrom  ; done | awk -v OFS='\t' '{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' > $OUTDIR/HiC/HiC_summary.tsv
 #          
 #
 #    
@@ -183,6 +186,7 @@ then
 #    scale_y_continuous(label= fancy_scientific) +
 #    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
 #    
+#    pdf(NULL)
 #    gp = ggplotGrob(t)
 #    gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
 #    
@@ -245,29 +249,22 @@ then
 #        cat $OUTDIR/HiC/HiCsummary.html <(echo "") <(echo "<br>") $OUTDIR/HiC/Weblogoindex.html <(echo "") <(echo "<br>") $OUTDIR/HiC/Images.html >$OUTDIR/HiC/index.html
 else
     echo 'No HiC samples found'
-    echo 'Exit'
 fi
-#
-#######
-#if [[ `find -type d | grep BS | grep -v bak | grep -v 'HiC\|CapC\|dsDNA\|3C'| wc -l` == 0 ]]
-#then
-#    exit
-#fi
+
+
 ######
 ##Weblogos
 #######
 ##For raw sequence
-#
-
-
-if [ "$Flow" != "Merged" ]; then
+if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
+    echo "Copying raw weblogos"
+    
     mkdir -p $OUTDIR/Weblogos_raw
     find -name *.R2.raw.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_raw
     find -name *.R1.raw.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_raw
     for i in `ls $OUTDIR/Weblogos_raw/*R1.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R1index.html
     for i in `ls $OUTDIR/Weblogos_raw/*R2.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R2index.html
     cat $OUTDIR/Weblogos_raw/R1index.html $OUTDIR/Weblogos_raw/R2index.html | sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_raw/index.html
-    
     
     
     #For processed sequence
@@ -277,28 +274,24 @@ if [ "$Flow" != "Merged" ]; then
     for i in `ls $OUTDIR/Weblogos_processed/*BC.processed.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/BCindex.html
     for i in `ls $OUTDIR/Weblogos_processed/*plasmid.processed.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/plasmidindex.html
     cat $OUTDIR/Weblogos_processed/BCindex.html $OUTDIR/Weblogos_processed/plasmidindex.html | sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_processed/index.html
+    
+    echo "weblogo for UMI sequence"
+    mkdir -p $OUTDIR/Weblogos_UMI
+    find -name *.UMIs.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_UMI
+    for i in `ls $OUTDIR/Weblogos_UMI/*.UMIs.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_UMI/index.html
 fi
 
-#For genomic reads
+echo "weblogo for genomic reads"
 if find -name *.genomic.png | grep -q "." ; then
     mkdir -p $OUTDIR/Weblogos_genomic
     find -name *.genomic.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_genomic
     for i in `ls $OUTDIR/Weblogos_genomic/*.genomic.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_genomic/index.html
 fi
 
-
-#For Barcode sequence
+echo "weblogo for Barcode sequence"
 mkdir -p $OUTDIR/Weblogos_Barcode
 find -name *barcodes.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_Barcode
 for i in `ls $OUTDIR/Weblogos_Barcode/*barcodes.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_Barcode/index.html
-
-#For UMI sequence
-mkdir -p $OUTDIR/Weblogos_UMI
-find -name *.UMIs.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_UMI
-for i in `ls $OUTDIR/Weblogos_UMI/*.UMIs.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_UMI/index.html
-
-
-
 
 #####
 #Summarize flowcell info
@@ -307,10 +300,7 @@ mkdir -p $OUTDIR/FlowcellSummary
 ${src}/FlowcellSummary.R $OUTDIR
 
 #Convert to Excel
-#!/bin/bash
-
-
-PYTHON_ARG="$Flow" INPUT_ARG="$OUTDIR/FlowcellSummary/summaryflowcell.tsv" OUTPUT_ARG="$OUTDIR/FlowcellSummary/${Flow}.xlsx" python - <<END
+PYTHON_ARG="${fc}" INPUT_ARG="$OUTDIR/FlowcellSummary/summaryflowcell.tsv" OUTPUT_ARG="$OUTDIR/FlowcellSummary/${fc}.xlsx" python - <<END
 import csv
 import os
 from xlsxwriter.workbook import Workbook
@@ -334,23 +324,22 @@ workbook.close()
 END
 
 
-echo '<a href="'${Flow}.xlsx'"><font size="6">FlowcellSummary</font></a>'| cat $OUTDIR/FlowcellSummary/index.html - > $OUTDIR/FlowcellSummary/index1
+echo '<a href="'${fc}.xlsx'"><font size="6">FlowcellSummary</font></a>'| cat $OUTDIR/FlowcellSummary/index.html - > $OUTDIR/FlowcellSummary/index1
 mv $OUTDIR/FlowcellSummary/index1 $OUTDIR/FlowcellSummary/index.html
 
-chmod 770 $OUTDIR/FlowcellSummary/${Flow}.xlsx
+
 ######
 #Levenstein distance per sample
 #######
-if [ "$Flow" != "Merged" ]
-then
+if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     mkdir -p $OUTDIR/EditDist
     
     for i in `find \( -name "extract*" -o -name "map*" \) | grep -v bak`; do Dist=$(grep 'BC Hamming distance' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g'| perl -pe 's/, /\t/g' | grep 'Hamming distance' > $OUTDIR/EditDist/BC_EditDist
     for i in `find \( -name "extract*" -o -name "map*" \) | grep -v bak`; do Dist=$(grep 'Plasmid Hamming distance' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g'| perl -pe 's/, /\t/g' | grep 'Hamming distance' > $OUTDIR/EditDist/Plasmid_EditDist
     
     
-    R  --quiet --no-save << EOF
-    source("/vol/mauranolab/transposon/src/maagj01_profile.R")
+    R --quiet --no-save << EOF
+    source("${src}/maagj01_profile.R")
     
     library(stringr)
     library(reshape2)
@@ -390,39 +379,43 @@ then
     #plot
     BCleven\$Type<-gsub(".*_",'',BCleven\$Sample)
     BCleven\$Sample<- substr(BCleven\$Sample, 0, min(nchar(BCleven\$Sample)))
-    #pdf("$OUTDIR/EditDist/LevenDistance_BC.pdf",height=10,width=20)
-    bcl<-ggplot(BCleven[grep('Barcode',BCleven[,4]),], aes(Hamming,Reads,fill=Type)) + 
-    geom_bar(stat="identity",color='black',size=0.25,alpha=0.4) +
-    #ggtitle('GGlo')+
-    facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
-    theme_classic()+
-    colScale+
-    xlab('Hamming distance')+
-    theme(legend.position = "bottom",legend.text=element_text(size=8))+
-    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-    #scale_x_continuous(label= fancy_scientific)+
-    scale_y_continuous(label= fancy_scientific)
-    #dev.off()
+#This version was commented out for whatever reason
+#    #pdf("$OUTDIR/EditDist/LevenDistance_BC.pdf",height=10,width=20)
+#    bcl<-ggplot(BCleven[grep('Barcode',BCleven[,4]),], aes(Hamming,Reads,fill=Type)) + 
+#    geom_bar(stat="identity",color='black',size=0.25,alpha=0.4) +
+#    #ggtitle('GGlo')+
+#    facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
+#    theme_classic()+
+#    colScale+
+#    xlab('Hamming distance')+
+#    theme(legend.position = "bottom",legend.text=element_text(size=8))+
+#    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+#    #scale_x_continuous(label= fancy_scientific)+
+#    scale_y_continuous(label= fancy_scientific)
+#    #dev.off()
+    pdf(NULL)
     gp = ggplotGrob(bcl)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     ggsave(gp ,file="$OUTDIR/EditDist/LevenDistance_BC.pdf", width=13, height=height)
     
     
     #plot
-    #pdf("$OUTDIR/EditDist/LevenDistance_Plasmid.pdf",height=10,width=20)
-    pll<-ggplot(BCleven[grep('Plasmid|Primer',BCleven[,4]),], aes(Hamming,Reads,fill=Type)) + 
-    geom_bar(stat="identity",color="black", size=0.1,alpha=0.4) +
-    #ggtitle('GGlo')+
-    facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
-    theme_classic()+
-    colScale+
-    xlab('Hamming distance')+
-    #scale_fill_brewer('Set1')+
-    theme(legend.position = "bottom",legend.text=element_text(size=8))+
-    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-    #scale_x_continuous(label= fancy_scientific)+
-    scale_y_continuous(label= fancy_scientific)
-    #dev.off()
+#This version was commented out for whatever reason
+#    #pdf("$OUTDIR/EditDist/LevenDistance_Plasmid.pdf",height=10,width=20)
+#    pll<-ggplot(BCleven[grep('Plasmid|Primer',BCleven[,4]),], aes(Hamming,Reads,fill=Type)) + 
+#    geom_bar(stat="identity",color="black", size=0.1,alpha=0.4) +
+#    #ggtitle('GGlo')+
+#    facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
+#    theme_classic()+
+#    colScale+
+#    xlab('Hamming distance')+
+#    #scale_fill_brewer('Set1')+
+#    theme(legend.position = "bottom",legend.text=element_text(size=8))+
+#    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+#    #scale_x_continuous(label= fancy_scientific)+
+#    scale_y_continuous(label= fancy_scientific)
+#    #dev.off()
+    pdf(NULL)
     gp = ggplotGrob(pll)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     ggsave(gp ,file="$OUTDIR/EditDist/LevenDistance_Plasmid.pdf", width=13, height=height)
@@ -433,9 +426,9 @@ EOF
     convert -density 300 $OUTDIR/EditDist/LevenDistance_Plasmid.pdf -quality 100 $OUTDIR/EditDist/LevenDistance_Plasmid.png
     
     for i in `ls $OUTDIR/EditDist/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/EditDist/index.html
-    
-
 fi
+
+
 #####
 #Barcode frequency
 #####
@@ -443,7 +436,7 @@ mkdir -p $OUTDIR/BarcodeFreq
 for i in `find -name *barcode.counts.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do reads=$(cut -f2 ${i}/${i}.barcode.counts.txt | awk '{sum+=$1} END {print sum}'); sort -nk2 ${i}/${i}.barcode.counts.txt| awk -v OFS='\t' -F'\t' -v sample="$i" -v reads="$reads" '{print $1, $2, sample, reads}'; done > $OUTDIR/BarcodeFreq/BarcodeFreq.txt
 
 
-R  --quiet --no-save << EOF
+R --quiet --no-save << EOF
 library(dplyr)
 BC <- read("$OUTDIR/BarcodeFreq/BarcodeFreq.txt")
 colnames(BC) <- c("Barcodes","barcodeFreq", "Sample", 'TotalBCcount')
@@ -454,11 +447,11 @@ BC[,"BC.bin"] <- cut(BC[,"cpm"], breaks=c( 0, 1.1, 5.1, 10.1, 50.1, 100.1, 1000.
 #    group_by(Sample, cpm) %>%
 #    mutate(quantile = ntile(cpm, 10))
 #quantBCs <- lsit()
-#for (i in 1:length(unique(BC$Sample))) {
-#    quantile(BC[BC$Sample %in% 'BS493A-MSH_K562~A1~GGlo~HS2~A1~1Linear~ExoI_Rep2_DNA',]$cpm, prob = seq(0, 1, length = 11), type = 5
+#for (i in 1:length(unique(BC\$Sample))) {
+#    quantile(BC[BC\$Sample %in% 'BS493A-MSH_K562~A1~GGlo~HS2~A1~1Linear~ExoI_Rep2_DNA',]\$cpm, prob = seq(0, 1, length = 11), type = 5
 #
 myColors <- brewer.pal(4,"Set1")
-names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
+names(myColors) <- factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
 colScale <- scale_fill_manual(name = "Type",values = myColors)
 BC[,"Sample"]<- substr(BC[,"Sample"], 0, min(nchar(BC[,"Sample"])))
 
@@ -474,6 +467,7 @@ ggHist <- BC %>%
     coord_cartesian(xlim = c(0, 4))+
     theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
 
+pdf(NULL)
 gp = ggplotGrob(ggHist)
 gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
 ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeHist.pdf", width=13, height=height)
@@ -490,11 +484,11 @@ ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeHist.pdf", width=13, height=height)
 #theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=60,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
 ##ggsave(t,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
 #
+#pdf(NULL)
 #gp = ggplotGrob(t)
 #gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
 #ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
 #
-
 EOF
 
 rm $OUTDIR/BarcodeFreq/BarcodeFreq.txt
@@ -511,7 +505,7 @@ if [[ `find -name *barcode.counts.withUMI.txt* | sed 's/^..//g' | sed 's/\/.*//g
     mkdir -p $OUTDIR/BarcodeFreq_UMI
     for i in `find -name *barcode.counts.withUMI.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do uniqueMol=$(cat ${i}/${i}.barcode.counts.withUMI.txt | wc -l); awk '{print $1}' ${i}/${i}.barcode.counts.withUMI.txt| sort | uniq -c | sort -nk1| awk -v OFS='\t' '{print $2, $1}' | awk -v OFS='\t' -F'\t' -v sample="$i" -v uniqMol="$uniqueMol" '{print $1, $2, sample, uniqMol}'; done > $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt
     
-    R  --quiet --no-save << EOF
+    R --quiet --no-save << EOF
     BC <- read("$OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt")
     colnames(BC) <- c("Barcodes","BarcodeFreq_UMI", "Sample", "TotalUMIcount")
     BC[,"Type"]<-gsub(".*_",'',gsub('_Merged','',BC[,"Sample"]))
@@ -537,7 +531,8 @@ if [[ `find -name *barcode.counts.withUMI.txt* | sed 's/^..//g' | sed 's/\/.*//g
     theme_classic()+
     coord_cartesian(xlim = c(0, 4))+
     theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
-
+    
+    pdf(NULL)
     gp = ggplotGrob(ggHist)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     ggsave(gp ,file="$OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI_hist.pdf", width=13, height=height)
@@ -552,6 +547,7 @@ if [[ `find -name *barcode.counts.withUMI.txt* | sed 's/^..//g' | sed 's/\/.*//g
     #theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=60,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
     ##ggsave(t,file="$OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.pdf", width=20, height=10)
     #
+    #pdf(NULL)
     #gp = ggplotGrob(t)
     #gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     #ggsave(gp ,file="$OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.pdf", width=20, height=10)
@@ -570,7 +566,7 @@ EOF
     for i in `find -name *barcode.counts.withUMI.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do  cat $i/$i.barcode.counts.withUMI.txt | awk -v OFS='\t' -F'\t' -v sample="$i" '{print $1, $2, $3, sample}' ; done > $OUTDIR/UMI_distribution/UMI_distribution.txt
 
 
-    R  --quiet --no-save << EOF
+    R --quiet --no-save << EOF
     
     library(data.table)
     
@@ -600,6 +596,7 @@ EOF
     ylab('Counts')+
     theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=60,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
     
+    pdf(NULL)
     gp = ggplotGrob(ggmaxUMI)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     ggsave(gp ,file="$OUTDIR/UMI_distribution/UMI_distribution.pdf", width=13, height=height)
@@ -610,23 +607,20 @@ EOF
     convert -density 300 $OUTDIR/UMI_distribution/UMI_distribution.pdf -quality 100 $OUTDIR/UMI_distribution/UMI_distribution.png
     
     for i in `ls $OUTDIR/UMI_distribution/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/UMI_distribution/index.html
-
 fi
-
 
 
 #####
 #Saturation curve
 #####
-if [[ `find -name *Saturation* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
-    then
+if [[ `find -name *Saturation* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]; then
     mkdir -p $OUTDIR/SaturationCurve
     for i in `find -name *Saturation* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do cat ${i}/${i}.Saturation*| awk -v OFS='\t' -F'\t' -v sample="$i" '{print $1, $2, sample}'; done | perl -pe 's/ /\t/g' > $OUTDIR/SaturationCurve/SaturationCurve.txt
     
-    rm $OUTDIR/SaturationCurve/*pdf
-    rm $OUTDIR/SaturationCurve/*png
-    R  --quiet --no-save << EOF
-    source("/vol/mauranolab/transposon/src/maagj01_profile.R")
+    rm -f $OUTDIR/SaturationCurve/*pdf
+    rm -f $OUTDIR/SaturationCurve/*png
+    R --quiet --no-save << EOF
+    source("${src}/maagj01_profile.R")
     
     SaturationCurve <- read("$OUTDIR/SaturationCurve/SaturationCurve.txt")
     
@@ -657,6 +651,7 @@ if [[ `find -name *Saturation* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak|
     scale_x_continuous(label= fancy_scientific)+
     scale_y_continuous(label= fancy_scientific)
     
+    pdf(NULL)
     gp = ggplotGrob(s1)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     ggsave(gp ,file="$OUTDIR/SaturationCurve/SaturationCurve.pdf", width=13, height=height)
@@ -669,10 +664,10 @@ EOF
     for i in `ls $OUTDIR/SaturationCurve/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/SaturationCurve/index.html
 fi
 
+
 ######
 #iPCR specific 
 ######
-
 if [[ `find -type d | grep BS | grep -v bak | grep iPCR| wc -l` -ge 1 ]]
 then
     echo 'iPCR samples found'
@@ -823,7 +818,6 @@ fi
 
 
 
-
-
+echo
 echo 'Done!!!'
 date
