@@ -281,7 +281,6 @@ fi
 
 #For genomic reads
 if find -name *.genomic.png | grep -q "." ; then
-echo hi
     mkdir -p $OUTDIR/Weblogos_genomic
     find -name *.genomic.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_genomic
     for i in `ls $OUTDIR/Weblogos_genomic/*.genomic.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_genomic/index.html
