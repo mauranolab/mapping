@@ -5,6 +5,10 @@ src=/vol/mauranolab/transposon/src
 
 sample=$1
 
+
+#TODO inconsistently applied
+minReadCutoff=10
+
 OUTDIR=${sample}
 
 if [ ! -s "${OUTDIR}/${sample}.barcodes.preFilter.txt" ]; then
@@ -13,7 +17,7 @@ if [ ! -s "${OUTDIR}/${sample}.barcodes.preFilter.txt" ]; then
 fi
 
 
-echo "Analyzing data for ${sample}"
+echo "Analyzing data for ${sample} (minReadCutoff=${minReadCutoff})"
 ${src}/removeOverrepresentedBCs.py --col 1 --freq 0.01 -o ${OUTDIR}/${sample}.barcodes.txt ${OUTDIR}/${sample}.barcodes.preFilter.txt
 
 
@@ -55,11 +59,11 @@ if [[ `awk -v minUMIlength=${minUMIlength} -F "\t" 'BEGIN {OFS="\t"} length($3) 
     echo -n -e "${sample}\tNumber of unique barcodes+UMI\t"
     #TODO move to extract.py
     cat ${OUTDIR}/${sample}.barcode.counts.withUMI.txt | wc -l
-
+    
     echo
     echo "Histogram of number of reads per barcode+UMI"
     cat ${OUTDIR}/${sample}.barcode.counts.withUMI.txt | cut -f3 | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
-
+    
     echo
     echo "UMI lengths"
     cut -f2 ${OUTDIR}/${sample}.barcode.counts.withUMI.txt | 
@@ -74,13 +78,18 @@ else
 fi
 
 echo "Barcode counts"
-cat $bcfile | cut -f1 |
-sort -k1,1 | uniq -c | sort -k2,2 | awk '$2!=0' | awk 'BEGIN {OFS="\t"} {print $2, $1}' | awk -F'\t' '$1!=""' > ${OUTDIR}/${sample}.barcode.counts.txt
+cat ${bcfile} | cut -f1 |
+sort -k1,1 | uniq -c | sort -k2,2 | awk '$2!=0' | awk 'BEGIN {OFS="\t"} {print $2, $1}' | awk -F "\t" '$1!=""' > ${OUTDIR}/${sample}.barcode.counts.txt
 
 echo
 echo -n -e "${sample}\tNumber of unique barcodes\t"
 #TODO move to extract.py
 cat ${OUTDIR}/${sample}.barcode.counts.txt | wc -l
+
+echo
+echo -n -e "${sample}\tNumber of unique barcodes with 10+ reads\t"
+#TODO move to extract.py
+cat ${OUTDIR}/${sample}.barcode.counts.txt | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $2>minReadCutoff' | wc -l
 
 echo
 echo "Histogram of number of reads per barcode"
@@ -95,7 +104,6 @@ awk '{print length($0)}' | sort -g | uniq -c | sort -k2,2 | awk '$2!=0'
 
 echo
 echo "Saturation curves"
-#!/bin/bash
 numlines=`cat ${OUTDIR}/${sample}.barcodes.txt | wc -l`
 
 for i in `echo {10,1000,10000,50000,100000,250000,500000,1000000,2000000,3000000,4000000,5000000,10000000,15000000,20000000,25000000,30000000,35000000,40000000,45000000,50000000,55000000,60000000,70000000,80000000,90000000,100000000,110000000,120000000} | tr ' ' '\n' | gawk -v subset=$numlines '{if ($1<=subset) print}'`; do 

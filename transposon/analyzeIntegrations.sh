@@ -5,6 +5,10 @@ src=/vol/mauranolab/transposon/src
 
 sample=$1
 
+
+#TODO inconsistently applied
+minReadCutoff=2
+
 OUTDIR=${sample}
 
 hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed
@@ -23,7 +27,7 @@ fi
 
 
 echo "Analyzing data for ${sample}"
-echo "Analyzing read mapping"
+echo "Analyzing read mapping (minReadCutoff=${minReadCutoff})"
 
 
 echo
@@ -35,14 +39,21 @@ echo -n -e "${sample}\tTotal PF tags\t"
 cat $TMPDIR/${sample}.flagstat.txt | grep "in total" | awk '{print $1}'
 
 
+#Get the reads from the bam since we don't save the trimmed fastq
+samtools view $OUTDIR/${sample}.bam | cut -f10 | shuf -n 1000000 - | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print ">id-" NR; print $1}' |
+weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} genomic" --stacks-per-line 100 > $TMPDIR/${sample}.genomic.eps
+convert $TMPDIR/${sample}.genomic.eps ${OUTDIR}/${sample}.genomic.png
+
+
 echo
 echo "Merge mapping and barcodes"
 samflags="-F 512"
+#Subtract additional 1 bp from reads on + strand so that the coordinates represent 1 nt to the left of the insertion site (i.e. for A^T, the coordinates point to T)
 samtools view $samflags $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
     readlength = length($10); \
     if (and($2, 16)) { \
         strand="-"; \
-        chromStart=$4-2+readlength; \
+        chromStart=$4+readlength-1; \
     } else { \
         strand="+"; \
         chromStart=$4-1; \
@@ -153,7 +164,7 @@ echo "Generating UCSC track"
 awk -v sample=${sample} -F "\t" 'BEGIN {OFS="\t"; print "track name=" sample " description=" sample "-integrations"} {print}' $OUTDIR/${sample}.barcodes.coords.bed > $OUTDIR/${sample}.barcodes.coords.ucsc.bed
 
 
-cut -f1-3 $OUTDIR/${sample}.barcodes.coords.bed | uniq > $OUTDIR/${sample}.uniqcoords.bed
+cat $OUTDIR/${sample}.barcodes.coords.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' | cut -f1-3 | uniq > $OUTDIR/${sample}.uniqcoords.bed
 
 
 echo
@@ -164,13 +175,8 @@ echo
 echo -e -n "${sample}\tTotal uniq sites\t"
 cut -f1-3,6 $OUTDIR/${sample}.uniqcoords.bed | uniq | wc -l
 
-echo -e -n "${sample}\tTotal uniq sites (within 5 bp, ignoring strand)\t "
+echo -e -n "${sample}\tTotal uniq sites (within 5 bp, ignoring strand)\t"
 cat $OUTDIR/${sample}.uniqcoords.bed | bedops --range 5 -m - | uniq | wc -l
-
-echo
-echo "Histogram of number of insertion sites per barcode"
-cat $OUTDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $3, $6, $4}' | sort -k5,5 | cut -f5 | sort -g | uniq -c | sort -k1,1g | awk '{print $1}' | 
-awk -v cutoff=2 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 
 
 echo
@@ -178,12 +184,22 @@ echo "Histogram of number of reads per barcode"
 cat $OUTDIR/${sample}.barcodes.coords.bed | cut -f5 | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 
 
-uniqueIntervals=$(tail -n +2 ${hotspotfile} | paste ${hotspotfile} - | awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}' | sed \$d | awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' | bedtools intersect -wa -a - -b $OUTDIR/${sample}.barcodes.coords.bed | sort | uniq | wc -l | awk '{print $1}')
-allIntervals=$(wc -l ${hotspotfile} | awk '{print $1}')
-zeroInsertions=`echo $allIntervals-$uniqueIntervals | bc -l`
+echo
+echo -n -e "${sample}\tProportion of unique insertion sites at TA\t"
+cat $OUTDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$2-=2; $3-=1; print}' | cut -f1-3,6 | uniq | /home/mauram01/bin/bed2fasta.pl - /vol/isg/annotation/fasta/hg38 2>/dev/null | grep -v -e "^>" | tr '[a-z]' '[A-Z]' | awk -F "\t" 'BEGIN {OFS="\t"; count=0} $0=="TA" {count+=1} END {print count/NR}'
+
+
+echo
+echo "Histogram of number of insertion sites per barcode"
+cat $OUTDIR/${sample}.barcodes.coords.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $3, $6, $4}' | sort -k5,5 | cut -f5 | sort -g | uniq -c | sort -k1,1g | awk '{print $1}' | 
+awk -v cutoff=2 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+
 
 echo
 echo "Histogram of number of insertions between two neighboring DNase sites"
+uniqueIntervals=$(tail -n +2 ${hotspotfile} | paste ${hotspotfile} - | awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}' | sed \$d | awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' | bedtools intersect -wa -a - -b $OUTDIR/${sample}.barcodes.coords.bed | sort | uniq | wc -l | awk '{print $1}')
+allIntervals=$(wc -l ${hotspotfile} | awk '{print $1}')
+zeroInsertions=`echo $allIntervals-$uniqueIntervals | bc -l`
 echo " "$zeroInsertions 0
 
 tail -n +2 ${hotspotfile} |
@@ -207,7 +223,11 @@ options(bitmapType="cairo")
 
 filename <- "$OUTDIR/DistToTSS.txt"
 cat("Reading", filename, "\n")
-data <- read.table(filename)
+data <- read(filename)
+if(is.null(data)) {
+    quit(0, save = "no", status = 0)
+}
+
 colnames(data) <- c("DistToTSS")
 
 data\$DistToTSS.bin <- cut(data\$DistToTSS, breaks=c(-10^7, -10^6, -10^5, -10^4, -2500, 0, 5000, 10^4, 10^5, 10^6, 10^7), right=F, include.lowest=T, labels=c("-10 Mb", "-1 Mb", "-100 kb", "-10 kb", "-2.5 kb", "+5 kb", "+10 kb", "+100 kb", "+1 Mb", "+10 Mb"))
@@ -229,7 +249,7 @@ EOF
 
 echo
 echo "doing DisttoDpn"
-sort-bed $OUTDIR/${sample}.barcodes.coords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/Dpn/Dpn.bed | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
+cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/Dpn/Dpn.bed | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
 
 R --quiet --no-save << EOF
 #Work around "unable to start device PNG" on ISG cluster
@@ -238,6 +258,9 @@ options(bitmapType="cairo")
 filename <- "$OUTDIR/DistDpn.bed"
 cat("Reading", filename, "\n")
 data <- read(filename)
+if(is.null(data)) {
+    quit(0, save = "no", status = 0)
+}
 colnames(data)[5] <- c("DinsToDpn")
 
 library(ggplot2)
@@ -255,7 +278,7 @@ EOF
 
 echo
 echo "doing DisttoMspI"
-sort-bed $OUTDIR/${sample}.barcodes.coords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/MspI/MspI.bed | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
+cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/MspI/MspI.bed | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
 
 R --quiet --no-save << EOF
 #Work around "unable to start device PNG" on ISG cluster
@@ -264,6 +287,9 @@ options(bitmapType="cairo")
 filename <- "$OUTDIR/DistDpn.bed"
 cat("Reading", filename, "\n")
 data <- read(filename)
+if(is.null(data)) {
+    quit(0, save = "no", status = 0)
+}
 colnames(data)[5] <- c("DinsToDpn")
 
 library(ggplot2)
@@ -280,7 +306,7 @@ EOF
 
 echo
 echo "doing DistToDNase"
-sort-bed $OUTDIR/${sample}.barcodes.coords.bed | closest-features --dist  --delim '\t' --closest -  ${hotspotfile} | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
+cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' --closest -  ${hotspotfile} | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
 
 R --quiet --no-save << EOF
 #Work around "unable to start device PNG" on ISG cluster
@@ -289,6 +315,9 @@ options(bitmapType="cairo")
 filename <- "$OUTDIR/DistToDNase.bed"
 cat("Reading", filename, "\n")
 data <- read(filename)
+if(is.null(data)) {
+    quit(0, save = "no", status = 0)
+}
 colnames(data)[4] <- c("DinsToDpn")
 
 #data\$DistToTSS.bin <- cut(data\$DistToTSS, breaks=c(-10^7, -10^6, -10^5, -10^4, -2500, 0, 5000, 10^4, 10^5, 10^6, 10^7), right=F, include.lowest=T, labels=c("-10 Mb", "-1 Mb", "-100 kb", "-10 kb", "-2.5 kb", "+5 kb", "+10 kb", "+100 kb", "+1 Mb", "+10 Mb"))
