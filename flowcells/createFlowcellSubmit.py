@@ -132,7 +132,6 @@ def DNase(sampleName, sampleID, lab, sampleType, species):
     doDNaseCleanup = True
     
     global DNaseFragmentLengthPlot
-    fragmentLengths = { 'DNase-seq': 300, 'ChIP-seq': 500, 'DNA': 750 }
     if fragmentLengths[sampleType] > DNaseFragmentLengthPlot:
         DNaseFragmentLengthPlot = fragmentLengths[sampleType]
     
@@ -154,13 +153,17 @@ def DNA(sampleName, sampleID, lab, sampleType, species):
     fullSampleName = sampleID + "-" + sampleName
     submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + reference + " mapBwaMem,callsnps " + sampleName + " " + sampleID
     
+    #No specific cleanup yet
     global doDNaseCleanup
     doDNaseCleanup = True
     
     global DNaseFragmentLengthPlot
-    fragmentLengths = { 'DNase-seq': 300, 'ChIP-seq': 500, 'DNA': 750 }
     if fragmentLengths[sampleType] > DNaseFragmentLengthPlot:
         DNaseFragmentLengthPlot = fragmentLengths[sampleType]
+    
+    if sampleType=="DNA Capture":
+        global doDNACaptureCleanup
+        doDNACaptureCleanup = True
     
     return(submitCommand)
 
@@ -213,6 +216,8 @@ def annotateSample(Sampleline, projects, sampletypes, samples):
 #Read in flowcell and create a submit script for all samples with BS number
 ####
 doDNaseCleanup = False
+doDNACaptureCleanup = False
+fragmentLengths = { 'DNase-seq': 300, 'ChIP-seq': 500, 'DNA': 750 , 'DNA Capture': 750 }
 DNaseFragmentLengthPlot = 0
 doTransposonCleanup = False
 
@@ -225,7 +230,7 @@ for flowcellID in flowcellIDs:
     print("\n#Samples from ", flowcellID, sep="")
     flowcellInfoFileName = basedir + "/data/" + flowcellID + "/info.txt"
     flowcellInfoFile = open(flowcellInfoFileName, 'r')
-    #flowcellInfoFile = open("/home/maagj01/scratch/transposon/Analysis/Nick_Mamrak/RnaAsDna/march12_RnaAsDNA.tsv", 'r')
+    #flowcellInfoFile = open("/vol/mauranolab/flowcells/data/FCHM2LKBGX9/info.txt", 'r')
     flowcellInfoFile = flowcellInfoFile.readlines()
     flowcellInfoFile = [line.rstrip().split('\t') for line in flowcellInfoFile]
     
@@ -234,9 +239,15 @@ for flowcellID in flowcellIDs:
         startRow+=1
     
     if args.verbose:
-        print("Reading", flowcellInfoFileName, "starting at line", startRow)
+        print("Reading", flowcellInfoFileName, "starting at line", startRow, file=sys.stderr)
     
     flowcellFile = pd.DataFrame(flowcellInfoFile[startRow:], columns=flowcellInfoFile[startRow]).iloc[1:]
+    
+    #Just handle this simple case for now
+    if flowcellIDs is not None and len(flowcellIDs) is 1 and projects is not None and len(projects) is 1:
+        if 'DNA' in set(flowcellFile['Sample Type']) or 'DNA Capture' in set(flowcellFile['Sample Type']) or 'DNase-seq' in set(flowcellFile['Sample Type']) or 'Nano-DNase' in set(flowcellFile['Sample Type']) or 'ChIP-seq' in set(flowcellFile['Sample Type']):
+            print('find /vol/mauranolab/flowcells/fastq/' + str(flowcellIDs[0]) + '/' + str(projects[0]) + '/* -maxdepth 1 -name "*.fastq.gz" | sort > inputs.txt')
+            print()
     
     for index, line in flowcellFile.iterrows():
         if args.verbose:
@@ -250,7 +261,12 @@ if doDNaseCleanup:
     #TODO run separate plots for each sample type?
     print("qsub -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeInserts.R " + str(DNaseFragmentLengthPlot) + "\"")
     print("qsub -S /bin/bash -j y -N mapped_readcounts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/mapped_readcounts.sh")
-    print("rm -f sgeid.analysis")
+
+
+#TODO placeholder for now
+if doDNACaptureCleanup:
+    print()
+    print("#qsub -S /bin/bash -j y -N analyzeCapture -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/analyzeCapture.sh mappedgenome bait dirs")
 
 
 #BUGBUG doesn't work since we don't have the pid of the final job at submission time
@@ -258,3 +274,5 @@ if doDNaseCleanup:
 #    print()
 #    print("qsub -S /bin/bash -b y -j y -N transposon_info -hold_jid `cat sgeid.merge | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/transposon/src/Flowcell_Info.sh /home/mauram01/public_html/flowcellInfo/\"")
 #    print("rm -f sgeid.merge")
+
+print("rm -f sgeid.analysis")
