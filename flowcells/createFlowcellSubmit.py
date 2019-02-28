@@ -5,11 +5,8 @@ import argparse
 import pandas as pd
 
 
-basedir="/vol/mauranolab/flowcells"
-
-
 ###Argument parsing
-version="1.2"
+version="1.3"
 
 parser = argparse.ArgumentParser(prog = "createFlowcellSubmit", description = "Outputs submit commands for all samples from the info.txt located in the flowcell data folder", allow_abbrev=False)
 
@@ -17,11 +14,8 @@ parser.add_argument('--flowcellIDs', action='store', type = str, help='Flowcell 
 parser.add_argument('--sampletypes', action='store', type = str, help='Only process samples of this type (multiple projects separated by comma)', required=False)
 parser.add_argument('--projects', action='store', type = str, help='Only process samples in these projects (multiple projects separated by comma)', required=False)
 parser.add_argument('--samples', action='store', type = str, help='Only process samples matching this BS number (multiple samples separated by comma)', required=False)
-
-#TODO
-#parser.add_argument("--aggregate", action='store_true', default=False, help = "Aggregate samples")
-#parser.add_argument("--aggregate-sublibrary", action='store_true', default=False, help = "Aggregate samples")
-
+parser.add_argument("--aggregate", action='store_true', default=False, help = "Aggregate samples with the same BS number")
+parser.add_argument("--aggregate-sublibraries", action='store_true', default=False, help = "Aggregate samples with the same BS number and sublibrary, and remark duplicates")
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
 parser.add_argument('--version', action='version', version='%(prog)s ' + version)
 
@@ -31,6 +25,8 @@ except argparse.ArgumentError as exc:
     print(exc.message, '\n', exc.argument)
     sys.exit(2)
 
+if args.verbose:
+    print("\nargs:" + str(args), file=sys.stderr)
 
 if args.flowcellIDs is None:
     flowcellIDs = None
@@ -53,11 +49,23 @@ else:
     samples = args.samples.split(",")
 
 
+info_basedir="/vol/mauranolab/flowcells/data/"
+if args.aggregate or args.aggregate_sublibraries:
+    if projects[0] == "Maurano":
+        basedir = "/vol/mauranolab/mapped/"
+    elif projects[0] == "CEGS":
+        basedir = "/vol/cegs/mapped/"
+    else:
+        raise Exception("Don't know how to aggregate data from " + ','.join(projects))
+else:
+    basedir="/vol/mauranolab/flowcells/fastq/"
+
+
 ###Handlers for individual data types
 #Transposon pipeline
 def transposonSamples(sampleName, sampleID, lab, sampleType, species, r1Trim, r2Trim):
     fullSampleName = sampleID + "-" + sampleName
-    fileLocation = basedir + "/fastq/" + flowcellID + "/Project_" + lab + "/Sample_" + sampleID + '/"'
+    fileLocation = basedir + flowcellID + "/Project_" + lab + "/Sample_" + sampleID + '/"'
     
     #Would like to put submit logfile in sample directory bu would need to mkdir first, or change qsub to do mkdir on -o: ' -o ' + fullSampleName + 
     qsub = "qsub -S /bin/bash -j y -N submit." + fullSampleName + ' -b y "/vol/mauranolab/transposon/src/'
@@ -111,7 +119,7 @@ def chromConfCapture(sampleName, sampleID, lab, sampleType, species):
     
     sampleUnique = "/home/maagj01/scratch/transposon/captureC/config/config_Dpn.txt  /home/maagj01/scratch/transposon/captureC/genomeFrag/hg38_dpnii.bed K562_Dpn " + organism
     
-    fileLocation = basedir + "/fastq/" + flowcellID + "/Project_" + lab + "/Sample_" + sampleID + '/"'
+    fileLocation = basedir + flowcellID + "/Project_" + lab + "/Sample_" + sampleID + '/"'
     
     submitCommand = qsub + sampleUnique + " " + fileLocation
     return(submitCommand)
@@ -125,8 +133,14 @@ def DNase(sampleName, sampleID, lab, sampleType, species):
     }
     reference = speciesToGenomeReference[species]
     
-    fullSampleName = sampleID + "-" + sampleName
-    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + reference + " mapBwaAln," + ("chipseq" if sampleType == "ChIP-seq" else "dnase") + " " + sampleName + " " + sampleID
+    if args.aggregate:
+        command="aggregate"
+    elif args.aggregate_sublibraries:
+        command="aggregateRemarkDups"
+    else:
+        command="mapBwaAln"
+    
+    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + reference + " " + command + "," + ("chipseq" if sampleType == "ChIP-seq" else "dnase") + " " + sampleName + " " + sampleID
     
     global doDNaseCleanup
     doDNaseCleanup = True
@@ -150,8 +164,15 @@ def DNA(sampleName, sampleID, lab, sampleType, species):
         'Mouse+rat': 'mm10,rn6'
     }
     reference = speciesToGenomeReference[species]
-    fullSampleName = sampleID + "-" + sampleName
-    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + reference + " mapBwaMem,callsnps " + sampleName + " " + sampleID
+    
+    if args.aggregate:
+        command="aggregate"
+    elif args.aggregate_sublibraries:
+        command="aggregateRemarkDups"
+    else:
+        command="mapBwaMem"
+    
+    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + reference + " " + command + ",callsnps " + sampleName + " " + sampleID
     
     #No specific cleanup yet
     global doDNaseCleanup
@@ -186,7 +207,7 @@ def annotateSample(Sampleline, projects, sampletypes, samples):
         if projects is not None and lab not in projects:
             return
         
-        if re.compile(r'BS[0-9]{5}[A-Z]').search(sampleID) is None:
+        if re.compile(r'^BS[0-9]{5}[A-Z]?$').search(sampleID) is None:
             raise Exception("Can't parse " + sampleID + "as BS number")
         
         if samples is not None and sampleID not in samples:
@@ -223,12 +244,12 @@ doTransposonCleanup = False
 
 
 print("#", ' '.join(sys.argv), sep="")
-#TODO Iterate through to generate inputs.txt
 
 
+#Read flowcell info
+flowcellFile = pd.DataFrame()
 for flowcellID in flowcellIDs:
-    print("\n#Samples from ", flowcellID, sep="")
-    flowcellInfoFileName = basedir + "/data/" + flowcellID + "/info.txt"
+    flowcellInfoFileName = info_basedir + flowcellID + "/info.txt"
     flowcellInfoFile = open(flowcellInfoFileName, 'r')
     #flowcellInfoFile = open("/vol/mauranolab/flowcells/data/FCHM2LKBGX9/info.txt", 'r')
     flowcellInfoFile = flowcellInfoFile.readlines()
@@ -241,20 +262,35 @@ for flowcellID in flowcellIDs:
     if args.verbose:
         print("Reading", flowcellInfoFileName, "starting at line", startRow, file=sys.stderr)
     
-    flowcellFile = pd.DataFrame(flowcellInfoFile[startRow:], columns=flowcellInfoFile[startRow]).iloc[1:]
-    
-    #Just handle this simple case for now
-    if flowcellIDs is not None and len(flowcellIDs) is 1 and projects is not None and len(projects) is 1:
-        if 'DNA' in set(flowcellFile['Sample Type']) or 'DNA Capture' in set(flowcellFile['Sample Type']) or 'DNase-seq' in set(flowcellFile['Sample Type']) or 'Nano-DNase' in set(flowcellFile['Sample Type']) or 'ChIP-seq' in set(flowcellFile['Sample Type']):
-            print('find /vol/mauranolab/flowcells/fastq/' + str(flowcellIDs[0]) + '/' + str(projects[0]) + '/* -maxdepth 1 -name "*.fastq.gz" | sort > inputs.txt')
-            print()
-    
-    for index, line in flowcellFile.iterrows():
-        if args.verbose:
-            print("\nParsing:\n" + str(line), file=sys.stderr)
-        annotateSample(line, projects, sampletypes, samples)
+    flowcellFile = pd.concat([flowcellFile, pd.DataFrame(flowcellInfoFile[startRow:], columns=flowcellInfoFile[startRow]).iloc[1:]])
 
 
+#Adjust sample IDs and drop duplicate rows to handle aggregations
+if args.aggregate or args.aggregate_sublibraries:
+    if args.aggregate:
+        flowcellFile['Sample #'] = flowcellFile['Sample #'].apply(lambda bs: re.sub("(BS[0-9]{5})[A-Z]", "\\1", bs))
+    flowcellFile = flowcellFile[flowcellFile.duplicated('Sample #', keep='last')]
+
+
+#Initialize inputs.txt
+if len(set(flowcellFile['Sample Type']).intersection(set(['DNA', 'DNA Capture', 'DNase-seq', 'Nano-DNase', 'ChIP-seq']))) > 0:
+    if flowcellIDs is not None and projects is not None and len(projects) is 1:
+        #Just handle the single-project case
+        if args.aggregate or args.aggregate_sublibraries:
+            print('find ' + ' '.join([(basedir + '%/Project_' + str(projects[0]) + '/*').replace("%", s) for s in flowcellIDs]) + ' -maxdepth 1 -name "*.bam" | sort > inputs.txt')
+        else:
+            print('find ' + ' '.join([(basedir + '%/Project_' + str(projects[0]) + '/*').replace("%", s) for s in flowcellIDs]) + ' -maxdepth 1 -name "*.fastq.gz" | sort > inputs.txt')
+        print()
+
+
+#Process each sample
+for index, line in flowcellFile.iterrows():
+    if args.verbose:
+        print("\nParsing:\n" + str(line), file=sys.stderr)
+    annotateSample(line, projects, sampletypes, samples)
+
+
+#Cleanup calls
 if doDNaseCleanup:
     print()
     #Just use max fragment length for now
