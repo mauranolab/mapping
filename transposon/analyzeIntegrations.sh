@@ -40,7 +40,7 @@ cat $TMPDIR/${sample}.flagstat.txt | grep "in total" | awk '{print $1}'
 
 
 #Get the reads from the bam since we don't save the trimmed fastq
-samtools view $OUTDIR/${sample}.bam | cut -f10 | shuf -n 1000000 - | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print ">id-" NR; print $1}' |
+samtools view $OUTDIR/${sample}.bam | cut -f10 | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
 weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} genomic" --stacks-per-line 100 > $TMPDIR/${sample}.genomic.eps
 convert $TMPDIR/${sample}.genomic.eps ${OUTDIR}/${sample}.genomic.png
 
@@ -164,16 +164,16 @@ echo "Generating UCSC track"
 awk -v sample=${sample} -F "\t" 'BEGIN {OFS="\t"; print "track name=" sample " description=" sample "-integrations"} {print}' $OUTDIR/${sample}.barcodes.coords.bed > $OUTDIR/${sample}.barcodes.coords.ucsc.bed
 
 
-cat $OUTDIR/${sample}.barcodes.coords.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' | cut -f1-3 | uniq > $OUTDIR/${sample}.uniqcoords.bed
+cat $OUTDIR/${sample}.barcodes.coords.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq > $OUTDIR/${sample}.uniqcoords.bed
 
 
 echo
 echo "Integration sites by chrom"
-cut -f1-3,6 $OUTDIR/${sample}.uniqcoords.bed | uniq | cut -f1 | sort -g | uniq -c | sort -k1,1g
+cat $OUTDIR/${sample}.uniqcoords.bed | cut -f1 | sort -g | uniq -c | sort -k1,1g
 
 echo
 echo -e -n "${sample}\tTotal uniq sites\t"
-cut -f1-3,6 $OUTDIR/${sample}.uniqcoords.bed | uniq | wc -l
+cat $OUTDIR/${sample}.uniqcoords.bed | wc -l
 
 echo -e -n "${sample}\tTotal uniq sites (within 5 bp, ignoring strand)\t"
 cat $OUTDIR/${sample}.uniqcoords.bed | bedops --range 5 -m - | uniq | wc -l
@@ -186,7 +186,7 @@ cat $OUTDIR/${sample}.barcodes.coords.bed | cut -f5 | awk -v cutoff=10 '{if($0>=
 
 echo
 echo -n -e "${sample}\tProportion of unique insertion sites at TA\t"
-cat $OUTDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$2-=2; $3-=1; print}' | cut -f1-3,6 | uniq | /home/mauram01/bin/bed2fasta.pl - /vol/isg/annotation/fasta/hg38 2>/dev/null | grep -v -e "^>" | tr '[a-z]' '[A-Z]' | awk -F "\t" 'BEGIN {OFS="\t"; count=0} $0=="TA" {count+=1} END {print count/NR}'
+cat $OUTDIR/${sample}.uniqcoords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$2-=2; $3-=1; print}' |  /home/mauram01/bin/bed2fasta.pl - /vol/isg/annotation/fasta/hg38 2>/dev/null | grep -v -e "^>" | tr '[a-z]' '[A-Z]' | awk -F "\t" 'BEGIN {OFS="\t"; count=0} $0=="TA" {count+=1} END {print count/NR}'
 
 
 echo
@@ -197,16 +197,16 @@ awk -v cutoff=2 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | u
 
 echo
 echo "Histogram of number of insertions between two neighboring DNase sites"
-uniqueIntervals=$(tail -n +2 ${hotspotfile} | paste ${hotspotfile} - | awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}' | sed \$d | awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' | bedtools intersect -wa -a - -b $OUTDIR/${sample}.barcodes.coords.bed | sort | uniq | wc -l | awk '{print $1}')
+uniqueIntervals=$(tail -n +2 ${hotspotfile} | paste ${hotspotfile} - | awk -F "\t" -v OFS='\t' '{print $1, $2, $4, $5}' | sed \$d | awk -F "\t" -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' | bedtools intersect -wa -a - -b $OUTDIR/${sample}.barcodes.coords.bed | sort | uniq | wc -l | awk '{print $1}')
 allIntervals=$(wc -l ${hotspotfile} | awk '{print $1}')
 zeroInsertions=`echo $allIntervals-$uniqueIntervals | bc -l`
 echo " "$zeroInsertions 0
 
 tail -n +2 ${hotspotfile} |
 paste ${hotspotfile} - |
-awk -F'\t' -v OFS='\t' '{print $1, $2, $4, $5}' |
+awk -F "\t" -v OFS='\t' '{print $1, $2, $4, $5}' |
 sed \$d |
-awk -F'\t' -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' |
+awk -F "\t" -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' |
 bedtools intersect -wa -a - -b $OUTDIR/${sample}.barcodes.coords.bed |
 sort | uniq -c | awk '{print $1}' |
 awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' |
@@ -249,7 +249,7 @@ EOF
 
 echo
 echo "doing DisttoDpn"
-cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/Dpn/Dpn.bed | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
+cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/Dpn/Dpn.bed | awk -F "\t" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if ($6=="+") print $1, $2, $3, $17, $20}' > $OUTDIR/DistDpn.bed
 
 R --quiet --no-save << EOF
 #Work around "unable to start device PNG" on ISG cluster
@@ -278,7 +278,7 @@ EOF
 
 echo
 echo "doing DisttoMspI"
-cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/MspI/MspI.bed | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if  ($6=="+") print $1, $2, $3, $17, $20}'  > $OUTDIR/DistDpn.bed
+cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/MspI/MspI.bed | awk -F "\t" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if ($6=="+") print $1, $2, $3, $17, $20}' > $OUTDIR/DistDpn.bed
 
 R --quiet --no-save << EOF
 #Work around "unable to start device PNG" on ISG cluster
@@ -306,7 +306,7 @@ EOF
 
 echo
 echo "doing DistToDNase"
-cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' --closest -  ${hotspotfile} | awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}'  > $OUTDIR/DistToDNase.bed
+cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' --closest -  ${hotspotfile} | awk -F "\t" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {print $1, $2, $3, abs($10)}' > $OUTDIR/DistToDNase.bed
 
 R --quiet --no-save << EOF
 #Work around "unable to start device PNG" on ISG cluster

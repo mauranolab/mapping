@@ -21,15 +21,21 @@ echo "Analyzing data for ${sample} (minReadCutoff=${minReadCutoff})"
 ${src}/removeOverrepresentedBCs.py --col 1 --freq 0.01 -o ${OUTDIR}/${sample}.barcodes.txt ${OUTDIR}/${sample}.barcodes.preFilter.txt
 
 
+if [ `cat ${OUTDIR}/${sample}.barcodes.txt | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | wc -l` -eq 0 ]; then
+    echo "analyzeBCcounts.sh WARNING: no barcodes left, so exiting!"
+    echo "Done!!!"
+    exit 0
+fi
+
+
 ###Overall summary statistics
-shuf -n 1000000 ${OUTDIR}/${sample}.barcodes.txt | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print ">id-" NR; print $1}' |
+cat ${OUTDIR}/${sample}.barcodes.txt | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
 weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} barcodes" --stacks-per-line 100 > $TMPDIR/${sample}.barcodes.eps
 convert $TMPDIR/${sample}.barcodes.eps ${OUTDIR}/${sample}.barcodes.png
 
 ##UMIs weblogo
-if [[ `awk -F'\t' -v OFS='\t' '{print $3}'  ${OUTDIR}/${sample}.barcodes.txt | awk '$1!=""' | awk '{print length}' | sort | uniq | wc -l` == 1 ]]; then
-    shuf -n 1000000 ${OUTDIR}/${sample}.barcodes.txt | awk -F'\t' '{print $3}' | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | 
-    awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
+if [[ `awk -F "\t" -v OFS='\t' '{print $3}'  ${OUTDIR}/${sample}.barcodes.txt | awk '$1!=""' | awk '{print length}' | sort | uniq | wc -l` == 1 ]]; then
+    cat ${OUTDIR}/${sample}.barcodes.txt | awk -F "\t" '{print $3}' | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
     weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} UMI" --stacks-per-line 100 > $TMPDIR/${sample}.UMIs.eps
     convert $TMPDIR/${sample}.UMIs.eps ${OUTDIR}/${sample}.UMIs.png
 fi
@@ -107,14 +113,14 @@ echo "Saturation curves"
 numlines=`cat ${OUTDIR}/${sample}.barcodes.txt | wc -l`
 
 for i in `echo {10,1000,10000,50000,100000,250000,500000,1000000,2000000,3000000,4000000,5000000,10000000,15000000,20000000,25000000,30000000,35000000,40000000,45000000,50000000,55000000,60000000,70000000,80000000,90000000,100000000,110000000,120000000} | tr ' ' '\n' | gawk -v subset=$numlines '{if ($1<=subset) print}'`; do 
-saturation=$(shuf -n $i ${OUTDIR}/${sample}.barcodes.txt | awk -F'\t' '{print $1}' | sort | uniq | wc -l); echo $i  $saturation 'minreads1' ;done > ${OUTDIR}/${sample}.Saturation_minReads1.txt
+saturation=$(shuf -n $i ${OUTDIR}/${sample}.barcodes.txt | awk -F "\t" '{print $1}' | sort | uniq | wc -l); echo $i  $saturation 'minreads1' ;done > ${OUTDIR}/${sample}.Saturation_minReads1.txt
 
 if [[ `awk -F "\t" 'BEGIN {OFS="\t"} length($3) > 4 {found=1} END {print found}' ${OUTDIR}/${sample}.barcodes.txt` == 1 ]]; then
     for i in `echo {10,1000,10000,50000,100000,250000,500000,1000000,2000000,3000000,4000000,5000000,10000000,15000000,20000000,25000000,30000000,35000000,40000000,45000000,50000000,55000000,60000000,70000000,80000000,90000000,100000000,110000000,120000000} | tr ' ' '\n' | gawk -v subset=$numlines '{if ($1<=subset) print}'`; do 
-    saturation=$(shuf -n $i ${OUTDIR}/${sample}.barcodes.txt | awk -F'\t' -v OFS='\t' '{print $1, $3}' | sort | uniq | awk -F'\t' '{print $1}' | sort | uniq -c | awk '{if ($1>=10) print $2}' | wc -l); echo $i $saturation 'minreads10' ;done > ${OUTDIR}/${sample}.Saturation_minReads10.txt
+    saturation=$(shuf -n $i ${OUTDIR}/${sample}.barcodes.txt | awk -F "\t" -v OFS='\t' '{print $1, $3}' | sort | uniq | awk -F "\t" '{print $1}' | sort | uniq -c | awk '{if ($1>=10) print $2}' | wc -l); echo $i $saturation 'minreads10' ;done > ${OUTDIR}/${sample}.Saturation_minReads10.txt
 else
     for i in `echo {10,1000,10000,50000,100000,250000,500000,1000000,2000000,3000000,4000000,5000000,10000000,15000000,20000000,25000000,30000000,35000000,40000000,45000000,50000000,55000000,60000000,70000000,80000000,90000000,100000000,110000000,120000000} | tr ' ' '\n' | gawk -v subset=$numlines '{if ($1<=subset) print}'`; do 
-    saturation=$(shuf -n $i ${OUTDIR}/${sample}.barcodes.txt | awk -F'\t' '{print $1}' | sort | uniq -c | awk '{if ($1>=10) print $2}' | wc -l); echo $i $saturation 'minreads10' ;done > ${OUTDIR}/${sample}.Saturation_minReads10.txt
+    saturation=$(shuf -n $i ${OUTDIR}/${sample}.barcodes.txt | awk -F "\t" '{print $1}' | sort | uniq -c | awk '{if ($1>=10) print $2}' | wc -l); echo $i $saturation 'minreads10' ;done > ${OUTDIR}/${sample}.Saturation_minReads10.txt
 fi
 
 echo
