@@ -29,7 +29,7 @@ mergeThreads=3
 #For big jobs:
 #qsubargs="--qos normal -p -500"
 #Seem to still have some memory problems with mapThreads <3? Maybe analysis.sh has a transient memory peak, say in hotspot?
-#mapThreads=2
+#mapThreads=3
 #mergeThreads=1
 
 
@@ -54,7 +54,7 @@ if [[ "${analysisCommand}" != "atac" ]] && [[ "${analysisCommand}" != "dnase" ]]
 fi
 
 if ! grep -q ${BS} inputs.txt; then
-    echo "submit: Can't find ${BS}"
+    echo "ERROR submit: Can't find ${BS}"
     exit 3
 fi
 

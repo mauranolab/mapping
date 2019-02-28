@@ -94,7 +94,7 @@ cegsvectors)
     dbsnpvcf=/dev/null
     ;;
 *)
-    echo "Don't recognize genome ${mappedgenome}";
+    echo "ERROR: Don't recognize genome ${mappedgenome}";
     exit 1;;
 esac
 
