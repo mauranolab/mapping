@@ -125,22 +125,8 @@ def chromConfCapture(sampleName, sampleID, lab, sampleType, species):
     return(submitCommand)
 
 
-#DNase/ ChIP-seq
-def DNase(sampleName, sampleID, lab, sampleType, species):
-    speciesToGenomeReference = {
-        'Human': 'hg38_noalt',
-        'Mouse': 'mm10'
-    }
-    reference = speciesToGenomeReference[species]
-    
-    if args.aggregate:
-        command="aggregate"
-    elif args.aggregate_sublibraries:
-        command="aggregateRemarkDups"
-    else:
-        command="mapBwaAln"
-    
-    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + reference + " " + command + "," + ("chipseq" if sampleType == "ChIP-seq" else "dnase") + " " + sampleName + " " + sampleID
+def bwaPipeline(sampleName, sampleID, sampleType, mappedgenome, processingCommand, analysisCommand):
+    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + mappedgenome + " " + processingCommand + "," + analysisCommand + " " + sampleName + " " + sampleID
     
     global doDNaseCleanup
     doDNaseCleanup = True
@@ -150,6 +136,24 @@ def DNase(sampleName, sampleID, lab, sampleType, species):
         DNaseFragmentLengthPlot = fragmentLengths[sampleType]
     
     return(submitCommand)
+
+
+#DNase/ ChIP-seq
+def DNase(sampleName, sampleID, lab, sampleType, species):
+    speciesToGenomeReference = {
+        'Human': 'hg38_noalt',
+        'Mouse': 'mm10'
+    }
+    mappedgenome = speciesToGenomeReference[species]
+    
+    if args.aggregate:
+        processingCommand="aggregate"
+    elif args.aggregate_sublibraries:
+        processingCommand="aggregateRemarkDups"
+    else:
+        processingCommand="mapBwaAln"
+    
+    return(bwaPipeline(sampleName, sampleID, sampleType, mappedgenome, processingCommand, "chipseq" if sampleType == "ChIP-seq" else "dnase"))
 
 
 def DNA(sampleName, sampleID, lab, sampleType, species):
@@ -163,30 +167,20 @@ def DNA(sampleName, sampleID, lab, sampleType, species):
         'Rat+yeast': 'rn6_sacCer3',
         'Mouse+rat': 'mm10,rn6'
     }
-    reference = speciesToGenomeReference[species]
+    mappedgenome = speciesToGenomeReference[species]
     
     if args.aggregate:
-        command="aggregate"
+        processingCommand="aggregate"
     elif args.aggregate_sublibraries:
-        command="aggregateRemarkDups"
+        processingCommand="aggregateRemarkDups"
     else:
-        command="mapBwaMem"
-    
-    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + reference + " " + command + ",callsnps " + sampleName + " " + sampleID
-    
-    #No specific cleanup yet
-    global doDNaseCleanup
-    doDNaseCleanup = True
-    
-    global DNaseFragmentLengthPlot
-    if fragmentLengths[sampleType] > DNaseFragmentLengthPlot:
-        DNaseFragmentLengthPlot = fragmentLengths[sampleType]
+        processingCommand="mapBwaMem"
     
     if sampleType=="DNA Capture":
         global doDNACaptureCleanup
         doDNACaptureCleanup = True
     
-    return(submitCommand)
+    return(bwaPipeline(sampleName, sampleID, sampleType, mappedgenome, processingCommand, "callsnps"))
 
 
 ###Dispatch appropriate function handler per sample line
