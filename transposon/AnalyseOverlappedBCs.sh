@@ -32,25 +32,25 @@ mkdir -p $OUTDIR
 join -eNA -a1 -a2 $DNA -o 0 1.2 2.2 $RNA |
 join -eNA -a1 -a2 -1 4 <(sort -k4,4 ${iPCR}) -o 1.1 1.2 1.3 0 1.6 2.2 2.3 1.5 -2 1 - |awk -F' ' -v OFS='\t' '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}' > $TMPOUT
 header="chrom\tchromStart\tchromEnd\tBC\tstrand\tDNA\tRNA\tiPCR"
-echo -e $header | cat - $TMPOUT |awk -F'\t' -v OFS='\t' '{print $4, $6, $7, $8}'> $OUTDIR/AllBCs.txt
+echo -e $header | cat - $TMPOUT |awk -F "\t" -v OFS='\t' '{print $4, $6, $7, $8}'> $OUTDIR/AllBCs.txt
 
 
 #Remove iPCR insertions with more than one location
-cat $iPCR| awk -F'\t' -v OFS='\t' '{print $4}'|sort |uniq -c|sort -nk1|awk '$1==1 {print $2}' > $TMPDIR/${SampleName}.singleIns.txt
+cat $iPCR| awk -F "\t" -v OFS='\t' '{print $4}'|sort |uniq -c|sort -nk1|awk '$1==1 {print $2}' > $TMPDIR/${SampleName}.singleIns.txt
 
 #Create bed file of all inserted sites, including NAs
 echo "Creating bed-file and removing barcodes with multiple insertions sites"
 header="chrom\tchromStart\tchromEnd\tBC\tvalue\tstrand\tDNA\tRNA\tiPCR"
 awk  -F "\t" 'BEGIN {OFS="\t"} $1!="NA" && $1!="chrY" && $1!="chrM" {print $1, $2, $3, $4, 0, $5, $6, $7, $8}' $TMPOUT|
 #Retains barcodes from $TMPOUT that are present in $TMPDIR/${SampleName}.singleIns.txt
-awk -F'\t' -v OFS='\t'  'NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${SampleName}.singleIns.txt - |
+awk -F "\t" -v OFS='\t'  'NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${SampleName}.singleIns.txt - |
 sort-bed - > $TMPOUT.new 
 mv $TMPOUT.new $TMPOUT
 
 #Sample name
 echo "Adding sample name"
 header="$header\tSampleName"
-awk -F'\t' -v OFS='\t' -v sampleName="$SampleName" '{print $0, sampleName}' $TMPOUT > $TMPOUT.new 
+awk -F "\t" -v OFS='\t' -v sampleName="$SampleName" '{print $0, sampleName}' $TMPOUT > $TMPOUT.new 
 mv $TMPOUT.new $TMPOUT
 
 ###Add annotation
@@ -58,18 +58,18 @@ mv $TMPOUT.new $TMPOUT
 echo 'doing distance to nearest TSS'
 header="$header\tDistToTSS\tNearestRefseqGeneTSS\tNearestRefseqGeneStrand"
 closest-features --delim '\t' --closest --dist --no-ref $TMPOUT /vol/isg/annotation/bed/hg38/refseq_gene/refGene.CombinedTxStarts.bed | 
-awk -F'\t' -v OFS='\t' '{print $NF, $(NF-3), $(NF-1)}'|paste $TMPOUT - > $TMPOUT.new
+awk -F "\t" -v OFS='\t' '{print $NF, $(NF-3), $(NF-1)}'|paste $TMPOUT - > $TMPOUT.new
 mv $TMPOUT.new $TMPOUT
 
 
 #echo 'doing nearest refseq TSS upstream'
 #header="$header\tDistToTSS-up\tNearestRefseqGeneTSS-up\tNearestRefseqGeneStrand-up"
-#closest-features  --delim '\t' --dist $TMPOUT /vol/isg/annotation/bed/hg38/refseq_gene/refGene.CombinedTxStarts.bed | awk -F'\t' 'BEGIN {OFS="\t"} {if ($6=="-") print $NF, $(NF-3), $(NF-1); else if  ($6=="+") print $(NF-7), $(NF-10), $(NF-8)}' |paste $TMPOUT - > $TMPOUT.new 
+#closest-features  --delim '\t' --dist $TMPOUT /vol/isg/annotation/bed/hg38/refseq_gene/refGene.CombinedTxStarts.bed | awk -F "\t" 'BEGIN {OFS="\t"} {if ($6=="-") print $NF, $(NF-3), $(NF-1); else if  ($6=="+") print $(NF-7), $(NF-10), $(NF-8)}' |paste $TMPOUT - > $TMPOUT.new 
 #mv $TMPOUT.new $TMPOUT
 #
 #echo 'doing nearest refseq TSS downstream'
 #header="$header\tDistToTSS-dn\tNearestRefseqGeneTSS-dn\tNearestRefseqGeneStrand-dn"
-#closest-features  --delim '\t' --dist $TMPOUT /vol/isg/annotation/bed/hg38/refseq_gene/refGene.CombinedTxStarts.bed | awk -F'\t' 'BEGIN {OFS="\t"} {if ($6=="-")  print $(NF-7), $(NF-10), $(NF-8); else if  ($6=="+") print $NF, $(NF-3), $(NF-1)}' |paste $TMPOUT - > $TMPOUT.new 
+#closest-features  --delim '\t' --dist $TMPOUT /vol/isg/annotation/bed/hg38/refseq_gene/refGene.CombinedTxStarts.bed | awk -F "\t" 'BEGIN {OFS="\t"} {if ($6=="-")  print $(NF-7), $(NF-10), $(NF-8); else if  ($6=="+") print $NF, $(NF-3), $(NF-1)}' |paste $TMPOUT - > $TMPOUT.new 
 #mv $TMPOUT.new $TMPOUT
 #
 
@@ -150,28 +150,28 @@ echo 'doing neareast DNase peak density'
 header="$header\tDNasePksDens"
 paste /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.dens.txt > $TMPDIR/${SampleName}.denspeaks.bed
 sort-bed $TMPOUT |closest-features  --closest --dist --no-ref - $TMPDIR/${SampleName}.denspeaks.bed |
-awk -F'|' 'BEGIN {OFS="\t"} {print $1}' |awk -F'\t' -v OFS='\t' '{print $NF}'|paste $TMPOUT - > $TMPOUT.new
+awk -F'|' 'BEGIN {OFS="\t"} {print $1}' |awk -F "\t" -v OFS='\t' '{print $NF}'|paste $TMPOUT - > $TMPOUT.new
 mv $TMPOUT.new $TMPOUT
 
 
 #DHS type
 echo 'doing neareast DHS type'
 header="$header\tNearestDHStype"
-closest-features --delim '\t'  --closest --dist --no-ref $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/DHStype_masterlist.starch |awk -F'\t' -v OFS='\t' '{print $(NF-3)}' | paste $TMPOUT - > $TMPOUT.new
+closest-features --delim '\t'  --closest --dist --no-ref $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/DHStype_masterlist.starch |awk -F "\t" -v OFS='\t' '{print $(NF-3)}' | paste $TMPOUT - > $TMPOUT.new
 mv $TMPOUT.new $TMPOUT
 
 
 #DHS type
 echo 'doing neareast DHS type strand'
 header="$header\tNearestDHSstrand"
-closest-features --delim '\t'  --closest --dist --no-ref $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/DHStype_masterlist.starch |awk -F'\t' -v OFS='\t' '{print $(NF-1)}' | paste $TMPOUT - > $TMPOUT.new
+closest-features --delim '\t'  --closest --dist --no-ref $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/DHStype_masterlist.starch |awk -F "\t" -v OFS='\t' '{print $(NF-1)}' | paste $TMPOUT - > $TMPOUT.new
 mv $TMPOUT.new $TMPOUT
 
 
 #Distance to DHS peak upstream an type
 echo 'doing distance to nearest DHS - upstream '
 header="$header\tDistToNearestDHS-up\tDHStype-up"
-closest-features --delim '\t'  --dist  $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/DHStype_masterlist.starch| awk -F'\t' 'BEGIN {OFS="\t"} {if ($6=="-") print $NF, $(NF-3); else if  ($6=="+") print $(NF-7), $(NF-10)}'|paste $TMPOUT - > $TMPOUT.new
+closest-features --delim '\t'  --dist  $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/DHStype_masterlist.starch| awk -F "\t" 'BEGIN {OFS="\t"} {if ($6=="-") print $NF, $(NF-3); else if  ($6=="+") print $(NF-7), $(NF-10)}'|paste $TMPOUT - > $TMPOUT.new
 mv $TMPOUT.new $TMPOUT
 
 
@@ -183,7 +183,7 @@ mv $TMPOUT.new $TMPOUT
 
 echo 'doing distance to nearest DHS - downstream '
 header="$header\tDistToNearestDHS-dn\tDHStype-dn"
-closest-features --delim '\t'  --dist  $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/DHStype_masterlist.starch| awk -F'\t' 'BEGIN {OFS="\t"} {if ($6=="-") print $(NF-7), $(NF-10); else if  ($6=="+") print $NF, $(NF-3)}'|paste $TMPOUT - > $TMPOUT.new
+closest-features --delim '\t'  --dist  $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/DHStype_masterlist.starch| awk -F "\t" 'BEGIN {OFS="\t"} {if ($6=="-") print $(NF-7), $(NF-10); else if  ($6=="+") print $NF, $(NF-3)}'|paste $TMPOUT - > $TMPOUT.new
 mv $TMPOUT.new $TMPOUT
 
 
@@ -208,7 +208,7 @@ echo 'doing neareast CTCF peak density'
 header="$header\tCTCFPksDens"
 gcat /vol/isg/encode/chipseq/mapped/K562-CTCF-DS11247/hotspots/K562-CTCF-DS11247.hg38_noalt-final/K562-CTCF-DS11247.hg38_noalt.fdr0.01.pks.starch | paste - /vol/isg/encode/chipseq/mapped/K562-CTCF-DS11247/hotspots/K562-CTCF-DS11247.hg38_noalt-final/K562-CTCF-DS11247.hg38_noalt.fdr0.01.pks.dens.txt  > $TMPDIR/${SampleName}.CTCF.denspeaks.bed
 sort-bed $TMPOUT |closest-features  --closest --dist --no-ref - $TMPDIR/${SampleName}.CTCF.denspeaks.bed |
-awk -F'|' 'BEGIN {OFS="\t"} {print $1}' |awk -F'\t' -v OFS='\t' '{print $NF}'|paste $TMPOUT - > $TMPOUT.new
+awk -F'|' 'BEGIN {OFS="\t"} {print $1}' |awk -F "\t" -v OFS='\t' '{print $NF}'|paste $TMPOUT - > $TMPOUT.new
 mv $TMPOUT.new $TMPOUT
 
 #echo 'doing neareast CTCF peak MCV score'
@@ -223,19 +223,19 @@ mv $TMPOUT.new $TMPOUT
 #Nearest CTCF peak direction
 echo 'doing neareast CTCF peak direction'
 header="$header\tCTCFdirection"
-sort-bed $TMPOUT |closest-features  --delim '\t' --closest --dist --no-ref - /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/CTCF_strand.bed |awk -F'\t' -v OFS="\t" '{print $(NF-1)}' |paste $TMPOUT - > $TMPOUT.new
+sort-bed $TMPOUT |closest-features  --delim '\t' --closest --dist --no-ref - /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/CTCF_strand.bed |awk -F "\t" -v OFS="\t" '{print $(NF-1)}' |paste $TMPOUT - > $TMPOUT.new
 mv $TMPOUT.new $TMPOUT
 
 
 echo 'doing distance to nearest CTCF - upstream '
 header="$header\tDistToNearestCTCF-up\tCTCFdirection-up"
-closest-features --delim '\t'  --dist  $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/CTCF_strand.bed | awk -F'\t' 'BEGIN {OFS="\t"} {if ($6=="-") print $NF, $(NF-1); else if  ($6=="+") print $(NF-7), $(NF-8)}'|paste $TMPOUT - > $TMPOUT.new
+closest-features --delim '\t'  --dist  $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/CTCF_strand.bed | awk -F "\t" 'BEGIN {OFS="\t"} {if ($6=="-") print $NF, $(NF-1); else if  ($6=="+") print $(NF-7), $(NF-8)}'|paste $TMPOUT - > $TMPOUT.new
 mv $TMPOUT.new $TMPOUT
 
 
 echo 'doing distance to nearest CTCF - downstream '
 header="$header\tDistToNearestCTCF-dn\tCTCFdirection-dn"
-closest-features --delim '\t'  --dist   $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/CTCF_strand.bed | awk -F'\t' 'BEGIN {OFS="\t"} {if ($6=="-") print $(NF-7), $(NF-8); else if  ($6=="+") print $NF, $(NF-1)}'|paste $TMPOUT - > $TMPOUT.new
+closest-features --delim '\t'  --dist   $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/CTCF_strand.bed | awk -F "\t" 'BEGIN {OFS="\t"} {if ($6=="-") print $(NF-7), $(NF-8); else if  ($6=="+") print $NF, $(NF-1)}'|paste $TMPOUT - > $TMPOUT.new
 mv $TMPOUT.new $TMPOUT
 
 echo 'doing distance to loop anchor (Cohesin + CTCF)'
@@ -258,7 +258,7 @@ echo 'doing distance to nearest Dpn sites'
 header="$header\tDistToDpn"
 sort-bed $TMPOUT |
 closest-features --delim '\t'  --dist   - /home/maagj01/scratch/transposon/Analysis/Dpn_REsites/DpnPlusMinus.Sorted.bed |
-awk -F'\t' 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print abs($(NF-7)); else if  ($6=="+") print  $NF}' |paste $TMPOUT -> $TMPOUT.new
+awk -F "\t" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print abs($(NF-7)); else if  ($6=="+") print  $NF}' |paste $TMPOUT -> $TMPOUT.new
 mv $TMPOUT.new $TMPOUT
 
 
@@ -278,7 +278,7 @@ mv $TMPOUT.new $TMPOUT
 #echo 'doing neareast DHS type'
 #header="$header\tDHStype"
 #closest-features  --closest --dist --no-ref $TMPOUT $TMPDIR/${SampleName}.DHStype.bed|
-#awk -F'|' 'BEGIN {OFS="\t"} {print $1}' |awk -F'\t' -v OFS='\t' '{print $NF}'|paste $TMPOUT - > $TMPOUT.new
+#awk -F'|' 'BEGIN {OFS="\t"} {print $1}' |awk -F "\t" -v OFS='\t' '{print $NF}'|paste $TMPOUT - > $TMPOUT.new
 #mv $TMPOUT.new $TMPOUT
 
 zcat /vol/isg/annotation/bed/hg38/gencodev24/src/gencode.v24.primary_assembly.annotation.gtf.gz|awk -v OFS='\t' '$3=="gene" && ($18=="1;"|| $18=="2;") {print $1, $4, $5, $6, $7, $10, $12}'|
@@ -337,17 +337,17 @@ mv $TMPOUT.new $TMPOUT
 #
 #echo 'doing nearest Gencode.v24 gene Name'
 #header="$header\tdistGencodeGeneName"
-#closest-features --closest --dist --no-ref $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_GeneQuant/GencodeV24.gene.bed | awk -F'\t' 'BEGIN {OFS="\t"} {print $4}' |paste $TMPOUT - > $TMPOUT.new 
+#closest-features --closest --dist --no-ref $TMPOUT /home/maagj01/scratch/transposon/Analysis/K562_GeneQuant/GencodeV24.gene.bed | awk -F "\t" 'BEGIN {OFS="\t"} {print $4}' |paste $TMPOUT - > $TMPOUT.new 
 #mv $TMPOUT.new $TMPOUT
 
 
 #K562 expressed genes https://www.encodeproject.org/files/ENCFF104VTJ/@@download/ENCFF104VTJ.tsv,  Thomas Gingeras, CSHL, paired-ended, stranded, total RNA, biological replicate 1
-#awk -F'\t' -v OFS='\t''{print $1, $6}' ENCFF104VTJ.tsv |grep ENSG >K562_GeneCount_TMP.tsv
+#awk -F "\t" -v OFS='\t''{print $1, $6}' ENCFF104VTJ.tsv |grep ENSG >K562_GeneCount_TMP.tsv
 #zcat /home/maagj01/scratch/transposon/Analysis/K562_GeneQuant/gencode.v24.primary_assembly.annotation.gtf.gz| 
 #awk 'BEGIN{OFS="\t"}{if($3 == "gene"){split($0, a, " "); i=0; while(a[i] != "gene_id") i++; gsub(/[";]/, "", a[i+1]); print $1, $4-1, $5, a[i+1], ".", $7}}' - | 
-#awk -F'\t' -v OFS='\t' '{split($4, name, "."); print $1, $2, $3, name[1], $5, $6}'|  
+#awk -F "\t" -v OFS='\t' '{split($4, name, "."); print $1, $2, $3, name[1], $5, $6}'|  
 #sort -k4| 
-#join -eNA -1 4 -2 1 -  -o 1.1 1.2 1.3 0 1.5 1.6 2.2 <(sort -k1 /home/maagj01/scratch/transposon/Analysis/K562_GeneQuant/K562_GeneCount_TMP.tsv| awk -F'\t' -v OFS='\t' '{split($1, name, "."); print name[1], $2}')| sort-bed - >  /home/maagj01/scratch/transposon/Analysis/K562_GeneQuant/K562_GeneQuant.bed
+#join -eNA -1 4 -2 1 -  -o 1.1 1.2 1.3 0 1.5 1.6 2.2 <(sort -k1 /home/maagj01/scratch/transposon/Analysis/K562_GeneQuant/K562_GeneCount_TMP.tsv| awk -F "\t" -v OFS='\t' '{split($1, name, "."); print name[1], $2}')| sort-bed - >  /home/maagj01/scratch/transposon/Analysis/K562_GeneQuant/K562_GeneQuant.bed
 
 echo 'doing nearest Gencode.v24 gene expression'
 header="$header\tDistToGencodeGeneTPM"
@@ -371,7 +371,7 @@ sort-bed /vol/isg/annotation/bed/hg38/cpg_islands/cpgIslands.bed | closest-featu
 mv $TMPOUT.new $TMPOUT
 
 bedmap --delim '\t'  --echo --echo-map  --mean /vol/isg/annotation/bed/hg38/cpg_islands/cpgIslands.bed /home/maagj01/scratch/transposon/Analysis/K562_reference_epigenome/WGBS/K562-CpGMethylation_Rep1_ENCFF827YGC.bed |
-awk -F'\t' 'BEGIN {OFS="\t"} {if ($NF=="NAN")  print $1, $2, $3, $4, 0; else if  ($6!="NAN") print $1, $2, $3, $4, $NF}' > $TMPDIR/K562_CGI_methylation.bed
+awk -F "\t" 'BEGIN {OFS="\t"} {if ($NF=="NAN")  print $1, $2, $3, $4, 0; else if  ($6!="NAN") print $1, $2, $3, $4, $NF}' > $TMPDIR/K562_CGI_methylation.bed
 echo "Methylation of nearest CGI"
 header="$header\tCGImethylation"
 closest-features --delim '\t' --closest --dist --no-ref  $TMPOUT $TMPDIR/K562_CGI_methylation.bed| awk '{print $(NF-1)}' | paste $TMPOUT  - > $TMPOUT.new
@@ -510,13 +510,13 @@ mv $TMPOUT.new $TMPOUT
 
 echo 'doing number of CGI within 100kb of insertion'
 header="$header\tnCGI100kb"
-bedops -u --range 50000 $TMPOUT |bedmap --delim '\t' --echo --echo-map --count - /vol/isg/annotation/bed/hg38/cpg_islands/cpgIslands.bed  |awk -F'\t' -v OFS='\t' '{print $NF}'|paste $TMPOUT -  > $TMPOUT.new 
+bedops -u --range 50000 $TMPOUT |bedmap --delim '\t' --echo --echo-map --count - /vol/isg/annotation/bed/hg38/cpg_islands/cpgIslands.bed  |awk -F "\t" -v OFS='\t' '{print $NF}'|paste $TMPOUT -  > $TMPOUT.new 
 mv $TMPOUT.new $TMPOUT
 
 
 echo 'doing number of CTCF peaks in region'
 header="$header\tnCTCFpeaks100kb"
-bedops -u --range 50000 $TMPOUT |bedmap --delim '\t' --echo --echo-map --count  - /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/CTCF_strand.bed |awk -F'\t' -v OFS='\t' '{print $NF}'|paste $TMPOUT -  > $TMPOUT.new 
+bedops -u --range 50000 $TMPOUT |bedmap --delim '\t' --echo --echo-map --count  - /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/CTCF_strand.bed |awk -F "\t" -v OFS='\t' '{print $NF}'|paste $TMPOUT -  > $TMPOUT.new 
 mv $TMPOUT.new $TMPOUT
 
 #echo "doing ContactMap analysis"
@@ -1273,7 +1273,7 @@ mv $TMPOUT.new $TMPOUT
 #       NumDNase=$(cat $TMPOUT|awk -v Barcode="$BC" '$4==Barcode' |bedops -u --range 300000 -| #Get a range of +-300kb from the insertion
 #       bedops --chop 5000 -|paste - $OUTDIR/contactMaps/${BC}_contactMap.tsv 2> /dev/null|  #Chop it into 5kb windows i.e. the resolution used to calculate contacts
 #        #Only use 5kb windows with twice the expected contact
-#       bedmap --echo --echo-map - /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed | awk -F'|' '$2!=""'|awk -F'\t' -v OFS='\t' '$5>2'| wc -l);
+#       bedmap --echo --echo-map - /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed | awk -F'|' '$2!=""'|awk -F "\t" -v OFS='\t' '$5>2'| wc -l);
 #       echo $BC $NumDNase  #Overlap DNase peaks
 #done > $OUTDIR/DnaseContact2.txt
 
@@ -1318,7 +1318,7 @@ done
 #       NumDNase=$(cat $TMPOUT|awk -v Barcode="$BC" '$4==Barcode' |bedops -u --range 300000 -| #Get a range of +-300kb from the insertion
 #       bedops --chop 5000 -|paste - $OUTDIR/contactMaps/${BC}_contactMap.tsv 2> /dev/null|  #Chop it into 5kb windows i.e. the resolution used to calculate contacts
 #        #Only use 5kb windows with twice the expected contact
-#       bedmap --echo --echo-map - /vol/isg/encode/chipseq/mapped/K562-CTCF-DS11247/hotspots/K562-CTCF-DS11247.hg38_noalt-final/K562-CTCF-DS11247.hg38_noalt.fdr0.01.pks.starch  | awk -F'|' '$2!=""'|awk -F'\t' -v OFS='\t' '$5>2'| wc -l);
+#       bedmap --echo --echo-map - /vol/isg/encode/chipseq/mapped/K562-CTCF-DS11247/hotspots/K562-CTCF-DS11247.hg38_noalt-final/K562-CTCF-DS11247.hg38_noalt.fdr0.01.pks.starch  | awk -F'|' '$2!=""'|awk -F "\t" -v OFS='\t' '$5>2'| wc -l);
 #       echo $BC $NumDNase  #Overlap DNase peaks
 #done > $OUTDIR/Contacts/CTCF_Contact.txt
 #  
@@ -1602,31 +1602,31 @@ mv $REGOUT.new $REGOUT
 
 echo 'doing number of CTCF peaks in region'
 RegionHeader="$RegionHeader\tnCTCFpeaks"
-bedmap --delim '\t' --echo --echo-map --count  $REGOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/CTCF_strand.bed |awk -F'\t' -v OFS='\t' '{print $NF}'|paste $REGOUT - > $REGOUT.new
+bedmap --delim '\t' --echo --echo-map --count  $REGOUT /home/maagj01/scratch/transposon/Analysis/K562_DNaseMasterList/CTCF_strand.bed |awk -F "\t" -v OFS='\t' '{print $NF}'|paste $REGOUT - > $REGOUT.new
 mv $REGOUT.new $REGOUT
 
 
 echo 'doing number of Genes in region'
 RegionHeader="$RegionHeader\tnGencodeGenes"
-bedmap --delim '\t' --echo --echo-map --count  $REGOUT /vol/isg/annotation/bed/hg38/gencodev24/Gencodev24.gene.bed |awk -F'\t' -v OFS='\t' '{print $NF}'|paste $REGOUT - > $REGOUT.new
+bedmap --delim '\t' --echo --echo-map --count  $REGOUT /vol/isg/annotation/bed/hg38/gencodev24/Gencodev24.gene.bed |awk -F "\t" -v OFS='\t' '{print $NF}'|paste $REGOUT - > $REGOUT.new
 mv $REGOUT.new $REGOUT
 
 
 echo 'doing number of DHS in region'
 RegionHeader="$RegionHeader\tnDHS"
-bedmap --delim '\t' --echo --echo-map --count  $REGOUT /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed |awk -F'\t' -v OFS='\t' '{print $NF}'|paste $REGOUT - > $REGOUT.new
+bedmap --delim '\t' --echo --echo-map --count  $REGOUT /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed |awk -F "\t" -v OFS='\t' '{print $NF}'|paste $REGOUT - > $REGOUT.new
 mv $REGOUT.new $REGOUT
 
 
 echo 'doing number of CGI in region'
 RegionHeader="$RegionHeader\tnCGI"
-bedmap --delim '\t' --echo --echo-map --count  $REGOUT  /vol/isg/annotation/bed/hg38/cpg_islands/cpgIslands.bed  |awk -F'\t' -v OFS='\t' '{print $NF}'|paste $REGOUT - > $REGOUT.new
+bedmap --delim '\t' --echo --echo-map --count  $REGOUT  /vol/isg/annotation/bed/hg38/cpg_islands/cpgIslands.bed  |awk -F "\t" -v OFS='\t' '{print $NF}'|paste $REGOUT - > $REGOUT.new
 mv $REGOUT.new $REGOUT
 
 
 echo 'doing number of Dpn sites in region'
 RegionHeader="$RegionHeader\tnDpn"
-bedmap --delim '\t' --echo --echo-map --count  $REGOUT  /home/maagj01/scratch/transposon/Analysis/Dpn_REsites/DpnPlusMinus.Sorted.bed |awk -F'\t' -v OFS='\t' '{print $NF}'|paste $REGOUT - > $REGOUT.new
+bedmap --delim '\t' --echo --echo-map --count  $REGOUT  /home/maagj01/scratch/transposon/Analysis/Dpn_REsites/DpnPlusMinus.Sorted.bed |awk -F "\t" -v OFS='\t' '{print $NF}'|paste $REGOUT - > $REGOUT.new
 mv $REGOUT.new $REGOUT
 
 
