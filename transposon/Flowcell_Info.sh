@@ -379,20 +379,19 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     #plot
     BCleven\$Type<-gsub(".*_",'',BCleven\$Sample)
     BCleven\$Sample<- substr(BCleven\$Sample, 0, min(nchar(BCleven\$Sample)))
-#This version was commented out for whatever reason
-#    #pdf("$OUTDIR/EditDist/LevenDistance_BC.pdf",height=10,width=20)
-#    bcl<-ggplot(BCleven[grep('Barcode',BCleven[,4]),], aes(Hamming,Reads,fill=Type)) + 
-#    geom_bar(stat="identity",color='black',size=0.25,alpha=0.4) +
-#    #ggtitle('GGlo')+
-#    facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
-#    theme_classic()+
-#    colScale+
-#    xlab('Hamming distance')+
-#    theme(legend.position = "bottom",legend.text=element_text(size=8))+
-#    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-#    #scale_x_continuous(label= fancy_scientific)+
-#    scale_y_continuous(label= fancy_scientific)
-#    #dev.off()
+    #pdf("$OUTDIR/EditDist/LevenDistance_BC.pdf",height=10,width=20)
+    bcl<-ggplot(BCleven[grep('Barcode',BCleven[,4]),], aes(Hamming,Reads,fill=Type)) + 
+    geom_bar(stat="identity",color='black',size=0.25,alpha=0.4) +
+    #ggtitle('GGlo')+
+    facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
+    theme_classic()+
+    colScale+
+    xlab('Hamming distance')+
+    theme(legend.position = "bottom",legend.text=element_text(size=8))+
+    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+    #scale_x_continuous(label= fancy_scientific)+
+    scale_y_continuous(label= fancy_scientific)
+    #dev.off()
     pdf(NULL)
     gp = ggplotGrob(bcl)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
@@ -400,21 +399,20 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     
     
     #plot
-#This version was commented out for whatever reason
-#    #pdf("$OUTDIR/EditDist/LevenDistance_Plasmid.pdf",height=10,width=20)
-#    pll<-ggplot(BCleven[grep('Plasmid|Primer',BCleven[,4]),], aes(Hamming,Reads,fill=Type)) + 
-#    geom_bar(stat="identity",color="black", size=0.1,alpha=0.4) +
-#    #ggtitle('GGlo')+
-#    facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
-#    theme_classic()+
-#    colScale+
-#    xlab('Hamming distance')+
-#    #scale_fill_brewer('Set1')+
-#    theme(legend.position = "bottom",legend.text=element_text(size=8))+
-#    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-#    #scale_x_continuous(label= fancy_scientific)+
-#    scale_y_continuous(label= fancy_scientific)
-#    #dev.off()
+    #pdf("$OUTDIR/EditDist/LevenDistance_Plasmid.pdf",height=10,width=20)
+    pll<-ggplot(BCleven[grep('Plasmid|Primer',BCleven[,4]),], aes(Hamming,Reads,fill=Type)) + 
+    geom_bar(stat="identity",color="black", size=0.1,alpha=0.4) +
+    #ggtitle('GGlo')+
+    facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
+    theme_classic()+
+    colScale+
+    xlab('Hamming distance')+
+    #scale_fill_brewer('Set1')+
+    theme(legend.position = "bottom",legend.text=element_text(size=8))+
+    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+    #scale_x_continuous(label= fancy_scientific)+
+    scale_y_continuous(label= fancy_scientific)
+    #dev.off()
     pdf(NULL)
     gp = ggplotGrob(pll)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
@@ -668,8 +666,7 @@ fi
 ######
 #iPCR specific 
 ######
-if [[ `find -type d | grep BS | grep -v bak | grep iPCR| wc -l` -ge 1 ]]
-then
+if [[ `find -type d | grep BS | grep -v bak | grep iPCR| wc -l` -ge 1 ]]; then
     echo 'iPCR samples found'
     mkdir -p $OUTDIR/iPCR/
     if [[ `find -name *DistDpn.bed | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
@@ -697,121 +694,121 @@ then
         for iPCR in `find -name *DistMsp1.bed | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do awk -v OFS='\t' -F'\t' -v sample="$iPCR" '{print $1, $2, $3, $4, $5, sample}' ${iPCR}/DistMsp1.bed; done > $OUTDIR/iPCR/DistMsp1.bed
     fi
     
-
-        
-        R --quiet --no-save << EOF
-        library(stringr)
-        library(reshape2)
-        myColors <- brewer.pal(4,"Set1")
-        names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
-        colScale <- scale_fill_manual(name = "Type",values = myColors)
-
-        
-        Dpn<-read("$OUTDIR/iPCR/DistDpn.bed",stringsAsFactors=F)
-        colnames(Dpn)[1:6]<-c('chr','start','end','dpnsite','Distance','Sample')
-        Dpn[,5]<-as.numeric(as.character(Dpn[,5]))
-        Dpn\$Type<-gsub(".*_",'',gsub('_Merged','',Dpn\$Sample))
-        height <- ceiling(length(unique(Dpn[,"Sample"]))/3)*2
-
-        p<-ggplot(Dpn,aes(x=Sample,y=Distance,fill=Type))+
-        geom_boxplot(outlier.shape = NA,alpha=0.4)+
-        #scale_fill_brewer(palette ='Set1')+
-        theme_classic()+
-        theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-        ylab('Distance to Dpn sites')+
-        xlab('Samples')+
-        colScale+
-        coord_flip(ylim = c(0, 750))
-        ggsave(p, file="$OUTDIR/iPCR/DistDpn.pdf", width=13, height=10) 
     
     
-        DNase<-read("$OUTDIR/iPCR/DistToDNase.bed",stringsAsFactors=F)
-        colnames(DNase)[1:5]<-c('chr','start','end','Distance','Sample')
-        DNase[,4]<-as.numeric(as.character(DNase[,4]))
-        DNase\$Type<-gsub(".*_",'',gsub('_Merged','',DNase\$Sample))
-        
-        d<-ggplot(DNase, aes(x=abs(Distance+1),fill=Type)) +
-        geom_histogram(color="black", size=0.25,alpha=0.4)+ 
-        theme_classic()+
-        facet_wrap(~Sample,scales = "free_y", ncol=3)+ 
-        theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-        #xlim(c(0,1500))+
-        xlab('Distance to DNase site')+
-        colScale+
-        scale_x_log10(  breaks = scales::trans_breaks("log10", function(x) 10^x),  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
-        annotation_logticks(sides = "b",long = unit(0.2, "cm"))    
-        ggsave(d, file="$OUTDIR/iPCR/DistDNase.pdf", width=13, height=height) 
+    R --quiet --no-save << EOF
+    library(stringr)
+    library(reshape2)
+    myColors <- brewer.pal(4,"Set1")
+    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
+    colScale <- scale_fill_manual(name = "Type",values = myColors)
     
-        
-        TSS <- read("$OUTDIR/iPCR/DistToTSS.bed")
-        colnames(TSS) <- c("DistToTSS", "Sample")
-        #TSS\$DistToTSS.bin <- cut(TSS\$DistToTSS, breaks=c(-10^7, -10^6, -10^5, -10^4, -2500, 0, 5000, 10^4, 10^5, 10^6, 10^7), right=F, include.lowest=T, labels=c("-10 Mb", "-1 Mb", "-100 kb", "-10 kb", "-2.5 kb", "+5 kb", "+10 kb", "+100 kb", "+1 Mb", "+10 Mb"))
-        
-        TSS\$Type<-gsub(".*_",'',gsub('_Merged','',TSS\$Sample))
-        t<-ggplot(TSS, aes(x=abs(DistToTSS)+1,fill=Type)) +
-        #geom_bar(color="black", size=0.25,alpha=0.4) +
-        geom_histogram(binwidth=0.1, colour="black", size=0.25, alpha=0.4) + 
-        theme_classic()+
-        colScale+
-        facet_wrap(~Sample,scales="free_y", ncol=3)+ 
-        theme_classic()+
-        theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12)) +
-        scale_x_log10(  breaks = scales::trans_breaks("log10", function(x) 10^x),  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
-        annotation_logticks(sides = "b",long = unit(0.2, "cm"))    
-        ggsave(t,file="$OUTDIR/iPCR/DistToTSS.pdf", width=13, height=height)
-        
-        
-          # 
-          # Msp1<-read("$OUTDIR/iPCR/DistMsp1.bed",stringsAsFactors=F)
-          # colnames(Msp1)[1:6]<-c('chr','start','end','Msp1site','Distance','Sample')
-          # Msp1[,5]<-as.numeric(as.character(Msp1[,5]))
-          # Msp1[,"Type"]<-gsub(".*_",'',gsub('_Merged','',Msp1[,"Sample"]))
-#
-          # p<-ggplot(Msp1,aes(x=Sample,y=Distance,fill=Type))+
-          # geom_boxplot(outlier.shape = NA,alpha=0.4)+
-          # #scale_fill_brewer(palette ='Set1')+
-          # theme_classic()+
-          # theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-          # ylab('Distance to Msp1 sites')+
-          # xlab('Samples')+
-          # colScale+
-          # coord_flip(ylim = c(0, 1500))
-          # ggsave(p, file="$OUTDIR/iPCR/DistMsp1.pdf", width=13, height=10) 
-          # 
-          # ObsvsExp<-read('$OUTDIR/iPCR/ObsvsExp.txt',header=T)
-          # colnames(ObsvsExp)[1]<-c('Sample')
-          # ObsvsExp<-ObsvsExp[grep('l2fold',ObsvsExp\$l2fold,invert=T),]
-          # ObsvsExp\$l2fold<-as.numeric(ObsvsExp\$l2fold)
-          # ObsvsExp\$significant<-as.numeric(ObsvsExp\$qvalue)<0.05
-          # 
-          # 
-          # myColors <- c('#a6cee3','#e41a1c')
-          # names(myColors)<-factor(c('FALSE','TRUE'),levels=c('FALSE','TRUE'))
-          # colScale <- scale_fill_manual(name = "significant",values = myColors)
-#
-          # 
-          # o<-ggplot(ObsvsExp, aes(x=annotation,y=l2fold,fill=significant)) +
-          # geom_bar(stat='identity',color="black", size=0.25,alpha=0.4)+ 
-          # theme_classic()+
-          # colScale+
-          # #scale_fill_manual(values=c('#a6cee3','#e41a1c'))+
-          # theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-          # facet_wrap(~Sample, ncol=3)+ 
-          # ggtitle("Obs/Exp")+
-          # ylab('log2FC(Observed/Expected)')
-          # ggsave(o,file="$OUTDIR/iPCR/ObsvsExp.pdf", width=13, height=height)
+    
+    Dpn<-read("$OUTDIR/iPCR/DistDpn.bed",stringsAsFactors=F)
+    colnames(Dpn)[1:6]<-c('chr','start','end','dpnsite','Distance','Sample')
+    Dpn[,5]<-as.numeric(as.character(Dpn[,5]))
+    Dpn\$Type<-gsub(".*_",'',gsub('_Merged','',Dpn\$Sample))
+    height <- ceiling(length(unique(Dpn[,"Sample"]))/3)*2
+    
+    p<-ggplot(Dpn,aes(x=Sample,y=Distance,fill=Type))+
+    geom_boxplot(outlier.shape = NA,alpha=0.4)+
+    #scale_fill_brewer(palette ='Set1')+
+    theme_classic()+
+    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+    ylab('Distance to Dpn sites')+
+    xlab('Samples')+
+    colScale+
+    coord_flip(ylim = c(0, 750))
+    ggsave(p, file="$OUTDIR/iPCR/DistDpn.pdf", width=13, height=10) 
+    
+    
+    DNase<-read("$OUTDIR/iPCR/DistToDNase.bed",stringsAsFactors=F)
+    colnames(DNase)[1:5]<-c('chr','start','end','Distance','Sample')
+    DNase[,4]<-as.numeric(as.character(DNase[,4]))
+    DNase\$Type<-gsub(".*_",'',gsub('_Merged','',DNase\$Sample))
+    
+    d<-ggplot(DNase, aes(x=abs(Distance+1),fill=Type)) +
+    geom_histogram(color="black", size=0.25,alpha=0.4)+ 
+    theme_classic()+
+    facet_wrap(~Sample,scales = "free_y", ncol=3)+ 
+    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+    #xlim(c(0,1500))+
+    xlab('Distance to DNase site')+
+    colScale+
+    scale_x_log10(  breaks = scales::trans_breaks("log10", function(x) 10^x),  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
+    annotation_logticks(sides = "b",long = unit(0.2, "cm"))    
+    ggsave(d, file="$OUTDIR/iPCR/DistDNase.pdf", width=13, height=height) 
+    
+    
+    TSS <- read("$OUTDIR/iPCR/DistToTSS.bed")
+    colnames(TSS) <- c("DistToTSS", "Sample")
+    #TSS\$DistToTSS.bin <- cut(TSS\$DistToTSS, breaks=c(-10^7, -10^6, -10^5, -10^4, -2500, 0, 5000, 10^4, 10^5, 10^6, 10^7), right=F, include.lowest=T, labels=c("-10 Mb", "-1 Mb", "-100 kb", "-10 kb", "-2.5 kb", "+5 kb", "+10 kb", "+100 kb", "+1 Mb", "+10 Mb"))
+    
+    TSS\$Type<-gsub(".*_",'',gsub('_Merged','',TSS\$Sample))
+    t<-ggplot(TSS, aes(x=abs(DistToTSS)+1,fill=Type)) +
+    #geom_bar(color="black", size=0.25,alpha=0.4) +
+    geom_histogram(binwidth=0.1, colour="black", size=0.25, alpha=0.4) + 
+    theme_classic()+
+    colScale+
+    facet_wrap(~Sample,scales="free_y", ncol=3)+ 
+    theme_classic()+
+    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12)) +
+    scale_x_log10(  breaks = scales::trans_breaks("log10", function(x) 10^x),  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
+    annotation_logticks(sides = "b",long = unit(0.2, "cm"))    
+    ggsave(t,file="$OUTDIR/iPCR/DistToTSS.pdf", width=13, height=height)
+    
+    
+    # 
+    # Msp1<-read("$OUTDIR/iPCR/DistMsp1.bed",stringsAsFactors=F)
+    # colnames(Msp1)[1:6]<-c('chr','start','end','Msp1site','Distance','Sample')
+    # Msp1[,5]<-as.numeric(as.character(Msp1[,5]))
+    # Msp1[,"Type"]<-gsub(".*_",'',gsub('_Merged','',Msp1[,"Sample"]))
+    #
+    # p<-ggplot(Msp1,aes(x=Sample,y=Distance,fill=Type))+
+    # geom_boxplot(outlier.shape = NA,alpha=0.4)+
+    # #scale_fill_brewer(palette ='Set1')+
+    # theme_classic()+
+    # theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+    # ylab('Distance to Msp1 sites')+
+    # xlab('Samples')+
+    # colScale+
+    # coord_flip(ylim = c(0, 1500))
+    # ggsave(p, file="$OUTDIR/iPCR/DistMsp1.pdf", width=13, height=10) 
+    # 
+    # ObsvsExp<-read('$OUTDIR/iPCR/ObsvsExp.txt',header=T)
+    # colnames(ObsvsExp)[1]<-c('Sample')
+    # ObsvsExp<-ObsvsExp[grep('l2fold',ObsvsExp\$l2fold,invert=T),]
+    # ObsvsExp\$l2fold<-as.numeric(ObsvsExp\$l2fold)
+    # ObsvsExp\$significant<-as.numeric(ObsvsExp\$qvalue)<0.05
+    # 
+    # 
+    # myColors <- c('#a6cee3','#e41a1c')
+    # names(myColors)<-factor(c('FALSE','TRUE'),levels=c('FALSE','TRUE'))
+    # colScale <- scale_fill_manual(name = "significant",values = myColors)
+    #
+    # 
+    # o<-ggplot(ObsvsExp, aes(x=annotation,y=l2fold,fill=significant)) +
+    # geom_bar(stat='identity',color="black", size=0.25,alpha=0.4)+ 
+    # theme_classic()+
+    # colScale+
+    # #scale_fill_manual(values=c('#a6cee3','#e41a1c'))+
+    # theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+    # facet_wrap(~Sample, ncol=3)+ 
+    # ggtitle("Obs/Exp")+
+    # ylab('log2FC(Observed/Expected)')
+    # ggsave(o,file="$OUTDIR/iPCR/ObsvsExp.pdf", width=13, height=height)
 
-        
-        
+    
+    
 EOF
-        for i in `ls  $OUTDIR/iPCR | grep pdf | sed 's/.pdf//g'`; do convert -density 300 $OUTDIR/iPCR//${i}.pdf -quality 100 $OUTDIR/iPCR/${i}.png; done
+    for i in `ls  $OUTDIR/iPCR | grep pdf | sed 's/.pdf//g'`; do convert -density 300 $OUTDIR/iPCR//${i}.pdf -quality 100 $OUTDIR/iPCR/${i}.png; done
 
-        #convert -density 300 $OUTDIR/iPCR/DistDpn.pdf -quality 100 $OUTDIR/iPCR/DistDpn.png
-        #convert -density 300 $OUTDIR/iPCR/DistDNase.pdf -quality 100 $OUTDIR/iPCR/DistDNase.png
-        #convert -density 300 $OUTDIR/iPCR/DistToTSS.pdf -quality 100 $OUTDIR/iPCR/DistToTSS.png
-        #convert -density 300 $OUTDIR/iPCR/ObsvsExp.pdf -quality 100 $OUTDIR/iPCR/ObsvsExp.png
-        #convert -density 300 $OUTDIR/iPCR/DistMsp1.pdf -quality 100 $OUTDIR/iPCR/DistMsp1.png
-        for i in `ls $OUTDIR/iPCR/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }' >$OUTDIR/iPCR/index.html
+    #convert -density 300 $OUTDIR/iPCR/DistDpn.pdf -quality 100 $OUTDIR/iPCR/DistDpn.png
+    #convert -density 300 $OUTDIR/iPCR/DistDNase.pdf -quality 100 $OUTDIR/iPCR/DistDNase.png
+    #convert -density 300 $OUTDIR/iPCR/DistToTSS.pdf -quality 100 $OUTDIR/iPCR/DistToTSS.png
+    #convert -density 300 $OUTDIR/iPCR/ObsvsExp.pdf -quality 100 $OUTDIR/iPCR/ObsvsExp.png
+    #convert -density 300 $OUTDIR/iPCR/DistMsp1.pdf -quality 100 $OUTDIR/iPCR/DistMsp1.png
+    for i in `ls $OUTDIR/iPCR/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }' >$OUTDIR/iPCR/index.html
 else 
     echo 'No iPCR samples found'     
 fi
