@@ -296,7 +296,7 @@ if doDNaseCleanup:
 #TODO placeholder for now
 if doDNACaptureCleanup:
     print()
-    print("#qsub -S /bin/bash -j y -N analyzeCapture -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/analyzeCapture.sh mappedgenome bait dirs")
+    print("#qsub -b y -S /bin/bash -j y -N analyzeCapture -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeCapture.sh mappedgenome bait dirs\"")
 
 
 #BUGBUG doesn't work since we don't have the pid of the final job at submission time
