@@ -34,7 +34,7 @@ weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type d
 convert $TMPDIR/${sample}.barcodes.eps ${OUTDIR}/${sample}.barcodes.png
 
 ##UMIs weblogo
-if [[ `awk -F "\t" -v OFS='\t' '{print $3}'  ${OUTDIR}/${sample}.barcodes.txt | awk '$1!=""' | awk '{print length}' | sort | uniq | wc -l` == 1 ]]; then
+if [[ `awk -F "\t" -v OFS='\t' '{print $3}' ${OUTDIR}/${sample}.barcodes.txt | awk '$1!=""' | awk '{print length}' | sort | uniq | wc -l` == 1 ]]; then
     cat ${OUTDIR}/${sample}.barcodes.txt | awk -F "\t" '{print $3}' | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
     weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} UMI" --stacks-per-line 100 > $TMPDIR/${sample}.UMIs.eps
     convert $TMPDIR/${sample}.UMIs.eps ${OUTDIR}/${sample}.UMIs.png
@@ -61,7 +61,6 @@ if [[ `awk -v minUMIlength=${minUMIlength} -F "\t" 'BEGIN {OFS="\t"} length($3) 
     #Format: BC, UMI, n
     awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' > ${OUTDIR}/${sample}.barcode.counts.withUMI.txt
     awk '{print $1}' ${OUTDIR}/${sample}.barcode.counts.withUMI.txt | sort | uniq -c | awk -v OFS='\t' '{print $2, $1}' >  ${OUTDIR}/${sample}.barcode.counts.UMI.corrected.txt
-    echo
     echo -n -e "${sample}\tNumber of unique barcodes+UMI\t"
     #TODO move to extract.py
     cat ${OUTDIR}/${sample}.barcode.counts.withUMI.txt | wc -l
@@ -83,16 +82,15 @@ else
     bcfile="${OUTDIR}/${sample}.barcodes.txt"
 fi
 
+echo
 echo "Barcode counts"
 cat ${bcfile} | cut -f1 |
 sort -k1,1 | uniq -c | sort -k2,2 | awk '$2!=0' | awk 'BEGIN {OFS="\t"} {print $2, $1}' | awk -F "\t" '$1!=""' > ${OUTDIR}/${sample}.barcode.counts.txt
 
-echo
 echo -n -e "${sample}\tNumber of unique barcodes\t"
 #TODO move to extract.py
 cat ${OUTDIR}/${sample}.barcode.counts.txt | wc -l
 
-echo
 echo -n -e "${sample}\tNumber of unique barcodes with 10+ reads\t"
 #TODO move to extract.py
 cat ${OUTDIR}/${sample}.barcode.counts.txt | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $2>minReadCutoff' | wc -l

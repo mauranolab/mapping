@@ -67,6 +67,7 @@ UMIlength=$(zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | awk -F "\t" 'BEG
 if [[ "${#UMIlength}" -gt "4" ]]; then
     echo "Deduping UMIs"
     echo "Merging similar UMIs per barcode"
+    #BUGBUG seems to take extremely long time in some cases -- e.g. BS01470A
     date
     zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | 
     ##Here we stop being in order of original fastq
