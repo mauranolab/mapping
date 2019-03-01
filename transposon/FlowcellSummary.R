@@ -58,15 +58,15 @@ for (files in 1:length(Barcodes)) {
 	cat(Barcodes[files], '\n')
 	Sample <- readLines(Barcodes[files])
 	Sample <- sub("^\\s+", "", Sample)
+	sumBarcode[files, "Flowcell"] <- basename(getwd())
+	sumBarcode[files, "Name"] <- gsub('_RNA$|_DNA$|_iPCR$', '', gsub('\\.o.*|.*-', '', Barcodes[files]))
+	sumBarcode[files, "BS"] <- gsub('-.*', '', Barcodes[files])
+	if(grepl('Merged', Barcodes[files])) {
+		sumBarcode[files, "Type"] <- gsub('.*_|\\.o.*', '', gsub('_Merged', '', Barcodes[files]))
+	} else {
+		sumBarcode[files, "Type"] <- gsub('.*_|\\.o.*', '', Barcodes[files])
+	}
 	if(tail(Sample, 2)[1]=="Done!!!") {
-		sumBarcode[files, "BS"] <- gsub('-.*', '', Barcodes[files])
-		sumBarcode[files, "Name"] <- gsub('_RNA$|_DNA$|_iPCR$', '', gsub('\\.o.*|.*-', '', Barcodes[files]))
-		if(grepl('Merged', Barcodes[files])) {
-			sumBarcode[files, "Type"] <- gsub('.*_|\\.o.*', '', gsub('_Merged', '', Barcodes[files]))
-		} else {
-			sumBarcode[files, "Type"] <- gsub('.*_|\\.o.*', '', Barcodes[files])
-		}
-		sumBarcode[files, "Flowcell"] <- basename(getwd())
 		sumBarcode[files, "Total reads"] <- as.numeric(splitLines('Number of total reads', '\t')$X3)
 		sumBarcode[files, "Total barcodes"] <- as.numeric(splitLines('Number of total read barcodes', '\t')$X3)
 		sumBarcode[files, "Unique BC"] <- as.numeric(tail(splitLines('Number of unique barcodes', '\t'),1)$X3)
