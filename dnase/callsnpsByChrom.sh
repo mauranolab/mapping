@@ -97,6 +97,7 @@ echo
 echo "Making windowed coverage track"
 date
 #Make windowed coverage track of number of overlapping reads per fixed 100-bp window
+#This track excludes PCR duplicates, unmapped segments, and QC fail reads
 awk -v chrom=${chrom} -F "\t" 'BEGIN {OFS="\t"} $1==chrom' ${chromsizes} | 
 awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk -v step=100 -v binwidth=100 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
 bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed |
