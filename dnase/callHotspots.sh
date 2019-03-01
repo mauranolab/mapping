@@ -29,7 +29,7 @@ name=`basename ${bam} | perl -pe 's/\.bam$//g;'`
 
 
 chromFile=$TMPDIR/hotspots.${mappedgenome}.chromInfo.bed
-awk -v OFS='\t' '{print $1, 0, $2, $1}' ${chromsizes} | grep -v 'alt\|random\|Un\|hap\|scaffold' | sort-bed - > ${chromFile} 
+awk 'BEGIN {OFS="\t"} {print $1, 0, $2, $1}' ${chromsizes} | grep -v 'alt\|random\|Un\|hap\|scaffold' | sort-bed - > ${chromFile} 
 
 if [ ! -e "${mappableFile}" ]; then
     echo "WARNING can not find ${mappableFile}"
