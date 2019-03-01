@@ -49,7 +49,7 @@ echo
 echo "Merge mapping and barcodes"
 samflags="-F 512"
 #Subtract additional 1 bp from reads on + strand so that the coordinates represent 1 nt to the left of the insertion site (i.e. for A^T, the coordinates point to T)
-samtools view $samflags $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
+samtools view ${samflags} $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
     readlength = length($10); \
     if (and($2, 16)) { \
         strand="-"; \
@@ -66,24 +66,30 @@ echo -e -n "Number of tags passing all filters\t"
 cat $TMPDIR/${sample}.coords.bed | wc -l
 
 
+echo
+echo "read lengths:"
+samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | cut -f10 | awk '{lengths[length($0)]++} END {for (l in lengths) {print lengths[l], l}}' | sort -k2,2g
+
+
 cat $OUTDIR/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | 
 sort -k2,2 > $TMPDIR/${sample}.barcodes.txt
-cat $TMPDIR/${sample}.coords.bed | sort -k4,4 | join -1 4 -2 2 - $TMPDIR/${sample}.barcodes.txt | awk 'BEGIN {OFS="\t"} {print $2, $3, $4, $1, $6, $7, $8}' | sort-bed - > $OUTDIR/${sample}.barcodes.readnames.coords.raw.bed
+cat $TMPDIR/${sample}.coords.bed | sort -k4,4 | join -1 4 -2 2 - $TMPDIR/${sample}.barcodes.txt | awk 'BEGIN {OFS="\t"} {print $2, $3, $4, $1, $6, $7, $8}' | sort-bed - > $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed
 #columns: chrom, start, end, readID, strand, BC seq, UMI
 #NB strand in $5
 
+
 echo -e -n "Number of tags passing all filters and having barcodes assigned\t"
-cat $OUTDIR/${sample}.barcodes.readnames.coords.raw.bed | wc -l
+cat $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed | wc -l
 
 
 echo
 echo "Histogram of barcode reads before coordinate-based deduping"
-cat $OUTDIR/${sample}.barcodes.readnames.coords.raw.bed | cut -f6 | sort | uniq -c | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+cat $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed | cut -f6 | sort | uniq -c | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 
 
 echo
 echo "Coordinate-based deduping"
-cat $OUTDIR/${sample}.barcodes.readnames.coords.raw.bed | cut -f1-7 |
+cat $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed | cut -f1-7 |
 awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"; groupnum=1} { \
     if( NR>1 && (last[1] != $1 || $2 - last[2] > maxstep || $3 - last[3] > maxstep || last[5] != $5 )) { \
         #5bp between the insertions group together\
@@ -130,6 +136,9 @@ fi
 
 
 echo "Collapsing nearby insertions"
+echo -n -e "${sample}\tNumber of insertions before collapsing nearby ones\t"
+cat $TMPDIR/${sample}.coords.collapsedUMI.bed | wc -l
+
 cut -f1-3,5 $TMPDIR/${sample}.coords.collapsedUMI.bed |
 uniq -c |
 awk 'BEGIN {OFS="\t"} {print $2, $3, $3+1, $4, $1, $5}' |
@@ -156,12 +165,18 @@ sort-bed - |
 awk -v minReads=1 -F "\t" 'BEGIN {OFS="\t"} $5>=minReads' > $OUTDIR/${sample}.barcodes.coords.bed
 #columns: chrom, start, end, readname, strand, BC seq, count (coords are of integration site)
 
+echo -n -e "${sample}\tNumber of insertions after collapsing nearby ones\t"
+cat $OUTDIR/${sample}.barcodes.coords.bed | wc -l
+
 
 #TODO make second dedup pass after collapsing nearby sites? Or perhaps change group column above to include BCs at sites within maxstep?
 
 
 echo "Generating UCSC track"
 awk -v sample=${sample} -F "\t" 'BEGIN {OFS="\t"; print "track name=" sample " description=" sample "-integrations"} {print}' $OUTDIR/${sample}.barcodes.coords.bed > $OUTDIR/${sample}.barcodes.coords.ucsc.bed
+projectdir=`pwd | perl -pe 's/^\/vol\/mauranolab\/transposon\///g;'`
+UCSCbaseURL="https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/transposon/${projectdir}/${OUTDIR}"
+echo "${UCSCbaseURL}/${sample}.barcodes.coords.ucsc.bed"
 
 
 cat $OUTDIR/${sample}.barcodes.coords.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq > $OUTDIR/${sample}.uniqcoords.bed
@@ -243,8 +258,6 @@ theme_classic()+
 theme(axis.title.x = element_text(size=20),axis.text.x  = element_text(size=16),axis.title.y=element_text(size=20),axis.text.y=element_text(size=16))
 dev.off()
 EOF
-
-
 
 
 echo

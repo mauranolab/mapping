@@ -85,7 +85,7 @@ if [[ `find -maxdepth 1 -type d | grep -v bak | grep 'HiC\|CapC\|dsDNA\|3C'| wc 
 #        mappedR1=$(samtools view -F4 -q30 ${HiC}/${HiC}_R1.sorted.bam | wc -l); \
 #        mappedR2=$(samtools view -F4 -q30 ${HiC}/${HiC}_R2.sorted.bam | wc -l); \
 #        dangling=$(grep Dangling ${HiC}/hic_results/data/${HiC}/${HiC}.mRSstat | awk '{print $2}'); \
-#        echo ${fc} $HiC $reads $adapter $mappedR1 $mappedR2 $gatcR1 $gatcR2 $numLinkR1 $numLinkR2 $dangling $validPairs $validPairsSameChrom  ; done | awk -v OFS='\t' '{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' > $OUTDIR/HiC/HiC_summary.tsv
+#        echo ${fc} $HiC $reads $adapter $mappedR1 $mappedR2 $gatcR1 $gatcR2 $numLinkR1 $numLinkR2 $dangling $validPairs $validPairsSameChrom  ; done | awk 'BEGIN {OFS="\t"} {print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' > $OUTDIR/HiC/HiC_summary.tsv
 #          
 #
 #    
@@ -501,7 +501,7 @@ for i in `ls $OUTDIR/BarcodeFreq/*.png | sort | sed 's/.png//g' | awk -F'/' '{pr
 if [[ `find -name *barcode.counts.withUMI.txt* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
     then
     mkdir -p $OUTDIR/BarcodeFreq_UMI
-    for i in `find -name *barcode.counts.withUMI.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do uniqueMol=$(cat ${i}/${i}.barcode.counts.withUMI.txt | wc -l); awk '{print $1}' ${i}/${i}.barcode.counts.withUMI.txt| sort | uniq -c | sort -nk1| awk -v OFS='\t' '{print $2, $1}' | awk -v OFS='\t' -F'\t' -v sample="$i" -v uniqMol="$uniqueMol" '{print $1, $2, sample, uniqMol}'; done > $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt
+    for i in `find -name *barcode.counts.withUMI.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do uniqueMol=$(cat ${i}/${i}.barcode.counts.withUMI.txt | wc -l); awk '{print $1}' ${i}/${i}.barcode.counts.withUMI.txt| sort | uniq -c | sort -nk1| awk 'BEGIN {OFS="\t"} {print $2, $1}' | awk -v OFS='\t' -F'\t' -v sample="$i" -v uniqMol="$uniqueMol" '{print $1, $2, sample, uniqMol}'; done > $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt
     
     R --quiet --no-save << EOF
     BC <- read("$OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt")
