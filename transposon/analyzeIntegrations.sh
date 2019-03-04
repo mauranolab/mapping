@@ -68,7 +68,7 @@ cat $TMPDIR/${sample}.coords.bed | wc -l
 
 echo
 echo "read lengths:"
-samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | cut -f10 | awk '{lengths[length($0)]++} END {for (l in lengths) {print lengths[l], l}}' | sort -k2,2g
+samtools view ${samflags} $OUTDIR/${sample}.bam | cut -f10 | awk '{lengths[length($0)]++} END {for (l in lengths) {print lengths[l], l}}' | sort -k2,2g
 
 
 cat $OUTDIR/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | 
@@ -212,16 +212,16 @@ awk -v cutoff=2 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | u
 
 echo
 echo "Histogram of number of insertions between two neighboring DNase sites"
-uniqueIntervals=$(tail -n +2 ${hotspotfile} | paste ${hotspotfile} - | awk -F "\t" -v OFS='\t' '{print $1, $2, $4, $5}' | sed \$d | awk -F "\t" -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' | bedtools intersect -wa -a - -b $OUTDIR/${sample}.barcodes.coords.bed | sort | uniq | wc -l | awk '{print $1}')
+uniqueIntervals=$(tail -n +2 ${hotspotfile} | paste ${hotspotfile} - | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $4, $5}' | sed \$d | awk -F "\t" 'BEGIN {OFS="\t"} {if ($1==$3) print $1, $2, $4}' | bedtools intersect -wa -a - -b $OUTDIR/${sample}.barcodes.coords.bed | sort | uniq | wc -l | awk '{print $1}')
 allIntervals=$(wc -l ${hotspotfile} | awk '{print $1}')
 zeroInsertions=`echo $allIntervals-$uniqueIntervals | bc -l`
 echo " "$zeroInsertions 0
 
 tail -n +2 ${hotspotfile} |
 paste ${hotspotfile} - |
-awk -F "\t" -v OFS='\t' '{print $1, $2, $4, $5}' |
+awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $4, $5}' |
 sed \$d |
-awk -F "\t" -v OFS='\t' '{if ($1==$3) print $1, $2, $4}' |
+awk -F "\t" 'BEGIN {OFS="\t"} {if ($1==$3) print $1, $2, $4}' |
 bedtools intersect -wa -a - -b $OUTDIR/${sample}.barcodes.coords.bed |
 sort | uniq -c | awk '{print $1}' |
 awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' |
