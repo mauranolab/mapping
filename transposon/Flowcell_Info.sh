@@ -26,8 +26,8 @@ if [[ `find -maxdepth 1 -type d | grep -v bak | grep 'HiC\|CapC\|dsDNA\|3C'| wc 
     mkdir -p $OUTDIR/HiC/
     
     
-    find -name *.R2.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs cp -t $OUTDIR/HiC/
-    find -name *.R1.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs cp -t $OUTDIR/HiC/
+    find -name *.R2.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs --no-run-if-empty cp -t $OUTDIR/HiC/
+    find -name *.R1.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs --no-run-if-empty cp -t $OUTDIR/HiC/
     for i in `ls $OUTDIR/HiC/*R1.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/HiC/R1index.html
     for i in `ls $OUTDIR/HiC/*R2.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1500px"; height="120"></a>' ; done  >$OUTDIR/HiC/R2index.html
     cat $OUTDIR//HiC/R1index.html $OUTDIR/HiC//R2index.html |sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/HiC/Weblogoindex.html
@@ -260,8 +260,8 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     echo "Copying raw weblogos"
     
     mkdir -p $OUTDIR/Weblogos_raw
-    find -name *.R2.raw.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_raw
-    find -name *.R1.raw.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_raw
+    find -not -path "*/bak*" -name "*.R2.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
+    find -not -path "*/bak*" -name "*.R1.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
     for i in `ls $OUTDIR/Weblogos_raw/*R1.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R1index.html
     for i in `ls $OUTDIR/Weblogos_raw/*R2.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R2index.html
     cat $OUTDIR/Weblogos_raw/R1index.html $OUTDIR/Weblogos_raw/R2index.html | sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_raw/index.html
@@ -269,28 +269,28 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     
     #For processed sequence
     mkdir -p $OUTDIR/Weblogos_processed
-    find -name *.BC.processed.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_processed
-    find -name *.plasmid.processed.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_processed
+    find -not -path "*/bak*" -name "*.BC.processed.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_processed
+    find -not -path "*/bak*" -name "*.plasmid.processed.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_processed
     for i in `ls $OUTDIR/Weblogos_processed/*BC.processed.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/BCindex.html
     for i in `ls $OUTDIR/Weblogos_processed/*plasmid.processed.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/plasmidindex.html
     cat $OUTDIR/Weblogos_processed/BCindex.html $OUTDIR/Weblogos_processed/plasmidindex.html | sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_processed/index.html
     
     echo "weblogo for UMI sequence"
     mkdir -p $OUTDIR/Weblogos_UMI
-    find -name *.UMIs.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_UMI
-    for i in `ls $OUTDIR/Weblogos_UMI/*.UMIs.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_UMI/index.html
+    find -not -path "*/bak*" -name "*.UMIs.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_UMI
+    if find -not -path "*/bak*" -name "*.UMIs.png" | grep -q "." ; then
+        for i in `ls $OUTDIR/Weblogos_UMI/*.UMIs.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_UMI/index.html
+    fi
 fi
 
 echo "weblogo for genomic reads"
-if find -name *.genomic.png | grep -q "." ; then
-    mkdir -p $OUTDIR/Weblogos_genomic
-    find -name *.genomic.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_genomic
-    for i in `ls $OUTDIR/Weblogos_genomic/*.genomic.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_genomic/index.html
-fi
+mkdir -p $OUTDIR/Weblogos_genomic
+find -not -path "*/bak*" -name "*.genomic.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_genomic
+for i in `ls $OUTDIR/Weblogos_genomic/*.genomic.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_genomic/index.html
 
 echo "weblogo for Barcode sequence"
 mkdir -p $OUTDIR/Weblogos_Barcode
-find -name *barcodes.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_Barcode
+find -not -path "*/bak*" -name "*barcodes.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_Barcode
 for i in `ls $OUTDIR/Weblogos_Barcode/*barcodes.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_Barcode/index.html
 
 #####
