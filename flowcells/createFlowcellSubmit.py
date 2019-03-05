@@ -49,26 +49,43 @@ else:
     samples = args.samples.split(",")
 
 
-info_basedir="/vol/mauranolab/flowcells/data/"
-if args.aggregate or args.aggregate_sublibraries:
-    if projects[0] == "Maurano":
-        basedir = "/vol/mauranolab/mapped/"
-    elif projects[0] == "CEGS":
-        basedir = "/vol/cegs/mapped/"
+#File locations based on lab/sampleType
+def getBasedir(lab, sampleType):
+    if args.aggregate or args.aggregate_sublibraries:
+        if sampleType in ['DNA', 'DNA Capture', 'DNase-seq', 'Nano-DNase', 'ChIP-seq']:
+            if lab == "Maurano":
+                basedir = "/vol/mauranolab/mapped/"
+            elif lab == "CEGS":
+                basedir = "/vol/cegs/mapped/"
+            else:
+                raise Exception("Don't know how to aggregate data from " + lab)
+        elif sampleType in ['Transposon DNA', 'Transposon RNA', 'Transposon iPCR', 'Transposon iPCR Capture']:
+           basedir = "/vol/mauranolab/transposon/"
+        else:
+            raise Exception("Don't know how to aggregate data for " + sampleType) 
     else:
-        raise Exception("Don't know how to aggregate data from " + ','.join(projects))
-else:
-    basedir="/vol/mauranolab/flowcells/fastq/"
+        basedir="/vol/mauranolab/flowcells/fastq/"
+    return basedir
 
 
 ###Handlers for individual data types
+#Each function takes dict representing a single row from the FC file iterator and returns the processing command line
 #Transposon pipeline
-def transposonSamples(sampleName, sampleID, lab, sampleType, species, r1Trim, r2Trim):
-    fullSampleName = sampleID + "-" + sampleName
-    fileLocation = basedir + flowcellID + "/Project_" + lab + "/Sample_" + sampleID + '/"'
+def aggregateTransposonSamples(lines):
+    #Exact parameters don't matter
+    basedir = getBasedir(None, "Transposon DNA")
     
-    #Would like to put submit logfile in sample directory bu would need to mkdir first, or change qsub to do mkdir on -o: ' -o ' + fullSampleName + 
+    return "qsub -S /bin/bash -j y -N " + lines.iloc[0]['Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + ' -b y "/vol/mauranolab/transposon/src/submitBCmerge.sh ' + lines.iloc[0]['Original Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + " " + ' '.join([ basedir + fc + "/" + lines.iloc[0]['Original Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + '/' for fc in lines['FC'].tolist() ]) + '"'
+
+
+def transposonSamples(line):
+    fullSampleName = line["Sample #"] + "-" + line["#Sample Name"]
+    sampleType = line["Sample Type"]
+    
+    #Might like to put submit logfile in sample directory but would need to mkdir first, or change qsub to do mkdir on -o: ' -o ' + fullSampleName + 
     qsub = "qsub -S /bin/bash -j y -N submit." + fullSampleName + ' -b y "/vol/mauranolab/transposon/src/'
+    
+    fileLocation = getBasedir(line['Lab'], sampleType) + line["FC"] + "/Project_" + line["Lab"] + "/Sample_" + line["Sample #"] + '/"'
     
     #default parameters that can be overriden below
     BCreadSeq = "CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBGCTAGTTGTGGGATCTTTGTCCAAACTCATCGAGCTCGGGA"
@@ -100,26 +117,26 @@ def transposonSamples(sampleName, sampleID, lab, sampleType, species, r1Trim, r2
             raise Exception("IMPOSSIBLE")
     else:
         raise Exception("Can't handle sampleType" + sampleType)
+    submitCommand = ' '.join([qsub + program, fullSampleName, BCreadSeq, line["R1 Trim (P5)"], line["R2 Trim (P7)"], bclen, bcread, plasmidSeq, extractBCargs, fileLocation])
     
     global doTransposonCleanup
     doTransposonCleanup = True
     
-    submitCommand = ' '.join([qsub + program, fullSampleName, BCreadSeq, str(r1Trim), str(r2Trim), bclen, bcread, plasmidSeq, extractBCargs, fileLocation])
     return(submitCommand)
 
 
 #Chromosome configuration capture
 #TODO fix organism
-def chromConfCapture(sampleName, sampleID, lab, sampleType, species):
+def chromConfCapture(line):
     organism = "hg38" 
-    fullSampleName = sampleID + "-" + sampleName
+    fullSampleName = line["Sample #"] + "-" + line["#Sample Name"]
     
     qsub = "qsub -S /bin/bash -j y -N submit." + fullSampleName + \
     ' -b y "/home/maagj01/scratch/transposon/src/submitHiC.sh ' +fullSampleName 
     
     sampleUnique = "/home/maagj01/scratch/transposon/captureC/config/config_Dpn.txt  /home/maagj01/scratch/transposon/captureC/genomeFrag/hg38_dpnii.bed K562_Dpn " + organism
     
-    fileLocation = basedir + flowcellID + "/Project_" + lab + "/Sample_" + sampleID + '/"'
+    fileLocation = getBasedir(line['Lab'], line["Sample Type"]) + flowcellID + "/Project_" + line["Lab"] + "/Sample_" + line["Sample #"] + '/"'
     
     submitCommand = qsub + sampleUnique + " " + fileLocation
     return(submitCommand)
@@ -132,6 +149,7 @@ def bwaPipeline(sampleName, sampleID, sampleType, mappedgenome, processingComman
     doDNaseCleanup = True
     
     global DNaseFragmentLengthPlot
+    fragmentLengths = { 'DNase-seq': 300, 'ChIP-seq': 500, 'DNA': 750 , 'DNA Capture': 750 }
     if fragmentLengths[sampleType] > DNaseFragmentLengthPlot:
         DNaseFragmentLengthPlot = fragmentLengths[sampleType]
     
@@ -139,12 +157,12 @@ def bwaPipeline(sampleName, sampleID, sampleType, mappedgenome, processingComman
 
 
 #DNase/ ChIP-seq
-def DNase(sampleName, sampleID, lab, sampleType, species):
+def DNase(line):
     speciesToGenomeReference = {
         'Human': 'hg38_noalt',
         'Mouse': 'mm10'
     }
-    mappedgenome = speciesToGenomeReference[species]
+    mappedgenome = speciesToGenomeReference[line["Species"]]
     
     if args.aggregate:
         processingCommand="aggregate"
@@ -153,10 +171,12 @@ def DNase(sampleName, sampleID, lab, sampleType, species):
     else:
         processingCommand="mapBwaAln"
     
-    return(bwaPipeline(sampleName, sampleID, sampleType, mappedgenome, processingCommand, "chipseq" if sampleType == "ChIP-seq" else "dnase"))
+    sampleType = line["Sample Type"]
+    
+    return(bwaPipeline(line["#Sample Name"], line["Sample #"], sampleType, mappedgenome, processingCommand, "chipseq" if sampleType == "ChIP-seq" else "dnase"))
 
 
-def DNA(sampleName, sampleID, lab, sampleType, species):
+def DNA(line):
     speciesToGenomeReference = {
         'Human': 'hg38_full',
         'Mouse': 'mm10',
@@ -167,7 +187,7 @@ def DNA(sampleName, sampleID, lab, sampleType, species):
         'Rat+yeast': 'rn6_sacCer3',
         'Mouse+rat': 'mm10,rn6'
     }
-    mappedgenome = speciesToGenomeReference[species]
+    mappedgenome = speciesToGenomeReference[line["Species"]]
     
     if args.aggregate:
         processingCommand="aggregate"
@@ -176,74 +196,28 @@ def DNA(sampleName, sampleID, lab, sampleType, species):
     else:
         processingCommand="mapBwaMem"
     
+    sampleType = line["Sample Type"]
+    
     if sampleType=="DNA Capture":
         global doDNACaptureCleanup
         doDNACaptureCleanup = True
     
-    return(bwaPipeline(sampleName, sampleID, sampleType, mappedgenome, processingCommand, "callsnps"))
-
-
-###Dispatch appropriate function handler per sample line
-#Takes dict representing a single row from the FC file iterator and returns the processing command line
-def annotateSample(Sampleline, projects, sampletypes, samples):
-    try:
-        sampleName=Sampleline["#Sample Name"]
-        sampleID=Sampleline["Sample #"]
-        lab=Sampleline["Lab"]
-        sampleType=Sampleline["Sample Type"]
-        species=Sampleline["Species"]
-        r1Trim=str(Sampleline["R1 Trim (P5)"])
-        r2Trim=str(Sampleline["R2 Trim (P7)"])
-        
-        if sampletypes is not None and sampleType not in sampletypes:
-            return
-        
-        if projects is not None and lab not in projects:
-            return
-        
-        if re.compile(r'^BS[0-9]{5}[A-Z]?$').search(sampleID) is None:
-            raise Exception("Can't parse " + sampleID + "as BS number")
-        
-        if samples is not None and sampleID not in samples:
-            return
-        
-        if sampleType != "Pool":
-            if sampleType == "Transposon DNA" or sampleType == "Transposon RNA" or sampleType == "Transposon iPCR" or sampleType == "Transposon iPCR Capture":
-                qsubLine = transposonSamples(sampleName, sampleID, lab, sampleType, species, r1Trim, r2Trim)
-            elif sampleType == "Hi-C" or sampleType == "3C-seq" or sampleType == "Capture-C":
-                qsubLine =  "#" + chromConfCapture(sampleName, sampleID, lab, sampleType, species)
-            elif sampleType == "Nano-DNase" or sampleType == "ChIP-seq" or sampleType == "DNase-seq":
-                qsubLine = DNase(sampleName, sampleID, lab, sampleType, species)
-            elif sampleType == "DNA" or sampleType == "DNA Capture":
-                qsubLine = DNA(sampleName, sampleID, lab, sampleType, species)
-            else:
-                raise Exception("Don't know how to process " + sampleType)
-            
-            #We have successfully generated the command line
-            print(qsubLine)
-    except Exception as e:
-        print("WARNING for sample ", sampleName, ":", e, file=sys.stderr)
-        print("#Couldn't process " + sampleName + "-" + sampleID)
+    return(bwaPipeline(line["#Sample Name"], line["Sample #"], sampleType, mappedgenome, processingCommand, "callsnps"))
 
 
 
 ####
-#Read in flowcell and create a submit script for all samples with BS number
+#Main body - read in flowcell and create a submit script for all samples
 ####
-doDNaseCleanup = False
-doDNACaptureCleanup = False
-fragmentLengths = { 'DNase-seq': 300, 'ChIP-seq': 500, 'DNA': 750 , 'DNA Capture': 750 }
-DNaseFragmentLengthPlot = 0
-doTransposonCleanup = False
 
-
-print("#", ' '.join(sys.argv), sep="")
-
-
-#Read flowcell info
+###Parse flowcell info
 flowcellFile = pd.DataFrame()
 for flowcellID in flowcellIDs:
-    flowcellInfoFileName = info_basedir + flowcellID + "/info.txt"
+    flowcellInfoFileName = "/vol/mauranolab/flowcells/data/" + flowcellID + "/info.txt"
+    
+    if args.verbose:
+        print("Reading", flowcellInfoFileName, "starting at line", startRow, file=sys.stderr)
+    
     flowcellInfoFile = open(flowcellInfoFileName, 'r')
     #flowcellInfoFile = open("/vol/mauranolab/flowcells/data/FCHM2LKBGX9/info.txt", 'r')
     flowcellInfoFile = flowcellInfoFile.readlines()
@@ -253,44 +227,96 @@ for flowcellID in flowcellIDs:
     while(flowcellInfoFile[startRow][0] != "#Sample Name"):
         startRow+=1
     
-    if args.verbose:
-        print("Reading", flowcellInfoFileName, "starting at line", startRow, file=sys.stderr)
-    
-    flowcellFile = pd.concat([flowcellFile, pd.DataFrame(flowcellInfoFile[startRow:], columns=flowcellInfoFile[startRow]).iloc[1:]])
+    curFlowcellFile = pd.DataFrame(flowcellInfoFile[startRow:], columns = flowcellInfoFile[startRow]).iloc[1:]
+    curFlowcellFile['FC'] = flowcellID
+    flowcellFile = pd.concat([flowcellFile, curFlowcellFile])
 
+#Subset to samples we're interested in
+flowcellFile = flowcellFile[flowcellFile['Sample Type' ] != "Pool"]
+if sampletypes is not None:
+    flowcellFile = flowcellFile[flowcellFile['Sample Type'].isin(sampletypes)]
+if projects is not None:
+    flowcellFile = flowcellFile[flowcellFile['Lab'].isin(projects)]
+if samples is not None:
+    flowcellFile = flowcellFile[flowcellFile['Sample #'].isin(samples)]
 
 #Adjust sample IDs and drop duplicate rows to handle aggregations
 if args.aggregate or args.aggregate_sublibraries:
+    flowcellFile['Original Sample #'] = flowcellFile['Sample #']
     if args.aggregate:
         flowcellFile['Sample #'] = flowcellFile['Sample #'].apply(lambda bs: re.sub("(BS[0-9]{5})[A-Z]", "\\1", bs))
-    flowcellFile = flowcellFile[flowcellFile.duplicated('Sample #', keep='last')]
+    #BWA pipeline just needs last entry per sample
+    if len(set(flowcellFile['Sample Type']).intersection(set(['DNA', 'DNA Capture', 'DNase-seq', 'Nano-DNase', 'ChIP-seq']))) > 0:
+        flowcellFile = flowcellFile[flowcellFile.duplicated('Sample #', keep='last')]
 
+
+###Pre-processing
+print("#", ' '.join(sys.argv), sep="")
 
 #Initialize inputs.txt
 if len(set(flowcellFile['Sample Type']).intersection(set(['DNA', 'DNA Capture', 'DNase-seq', 'Nano-DNase', 'ChIP-seq']))) > 0:
     if flowcellIDs is not None and projects is not None and len(projects) is 1:
         #Just handle the single-project case
+        #getBasedir returns the same for all these types, so just hardcode DNA
         if args.aggregate or args.aggregate_sublibraries:
-            print('find ' + ' '.join([(basedir + '%/Project_' + str(projects[0]) + '/*').replace("%", s) for s in flowcellIDs]) + ' -maxdepth 1 -name "*.bam" | sort > inputs.txt')
+            print('find ' + ' '.join([(getBasedir(projects[0], 'DNA')  + '%/Project_' + str(projects[0]) + '/*').replace("%", s) for s in flowcellIDs]) + ' -maxdepth 1 -name "*.bam" | sort > inputs.txt')
         else:
-            print('find ' + ' '.join([(basedir + '%/Project_' + str(projects[0]) + '/*').replace("%", s) for s in flowcellIDs]) + ' -maxdepth 1 -name "*.fastq.gz" | sort > inputs.txt')
+            print('find ' + ' '.join([(getBasedir(projects[0], 'DNA')  + '%/Project_' + str(projects[0]) + '/*').replace("%", s) for s in flowcellIDs]) + ' -maxdepth 1 -name "*.fastq.gz" | sort > inputs.txt')
         print()
 
 
-#Process each sample
+#Some aggregations must be processed in groups of samples
+if args.aggregate or args.aggregate_sublibraries:
+    if len(set(flowcellFile['Sample Type']).intersection(set(['Transposon DNA', 'Transposon RNA', 'Transposon iPCR', 'Transposon iPCR Capture']))) > 0:
+        for curSample in set(flowcellFile[flowcellFile['Sample Type'].isin(['Transposon DNA', 'Transposon RNA', 'Transposon iPCR', 'Transposon iPCR Capture'])]['Sample #']):
+            print(aggregateTransposonSamples(flowcellFile[flowcellFile['Sample #']==curSample]))
+
+
+###Dispatch appropriate function handler per sample line
+doDNaseCleanup = False
+doDNACaptureCleanup = False
+DNaseFragmentLengthPlot = 0
+doTransposonCleanup = False
+
 for index, line in flowcellFile.iterrows():
     if args.verbose:
         print("\nParsing:\n" + str(line), file=sys.stderr)
-    annotateSample(line, projects, sampletypes, samples)
+    sampleName = line["#Sample Name"]
+    sampleID = line["Sample #"]
+    sampleType = line["Sample Type"]
+    
+    try:
+        if re.compile(r'^BS[0-9]{5}[A-Z]?$').search(sampleID) is None:
+            raise Exception("Can't parse " + sampleID + " as BS number")
+        
+        if sampleType == "Transposon DNA" or sampleType == "Transposon RNA" or sampleType == "Transposon iPCR" or sampleType == "Transposon iPCR Capture":
+            if  args.aggregate or args.aggregate_sublibraries:
+                continue
+            qsubLine = transposonSamples(line)
+        elif sampleType == "Hi-C" or sampleType == "3C-seq" or sampleType == "Capture-C":
+            qsubLine =  "#" + chromConfCapture(line)
+        elif sampleType == "Nano-DNase" or sampleType == "ChIP-seq" or sampleType == "DNase-seq":
+            qsubLine = DNase(line)
+        elif sampleType == "DNA" or sampleType == "DNA Capture":
+            qsubLine = DNA(line)
+        else:
+            raise Exception("Don't know how to process " + sampleType)
+        
+        #We have successfully generated the command line
+        print(qsubLine)
+    except Exception as e:
+        print("WARNING for sample ", sampleName, ":", e, file=sys.stderr)
+        print("#Couldn't process " + sampleName + "-" + sampleID)
 
 
-#Cleanup calls
+###Cleanup calls
 if doDNaseCleanup:
     print()
     #Just use max fragment length for now
     #TODO run separate plots for each sample type?
     print("qsub -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeInserts.R " + str(DNaseFragmentLengthPlot) + "\"")
     print("qsub -S /bin/bash -j y -N mapped_readcounts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/mapped_readcounts.sh")
+    print("rm -f sgeid.analysis")
 
 
 #TODO placeholder for now
@@ -305,4 +331,3 @@ if doDNACaptureCleanup:
 #    print("qsub -S /bin/bash -b y -j y -N transposon_info -hold_jid `cat sgeid.merge | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/transposon/src/Flowcell_Info.sh /home/mauram01/public_html/flowcellInfo/\"")
 #    print("rm -f sgeid.merge")
 
-print("rm -f sgeid.analysis")
