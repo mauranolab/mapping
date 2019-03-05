@@ -28,8 +28,8 @@ if [[ `find -maxdepth 1 -type d | grep -v bak | grep 'HiC\|CapC\|dsDNA\|3C'| wc 
     
     find -name *.R2.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs --no-run-if-empty cp -t $OUTDIR/HiC/
     find -name *.R1.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs --no-run-if-empty cp -t $OUTDIR/HiC/
-    for i in `ls $OUTDIR/HiC/*R1.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/HiC/R1index.html
-    for i in `ls $OUTDIR/HiC/*R2.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1500px"; height="120"></a>' ; done  >$OUTDIR/HiC/R2index.html
+    for i in `ls $OUTDIR/HiC/*R1.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/HiC/R1index.html
+    for i in `ls $OUTDIR/HiC/*R2.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1500px"; height="120"></a>' ; done  >$OUTDIR/HiC/R2index.html
     cat $OUTDIR//HiC/R1index.html $OUTDIR/HiC//R2index.html |sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/HiC/Weblogoindex.html
     
 #    if [[ `find -name *R1.mmapstat |sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
@@ -245,7 +245,7 @@ if [[ `find -maxdepth 1 -type d | grep -v bak | grep 'HiC\|CapC\|dsDNA\|3C'| wc 
 #        convert -density 300 $OUTDIR/HiC/2.mapping.pdf -quality 100 $OUTDIR/HiC/2.mapping.png
 #        convert -density 300 $OUTDIR/HiC/3.Interactions.pdf -quality 100 $OUTDIR/HiC/3.Interactions.png
 #        convert -density 300 $OUTDIR/HiC/4.ValidPairs.pdf -quality 100 $OUTDIR/HiC/4.ValidPairs.png
-#        for i in `ls $OUTDIR/HiC/*.png | grep 'SE_perChrom_mapping\|mapping\|Interactions\|ValidPairs' |sort | sed 's/.png//g' |awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }' >$OUTDIR/HiC/Images.html
+#        for i in `ls $OUTDIR/HiC/*.png | grep 'SE_perChrom_mapping\|mapping\|Interactions\|ValidPairs' |sort | sed 's/.png//g' |awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }' >$OUTDIR/HiC/Images.html
 #        cat $OUTDIR/HiC/HiCsummary.html <(echo "") <(echo "<br>") $OUTDIR/HiC/Weblogoindex.html <(echo "") <(echo "<br>") $OUTDIR/HiC/Images.html >$OUTDIR/HiC/index.html
 else
     echo 'No HiC samples found'
@@ -260,38 +260,38 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     echo "Copying raw weblogos"
     
     mkdir -p $OUTDIR/Weblogos_raw
-    find -not -path "*/bak*" -name "*.R2.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
-    find -not -path "*/bak*" -name "*.R1.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
-    for i in `ls $OUTDIR/Weblogos_raw/*R1.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R1index.html
-    for i in `ls $OUTDIR/Weblogos_raw/*R2.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R2index.html
+    find -not -path "*/bak*" -not -path "*/trash*" -name "*.R2.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
+    find -not -path "*/bak*" -not -path "*/trash*" -name "*.R1.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
+    for i in `ls $OUTDIR/Weblogos_raw/*R1.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R1index.html
+    for i in `ls $OUTDIR/Weblogos_raw/*R2.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R2index.html
     cat $OUTDIR/Weblogos_raw/R1index.html $OUTDIR/Weblogos_raw/R2index.html | sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_raw/index.html
     
     
     #For processed sequence
     mkdir -p $OUTDIR/Weblogos_processed
-    find -not -path "*/bak*" -name "*.BC.processed.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_processed
-    find -not -path "*/bak*" -name "*.plasmid.processed.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_processed
-    for i in `ls $OUTDIR/Weblogos_processed/*BC.processed.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/BCindex.html
-    for i in `ls $OUTDIR/Weblogos_processed/*plasmid.processed.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/plasmidindex.html
+    find -not -path "*/bak*" -not -path "*/trash*" -name "*.BC.processed.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_processed
+    find -not -path "*/bak*" -not -path "*/trash*" -name "*.plasmid.processed.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_processed
+    for i in `ls $OUTDIR/Weblogos_processed/*BC.processed.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/BCindex.html
+    for i in `ls $OUTDIR/Weblogos_processed/*plasmid.processed.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/plasmidindex.html
     cat $OUTDIR/Weblogos_processed/BCindex.html $OUTDIR/Weblogos_processed/plasmidindex.html | sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_processed/index.html
     
     echo "weblogo for UMI sequence"
     mkdir -p $OUTDIR/Weblogos_UMI
-    find -not -path "*/bak*" -name "*.UMIs.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_UMI
-    if find -not -path "*/bak*" -name "*.UMIs.png" | grep -q "." ; then
-        for i in `ls $OUTDIR/Weblogos_UMI/*.UMIs.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_UMI/index.html
+    find -not -path "*/bak*" -not -path "*/trash*" -name "*.UMIs.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_UMI
+    if find -not -path "*/bak*" -not -path "*/trash*" -name "*.UMIs.png" | grep -q "." ; then
+        for i in `ls $OUTDIR/Weblogos_UMI/*.UMIs.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_UMI/index.html
     fi
 fi
 
 echo "weblogo for genomic reads"
 mkdir -p $OUTDIR/Weblogos_genomic
-find -not -path "*/bak*" -name "*.genomic.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_genomic
-for i in `ls $OUTDIR/Weblogos_genomic/*.genomic.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_genomic/index.html
+find -not -path "*/bak*" -not -path "*/trash*" -name "*.genomic.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_genomic
+for i in `ls $OUTDIR/Weblogos_genomic/*.genomic.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_genomic/index.html
 
 echo "weblogo for Barcode sequence"
 mkdir -p $OUTDIR/Weblogos_Barcode
-find -not -path "*/bak*" -name "*barcodes.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_Barcode
-for i in `ls $OUTDIR/Weblogos_Barcode/*barcodes.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_Barcode/index.html
+find -not -path "*/bak*" -not -path "*/trash*" -name "*barcodes.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_Barcode
+for i in `ls $OUTDIR/Weblogos_Barcode/*barcodes.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_Barcode/index.html
 
 #####
 #Summarize flowcell info
@@ -423,7 +423,7 @@ EOF
     convert -density 300 $OUTDIR/EditDist/LevenDistance_BC.pdf -quality 100 $OUTDIR/EditDist/LevenDistance_BC.png
     convert -density 300 $OUTDIR/EditDist/LevenDistance_Plasmid.pdf -quality 100 $OUTDIR/EditDist/LevenDistance_Plasmid.png
     
-    for i in `ls $OUTDIR/EditDist/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/EditDist/index.html
+    for i in `ls $OUTDIR/EditDist/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/EditDist/index.html
 fi
 
 
@@ -492,7 +492,7 @@ EOF
 rm $OUTDIR/BarcodeFreq/BarcodeFreq.txt
 for i in `ls  $OUTDIR/BarcodeFreq | grep pdf | sed 's/.pdf//g'`; do convert -density 300 $OUTDIR/BarcodeFreq//${i}.pdf -quality 100 $OUTDIR/BarcodeFreq/${i}.png; done
 
-for i in `ls $OUTDIR/BarcodeFreq/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a> <br>' ; done  >$OUTDIR/BarcodeFreq/index.html
+for i in `ls $OUTDIR/BarcodeFreq/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a> <br>' ; done  >$OUTDIR/BarcodeFreq/index.html
 
 
 #####
@@ -557,7 +557,7 @@ EOF
       # convert -density 300 $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.pdf -quality 100 $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.png
     for i in `ls  $OUTDIR/BarcodeFreq_UMI | grep pdf | sed 's/.pdf//g'`; do convert -density 300 $OUTDIR/BarcodeFreq_UMI//${i}.pdf -quality 100 $OUTDIR/BarcodeFreq_UMI/${i}.png; done
 
-    for i in `ls $OUTDIR/BarcodeFreq_UMI/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/BarcodeFreq_UMI/index.html
+    for i in `ls $OUTDIR/BarcodeFreq_UMI/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/BarcodeFreq_UMI/index.html
     
     
     mkdir -p $OUTDIR/UMI_distribution
@@ -604,7 +604,7 @@ EOF
     rm $OUTDIR/UMI_distribution/UMI_distribution.txt
     convert -density 300 $OUTDIR/UMI_distribution/UMI_distribution.pdf -quality 100 $OUTDIR/UMI_distribution/UMI_distribution.png
     
-    for i in `ls $OUTDIR/UMI_distribution/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/UMI_distribution/index.html
+    for i in `ls $OUTDIR/UMI_distribution/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/UMI_distribution/index.html
 fi
 
 
@@ -659,7 +659,7 @@ EOF
     
     convert -density 300 $OUTDIR/SaturationCurve/SaturationCurve.pdf -quality 100 $OUTDIR/SaturationCurve/SaturationCurve.png
     
-    for i in `ls $OUTDIR/SaturationCurve/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/SaturationCurve/index.html
+    for i in `ls $OUTDIR/SaturationCurve/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/SaturationCurve/index.html
 fi
 
 
@@ -808,7 +808,7 @@ EOF
     #convert -density 300 $OUTDIR/iPCR/DistToTSS.pdf -quality 100 $OUTDIR/iPCR/DistToTSS.png
     #convert -density 300 $OUTDIR/iPCR/ObsvsExp.pdf -quality 100 $OUTDIR/iPCR/ObsvsExp.png
     #convert -density 300 $OUTDIR/iPCR/DistMsp1.pdf -quality 100 $OUTDIR/iPCR/DistMsp1.png
-    for i in `ls $OUTDIR/iPCR/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }' >$OUTDIR/iPCR/index.html
+    for i in `ls $OUTDIR/iPCR/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }' >$OUTDIR/iPCR/index.html
 else 
     echo 'No iPCR samples found'     
 fi
