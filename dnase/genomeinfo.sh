@@ -90,7 +90,7 @@ rn6_sacCer3)
 cegsvectors)
     bwaIndex=/vol/isg/annotation/bwaIndex/cegsvectors/cegsvectors
     ploidy="--ploidy 1"
-    referencefasta=/vol/cegs/sequences/vectors/vectors.incells.fa
+    referencefasta=/vol/cegs/sequences/cegsvectors/vectors.incells.fa
     dbsnpvcf=/dev/null
     ;;
 *)
@@ -100,7 +100,7 @@ esac
 
 
 if [[ "${mappedgenome}" == "cegsvectors" ]]; then
-    chromsizes="/vol/cegs/sequences/vectors/vectors.incells.chrom.sizes"
+    chromsizes="/vol/cegs/sequences/cegsvectors/vectors.incells.chrom.sizes"
 else
     chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
 fi
