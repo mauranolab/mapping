@@ -23,8 +23,7 @@ def process_lines(input_data, wr):
     
     failedBCs = [x for x in myCounts.keys() if myCounts[x] / totalBCs > freq]
     
-    if args.verbose:
-        print("\nNumber of barcodes removed:", len(failedBCs), file=sys.stderr)
+    print("[removeOverrepresentedBCs] Number of barcodes removed:", len(failedBCs), file=sys.stderr)
     
     for line in input_data:
         oldBC = line[bcColNum]
@@ -53,8 +52,8 @@ col = args.col-1
 freq = args.freq
 
 
-print("Removing overrepresented barcodes", file=sys.stderr)
-print(args, file=sys.stderr)
+print("[removeOverrepresentedBCs] Removing overrepresented barcodes", file=sys.stderr)
+print("[removeOverrepresentedBCs] " + str(args), file=sys.stderr)
 
 
 ## open file handles
@@ -76,7 +75,7 @@ wr = csv.writer(outfile, delimiter='\t', lineterminator=os.linesep, skipinitials
 process_lines(input_data, wr)
 
 
-print("\nAll barcodes have been processed", file=sys.stderr)
+print("[removeOverrepresentedBCs] All barcodes have been processed", file=sys.stderr)
 
 
 inputfile.close()

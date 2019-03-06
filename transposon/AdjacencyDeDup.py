@@ -164,8 +164,8 @@ else:
     groupcol = args.groupcol-1 #TODO groupcol not functioning as intended only 0 works
 
 
-print("Deduplicating and correcting barcodes.\n", file=sys.stderr)
-print(args, file=sys.stderr)
+print("[AdjacencyDeDup] Deduplicating and correcting barcodes.", file=sys.stderr)
+print("[AdjacencyDeDup] " + str(args), file=sys.stderr)
 
 
 ## open file handles
@@ -223,8 +223,7 @@ else:
     process_lines_byGroup(lastGroup, startRow, index+1, wr)
 
 
-print("\nAll barcodes have been deduplicated", file=sys.stderr)
-
+print("[AdjacencyDeDup] All barcodes have been deduplicated", file=sys.stderr)
 
 
 #Do last BC (index+1 because this would be done one past the last iteration)
