@@ -75,7 +75,7 @@ def aggregateTransposonSamples(lines):
     #Exact parameters don't matter
     basedir = getBasedir(None, "Transposon DNA")
     
-    return "qsub -S /bin/bash -j y -N " + lines.iloc[0]['Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + ' -b y "/vol/mauranolab/transposon/src/submitBCmerge.sh ' + lines.iloc[0]['Original Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + " " + ' '.join([ basedir + fc + "/" + lines.iloc[0]['Original Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + '/' for fc in lines['FC'].tolist() ]) + '"'
+    return '/vol/mauranolab/transposon/src/submitBCmerge.sh ' + lines.iloc[0]['Original Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + " " + ' '.join([ basedir + fc + "/" + lines.iloc[0]['Original Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + '/' for fc in lines['FC'].tolist() ])
 
 
 def transposonSamples(line):
@@ -215,9 +215,6 @@ flowcellFile = pd.DataFrame()
 for flowcellID in flowcellIDs:
     flowcellInfoFileName = "/vol/mauranolab/flowcells/data/" + flowcellID + "/info.txt"
     
-    if args.verbose:
-        print("Reading", flowcellInfoFileName, "starting at line", startRow, file=sys.stderr)
-    
     flowcellInfoFile = open(flowcellInfoFileName, 'r')
     #flowcellInfoFile = open("/vol/mauranolab/flowcells/data/FCHM2LKBGX9/info.txt", 'r')
     flowcellInfoFile = flowcellInfoFile.readlines()
@@ -226,6 +223,9 @@ for flowcellID in flowcellIDs:
     startRow=0
     while(flowcellInfoFile[startRow][0] != "#Sample Name"):
         startRow+=1
+    
+    if args.verbose:
+        print("Reading", flowcellInfoFileName, "starting at line", startRow, file=sys.stderr)
     
     curFlowcellFile = pd.DataFrame(flowcellInfoFile[startRow:], columns = flowcellInfoFile[startRow]).iloc[1:]
     curFlowcellFile['FC'] = flowcellID
