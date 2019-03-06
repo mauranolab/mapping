@@ -88,7 +88,7 @@ if [[ "${bc1pattern}" == "--bc-pattern X" && "${bc2pattern}" == "--bc-pattern2 X
     echo "No UMI -- just concatenating files"
     #umi_tools extract requires at least 1 bp of UMI
     zcat -f ${f1} | gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz
-    gzip -1 -c $TMPDIR/${sample}.R2.fastq > $TMPDIR/${sample}.R2.fastq.gz
+    cat $TMPDIR/${sample}.R2.fastq | gzip -1 -c > $TMPDIR/${sample}.R2.fastq.gz
 else
     echo "umi_tools extract ${bc1pattern} ${bc2pattern}"
     

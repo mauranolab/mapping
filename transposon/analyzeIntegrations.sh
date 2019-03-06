@@ -68,7 +68,7 @@ cat $TMPDIR/${sample}.coords.bed | wc -l
 
 echo
 echo "read lengths:"
-samtools view ${samflags} $OUTDIR/${sample}.bam | cut -f10 | awk '{lengths[length($0)]++} END {for (l in lengths) {print lengths[l], l}}' | sort -k2,2g
+samtools view ${samflags} $OUTDIR/${sample}.bam | cut -f10 | awk 'BEGIN {ORS=", "} {lengths[length($0)]++} END {for (l in lengths) {print l " (" lengths[l] ")" }}' | perl -pe 's/,$//g;'
 
 
 cat $OUTDIR/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | 
@@ -78,7 +78,7 @@ cat $TMPDIR/${sample}.coords.bed | sort -k4,4 | join -1 4 -2 2 - $TMPDIR/${sampl
 #NB strand in $5
 
 
-echo -e -n "Number of tags passing all filters and having barcodes assigned\t"
+echo -e -n "${sample}\tNumber of tags passing all filters and having barcodes assigned\t"
 cat $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed | wc -l
 
 

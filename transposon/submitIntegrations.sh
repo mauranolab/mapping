@@ -186,8 +186,7 @@ ${src}/analyzeBCcounts.sh ${sample}
 
 
 echo "Merging bam files"
-if [[ `echo ${bamfiles} | wc | awk '{print $2}'` -gt 1 ]]
-then 
+if [[ `echo ${bamfiles} | wc | awk '{print $2}'` -gt 1 ]]; then 
     samtools merge -f -l 9 $OUTDIR/${sample}.bam ${bamfiles}
 else 
     cp ${bamfiles} $OUTDIR/${sample}.bam
