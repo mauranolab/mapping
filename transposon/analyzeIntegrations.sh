@@ -67,7 +67,7 @@ cat $TMPDIR/${sample}.coords.bed | wc -l
 
 
 echo
-echo "read lengths:"
+echo "${sample}\tread lengths"
 samtools view ${samflags} $OUTDIR/${sample}.bam | cut -f10 | awk 'BEGIN {ORS=", "} {lengths[length($0)]++} END {for (l in lengths) {print l " (" lengths[l] ")" }}' | perl -pe 's/,$//g;'
 
 
