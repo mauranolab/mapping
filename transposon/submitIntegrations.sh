@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+#Limit thread usage by python processes using OPENBLAS (esp. scipy). Set here and will be inherited by spawned jobs
+#https://stackoverflow.com/questions/51256738/multiple-instances-of-python-running-simultaneously-limited-to-35
+export OPENBLAS_NUM_THREADS=1
+
+module load pigz
 module load trimmomatic/0.38
 module load weblogo/3.5.0
 module load ImageMagick
@@ -183,7 +188,7 @@ echo "${numlines} lines to process in chunks of ${chunksize}"
 
 echo
 echo "Submitting ${numjobs} jobs"
-qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N map.${sample} -o ${sample} -b y "${src}/mapIntegrations.sh ${sample} ${BCreadSeq} $bclen ${chunksize} ${plasmidSeq} ${extractBCargs}" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
+qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N mapintegrations.${sample} -o ${sample} -b y "${src}/mapIntegrations.sh ${sample} ${BCreadSeq} $bclen ${chunksize} ${plasmidSeq} ${extractBCargs}" | perl -pe 's/[^\d].+$//g;' > sgeid.mapintegrations.${sample}
 
 echo "Will merge ${numjobs} files"
 bcfiles=`seq 1 ${numjobs} | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt.gz "`
@@ -191,7 +196,7 @@ echo -e "Will merge barcode files: ${bcfiles}\n"
 bamfiles=`seq 1 ${numjobs} | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.bam "`
 echo -e "Will merge bamfiles files: ${bamfiles}\n"
 #-o ${sample} breaks Jesper's Flowcell_Info.sh
-cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.map.${sample}` -j y -N ${sample} -b y | perl -pe 's/[^\d].+$//g;' # >> sgeid.merge
+cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.mapintegrations.${sample}` -j y -N ${sample} -b y | perl -pe 's/[^\d].+$//g;' # >> sgeid.merge
 set -eu -o pipefail
 echo "Merging barcodes"
 zcat -f ${bcfiles} | pigz -p ${NSLOTS} -9 > $OUTDIR/${sample}.barcodes.preFilter.txt.gz
@@ -214,7 +219,7 @@ rm -f ${bamfiles}
 ${src}/analyzeIntegrations.sh ${sample}
 EOF
 
-rm -f sgeid.map.${sample}
+rm -f sgeid.mapintegrations.${sample}
 
 
 echo "Done!!!"
