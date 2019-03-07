@@ -6,8 +6,9 @@ src=/vol/mauranolab/transposon/src
 sample=$1
 
 
-#TODO inconsistently applied
 minReadCutoff=2
+
+samflags="-F 512"
 
 OUTDIR=${sample}
 
@@ -35,19 +36,25 @@ echo "SAMtools statistics for sample ${sample}"
 samtools flagstat $OUTDIR/${sample}.bam | tee $TMPDIR/${sample}.flagstat.txt
 
 echo
-echo -n -e "${sample}\tTotal PF tags\t"
+echo -n -e "${sample}\tTotal PF reads\t"
 cat $TMPDIR/${sample}.flagstat.txt | grep "in total" | awk '{print $1}'
 
 
+echo
+readlengths=`samtools view ${samflags} $OUTDIR/${sample}.bam | cut -f10 | awk 'BEGIN {ORS=", "} {lengths[length($0)]++} END {for (l in lengths) {print l " (" lengths[l] ")" }}' | perl -pe 's/, $//g;'`
+echo -e "${sample}\tRead lengths (number of reads)\t${readlengths}"
+minReadLength=`echo "${readlengths}" | perl -pe 's/ \([0-9]+\)//g;' -e 's/,/\n/g;' | sort -n | awk 'NR==1'`
+echo -e "${sample}\tMinimum read length\t${minReadLength}"
+
 #Get the reads from the bam since we don't save the trimmed fastq
-samtools view $OUTDIR/${sample}.bam | cut -f10 | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
+#Need to trim in case not all the same length
+samtools view $OUTDIR/${sample}.bam | cut -f10 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -v trim=${minReadLength} -F "\t" 'BEGIN {OFS="\t"} {print substr($0, 0, trim)}' | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
 weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} genomic" --stacks-per-line 100 > $TMPDIR/${sample}.genomic.eps
 convert $TMPDIR/${sample}.genomic.eps ${OUTDIR}/${sample}.genomic.png
 
 
 echo
 echo "Merge mapping and barcodes"
-samflags="-F 512"
 #Subtract additional 1 bp from reads on + strand so that the coordinates represent 1 nt to the left of the insertion site (i.e. for A^T, the coordinates point to T)
 samtools view ${samflags} $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
     readlength = length($10); \
@@ -62,13 +69,8 @@ samtools view ${samflags} $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} 
     print $3, chromStart, chromEnd, $1, "id-" NR, strand; \
 }' | sort-bed - > $TMPDIR/${sample}.coords.bed
 
-echo -e -n "Number of tags passing all filters\t"
+echo -e -n "${sample}\tNumber of reads passing all filters\t"
 cat $TMPDIR/${sample}.coords.bed | wc -l
-
-
-echo
-echo "${sample}\tread lengths"
-samtools view ${samflags} $OUTDIR/${sample}.bam | cut -f10 | awk 'BEGIN {ORS=", "} {lengths[length($0)]++} END {for (l in lengths) {print l " (" lengths[l] ")" }}' | perl -pe 's/,$//g;'
 
 
 cat $OUTDIR/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | 
@@ -78,7 +80,7 @@ cat $TMPDIR/${sample}.coords.bed | sort -k4,4 | join -1 4 -2 2 - $TMPDIR/${sampl
 #NB strand in $5
 
 
-echo -e -n "${sample}\tNumber of tags passing all filters and having barcodes assigned\t"
+echo -e -n "${sample}\tNumber of reads passing all filters and having barcodes assigned\t"
 cat $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed | wc -l
 
 
@@ -132,19 +134,24 @@ else
     echo "No UMIs found"
     cat $OUTDIR/${sample}.barcodes.readnames.coords.bed | awk 'BEGIN {OFS="\t"} {print $1, $2, $6, 1, $5}' | sort -k1,1 -k2,2g -k3,3 > $TMPDIR/${sample}.coords.collapsedUMI.bed
 fi
-#columns: chrom, start, BC seq, count, strand
+#columns: chrom, start, BC seq, UMI count, strand
 
 
 echo "Collapsing nearby insertions"
-echo -n -e "${sample}\tNumber of insertions before collapsing nearby ones\t"
-cat $TMPDIR/${sample}.coords.collapsedUMI.bed | wc -l
-
 cut -f1-3,5 $TMPDIR/${sample}.coords.collapsedUMI.bed |
 uniq -c |
-awk 'BEGIN {OFS="\t"} {print $2, $3, $3+1, $4, $1, $5}' |
+awk 'BEGIN {OFS="\t"} {print $2, $3, $3+1, $4, $1, $5}' > $TMPDIR/${sample}.barcodes.coords.bed
+
+echo -n -e "${sample}\tNumber of BC+insertions before collapsing nearby ones\t"
+cat $TMPDIR/${sample}.barcodes.coords.bed | wc -l
+
+echo -n -e "${sample}\tNumber of unique insertion sites before collapsing nearby ones\t"
+cat $TMPDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq | wc -l
+
+
 #columns: chrom, start, end, BC seq, count, strand
 #Combine subsequent lines having the same barcode at slightly different sites
-sort -k4,4 -k1,1 -k2,2g |
+cat $TMPDIR/${sample}.barcodes.coords.bed | sort -k4,4 -k1,1 -k2,2g |
 awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"} \
 NR==1 {split($0, last)} \
 NR>1 { \
@@ -161,17 +168,39 @@ NR>1 { \
     } \
 } \
 END {print last[1], last[2], last[3], last[4], last[5], last[6]}' |
-sort-bed - |
-awk -v minReads=1 -F "\t" 'BEGIN {OFS="\t"} $5>=minReads' > $OUTDIR/${sample}.barcodes.coords.bed
+sort-bed - > $TMPDIR/${sample}.barcodes.coords.collapsed.bed
+
+echo -n -e "${sample}\tNumber of BC+insertions after collapsing nearby ones\t"
+cat $TMPDIR/${sample}.barcodes.coords.collapsed.bed | wc -l
+
+echo
+echo "Histogram of number of reads per barcode"
+cat $TMPDIR/${sample}.barcodes.coords.collapsed.bed | cut -f5 | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+
+
+#Drop BCs which have less than 1% of the reads at each site
+cat $TMPDIR/${sample}.barcodes.coords.collapsed.bed | bedmap --exact --delim '\t' --prec 0 --echo --sum - | awk -v minPropReadsAtSite=0.01 -F "\t" 'BEGIN {OFS="\t"} $5/$7>minPropReadsAtSite' | cut -f1-6 > $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed
 #columns: chrom, start, end, readname, strand, BC seq, count (coords are of integration site)
-
-echo -n -e "${sample}\tNumber of insertions after collapsing nearby ones\t"
-cat $OUTDIR/${sample}.barcodes.coords.bed | wc -l
-
 
 #TODO make second dedup pass after collapsing nearby sites? Or perhaps change group column above to include BCs at sites within maxstep?
 
+echo
+echo -n -e "${sample}\tNumber of BC+insertions passing minPropReadsAtSite cutoff\t"
+cat $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed | wc -l
 
+echo
+echo "Histogram of number of reads per barcode"
+cat $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed | cut -f5 | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+
+
+cat $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' > $OUTDIR/${sample}.barcodes.coords.bed
+
+echo
+echo -n -e "${sample}\tNumber of BC+insertions after minimum read cutoff\t"
+cat $OUTDIR/${sample}.barcodes.coords.bed | wc -l
+
+
+echo
 echo "Generating UCSC track"
 awk -v sample=${sample} -F "\t" 'BEGIN {OFS="\t"; print "track name=" sample " description=" sample "-integrations"} {print}' $OUTDIR/${sample}.barcodes.coords.bed > $OUTDIR/${sample}.barcodes.coords.ucsc.bed
 projectdir=`pwd | perl -pe 's/^\/vol\/mauranolab\/transposon\///g;'`
@@ -179,24 +208,19 @@ UCSCbaseURL="https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/transposon/${p
 echo "${UCSCbaseURL}/${sample}.barcodes.coords.ucsc.bed"
 
 
-cat $OUTDIR/${sample}.barcodes.coords.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq > $OUTDIR/${sample}.uniqcoords.bed
+cat $OUTDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq > $OUTDIR/${sample}.uniqcoords.bed
 
 
 echo
-echo "Integration sites by chrom"
+echo "Unique integration sites by chrom"
 cat $OUTDIR/${sample}.uniqcoords.bed | cut -f1 | sort -g | uniq -c | sort -k1,1g
 
 echo
-echo -e -n "${sample}\tTotal uniq sites\t"
+echo -e -n "${sample}\tNumber of unique insertion sites\t"
 cat $OUTDIR/${sample}.uniqcoords.bed | wc -l
 
-echo -e -n "${sample}\tTotal uniq sites (within 5 bp, ignoring strand)\t"
+echo -e -n "${sample}\tNumber of unique insertion sites (within 5 bp, ignoring strand)\t"
 cat $OUTDIR/${sample}.uniqcoords.bed | bedops --range 5 -m - | uniq | wc -l
-
-
-echo
-echo "Histogram of number of reads per barcode"
-cat $OUTDIR/${sample}.barcodes.coords.bed | cut -f5 | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 
 
 echo

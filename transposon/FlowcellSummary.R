@@ -50,7 +50,7 @@ getReadsPerSite <- function(Sample) {
 analysisFiles <- list.files('./', pattern='\\.o[0-9]+$', include.dirs = FALSE)
 analysisFiles <- analysisFiles[grep('^submit\\.', analysisFiles, invert=T)]
 analysisFiles <- analysisFiles[file.info(analysisFiles)$size>200]#Removes i with errors
-outputCols <- c("Flowcell", "BS", "Name", "Type", "Total read pairs", "Total barcodes", "BC+UMI", "UMI length", "Unique BC", "BC length", "Complexity", "Mapped reads", "Mapped+BC reads", "Unique sites", "Unique sites +-5bp", "#BC 1 site", "#BC 2+ sites", "Prop 2+")
+outputCols <- c("Flowcell", "BS", "Name", "Type", "Total read pairs", "Total barcodes", "BC+UMI", "UMI length", "Unique BC", "BC length", "Complexity", "Mapped reads", "Mapped+BC reads", "Read lengths", "Raw unique sites", "Unique sites", "#BC 1 site", "#BC 2+ sites", "Prop 2+")
 data <- as.data.frame(matrix(ncol=length(outputCols), nrow=length(analysisFiles)))
 colnames(data) <- outputCols
 
@@ -94,11 +94,12 @@ for (i in 1:length(analysisFiles)) {
 			data[i, "Complexity"] <- signif(data[i, "Unique BC"] / data[i, "BC+UMI"], 2)
 		}
 		
-		if(any(grepl('Total PF tags', Sample))) {
-			data[i, "Mapped reads"] <- as.numeric(splitLines('Total PF tags', '\t')$X3)
-			data[i, "Mapped+BC reads"] <- as.numeric(splitLines('Number of tags passing all filters and having barcodes assigned', '\t')$X2)
-			data[i, "Unique sites"] <- as.numeric(splitLines('Total uniq sites', '\t')$X3[1])
-			data[i, "Unique sites +-5bp"] <- as.numeric(splitLines('Total uniq sites (within 5 bp, ignoring strand)', '\t')$X3[1])
+		if(any(grepl('Total PF reads', Sample))) {
+			data[i, "Mapped reads"] <- as.numeric(splitLines('Total PF reads', '\t')$X3)
+			data[i, "Mapped+BC reads"] <- as.numeric(splitLines('Number of reads passing all filters and having barcodes assigned', '\t')$X3)
+			data[i, "Read lengths"] <- gsub(" \([0-9]+\)", "", splitLines('Read lengths', '\t')$X3)
+			data[i, "Raw unique sites"] <- as.numeric(splitLines('Number of unique insertion sites before collapsing nearby ones', '\t')$X3[1])
+			data[i, "Unique sites"] <- as.numeric(splitLines('Number of unique insertion sites', '\t')$X3[1])
 			data[i, "#BC 1 site"] <- as.numeric(getInsert(Sample)[1])
 			data[i, "#BC 2+ sites"] <- as.numeric(getInsert(Sample)[2])
 			data[i, "Prop 2+"] <- signif(data[i, "#BC 2+ sites"] / (data[i, "#BC 1 site" ] + data[i, "#BC 2+ sites"]), 2)
@@ -108,11 +109,13 @@ for (i in 1:length(analysisFiles)) {
 
 
 #Format for printing
-for (i in 5:ncol(data)) {
-	data[,i] <- format(data[,i], big.mark=",", trim=TRUE)
+for (i in 1:ncol(data)) {
+	if(is.numeric(data[,i])) {
+		data[,i] <- format(data[,i], big.mark=",", trim=TRUE)
+	}
 }
 
 
-SumHTMLtable <- tableHTML(data, rownames=F, footer='N.B.: Unique BC requires 10+ reads, integration sites require 2+ reads') %>% add_css_row(css = list('background-color', 'lightblue'), rows = odd(1:nrow(data)))
+SumHTMLtable <- tableHTML(data, rownames=F, footer='N.B.: Unique BC and integration site counts require requires 10+ reads for DNA/RNA, and 2+ reads for iPCR') %>% add_css_row(css = list('background-color', 'lightblue'), rows = odd(1:nrow(data)))
 write_tableHTML(SumHTMLtable, file = paste0(outdir, "/FlowcellSummary/index.html"))
 write.table(data, file = paste0(outdir, "/FlowcellSummary/summaryflowcell.tsv"), sep='\t', quote=F, col.names=T, row.names=F)

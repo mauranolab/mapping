@@ -7,6 +7,8 @@ module load ImageMagick
 module load picard/1.140
 module load FastQC/0.11.4
 module load cutadapt/1.9.1
+module load samtools/1.9
+module load bwa/0.7.15
 
 # the function "round()" was taken from 
 # https://stempell.com/2009/08/rechnen-in-bash/
@@ -43,7 +45,7 @@ f2=`find ${basedir}/ -maxdepth 1 -name "*_R2_*.fastq.gz"`
 
 
 OUTDIR=${sample}
-mkdir -p $OUTDIR #note -p also makes $PREFIX here, required at the end
+mkdir -p $OUTDIR
 
 
 #export NSLOTS=1
@@ -65,6 +67,16 @@ weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type d
 convert $TMPDIR/${sample}.R2.raw.eps $OUTDIR/${sample}.R2.raw.png
 
 
+##BCread:
+#RNA, iPCR - R1
+#DNA - R2
+
+##UMI (additional Ns may be present but do not represent a true UMI)
+#RNA: UMI is preserved on both reads
+#DNA: UMI is only preserved in the plasmid read 
+#iPCR: No UMI
+#ChIP: UMI is only preserved in the plasmid read (4N for all)
+
 echo "Trimming/extracting UMI from R1 files ${f1} and R2 files ${f2}"
 if [[ "${R1trim}" -gt 0 ]]; then
     echo "Trimming ${R1trim} bp from R1"
@@ -73,7 +85,7 @@ else
     bc1pattern="--bc-pattern X"
 fi
 
-#Only extract UMI from R2 for RNA samples (bcread is R1), throw it away for DNA samples
+#Only extract UMI from R2 for RNA or iPCR samples (bcread is R1), throw it away for DNA samples
 if [[ "${R2trim}" -gt 0 && "${bcread}" == "R1" ]]; then
     echo "Trimming ${R2trim} bp from R2"
     bc2pattern="--bc-pattern2 "`printf 'N%.0s' $(seq 1 ${R2trim})`
@@ -91,7 +103,6 @@ if [[ "${bc1pattern}" == "--bc-pattern X" && "${bc2pattern}" == "--bc-pattern2 X
     cat $TMPDIR/${sample}.R2.fastq | gzip -1 -c > $TMPDIR/${sample}.R2.fastq.gz
 else
     echo "umi_tools extract ${bc1pattern} ${bc2pattern}"
-    
     #/home/mauram01/.local/bin/umi_tools extract --help
     #BUGBUG umi_tools installed in python3.5 module missing matplotlib??? also .local by default is not group-readable
     zcat -f ${f1} | /home/mauram01/.local/bin/umi_tools extract ${bc1pattern} ${bc2pattern} --read2-in=$TMPDIR/${sample}.R2.fastq --read2-out=$TMPDIR/${sample}.R2.out.fastq -v 0 --log=$TMPDIR/${sample}.umi.log |
@@ -180,10 +191,10 @@ echo -e "Will merge barcode files: ${bcfiles}\n"
 cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.map.${sample}` -j y -N ${sample} -b y | perl -pe 's/[^\d].+$//g;' # >> sgeid.merge
 set -eu -o pipefail
 echo "Merging barcodes"
-zcat -f ${bcfiles} > $OUTDIR/${sample}.barcodes.preFilter.txt
+zcat -f ${bcfiles} | pigz -p ${NSLOTS} -9 > $OUTDIR/${sample}.barcodes.preFilter.txt.gz
 rm -f ${bcfiles}
 
-${src}/analyzeBCcounts.sh ${sample}
+${src}/analyzeBCcounts.sh 10 ${sample}
 EOF
 
 rm -f sgeid.map.${sample}
