@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+#Limit thread usage by python processes using OPENBLAS (esp. scipy). Set here and will be inherited by spawned jobs
+#https://stackoverflow.com/questions/51256738/multiple-instances-of-python-running-simultaneously-limited-to-35
+export OPENBLAS_NUM_THREADS=1
+
+module load pigz
 module load trimmomatic/0.38
 module load weblogo/3.5.0
 module load ImageMagick
@@ -93,6 +98,7 @@ if [[ "${R2trim}" -gt 0 && "${bcread}" == "R1" ]]; then
 else
     bc2pattern="--bc-pattern2 X"
     echo "Removing ${R2trim} bp from R2"
+    #TODO could switch to umi_tools regex to clean this up as it allows discard_n
     cutadapt --quiet -u ${R2trim} ${f2} > $TMPDIR/${sample}.R2.fastq
 fi
 

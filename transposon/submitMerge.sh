@@ -3,6 +3,13 @@ set -euo pipefail
 
 #Based on /home/maagj01/scratch/transposon/submitMerged.sh
 
+#Limit thread usage by python processes using OPENBLAS (esp. scipy). Set here and will be inherited by spawned jobs
+#https://stackoverflow.com/questions/51256738/multiple-instances-of-python-running-simultaneously-limited-to-35
+export OPENBLAS_NUM_THREADS=1
+
+module load pigz
+module load samtools/1.9
+
 src=/vol/mauranolab/transposon/src
 
 sample=$1
@@ -23,7 +30,7 @@ else
     bamfiles=""
 fi
 
-qsub -S /bin/bash -j y --qos=full -N ${sample} -b y <<EOF
+qsub -S /bin/bash -j y -N ${sample} -b y <<EOF
 set -eu -o pipefail
 mkdir -p ${sample}
 echo "Merging barcodes"
