@@ -97,7 +97,7 @@ for (i in 1:length(analysisFiles)) {
 		if(any(grepl('Total PF reads', Sample))) {
 			data[i, "Mapped reads"] <- as.numeric(splitLines('Total PF reads', '\t')$X3)
 			data[i, "Mapped+BC reads"] <- as.numeric(splitLines('Number of reads passing all filters and having barcodes assigned', '\t')$X3)
-			data[i, "Read lengths"] <- gsub(" \([0-9]+\)", "", splitLines('Read lengths', '\t')$X3)
+			data[i, "Read lengths"] <- gsub(" \\([0-9]+\\)", "", splitLines('Read lengths', '\t')$X3)
 			data[i, "Raw unique sites"] <- as.numeric(splitLines('Number of unique insertion sites before collapsing nearby ones', '\t')$X3[1])
 			data[i, "Unique sites"] <- as.numeric(splitLines('Number of unique insertion sites', '\t')$X3[1])
 			data[i, "#BC 1 site"] <- as.numeric(getInsert(Sample)[1])
