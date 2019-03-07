@@ -1,6 +1,10 @@
 #!/bin/bash
 set -eu -o pipefail
 
+#Limit thread usage by python processes using OPENBLAS (esp. scipy). Set here and will be inherited by spawned jobs
+#https://stackoverflow.com/questions/51256738/multiple-instances-of-python-running-simultaneously-limited-to-35
+export OPENBLAS_NUM_THREADS=1
+
 
 #Load modules
 module load picard/2.18.15
