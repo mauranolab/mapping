@@ -51,14 +51,14 @@ else
 fi
 
 zcat -f $OUTDIR/${BCreadFile} | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-${src}/extractBarcode.py --BCread - --referenceSeq $BCreadSeq --bclen $bclen ${plasmidcmd} --minBaseQ 30 ${extractBCargs} | gzip -9 -c > $OUTDIR/${sample}.barcodes.raw.txt.gz
+${src}/extractBarcode.py --BCread - --referenceSeq $BCreadSeq --bclen $bclen ${plasmidcmd} --minBaseQ 30 ${extractBCargs} | gzip -1 -c > $TMPDIR/${sample}.barcodes.raw.txt.gz
 date
 
 
 echo
 echo "Merging similar barcodes"
 date
-zcat $OUTDIR/${sample}.barcodes.raw.txt.gz | python ${src}/AdjacencyDeDup.py --col 1 -o - -  | gzip -c -9 > $TMPDIR/${sample}.barcodes.deduped.txt.gz
+zcat $TMPDIR/${sample}.barcodes.raw.txt.gz | python ${src}/AdjacencyDeDup.py --col 1 -o - -  | gzip -c -9 > $TMPDIR/${sample}.barcodes.deduped.txt.gz
 date
 
 #Only dedup UMIs if the length is over 4
