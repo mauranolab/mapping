@@ -26,27 +26,37 @@ floor()
 
 src=/vol/mauranolab/transposon/src
 
+#Hardcoded right now rather than as parameters like dnase pipeline
+runExtract=1
+runMerge=1
 
 ###Parse command line args
 if [ "$#" -lt 9 ]; then
-    echo "Wrong number of arguments"
+    echo "ERROR submit: Wrong number of arguments"
     exit 1
 fi
 
 sample=$1
-BCreadSeq=$2
+sampleType=$2
 R1trim=$3
 R2trim=$4
-bclen=$5
-bcread=$6
-plasmidSeq=$7
-extractBCargs=$8
+bcread=$5
+bclen=$6
+BCreadSeq=$7
+plasmidSeq=$8
+extractBCargs=$9
 
-shift 8
+shift 9
 basedir=$@
 echo "Looking for files in ${basedir}"
 f1=`find ${basedir}/ -maxdepth 1 -name "*_R1_*.fastq.gz"`
 f2=`find ${basedir}/ -maxdepth 1 -name "*_R2_*.fastq.gz"`
+
+
+if [[ "${sampleType}" != "DNA" ]] && [[ "${sampleType}" != "RNA" ]] && [[ "${sampleType}" != "iPCR" ]]; then
+    echo "ERROR submit: unknown sample type ${sampleType}"
+    exit 1
+fi
 
 
 OUTDIR=${sample}
@@ -56,11 +66,12 @@ mkdir -p $OUTDIR
 #export NSLOTS=1
 
 
-echo "Processing sample ${sample}"
+echo "Processing ${sampleType} sample ${sample}"
 echo "Running on $HOSTNAME. Output to $OUTDIR"
 date
 
 
+#if [ ${runExtract} -eq 1 ]; then
 ###First process all reads together
 echo "Weblogo of raw reads"
 zcat -f ${f1} | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
@@ -83,6 +94,7 @@ convert $TMPDIR/${sample}.R2.raw.eps $OUTDIR/${sample}.R2.raw.png
 #ChIP: UMI is only preserved in the plasmid read (4N for all)
 
 echo "Trimming/extracting UMI from R1 files ${f1} and R2 files ${f2}"
+date
 if [[ "${R1trim}" -gt 0 ]]; then
     echo "Trimming ${R1trim} bp from R1"
     bc1pattern="--bc-pattern "`printf 'N%.0s' $(seq 1 ${R1trim})`
@@ -119,6 +131,7 @@ fi
 
 echo
 echo "Filtering out reads with >75% G content"
+date
 ${src}/filterNextSeqReadsForPolyG.py --inputfileR1 $TMPDIR/${sample}.R1.fastq.gz --inputfileR2 $TMPDIR/${sample}.R2.fastq.gz --maxPolyG 75 --outputfileR1 $OUTDIR/${sample}.R1.fastq.gz --outputfileR2 $OUTDIR/${sample}.R2.fastq.gz
 
 
@@ -131,6 +144,7 @@ zcat -f $OUTDIR/${sample}.R2.fastq.gz | awk 'END {print NR/4}'
 
 echo
 echo "FASTQC"
+date
 fastqc --outdir $OUTDIR $OUTDIR/${sample}.R1.fastq.gz
 echo
 fastqc --outdir $OUTDIR $OUTDIR/${sample}.R2.fastq.gz
@@ -138,6 +152,7 @@ fastqc --outdir $OUTDIR $OUTDIR/${sample}.R2.fastq.gz
 
 echo
 echo "Weblogo of raw UMI"
+date
 #Use tail to run through to end of file so zcat doesn't throw an error code
 #UMI gets put on both fastq, so just look at R1
 UMIlength=`zcat -f $OUTDIR/${sample}.R1.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print length(readname[2])}' | tail -1`
@@ -150,6 +165,7 @@ fi
 
 echo
 echo "Trimmomatic"
+date
 case "${bcread}" in
 R1)
     R1file="BC";
@@ -169,6 +185,7 @@ java org.usadellab.trimmomatic.TrimmomaticPE $trimmomaticBaseOpts $OUTDIR/${samp
 
 ###Weblogo of processed reads
 echo "Weblogo of processed reads"
+date
 zcat -f $OUTDIR/${sample}.trimmed.BC.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
 weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} BC processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.BC.processed.eps
 convert $TMPDIR/${sample}.BC.processed.eps $OUTDIR/${sample}.BC.processed.png
@@ -185,25 +202,69 @@ numjobs=`echo "${numlines} / ${chunksize}" | bc -l -q`
 numjobs=$(floor ${numjobs})
 numjobs=`echo "${numjobs} + 1" | bc -l -q`
 #BUGBUG verify must be int. what to do with last chunk?
-echo "${numlines} lines to process in chunks of ${chunksize}"
-
 echo
-echo "Submitting ${numjobs} jobs"
-qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N extract.${sample} -o ${sample} -b y "${src}/extractBCcounts.sh ${sample} ${BCreadSeq} $bclen ${chunksize} ${plasmidSeq} ${extractBCargs}" | perl -pe 's/[^\d].+$//g;' > sgeid.map.${sample}
+echo "${numlines} lines to process in chunks of ${chunksize}"
+date
 echo "Will merge ${numjobs} files"
 bcfiles=`seq 1 ${numjobs} | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.barcodes.txt.gz "`
 echo -e "Will merge barcode files: ${bcfiles}\n"
-#-o ${sample} breaks Jesper's Flowcell_Info.sh
-cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.map.${sample}` -j y -N ${sample} -b y | perl -pe 's/[^\d].+$//g;' # >> sgeid.merge
+
+if [[ ${sampleType} == "iPCR" ]]; then
+    minReadCutoff=2
+    qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N mapintegrations.${sample} -o ${sample} -b y "${src}/mapIntegrations.sh ${sample} ${BCreadSeq} $bclen ${chunksize} ${plasmidSeq} ${extractBCargs}" | perl -pe 's/[^\d].+$//g;' > sgeid.extract.${sample}
+    
+    bamfiles=`seq 1 ${numjobs} | xargs -L 1 -I {} echo -n "${sample}/${sample}.{}.bam "`
+    echo -e "Will merge bamfiles files: ${bamfiles}\n"
+else
+    minReadCutoff=10
+    qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N extract.${sample} -o ${sample} -b y "${src}/extractBCcounts.sh ${sample} ${BCreadSeq} $bclen ${chunksize} ${plasmidSeq} ${extractBCargs}" | perl -pe 's/[^\d].+$//g;' > sgeid.extract.${sample}
+    bamfiles=""
+fi
+#fi
+
+if [ ${runExtract} -eq 1 ]; then
+    mergeHold="-hold_jid `cat sgeid.extract.${sample}` | perl -pe 's/[^\d].+$//g;'"
+else
+    mergeHold=""
+fi
+
+#if [ ${runMerge} -eq 1 ]; then
+cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -o ${sample} -terse ${mergeHold} > sgeid.merge.${sample}
 set -eu -o pipefail
 echo "Merging barcodes"
 zcat -f ${bcfiles} | pigz -p ${NSLOTS} -c -9 > $OUTDIR/${sample}.barcodes.preFilter.txt.gz
 rm -f ${bcfiles}
 
-${src}/analyzeBCcounts.sh 10 ${sample}
+if [[ ${sampleType} == "iPCR" ]]; then
+    echo "Merging bam files"
+    if [[ `echo ${bamfiles} | wc | awk '{print $2}'` -gt 1 ]]; then 
+        samtools merge -f -l 9 $OUTDIR/${sample}.bam ${bamfiles}
+    else 
+        cp ${bamfiles} $OUTDIR/${sample}.bam
+    fi
+    #TODO sort in mapIntegrations.sh?
+    #samtools index $OUTDIR/${sample}.bam
+    rm -f ${bamfiles}
+fi
 EOF
+rm -f sgeid.extract.${sample}
+#fi
 
-rm -f sgeid.map.${sample}
+if [ ${runMerge} -eq 1 ]; then
+    analysisHold="-hold_jid `cat sgeid.merge.${sample}` | perl -pe 's/[^\d].+$//g;'"
+else
+    analysisHold=""
+fi
+#-o ${sample} breaks Jesper's Flowcell_Info.sh
+cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -terse ${analysisHold} #> sgeid.analysis
+set -eu -o pipefail
+${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
+
+if [[ ${sampleType} == "iPCR" ]]; then
+    ${src}/analyzeIntegrations.sh ${sample}
+fi
+EOF
+rm -f sgeid.merge.${sample}
 
 
 echo "Done!!!"

@@ -81,9 +81,10 @@ def aggregateTransposonSamples(lines):
 def transposonSamples(line):
     fullSampleName = line["Sample #"] + "-" + line["#Sample Name"]
     sampleType = line["Sample Type"]
+    sampleTypeShort= sampleType.split(' ')[1]
     
     #Might like to put submit logfile in sample directory but would need to mkdir first, or change qsub to do mkdir on -o: ' -o ' + fullSampleName + 
-    qsub = "qsub -S /bin/bash -j y -N submit." + fullSampleName + ' -b y "/vol/mauranolab/transposon/src/'
+    qsub = "qsub -S /bin/bash -j y -b y -N submit." + fullSampleName + ' "/vol/mauranolab/transposon/src/submit.sh '
     
     fileLocation = getBasedir(line['Lab'], sampleType) + line["FC"] + "/Project_" + line["Lab"] + "/Sample_" + line["Sample #"] + '/"'
     
@@ -93,7 +94,6 @@ def transposonSamples(line):
     
     #Unique line to each library 
     if sampleType == "Transposon DNA" or sampleType == "Transposon RNA":
-        program= "submitBCcounts.sh"
         plasmidSeq="AGCTGCACAGCAACACCGAGCTGGGCATCGTGGAGTACCAGCACGCCTTCAAGACCCCCATCGCCTTCGCCAGATC"
         extractBCargs="--no-BCrevcomp"
         if sampleType == "Transposon DNA":
@@ -103,7 +103,6 @@ def transposonSamples(line):
         else:
             raise Exception("IMPOSSIBLE")
     elif sampleType == "Transposon iPCR" or sampleType == "Transposon iPCR Capture":
-        program = "submitIntegrations.sh"
         if sampleType == "Transposon iPCR":
             bcread = "R1"
             plasmidSeq="CTTCCGACTTCAACTGTA"
@@ -117,7 +116,7 @@ def transposonSamples(line):
             raise Exception("IMPOSSIBLE")
     else:
         raise Exception("Can't handle sampleType" + sampleType)
-    submitCommand = ' '.join([qsub + program, fullSampleName, BCreadSeq, line["R1 Trim (P5)"], line["R2 Trim (P7)"], bclen, bcread, plasmidSeq, extractBCargs, fileLocation])
+    submitCommand = ' '.join([qsub + fullSampleName, sampleTypeShort, line["R1 Trim (P5)"], line["R2 Trim (P7)"], bcread, bclen, BCreadSeq, plasmidSeq, extractBCargs, fileLocation])
     
     global doTransposonCleanup
     doTransposonCleanup = True
