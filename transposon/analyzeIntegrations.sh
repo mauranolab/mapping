@@ -16,7 +16,7 @@ hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38-f
 
 
 
-if [ ! -s "$OUTDIR/${sample}.barcodes.txt" ]; then
+if [ ! -s "$OUTDIR/${sample}.barcodes.txt.gz" ]; then
     echo "analyzeIntegrations.sh ERROR: barcode input file $OUTDIR/${sample}.barcodes.txt does not exist!"
     exit 1
 fi
