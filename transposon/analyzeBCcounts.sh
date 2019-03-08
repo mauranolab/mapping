@@ -17,7 +17,7 @@ fi
 
 
 echo "Analyzing data for ${sample} (minReadCutoff=${minReadCutoff})"
-zcat ${OUTDIR}/${sample}.barcodes.preFilter.txt | ${src}/removeOverrepresentedBCs.py --col 1 --umicol 3 --freq 0.01 -o ${TMPDIR}/${sample}.barcodes.txt -
+zcat ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz | ${src}/removeOverrepresentedBCs.py --col 1 --umicol 3 --freq 0.01 -o ${TMPDIR}/${sample}.barcodes.txt -
 
 
 if [ `cat ${TMPDIR}/${sample}.barcodes.txt | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | wc -l` -eq 0 ]; then
