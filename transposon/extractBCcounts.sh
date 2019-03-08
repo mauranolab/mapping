@@ -82,7 +82,7 @@ if [[ "${minUMILength}" -gt "4" ]]; then
     pigz -p ${NSLOTS} -c -9 > $OUTDIR/${sample}.barcodes.txt.gz
 else
     #Skip UMI deduplication
-    echo "UMI too short (${#UMIlength}) -- skip UMI deduplication"
+    echo "UMI too short (${minUMILength}) -- skip UMI deduplication"
     zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | pigz -p ${NSLOTS} -c -9 > $OUTDIR/${sample}.barcodes.txt.gz
 fi
 
