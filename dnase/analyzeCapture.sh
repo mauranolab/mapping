@@ -52,7 +52,7 @@ echo "Analyzing ${bait} bait mapped to ${mappedgenome}"
 #Summary of on-target coverage
 #NB genomecov is over all chrom.sizes -- right way?
 
-echo -e "Sample\tNum_sequenced_reads\tNonredundant_reads_analyzed\tNonredundant_reads_on_target\tcov.wholegenome\tcov.mappablegenome\tcov.mean\tcov.sd\tcov.5th.pctile\tcov.median"
+echo -e "Sample\tNum_sequenced_reads\tNonredundant_reads_analyzed\tNonredundant_reads_on_target\tDuplicate_reads_on_target\tcov.wholegenome\tcov.mean\tcov.median\tcov.5th.pctile\tcov.sd"
 for covfile in `find ${dirs} -name "*.${mappedgenome}.coverage.binned.starch"`; do
     base=`basename ${covfile} .${mappedgenome}.coverage.binned.starch`
     echo -n -e "${base}\t"
@@ -67,19 +67,19 @@ for covfile in `find ${dirs} -name "*.${mappedgenome}.coverage.binned.starch"`; 
     #Nonredundant_reads_analyzed
     samtools view -F 1536 -c ${bamfile} | perl -pe 's/\n/\t/g;'
     
-    #Nonredundant_reads_on_target
-    bedops --chrom ${chrom} -e -1 ${readsfile} $TMPDIR/target.bed | awk -F "\t" 'BEGIN {OFS="\t"} !and($7, 1024)' | wc -l | perl -pe 's/\n/\t/g;'
+    #Nonredundant_reads_on_target, Duplicate_reads_on_target
+    bedops --chrom ${chrom} -e -1 ${readsfile} $TMPDIR/target.bed | awk -F "\t" 'BEGIN {OFS="\t"; nonredundantReads=0; dupReads=0} {if(and($7, 1024)) {dupReads+=1} else {nonredundantReads+=1}} END {print nonredundantReads,dupReads}' | perl -pe 's/\n/\t/g;'
     
     #cov.wholegenome
     unstarch ${covfile} | awk -F "\t" 'BEGIN {OFS="\t"; sum=0; count=0} {sum+=$5; count+=1} END {if(count==0) {print "NA"} else {print sum/count}}' | perl -pe 's/\n/\t/g;'
     
     #cov.mappablegenome
-    unstarch ${covfile} | bedops -e -1 - ${mappableFile} | awk -F "\t" 'BEGIN {OFS="\t"; sum=0; count=0} {sum+=$5; count+=1} END {if(count==0) {print "NA"} else {print sum/count}}' | perl -pe 's/\n/\t/g;'
+    #unstarch ${covfile} | bedops -e -1 - ${mappableFile} | awk -F "\t" 'BEGIN {OFS="\t"; sum=0; count=0} {sum+=$5; count+=1} END {if(count==0) {print "NA"} else {print sum/count}}' | perl -pe 's/\n/\t/g;'
     
     #cov.mean, cov.sd, cov.5th.pctile, cov.median
     #bedmap --chrom ${chrom} --faster --delim "\t" --bp-ovr 1 --prec 2 --mean --stdev --kth 0.05 --median $TMPDIR/target.bed ${covfile}
     #Use mlr to handle discontinuous target regions
-    bedmap --chrom ${chrom} --faster --delim "\n" --multidelim "\n" --bp-ovr 1 --prec 3 --echo-map-score $TMPDIR/target.bed ${covfile} | mlr  --tsv --implicit-csv-header --headerless-csv-output stats1 -a mean,stddev,p5,p50 -f 1
+    bedmap --chrom ${chrom} --faster --delim "\n" --multidelim "\n" --bp-ovr 1 --prec 3 --echo-map-score $TMPDIR/target.bed ${covfile} | mlr --ofmt %.1f --tsv --implicit-csv-header --headerless-csv-output stats1 -a mean,p50,p5,stddev -f 1
 done
 
 
