@@ -34,7 +34,7 @@ qsub -S /bin/bash -j y -N ${sample} -b y <<EOF
 set -eu -o pipefail
 mkdir -p ${sample}
 echo "Merging barcodes"
-zcat ${bcfiles} | pigz -p ${NSLOTS} -9 > ${sample}/${sample}.barcodes.preFilter.txt.gz
+zcat ${bcfiles} | pigz -p ${NSLOTS} -c -9 > ${sample}/${sample}.barcodes.preFilter.txt.gz
 ${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
 
 if [ ${mergeIntegrations} -eq 1 ]; then

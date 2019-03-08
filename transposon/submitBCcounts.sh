@@ -105,16 +105,16 @@ fi
 if [[ "${bc1pattern}" == "--bc-pattern X" && "${bc2pattern}" == "--bc-pattern2 X" ]]; then
     echo "No UMI -- just concatenating files"
     #umi_tools extract requires at least 1 bp of UMI
-    zcat -f ${f1} | gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz
-    cat $TMPDIR/${sample}.R2.fastq | gzip -1 -c > $TMPDIR/${sample}.R2.fastq.gz
+    zcat -f ${f1} | pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.R1.fastq.gz
+    cat $TMPDIR/${sample}.R2.fastq | pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.R2.fastq.gz
 else
     echo "umi_tools extract ${bc1pattern} ${bc2pattern}"
     #/home/mauram01/.local/bin/umi_tools extract --help
     #BUGBUG umi_tools installed in python3.5 module missing matplotlib??? also .local by default is not group-readable
     zcat -f ${f1} | /home/mauram01/.local/bin/umi_tools extract ${bc1pattern} ${bc2pattern} --read2-in=$TMPDIR/${sample}.R2.fastq --read2-out=$TMPDIR/${sample}.R2.out.fastq -v 0 --log=$TMPDIR/${sample}.umi.log |
-    gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz
-    gzip -1 -c $TMPDIR/${sample}.R2.out.fastq > $TMPDIR/${sample}.R2.fastq.gz
-    gzip -9 -c $TMPDIR/${sample}.umi.log > $OUTDIR/${sample}.umi.log.gz
+    pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.R1.fastq.gz
+    pigz -p ${NSLOTS} -c -1 $TMPDIR/${sample}.R2.out.fastq > $TMPDIR/${sample}.R2.fastq.gz
+    pigz -p ${NSLOTS} -c -9 $TMPDIR/${sample}.umi.log > $OUTDIR/${sample}.umi.log.gz
 fi
 
 echo
@@ -197,7 +197,7 @@ echo -e "Will merge barcode files: ${bcfiles}\n"
 cat <<EOF | qsub -S /bin/bash -terse -hold_jid `cat sgeid.map.${sample}` -j y -N ${sample} -b y | perl -pe 's/[^\d].+$//g;' # >> sgeid.merge
 set -eu -o pipefail
 echo "Merging barcodes"
-zcat -f ${bcfiles} | pigz -p ${NSLOTS} -9 > $OUTDIR/${sample}.barcodes.preFilter.txt.gz
+zcat -f ${bcfiles} | pigz -p ${NSLOTS} -c -9 > $OUTDIR/${sample}.barcodes.preFilter.txt.gz
 rm -f ${bcfiles}
 
 ${src}/analyzeBCcounts.sh 10 ${sample}

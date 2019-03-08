@@ -40,7 +40,7 @@ date
 echo
 echo "Extracting barcodes from ${BCreadFile}"
 date
-zcat -f $OUTDIR/${PlasmidreadFile} | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | gzip -1 -c - > $TMPDIR/${sample}.plasmid.fastq.gz
+zcat -f $OUTDIR/${PlasmidreadFile} | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | pigz -p ${NSLOTS} -c -1 - > $TMPDIR/${sample}.plasmid.fastq.gz
 
 
 if [[ "${plasmidSeq}" == "None" ]]; then
@@ -51,34 +51,42 @@ else
 fi
 
 zcat -f $OUTDIR/${BCreadFile} | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-${src}/extractBarcode.py --BCread - --referenceSeq $BCreadSeq --bclen $bclen ${plasmidcmd} --minBaseQ 30 ${extractBCargs} | gzip -1 -c > $TMPDIR/${sample}.barcodes.raw.txt.gz
+${src}/extractBarcode.py --BCread - --referenceSeq $BCreadSeq --bclen $bclen ${plasmidcmd} --minBaseQ 30 ${extractBCargs} | pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.barcodes.raw.txt.gz
 date
 
 
 echo
 echo "Merging similar barcodes"
 date
-zcat $TMPDIR/${sample}.barcodes.raw.txt.gz | python ${src}/AdjacencyDeDup.py --col 1 -o - -  | gzip -c -9 > $TMPDIR/${sample}.barcodes.deduped.txt.gz
+zcat $TMPDIR/${sample}.barcodes.raw.txt.gz | python ${src}/AdjacencyDeDup.py --col 1 -o - -  | 
+#Wipe out UMIs for ambiguous BCs
+awk -F "\t" 'BEGIN {OFS="\t"} $1=="" {$3=""} {print}' |
+pigz -p ${NSLOTS} -c -9 > $TMPDIR/${sample}.barcodes.deduped.txt.gz
 date
 
+echo
 #Only dedup UMIs if the length is over 4
 #Go through entire file with awk despite only looking at first line so zcat terminates properly
-UMIlength=$(zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {print $3}')
-if [[ "${#UMIlength}" -gt "4" ]]; then
+minUMILength=`zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($3)}' | uniq | sort -n | awk 'NR==1'`
+if [[ "${minUMILength}" -gt "4" ]]; then
     echo "Deduping UMIs"
     echo "Merging similar UMIs per barcode"
     #BUGBUG seems to take extremely long time in some cases -- e.g. BS01470A
     date
-    zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | 
+    zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz |
     ##Here we stop being in order of original fastq
     sort -k1,1 |
-    ${src}/AdjacencyDeDup.py --col 3 --groupcol 1 -o - - | gzip -9 -c > $OUTDIR/${sample}.barcodes.txt.gz
+    ${src}/AdjacencyDeDup.py --col 3 --groupcol 1 -o - - | 
+    #Mask BC for reads where UMI was ambiguous -- I don't think this affects counts since both alternate UMIs must be present and this would just be a duplicate, but I haven't checked. Spot checking shows the failed UMIs have lots of G
+    awk -F "\t" 'BEGIN {OFS="\t"} $1!="" && $3=="" {$1=""} {print}' |
+    pigz -p ${NSLOTS} -c -9 > $OUTDIR/${sample}.barcodes.txt.gz
 else
     #Skip UMI deduplication
     echo "UMI too short (${#UMIlength}) -- skip UMI deduplication"
-    zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | gzip -9 -c > $OUTDIR/${sample}.barcodes.txt.gz
+    zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | pigz -p ${NSLOTS} -c -9 > $OUTDIR/${sample}.barcodes.txt.gz
 fi
 
 
+echo
 echo "Done!!!"
 date
