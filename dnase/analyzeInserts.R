@@ -53,10 +53,11 @@ results$sublibrary <- sapply(results$BS, FUN=function(x) {substr(x, 8, 8)})
 
 
 cat("Saving...\n")
-save(list=c("results"), file="insertlengths.RData", compress="bzip2")
+save(list=c("results", breaks, maxlength), file="insertlengths.RData", compress="bzip2")
 
 #For subsetting
 #results <- subset(results, BS %in% c("BS01403A", "BS01403B", "BS01403C", "BS01403D", "BS01409A", "BS01409B", "BS01409C", "BS01409D"))
+#results <- subset(results, grepl("Hba_", name))
 #results$cleanup <- sapply(results$sample, FUN=function(x) {unlist(strsplit(as.character(x), "_"))[5]})
 #results$polymerase <- sapply(results$sample, FUN=function(x) {unlist(strsplit(as.character(x), "_"))[6]})
 
