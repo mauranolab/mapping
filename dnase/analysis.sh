@@ -41,10 +41,6 @@ esac
 
 source ${src}/genomeinfo.sh ${mappedgenome}
 
-#Deal with some of the more complex reference index names
-#NB this will call hotspots only on the first mammalian genome for the *_sacCer3 hybrid indices
-annotationgenome=`echo ${mappedgenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
-
 
 ###Setup
 if [ -z "$NSLOTS" ]; then
