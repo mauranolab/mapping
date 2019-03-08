@@ -73,7 +73,7 @@ echo -e -n "${sample}\tNumber of reads passing all filters\t"
 cat $TMPDIR/${sample}.coords.bed | wc -l
 
 
-cat $OUTDIR/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' |
+zcat -f $OUTDIR/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' |
 sort -k2,2 > $TMPDIR/${sample}.barcodes.txt
 cat $TMPDIR/${sample}.coords.bed | sort -k4,4 | join -1 4 -2 2 - $TMPDIR/${sample}.barcodes.txt | awk 'BEGIN {OFS="\t"} {print $2, $3, $4, $1, $6, $7, $8}' | sort-bed - > $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed
 #columns: chrom, start, end, readID, strand, BC seq, UMI
@@ -116,8 +116,10 @@ echo "Histogram of barcode reads after coordinate-based deduping"
 cat $OUTDIR/${sample}.barcodes.readnames.coords.bed | cut -f6 | sort | uniq -c | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 
 
-minUMIlength=5
-if [[ `awk -v minUMIlength=${minUMIlength} -F "\t" 'BEGIN {OFS="\t"} length($3) >= minUMIlength {found=1} END {print found}' $OUTDIR/${sample}.barcodes.txt` == 1 ]]; then
+#Only dedup UMIs if the length is over 5
+#Go through entire file with awk despite only looking at first line so zcat terminates properly
+minUMILength=`zcat -f $OUTDIR/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($3)}' | uniq | sort -n | awk 'NR==1'`
+if [[ "${minUMILength}" -gt "5" ]]; then
     echo
     echo "Coordinate-based UMI deduping"
     

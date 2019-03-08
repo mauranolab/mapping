@@ -67,19 +67,19 @@ if [ "${minUMILength}" -ge 5 ]; then
     #Format: BC, UMI, n
     awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' |
     pigz -p ${NSLOTS} -c -9 > ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz
-    zcat -f cat ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | cut -f1 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $1}' >  ${OUTDIR}/${sample}.barcode.counts.UMI.corrected.txt
+    zcat -f ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | cut -f1 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $1}' >  ${OUTDIR}/${sample}.barcode.counts.UMI.corrected.txt
     echo -n -e "${sample}\tNumber of unique barcodes+UMI\t"
     #TODO move to extract.py
-    zcat -f cat ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | wc -l
+    zcat -f ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | wc -l
     
     echo
     echo "Histogram of number of reads per barcode+UMI"
-    zcat -f cat ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | cut -f3 | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+    zcat -f ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | cut -f3 | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
     
     echo
     echo "UMI lengths"
     #No more empty BCs are present so no need to check
-    zcat -f cat ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | cut -f2 |
+    zcat -f ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | cut -f2 |
     awk '{print length($0)}' | sort -g | uniq -c | sort -k2,2 | awk '$2!=0'
     bcfile="${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz"
 else
