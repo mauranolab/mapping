@@ -99,6 +99,11 @@ cegsvectors)
 esac
 
 
+#Deal with some of the more complex reference index names
+#NB this will call hotspots, etc. only on the first mammalian genome for the *_sacCer3 hybrid indices
+annotationgenome=`echo ${mappedgenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
+
+
 if [[ "${mappedgenome}" == "cegsvectors" ]]; then
     chromsizes="/vol/cegs/sequences/cegsvectors/vectors.incells.chrom.sizes"
 else
@@ -106,5 +111,5 @@ else
 fi
 
 
-echo "genomeinfo for ${mappedgenome}: bwaIndex=${bwaIndex}, ploidy=${ploidy}, referencefasta=${referencefasta}, dbsnpvcf=${dbsnpvcf}, chromsizes=${chromsizes}"
+echo "genomeinfo for ${mappedgenome}: bwaIndex=${bwaIndex}, ploidy=${ploidy}, referencefasta=${referencefasta}, dbsnpvcf=${dbsnpvcf}, annotationgenome=${annotationgenome}, chromsizes=${chromsizes}"
 
