@@ -24,13 +24,13 @@ bcfiles=`echo ${indivsamples} | perl -pe 's/\/+$//g;' -e 's/\/+( +)/\1/g;' | awk
 echo -e "Will merge barcode files: ${bcfiles}\n"
 
 if [[ ${indivsamples} =~ _iPCR ]]; then
-    sampleType = "iPCR"
+    sampleType="iPCR"
     minReadCutoff=2
     bamfiles=`echo ${indivsamples} | perl -pe 's/\/+$//g;' -e 's/\/+( +)/\1/g;' | awk 'BEGIN {ORS=" "} {for(i=1; i<=NF; i++) {split($i, path, "/"); print $i "/" path[length(path)] ".bam" }}'`
     echo -e "Will merge bam files: ${bamfiles}\n"
 else
     #As long as it's not iPCR
-    sampleType == "DNA"
+    sampleType="DNA"
     minReadCutoff=10
     bamfiles=""
 fi
