@@ -73,7 +73,7 @@ echo -e -n "${sample}\tNumber of reads passing all filters\t"
 cat $TMPDIR/${sample}.coords.bed | wc -l
 
 
-cat $OUTDIR/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | 
+cat $OUTDIR/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' |
 sort -k2,2 > $TMPDIR/${sample}.barcodes.txt
 cat $TMPDIR/${sample}.coords.bed | sort -k4,4 | join -1 4 -2 2 - $TMPDIR/${sample}.barcodes.txt | awk 'BEGIN {OFS="\t"} {print $2, $3, $4, $1, $6, $7, $8}' | sort-bed - > $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed
 #columns: chrom, start, end, readID, strand, BC seq, UMI
@@ -230,7 +230,7 @@ cat $OUTDIR/${sample}.uniqcoords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$2-=2; $3-
 
 echo
 echo "Histogram of number of insertion sites per barcode"
-cat $OUTDIR/${sample}.barcodes.coords.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $3, $6, $4}' | sort -k5,5 | cut -f5 | sort -g | uniq -c | sort -k1,1g | awk '{print $1}' | 
+cat $OUTDIR/${sample}.barcodes.coords.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $3, $6, $4}' | sort -k5,5 | cut -f5 | sort -g | uniq -c | sort -k1,1g | awk '{print $1}' |
 awk -v cutoff=2 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 
 

@@ -54,13 +54,10 @@ permittedMismatches=2
 curGenome="hg38_noalt"
 bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t $NSLOTS -Y"
 
-echo "Will map to reference ${curGenome}"
-
-
-bwaIndexBase=/vol/isg/annotation/bwaIndex
 
 echo
 echo "Mapping to reference ${curGenome}"
+bwaIndexBase=/vol/isg/annotation/bwaIndex
 case "${curGenome}" in
 hg38_noalt)
     bwaIndex=${bwaIndexBase}/hg38_noalt/hg38_noalt;;
@@ -77,9 +74,9 @@ esac
 #BUGBUG hardcoded primer length
 R2primerlen=18
 echo "Trimming $R2primerlen bp primer from R2"
-zcat -f $f2 | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | 
+zcat -f $f2 | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
 awk -F "\t" 'BEGIN {OFS="\t"} {if(NR % 4==1 ) {split($0, name, "_"); print name[1]} else {print}}' |
-awk -v trim=$R2primerlen '{if(NR % 4==2 || NR % 4==0) {print substr($0, trim+1)} else if (NR % 4==1) {print $1} else {print}}' | gzip -9 -c > $TMPDIR/${sample}.genome.fastq.gz
+awk -v trim=$R2primerlen '{if(NR % 4==2 || NR % 4==0) {print substr($0, trim+1)} else if (NR % 4==1) {print $1} else {print}}' | pigz -p ${NSLOTS} -c -9 > $TMPDIR/${sample}.genome.fastq.gz
 
 
 date
@@ -87,6 +84,7 @@ echo "bwa aln ${bwaAlnOpts} ${bwaIndex} ..."
 bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample}.genome.fastq.gz > $TMPDIR/${sample}.genome.sai
 
 
+echo
 date
 DS_nosuffix=`echo $DS | perl -pe 's/[A-Z]$//g;'`
 bwaExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
@@ -101,5 +99,6 @@ ${src}/filter_reads.py --reqFullyAligned --failUnwantedRefs --max_mismatches ${p
 samtools view -@ NSLOTS -1 - > $OUTDIR/${sample}.bam
 
 
+echo
 echo "Done!!!"
 date

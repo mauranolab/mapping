@@ -498,10 +498,10 @@ for i in `ls $OUTDIR/BarcodeFreq/*.png | sort | sed 's/.png//g' | awk -F "/" '{p
 #####
 #Barcode frequency with UMI
 #####
-if [[ `find -name *barcode.counts.withUMI.txt* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
+if [[ `find -name "*.barcode.counts.withUMI.txt.gz" | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
     then
     mkdir -p $OUTDIR/BarcodeFreq_UMI
-    for i in `find -name *barcode.counts.withUMI.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do uniqueMol=$(cat ${i}/${i}.barcode.counts.withUMI.txt | wc -l); awk '{print $1}' ${i}/${i}.barcode.counts.withUMI.txt| sort | uniq -c | sort -nk1| awk 'BEGIN {OFS="\t"} {print $2, $1}' | awk -v OFS='\t' -F'\t' -v sample="$i" -v uniqMol="$uniqueMol" '{print $1, $2, sample, uniqMol}'; done > $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt
+    for i in `find -name "*.barcode.counts.withUMI.txt.gz" | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do uniqueMol=$(zcat -f ${i}/${i}.barcode.counts.withUMI.txt.gz | wc -l); zcat -f ${i}/${i}.barcode.counts.withUMI.txt.gz | cut -f1 | sort | uniq -c | sort -nk1| awk 'BEGIN {OFS="\t"} {print $2, $1}' | awk -v OFS='\t' -F'\t' -v sample="$i" -v uniqMol="$uniqueMol" '{print $1, $2, sample, uniqMol}'; done > $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt
     
     R --quiet --no-save << EOF
     BC <- read("$OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt")
@@ -561,7 +561,7 @@ EOF
     
     
     mkdir -p $OUTDIR/UMI_distribution
-    for i in `find -name *barcode.counts.withUMI.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do  cat $i/$i.barcode.counts.withUMI.txt | awk -v OFS='\t' -F'\t' -v sample="$i" '{print $1, $2, $3, sample}' ; done > $OUTDIR/UMI_distribution/UMI_distribution.txt
+    for i in `find -name "*.barcode.counts.withUMI.txt.gz" | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do  zcat -f $i/$i.barcode.counts.withUMI.txt.gz | awk -v OFS='\t' -F'\t' -v sample="$i" '{print $1, $2, $3, sample}' ; done > $OUTDIR/UMI_distribution/UMI_distribution.txt
 
 
     R --quiet --no-save << EOF
