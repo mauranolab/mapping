@@ -27,6 +27,7 @@ floor()
 src=/vol/mauranolab/transposon/src
 
 #Hardcoded right now rather than as parameters like dnase pipeline
+runPreprocess=1
 runExtract=1
 runMerge=1
 
@@ -55,7 +56,7 @@ f2=`find ${basedir}/ -maxdepth 1 -name "*_R2_*.fastq.gz"`
 
 if [[ "${sampleType}" != "DNA" ]] && [[ "${sampleType}" != "RNA" ]] && [[ "${sampleType}" != "iPCR" ]]; then
     echo "ERROR submit: unknown sample type ${sampleType}"
-    exit 1
+    exit 2
 fi
 
 
@@ -78,10 +79,24 @@ date
 #R2trim=$3
 #bcread=$4
 #src=$5
-if [ ${runExtract} -eq 1 ]; then
+if [ ${runPreprocess} -eq 1 ]; then
     ###First process all reads together
     echo
-    echo "Extracting BCs"
+    echo "Extracting BCs from ${bcread}"
+    
+    case "${bcread}" in
+    R1)
+        R1file="BC";
+        R2file="plasmid";;
+    R2)
+        R1file="plasmid";
+        R2file="BC";;
+    *)
+        echo "ERROR submit: bcread ${bcread} must be either R1 or R2";
+        exit 3;;
+    esac
+    
+    
     echo "Weblogo of raw reads"
     zcat -f ${f1} | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
     weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R1 raw sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R1.raw.eps
@@ -92,11 +107,19 @@ if [ ${runExtract} -eq 1 ]; then
     convert $TMPDIR/${sample}.R2.raw.eps $OUTDIR/${sample}.R2.raw.png
     
     
+    echo
+    echo "Filtering out reads with >75% G content"
+    date
+    zcat -f ${f1} | gzip -1 > $TMPDIR/${sample}.R1.fastq.gz
+    zcat -f ${f2} | gzip -1 > $TMPDIR/${sample}.R2.fastq.gz
+    ${src}/filterNextSeqReadsForPolyG.py --inputfileR1 $TMPDIR/${sample}.R1.fastq.gz --inputfileR2 $TMPDIR/${sample}.R2.fastq.gz --maxPolyG 75 --outputfileR1 $TMPDIR/${sample}.filtered.R1.fastq.gz --outputfileR2 $TMPDIR/${sample}.filtered.R2.fastq.gz
+    
+    
     ##BCread:
     #RNA, iPCR - R1
     #DNA - R2
     
-    ##UMI (additional Ns may be present but do not represent a true UMI)
+    ##UMI (additional Ns may be present from PCR primers but do not represent a true UMI)
     #RNA: UMI is preserved on both reads
     #DNA: UMI is only preserved in the plasmid read 
     #iPCR: No UMI
@@ -104,45 +127,21 @@ if [ ${runExtract} -eq 1 ]; then
     
     echo "Trimming/extracting UMI from R1 files ${f1} and R2 files ${f2}"
     date
-    if [[ "${R1trim}" -gt 0 ]]; then
-        echo "Trimming ${R1trim} bp from R1"
-        bc1pattern="--bc-pattern "`printf 'N%.0s' $(seq 1 ${R1trim})`
-    else
-        bc1pattern="--bc-pattern X"
-    fi
+    echo "Trimming ${R1trim} bp from R1"
+    bc1pattern="^(?P<umi_1>.{$R1trim})"
     
     #Only extract UMI from R2 for RNA or iPCR samples (bcread is R1), throw it away for DNA samples
     if [[ "${R2trim}" -gt 0 && "${bcread}" == "R1" ]]; then
         echo "Trimming ${R2trim} bp from R2"
-        bc2pattern="--bc-pattern2 "`printf 'N%.0s' $(seq 1 ${R2trim})`
-        zcat -f ${f2} > $TMPDIR/${sample}.R2.fastq
+        bc2pattern="^(?P<umi_1>.{$R2trim})"
     else
-        bc2pattern="--bc-pattern2 X"
+        bc2pattern="^(?P<discard_1>.{$R2trim})"
         echo "Removing ${R2trim} bp from R2"
-        #TODO could switch to umi_tools regex to clean this up as it allows discard_n
-        cutadapt --quiet -u ${R2trim} ${f2} > $TMPDIR/${sample}.R2.fastq
     fi
     
-    if [[ "${bc1pattern}" == "--bc-pattern X" && "${bc2pattern}" == "--bc-pattern2 X" ]]; then
-        echo "No UMI -- just concatenating files"
-        #umi_tools extract requires at least 1 bp of UMI
-        zcat -f ${f1} | pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.R1.fastq.gz
-        cat $TMPDIR/${sample}.R2.fastq | pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.R2.fastq.gz
-    else
-        echo "umi_tools extract ${bc1pattern} ${bc2pattern}"
-        #/home/mauram01/.local/bin/umi_tools extract --help
-        #BUGBUG umi_tools installed in python3.5 module missing matplotlib??? also .local by default is not group-readable
-        zcat -f ${f1} | /home/mauram01/.local/bin/umi_tools extract ${bc1pattern} ${bc2pattern} --read2-in=$TMPDIR/${sample}.R2.fastq --read2-out=$TMPDIR/${sample}.R2.out.fastq -v 0 --log=$TMPDIR/${sample}.umi.log |
-        pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.R1.fastq.gz
-        pigz -p ${NSLOTS} -c -1 $TMPDIR/${sample}.R2.out.fastq > $TMPDIR/${sample}.R2.fastq.gz
-        pigz -p ${NSLOTS} -c -9 $TMPDIR/${sample}.umi.log > $OUTDIR/${sample}.umi.log.gz
-    fi
-    
-    #TODO move first so it considers G content in UMIs
-    echo
-    echo "Filtering out reads with >75% G content"
-    date
-    ${src}/filterNextSeqReadsForPolyG.py --inputfileR1 $TMPDIR/${sample}.R1.fastq.gz --inputfileR2 $TMPDIR/${sample}.R2.fastq.gz --maxPolyG 75 --outputfileR1 $OUTDIR/${sample}.R1.fastq.gz --outputfileR2 $OUTDIR/${sample}.R2.fastq.gz
+    echo "umi_tools extract --bc-pattern \"${bc1pattern}\" --bc-pattern2 \"${bc2pattern}\""
+    #/home/mauram01/.local/bin/umi_tools extract --help
+    /home/mauram01/.local/bin/umi_tools extract --quality-encoding=phred33 --quality-filter-threshold=30 --compresslevel=9 -v 0 --log2stderr --extract-method regex --bc-pattern "${bc1pattern}" --bc-pattern2 "${bc2pattern}" -I $TMPDIR/${sample}.filtered.R1.fastq.gz -S $OUTDIR/${sample}.R1.fastq.gz --read2-in=$TMPDIR/${sample}.filtered.R2.fastq.gz --read2-out=$OUTDIR/${sample}.R2.fastq.gz
     
     
     echo
@@ -173,23 +172,12 @@ if [ ${runExtract} -eq 1 ]; then
     fi
     
     
+    #TODO get rid of trimmomatic -- I think the main thing is either extending the sequence provided or having extractBarcodes.py deal gracefully with readlength > alignment sequence and/or readthrough from plasmid read into barcode
     echo
     echo "Trimmomatic"
     date
-    case "${bcread}" in
-    R1)
-        R1file="BC";
-        R2file="plasmid";;
-    R2)
-        R1file="plasmid";
-        R2file="BC";;
-    *)
-        echo "bcread ${bcread} must be either R1 or R2";
-        exit 1;;
-    esac
-    
     trimmomaticBaseOpts="-threads $NSLOTS"
-    trimmomaticSteps="CROP:68 TOPHRED33"
+    trimmomaticSteps="CROP:68"
     java org.usadellab.trimmomatic.TrimmomaticPE $trimmomaticBaseOpts $OUTDIR/${sample}.R1.fastq.gz $OUTDIR/${sample}.R2.fastq.gz $OUTDIR/${sample}.trimmed.${R1file}.fastq.gz $OUTDIR/${sample}.trimmed.${R1file}.unpaired.fastq.gz $OUTDIR/${sample}.trimmed.${R2file}.fastq.gz $OUTDIR/${sample}.${R2file}.unpaired.fastq.gz $trimmomaticSteps
     
     
@@ -203,19 +191,21 @@ if [ ${runExtract} -eq 1 ]; then
     zcat -f $OUTDIR/${sample}.trimmed.plasmid.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
     weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} plasmid processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.plasmid.processed.eps
     convert $TMPDIR/${sample}.plasmid.processed.eps $OUTDIR/${sample}.plasmid.processed.png
-    
-    
-    ###Finally submit jobs
-    numlines=`zcat -f $OUTDIR/${sample}.trimmed.BC.fastq.gz | wc -l`
-    chunksize=2000000 #Split fastq into 500,000 reads for deduplication (500,000 x 4)
-    numjobs=`echo "${numlines} / ${chunksize}" | bc -l -q`
-    numjobs=$(floor ${numjobs})
-    numjobs=`echo "${numjobs} + 1" | bc -l -q`
-    #BUGBUG verify must be int. what to do with last chunk?
-    echo
-    echo "${numlines} lines to process in chunks of ${chunksize}"
-    date
-    
+fi
+
+
+###Finally submit jobs
+numlines=`zcat -f $OUTDIR/${sample}.trimmed.BC.fastq.gz | wc -l`
+chunksize=2000000 #Split fastq into 500,000 reads for deduplication (500,000 x 4)
+numjobs=`echo "${numlines} / ${chunksize}" | bc -l -q`
+numjobs=$(floor ${numjobs})
+numjobs=`echo "${numjobs} + 1" | bc -l -q`
+#BUGBUG verify must be int. what to do with last chunk?
+echo
+echo "${numlines} lines to process in chunks of ${chunksize}"
+date
+
+if [ ${runExtract} -eq 1 ]; then
     if [[ ${sampleType} == "iPCR" ]]; then
         qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N mapintegrations.${sample} -o ${sample} -b y "${src}/mapIntegrations.sh ${sample} ${BCreadSeq} $bclen ${chunksize} ${plasmidSeq} ${extractBCargs}" | perl -pe 's/[^\d].+$//g;' > sgeid.extract.${sample}
     else
@@ -244,7 +234,7 @@ if [ ${runMerge} -eq 1 ]; then
         bamfiles=""
     fi
     
-    cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -o ${OUTDIR}/merge.${sample} -terse ${mergeHold} | perl -pe 's/[^\d].+$//g;' > sgeid.merge.${sample}
+    cat <<EOF | qsub -S /bin/bash -j y -b y -N merge.${sample} -o ${OUTDIR} -terse ${mergeHold} | perl -pe 's/[^\d].+$//g;' > sgeid.merge.${sample}
     set -eu -o pipefail
     echo "Merging barcodes"
     zcat -f ${bcfiles} | pigz -p ${NSLOTS} -c -9 > $OUTDIR/${sample}.barcodes.preFilter.txt.gz
@@ -261,6 +251,8 @@ if [ ${runMerge} -eq 1 ]; then
         #samtools index $OUTDIR/${sample}.bam
         rm -f ${bamfiles}
     fi
+    
+    echo "Done"
 EOF
     rm -f sgeid.extract.${sample}
 fi
