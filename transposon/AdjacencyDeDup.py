@@ -80,6 +80,8 @@ def dedup_dir_adj(Counter):
 
 ###
 def replace_dedup(data, bcColNum, myUMIcounts, deduped_UMI, wr):
+    global numLinesProcessed
+    global numNonEmptyBCsProcessed
     global numAmbiguousLines
     
     #Create index of all deduplicated barcodes
@@ -90,22 +92,25 @@ def replace_dedup(data, bcColNum, myUMIcounts, deduped_UMI, wr):
             demul_index[y].append(i)
     
     for line in data:
+        numLinesProcessed += 1
         oldBC = line[bcColNum]
-        results = demul_index[oldBC]
-        matches = [dedupMulti[x] for x in results]
-        if len(matches)>0 and oldBC!="":
-            if len(matches)==1:
-                barCount = dict((k, myUMIcounts[k]) for k in matches[0])
-                if max(barCount, key=barCount.get) == min(barCount, key=barCount.get):
-                    newBC = sorted(barCount)[0]
-                else:
-                    newBC = max(barCount, key=barCount.get)##TODO Barcodes with same number replace
-                #print(line)
-            if len(matches)>1:
-                newBC = ""
-                numAmbiguousLines += 1
-                #print('Ambigious')
-            line[bcColNum] = line[bcColNum].replace(oldBC, newBC)
+        if oldBC!="":
+            numNonEmptyBCsProcessed += 1
+            results = demul_index[oldBC]
+            matches = [dedupMulti[x] for x in results]
+            if len(matches)>0:
+                if len(matches)==1:
+                    barCount = dict((k, myUMIcounts[k]) for k in matches[0])
+                    if max(barCount, key=barCount.get) == min(barCount, key=barCount.get):
+                        newBC = sorted(barCount)[0]
+                    else:
+                        newBC = max(barCount, key=barCount.get)##TODO Barcodes with same number replace
+                    #print(line)
+                if len(matches)>1:
+                    newBC = ""
+                    numAmbiguousLines += 1
+                    #print('Ambigious')
+                line[bcColNum] = newBC
         wr.writerows([line])
 
 
@@ -178,7 +183,7 @@ else:
     inputfile = open(args.inputfilename, 'r') 
 
 input_data = inputfile.readlines()
-input_data = [line.rstrip().split('\t') for line in input_data]
+input_data = [line.rstrip("\n").split('\t') for line in input_data]
 
 
 if args.output=="-":
@@ -188,6 +193,8 @@ else:
 wr = csv.writer(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True)
 
 
+numLinesProcessed = 0
+numNonEmptyBCsProcessed = 0
 numAmbiguousLines = 0
 numGroupsRead = 0
 
@@ -209,12 +216,11 @@ else:
     process_lines_byGroup(lastGroup, startRow, index+1, wr)
 
 
-print("[AdjacencyDeDup] All barcodes have been deduplicated", file=sys.stderr)
+print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + "lines processed with" + str(numNonEmptyBCsProcessed) + "non-empty BCs)", file=sys.stderr)
 if groupcol is not None:
-    print("[AdjacencyDeDup] " + str(numGroupsRead) + " reads with ambiguous BCs were masked out", file=sys.stderr)
+    print("[AdjacencyDeDup] " + str(numGroupsRead) + " unique groups were found", file=sys.stderr)
 print("[AdjacencyDeDup] " + str(numAmbiguousLines) + " reads with ambiguous BCs were masked out", file=sys.stderr)
 
 
 inputfile.close()
 outfile.close()
-
