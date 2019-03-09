@@ -238,16 +238,16 @@ try:
         if not readBCpassed:
             numWrongBCseq += 1
             if args.verbose:
-                print("Barcode read doesn't match plasmid start. Levenshtein distance is ", BCeditDist, file=sys.stderr, sep="")
+                print("Barcode read doesn't match plasmid start. Levenshtein distance is ", BCeditDist, sep="", file=sys.stderr)
         if enforcePlasmidRead:
             if not readPlasmidpassed:
                 numWrongPlasmid += 1
                 if args.verbose:
-                    print("Plasmid sequence doesn't match. Levenshtein distance is ", plasmidEditDist, file=sys.stderr, sep="")
+                    print("Plasmid sequence doesn't match. Levenshtein distance is ", plasmidEditDist, sep="", file=sys.stderr)
         if not readMinbaseQpassed:
             numlowQual += 1
             if args.verbose:
-                print("Low baseQ in BC", file=sys.stderr, sep="")
+                print("Low baseQ in BC", sep="", file=sys.stderr)
         if not readLengthpassed:
             numWrongBclength += 1 
             if args.verbose:
@@ -262,17 +262,15 @@ finally:
     if enforcePlasmidRead:
         inputplasmidRead.close()
     
-    print("\n\nextractBarcode.py statistics:", file=sys.stderr)
-    print("Processed", numread, "reads. Skipped", numskipped, "of these reads. ", file=sys.stderr)
-    print("Reads with wrong Barcode seq:", numWrongBCseq," (",format(numWrongBCseq/numread*100, '.2f'), '%',")",file=sys.stderr)
+    print("\nextractBarcode.py statistics:", file=sys.stderr)
+    print("Processed", numread, "reads. Skipped", numskipped, "of these reads:", file=sys.stderr)
+    print("    Reads with wrong Barcode seq: ", numWrongBCseq, " (", format(numWrongBCseq/numread*100, '.2f'), "%)", sep="", file=sys.stderr)
     if enforcePlasmidRead:
-        print("Reads with wrong Plasmid seq:", numWrongPlasmid," (",format(numWrongPlasmid/numread*100, '.2f'), '%',")",file=sys.stderr)
-    print("Reads with >2 bp with minBaseQ < ",minBaseQ,":",numlowQual," (",format(numlowQual/numread*100, '.2f'), '%',")",file=sys.stderr)
-    print("Reads with BC length not equal to ",args.bclen,":",numWrongBclength," (",format(numWrongBclength/numread*100, '.2f'), '%',")",file=sys.stderr)
-    print("Percentage kept reads ", format(((numread-(numskipped))/numread)*100, '.2f'), '%',file=sys.stderr)
-    print("BC Hamming distance: ", list(range(0,bc_start+1)), BClevenDist, sep="", file=sys.stderr)
-    print("BC mismatch position: ", list(range(0,bc_start+1)), BClmissmatchLoc, sep="", file=sys.stderr)
-    print("Plasmid Hamming distance: ", list(range(1,40+1)), PlasmidlevenDist, sep="", file=sys.stderr)
-    print("Plasmid mismatch position: ", list(range(1,40+1)), PlasmidmissmatchLoc, sep="", file=sys.stderr)
-
-print("\nDone!", file=sys.stderr)
+        print("    Reads with wrong Plasmid seq: ", numWrongPlasmid, " (", format(numWrongPlasmid/numread*100, '.2f'), "%)", sep="", file=sys.stderr)
+    print("    Reads with >2 bp with minBaseQ <", minBaseQ, ": ", numlowQual, " (", format(numlowQual/numread*100, '.2f'), "%)", sep="", file=sys.stderr)
+    print("    Reads with BC length not equal to ", args.bclen, ": ", numWrongBclength, " (", format(numWrongBclength/numread*100, '.2f'), "%)", sep="", file=sys.stderr)
+    print("Percentage kept reads: ", format(((numread-(numskipped))/numread)*100, '.2f'), '%', sep="", file=sys.stderr)
+    print("\nBC Hamming distances: ", list(range(0,bc_start+1)), BClevenDist, sep="", file=sys.stderr)
+    print("BC mismatch positions: ", list(range(0,bc_start+1)), BClmissmatchLoc, sep="", file=sys.stderr)
+    print("Plasmid Hamming distances: ", list(range(1,40+1)), PlasmidlevenDist, sep="", file=sys.stderr)
+    print("Plasmid mismatch positions: ", list(range(1,40+1)), PlasmidmissmatchLoc, sep="", file=sys.stderr)

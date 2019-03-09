@@ -35,14 +35,12 @@ firstline=`echo "$chunksize * ($jobid - 1) + 1" | bc -l -q`
 lastline=`echo "$chunksize * $jobid" | bc -l -q`
 echo "Running on $HOSTNAME. Output to $OUTDIR. Jobid=$jobid (lines ${firstline}-${lastline})"
 date
+zcat -f $OUTDIR/${PlasmidreadFile} | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | pigz -p ${NSLOTS} -c -1 - > $TMPDIR/${sample}.plasmid.fastq.gz
 
 
 echo
 echo "Extracting barcodes from ${BCreadFile}"
 date
-zcat -f $OUTDIR/${PlasmidreadFile} | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' | pigz -p ${NSLOTS} -c -1 - > $TMPDIR/${sample}.plasmid.fastq.gz
-
-
 if [[ "${plasmidSeq}" == "None" ]]; then
     echo "No plasmid sequence provided, will extract barcodes from BC read only"
     plasmidcmd=""
@@ -50,6 +48,7 @@ else
     plasmidcmd="--plasmidSeq ${plasmidSeq} --plasmidRead $TMPDIR/${sample}.plasmid.fastq.gz"
 fi
 
+#TODO since extraction is fairly fast, it might be a bit more efficient to do this in the single thread submit script so that adjacency dedup can be run on a constant number of non-empty BCs
 zcat -f $OUTDIR/${BCreadFile} | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
 ${src}/extractBarcode.py --BCread - --referenceSeq $BCreadSeq --bclen $bclen ${plasmidcmd} --minBaseQ 30 ${extractBCargs} | pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.barcodes.raw.txt.gz
 date
