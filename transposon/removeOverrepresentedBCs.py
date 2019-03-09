@@ -28,7 +28,9 @@ def process_lines(input_data, wr):
         oldBC = line[col]
         if oldBC in failedBCs:
             line[col] = ""
-            line[umicol] = ""
+            #check rather than throwing an exception in case a malformed file has non-uniform number of columns
+            if umicol < len(line):
+                line[umicol] = ""
         wr.writerows([line])
 
 
@@ -68,7 +70,7 @@ else:
     inputfile = open(args.inputfilename, 'r') 
 
 input_data = inputfile.readlines()
-input_data = [line.rstrip().split('\t') for line in input_data]
+input_data = [line.rstrip("\n").split('\t') for line in input_data]
 
 
 if args.output=="-":
