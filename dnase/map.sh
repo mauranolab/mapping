@@ -37,10 +37,10 @@ date
 
 
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
-analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
+sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
 
-if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
+if [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "${sampleType}" == "chipseq" ]]; then
     maxInsertSize=500
     permittedMismatches=3
 else
@@ -95,7 +95,7 @@ mkdir -p ${sampleOutdir}
 echo
 echo "Configuring trimming parameters"
 #Trimmomatic options
-if [[ "${analysisCommand}" == "atac" ]]; then 
+if [[ "${sampleType}" == "atac" ]]; then 
     illuminaAdapters="/cm/shared/apps/trimmomatic/0.38/adapters/NexteraPE-PE.fa"
 else 
     #TODO Probably need different sequences per barcode. Note this fa file has 2 ident copies of left adapter and none of right adapter (with barcode).
@@ -125,7 +125,7 @@ trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$S
 #    echo "No DUKE sequence present"
 
 
-if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
+if [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "${sampleType}" == "chipseq" ]]; then
     trimmomaticSteps="${trimmomaticSteps} CROP:36"
 fi
 
@@ -385,7 +385,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
 #    samtools calmd -u -r - ${referencefasta} 2> $TMPDIR/${curfile}.${curGenome}.calmd.log |
     
     
-    if [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
+    if [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "${sampleType}" == "chipseq" ]]; then
         unwanted_refs="--failUnwantedRefs --reqFullyAligned"
     else
         unwanted_refs=""
