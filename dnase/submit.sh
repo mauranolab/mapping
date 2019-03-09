@@ -45,15 +45,15 @@ BS=$4
 
 
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
-analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
+sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
 if [[ "${processingCommand}" != "none" ]] && [[ "${processingCommand}" != "aggregate" ]] && [[ "${processingCommand}" != "aggregateRemarkDups" ]] && [[ "${processingCommand}" != "mapBwaAln" ]] && [[ "${processingCommand}" != "mapBwaMem" ]]; then
     echo "ERROR submit: unknown processing command ${processingCommand} in analysisType ${analysisType}"
     exit 1
 fi
 
-if [[ "${analysisCommand}" != "atac" ]] && [[ "${analysisCommand}" != "dnase" ]] && [[ "${analysisCommand}" != "chipseq" ]] && [[ "${analysisCommand}" != "callsnps" ]] && [[ "${analysisCommand}" != "none" ]]; then 
-    echo "ERROR submit: unknown analysis command ${analysisCommand} in analysisType ${analysisType}"
+if [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "callsnps" ]] && [[ "${sampleType}" != "callsnpsCapture" ]] && [[ "${sampleType}" != "none" ]]; then 
+    echo "ERROR submit: unknown analysis command ${sampleType} in analysisType ${analysisType}"
     exit 2
 fi
 

@@ -141,8 +141,10 @@ def chromConfCapture(line):
     return(submitCommand)
 
 
-def bwaPipeline(sampleName, sampleID, sampleType, mappedgenome, processingCommand, analysisCommand):
-    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + mappedgenome + " " + processingCommand + "," + analysisCommand + " " + sampleName + " " + sampleID
+def bwaPipeline(sampleName, sampleID, sampleType, mappedgenome, processingCommand):
+    analysisCommandMap = { "ChIP-seq": "chipseq", "DNase-seq": "dnase", "DNA": "callsnps", "DNA Capture": "callsnpsCapture" }
+    
+    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + mappedgenome + " " + processingCommand + "," + analysisCommandMap[sampleType] + " " + sampleName + " " + sampleID
     
     global doDNaseCleanup
     doDNaseCleanup = True
@@ -170,9 +172,7 @@ def DNase(line):
     else:
         processingCommand="mapBwaAln"
     
-    sampleType = line["Sample Type"]
-    
-    return(bwaPipeline(line["#Sample Name"], line["Sample #"], sampleType, mappedgenome, processingCommand, "chipseq" if sampleType == "ChIP-seq" else "dnase"))
+    return(bwaPipeline(line["#Sample Name"], line["Sample #"], line["Sample Type"], mappedgenome, processingCommand))
 
 
 def DNA(line):
@@ -195,13 +195,11 @@ def DNA(line):
     else:
         processingCommand="mapBwaMem"
     
-    sampleType = line["Sample Type"]
-    
-    if sampleType=="DNA Capture":
+    if line["Sample Type"]=="DNA Capture":
         global doDNACaptureCleanup
         doDNACaptureCleanup = True
     
-    return(bwaPipeline(line["#Sample Name"], line["Sample #"], sampleType, mappedgenome, processingCommand, "callsnps"))
+    return(bwaPipeline(line["#Sample Name"], line["Sample #"], line["Sample Type"], mappedgenome, processingCommand))
 
 
 
