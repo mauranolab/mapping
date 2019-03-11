@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(prog = "createFlowcellSubmit", description = "O
 parser.add_argument('--flowcellIDs', action='store', type = str, help='Flowcell IDs (will look for /vol/mauranolab/flowcells/FCxxx/info.txt, multiple FCs separated by comma)', required=True)
 parser.add_argument('--sampletypes', action='store', type = str, help='Only process samples of this type (multiple projects separated by comma)', required=False)
 parser.add_argument('--projects', action='store', type = str, help='Only process samples in these projects (multiple projects separated by comma)', required=False)
-parser.add_argument('--samples', action='store', type = str, help='Only process samples matching this BS number (multiple samples separated by comma)', required=False)
+parser.add_argument('--samples', action='store', type = str, help='Only process samples matching this BS number (multiple samples separated by comma, done as string matching)', required=False)
 parser.add_argument("--aggregate", action='store_true', default=False, help = "Aggregate samples with the same BS number")
 parser.add_argument("--aggregate-sublibraries", action='store_true', default=False, help = "Aggregate samples with the same BS number and sublibrary, and remark duplicates")
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
@@ -75,7 +75,7 @@ def aggregateTransposonSamples(lines):
     #Exact parameters don't matter
     basedir = getBasedir(None, "Transposon DNA")
     
-    return '/vol/mauranolab/transposon/src/submitMerge.sh ' + lines.iloc[0]['Original Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + " " + ' '.join([ basedir + fc + "/" + lines.iloc[0]['Original Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + '/' for fc in lines['FC'].tolist() ])
+    return '/vol/mauranolab/transposon/src/submitMerge.sh ' + lines.iloc[0]['Original Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + " " + ' '.join([ basedir + line['FC'] + "/" + line['Original Sample #'] + "-" + line['#Sample Name'] + '/' for index, line in lines.iterrows() ])
 
 
 def transposonSamples(line):
@@ -235,7 +235,9 @@ if sampletypes is not None:
 if projects is not None:
     flowcellFile = flowcellFile[flowcellFile['Lab'].isin(projects)]
 if samples is not None:
-    flowcellFile = flowcellFile[flowcellFile['Sample #'].isin(samples)]
+    #Do partial string matching rather than exact equality to allow flexible subsetting of certain sublibraries or of all sublibraries for a given BS number
+    flowcellFile = flowcellFile[flowcellFile['Sample #'].apply(lambda bs: any([s in bs for s in samples]))]
+
 
 #Adjust sample IDs and drop duplicate rows to handle aggregations
 if args.aggregate or args.aggregate_sublibraries:
@@ -249,6 +251,7 @@ if args.aggregate or args.aggregate_sublibraries:
 
 ###Pre-processing
 print("#", ' '.join(sys.argv), sep="")
+print()
 
 #Initialize inputs.txt
 if len(set(flowcellFile['Sample Type']).intersection(set(['DNA', 'DNA Capture', 'DNase-seq', 'Nano-DNase', 'ChIP-seq']))) > 0:
