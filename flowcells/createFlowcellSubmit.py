@@ -75,7 +75,7 @@ def aggregateTransposonSamples(lines):
     #Exact parameters don't matter
     basedir = getBasedir(None, "Transposon DNA")
     
-    return '/vol/mauranolab/transposon/src/submitMerge.sh ' + lines.iloc[0]['Original Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + " " + ' '.join([ basedir + line['FC'] + "/" + line['Original Sample #'] + "-" + line['#Sample Name'] + '/' for index, line in lines.iterrows() ])
+    return '/vol/mauranolab/transposon/src/submitMerge.sh ' + lines.iloc[0]['Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + " " + ' '.join([ basedir + line['FC'] + "/" + line['Original Sample #'] + "-" + line['#Sample Name'] + '/' for index, line in lines.iterrows() ])
 
 
 def transposonSamples(line):
