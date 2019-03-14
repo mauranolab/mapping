@@ -62,12 +62,11 @@ if [ "${minUMILength}" -ge 5 ]; then
     echo "Barcode counts (before UMI)"
     zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz |
     awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | cut -f1,3 |
-    #BUGBUG for non-UMI samples counts reads/barcode 
     sort -k1,1 -k2,2 | uniq -c | sort -k2,2 |
     #Format: BC, UMI, n
     awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' |
     pigz -p ${NSLOTS} -c -9 > ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz
-    zcat -f ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | cut -f1 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $1}' >  ${OUTDIR}/${sample}.barcode.counts.UMI.corrected.txt
+    zcat -f ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | cut -f1 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $1}' > ${OUTDIR}/${sample}.barcode.counts.UMI.corrected.txt
     echo -n -e "${sample}\tNumber of unique barcodes+UMI\t"
     #TODO move to extract.py
     zcat -f ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | wc -l
@@ -81,7 +80,9 @@ if [ "${minUMILength}" -ge 5 ]; then
     #No more empty BCs are present so no need to check
     zcat -f ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | cut -f2 |
     awk '{print length($0)}' | sort -g | uniq -c | sort -k2,2 | awk '$2!=0'
-    bcfile="${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz"
+    
+    #TODO why bother with the bcfile variable since it's the same in both cases?
+    bcfile="${OUTDIR}/${sample}.barcodes.txt.gz"
 else
     echo
     echo "No UMIs found"
@@ -91,8 +92,8 @@ fi
 
 echo
 echo "Barcode counts"
-zcat -f ${bcfile} | cut -f1 |
-sort -k1,1 | uniq -c | sort -k2,2 | awk '$2!=0' | awk 'BEGIN {OFS="\t"} {print $2, $1}' | awk -F "\t" '$1!=""' > ${OUTDIR}/${sample}.barcode.counts.txt
+#Empty BCs haven't been filtered yet for non-UMI data
+zcat -f ${bcfile} | awk -F "\t" '$1!=""' | cut -f1 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $1}' > ${OUTDIR}/${sample}.barcode.counts.txt
 
 echo -n -e "${sample}\tNumber of unique barcodes\t"
 #TODO move to extract.py
@@ -103,7 +104,7 @@ echo -n -e "${sample}\tNumber of unique barcodes passing minimum read cutoff\t"
 cat ${OUTDIR}/${sample}.barcode.counts.txt | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $2>=minReadCutoff' | wc -l
 
 echo -n -e "${sample}\tNumber of analyzed reads\t"
-cat ${OUTDIR}/${sample}.barcode.counts.txt | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"; sum=0; total=0} $2>=minReadCutoff {sum+=$2} {total+=$2} END {print sum, total}'
+cat ${OUTDIR}/${sample}.barcode.counts.txt | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"; sum=0; total=0} $2>=minReadCutoff {sum+=$2} {total+=$2} END {print sum}'
 
 
 echo
