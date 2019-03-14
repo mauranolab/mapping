@@ -43,14 +43,14 @@ echo "Creating bed-file and removing barcodes with multiple insertions sites"
 header="chrom\tchromStart\tchromEnd\tBC\tvalue\tstrand\tDNA\tRNA\tiPCR"
 awk  -F "\t" 'BEGIN {OFS="\t"} $1!="NA" && $1!="chrY" && $1!="chrM" {print $1, $2, $3, $4, 0, $5, $6, $7, $8}' $TMPOUT|
 #Retains barcodes from $TMPOUT that are present in $TMPDIR/${SampleName}.singleIns.txt
-awk -F "\t" -v OFS='\t'  'NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${SampleName}.singleIns.txt - |
+awk -F "\t" 'BEGIN {OFS="\t"} NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${SampleName}.singleIns.txt - |
 sort-bed - > $TMPOUT.new 
 mv $TMPOUT.new $TMPOUT
 
 #Sample name
 echo "Adding sample name"
 header="$header\tSampleName"
-awk -F "\t" -v OFS='\t' -v sampleName="$SampleName" '{print $0, sampleName}' $TMPOUT > $TMPOUT.new 
+awk -F "\t" -v sampleName="$SampleName" 'BEGIN {OFS="\t"} {print $0, sampleName}' $TMPOUT > $TMPOUT.new
 mv $TMPOUT.new $TMPOUT
 
 ###Add annotation
@@ -1564,7 +1564,7 @@ date
 
 
 echo 'Plotting data in R'
-/home/maagj01/scratch/transposon/src/AnalyseOverlappedBCs_plotting.R --SampleName ${SampleName} --OUTDIR ${OUTDIR}
+/vol/mauranolab/transposon/src/AnalyseOverlappedBCs_plotting.R --SampleName ${SampleName} --OUTDIR ${OUTDIR}
 echo 'Finished plotting in R'
 
 
@@ -1643,7 +1643,7 @@ echo -e $RegionHeader | cat - <(sort-bed $REGOUT) > $OUTDIR/AllRegions.annotated
 date
 mkdir -p $OUTDIR/Regiongraphs/
 echo 'Plotting data in R'
-/home/maagj01/scratch/transposon/src/AnalyseOverlappedBCs_Region_plotting.R --SampleName ${SampleName} --OUTDIR ${OUTDIR}
+/vol/mauranolab/transposon/src/AnalyseOverlappedBCs_Region_plotting.R --SampleName ${SampleName} --OUTDIR ${OUTDIR}
 echo 'Finished plotting in R'
 
 
