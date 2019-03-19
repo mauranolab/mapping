@@ -17,8 +17,7 @@ parser.add_argument('--genome', action = 'store', required = True, help = 'genom
 parser.add_argument('--URLbase', action = 'store', required = True, help = 'URL base at which track files are hosted')
 parser.add_argument('--includeSampleIDinSampleCol', action = 'store_true', default = False, help = 'Append the Sample ID in the Sample column')
 parser.add_argument('--supertrack', action = 'store', required = False, help = 'Encompass all composite tracks generated within supertrack. Supertrack name specifiied as parameter.')
-#TODO John
-parser.add_argument('--generateHTMLdescription', action = 'store_true', default = False, help = 'Link to HTML descriptions for composite tracks, assumed to be present at [group name]_descriptions/[group name].html')
+parser.add_argument('--generateHTMLdescription', action = 'store_true', default = False, help = 'Link to HTML descriptions for composite tracks, assumed to be present at [genome]/descriptions/[group name].html')
 
 def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
@@ -75,12 +74,24 @@ hub, genomes_file, genome, trackdb = default_hub(
     email="maurano@nyu.edu")
 
 
+# group="cegsvectors" keeps Flowcells, Aggregations, and cegsvectors out of the "Other" control group,
+# and in the CEGS control group, when the selected genome is cegsvectors. When the selected geneome is
+# one of the standard ones (hg38, mm10, rn6), then it is ignored. In that scenario, all our controls 
+# are placed in a group titled with the short hub label.
 if(args.supertrack is not None):
-    supertrack = SuperTrack(
-        name=args.supertrack,
-        short_label=args.supertrack,
-        long_label=args.supertrack)
-    trackdb.add_tracks(supertrack)
+    if(args.genome == "cegsvectors"):
+        supertrack = SuperTrack(
+            name=args.supertrack,
+            group="cegsvectors",
+            short_label=args.supertrack,
+            long_label=args.supertrack)
+        trackdb.add_tracks(supertrack)
+    else:
+        supertrack = SuperTrack(
+            name=args.supertrack,
+            short_label=args.supertrack,
+            long_label=args.supertrack)
+        trackdb.add_tracks(supertrack)
 
 
 # Now build the composites, and add them all to the supertrack.
@@ -137,6 +148,11 @@ for assay_type in assays:
         lng_label = curGroup + '_' +  assay_type
         # lng_label = lng_label[0:76]
         
+        if(args.generateHTMLdescription):
+            html_file = 'descriptions/' + curGroup + '.html'
+        else:
+            html_file = ' '
+        
         composite = CompositeTrack(
             name=curGroup_trackname,
             short_label=shrt_label,
@@ -146,7 +162,7 @@ for assay_type in assays:
             visibility="hide",
             sortOrder=SortOrder,
             autoScale = "off",
-            #TODO John
+            html=html_file,
             bigDataUrl ='NULL',
             maxHeightPixels= "100:32:8")
         
