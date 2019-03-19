@@ -1,6 +1,10 @@
 #!/bin/bash
 set -eu -o pipefail
 
+#Limit thread usage by python processes using OPENBLAS (esp. scipy). Set here and will be inherited by spawned jobs
+#https://stackoverflow.com/questions/51256738/multiple-instances-of-python-running-simultaneously-limited-to-35
+export OPENBLAS_NUM_THREADS=1
+
 
 #Load modules
 module load picard/2.18.15
@@ -29,7 +33,7 @@ mergeThreads=3
 #For big jobs:
 #qsubargs="--qos normal -p -500"
 #Seem to still have some memory problems with mapThreads <3? Maybe analysis.sh has a transient memory peak, say in hotspot?
-#mapThreads=2
+#mapThreads=3
 #mergeThreads=1
 
 
@@ -41,20 +45,20 @@ BS=$4
 
 
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
-analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
+sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
 if [[ "${processingCommand}" != "none" ]] && [[ "${processingCommand}" != "aggregate" ]] && [[ "${processingCommand}" != "aggregateRemarkDups" ]] && [[ "${processingCommand}" != "mapBwaAln" ]] && [[ "${processingCommand}" != "mapBwaMem" ]]; then
     echo "ERROR submit: unknown processing command ${processingCommand} in analysisType ${analysisType}"
     exit 1
 fi
 
-if [[ "${analysisCommand}" != "atac" ]] && [[ "${analysisCommand}" != "dnase" ]] && [[ "${analysisCommand}" != "chipseq" ]] && [[ "${analysisCommand}" != "callsnps" ]] && [[ "${analysisCommand}" != "none" ]]; then 
-    echo "ERROR submit: unknown analysis command ${analysisCommand} in analysisType ${analysisType}"
+if [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "callsnps" ]] && [[ "${sampleType}" != "callsnpsCapture" ]] && [[ "${sampleType}" != "none" ]]; then 
+    echo "ERROR submit: unknown analysis command ${sampleType} in analysisType ${analysisType}"
     exit 2
 fi
 
 if ! grep -q ${BS} inputs.txt; then
-    echo "submit: Can't find ${BS}"
+    echo "ERROR submit: Can't find ${BS}"
     exit 3
 fi
 

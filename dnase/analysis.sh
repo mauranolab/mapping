@@ -16,16 +16,16 @@ src=$5
 
 
 #processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
-analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
+sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
 
-if [[ "${analysisCommand}" != "none" ]] && [[ "${analysisCommand}" != "atac" ]] && [[ "${analysisCommand}" != "dnase" ]] && [[ "${analysisCommand}" != "chipseq" ]] && [[ "${analysisCommand}" != "callsnps" ]]; then 
-    echo "ERROR: unknown analysis command ${analysisCommand} in analysisType ${analysisType}"
+if [[ "${sampleType}" != "none" ]] && [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "callsnps" ]] && [[ "${sampleType}" != "callsnpsCapture" ]]; then 
+    echo "ERROR: unknown analysis command ${sampleType} in analysisType ${analysisType}"
     exit 1
 fi
 
 #TODO label capture vs. WGS
-case "${analysisCommand}" in
+case "${sampleType}" in
     callsnps)
         ucscTrackDescriptionDataType="";;
     dnase)
@@ -35,15 +35,11 @@ case "${analysisCommand}" in
     chipseq)
         ucscTrackDescriptionDataType="ChIP-seq";;
     *)
-        ucscTrackDescriptionDataType="${analysisCommand}";;
+        ucscTrackDescriptionDataType="${sampleType}";;
 esac
 
 
 source ${src}/genomeinfo.sh ${mappedgenome}
-
-#Deal with some of the more complex reference index names
-#NB this will call hotspots only on the first mammalian genome for the *_sacCer3 hybrid indices
-annotationgenome=`echo ${mappedgenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
 
 
 ###Setup
@@ -117,7 +113,7 @@ getcolor () {
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
 sampleOutdir=${name}
-echo "Running ${analysisType} analysis for sample ${name} (${BS}) against genome ${mappedgenome}"
+echo "Running ${analysisType} analysis for sample ${name} (${BS}) against genome ${mappedgenome} (aka ${annotationgenome})"
 
 
 #Required files
@@ -251,13 +247,13 @@ else
 fi
 
 
-#Now that we have analyzedReadsM we can print this track line, which is universal for all analysisCommand
+#Now that we have analyzedReadsM we can print this track line, which is universal for all sampleTypes
 echo
 echo "Making BAM track"
 echo "track type=bam name=${name}-reads description=\"${name} reads (${analyzedReadsM}M nonredundant reads)\" visibility=pack bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.bam pairEndsByName=T visibility=dense maxWindowToDraw=10000"
 
 
-if [[ "${analysisCommand}" == "callsnps" ]]; then
+if [[ "${sampleType}" == "callsnps" ]] || [[ "${sampleType}" == "callsnpsCapture" ]]; then
     if [ "${PFalignments}" -lt 50000000 ] && [[ "${analyzedReads}" > 0 ]]; then
         #Call hotspot 2 for debugging weird issues in coverage tracks, but not on large datasets
         callHotspots1=0
@@ -317,7 +313,7 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         #Print track links here for convenience even if the files are not created yet
         echo
         echo "Making coverage track"
-        echo "track name=${name}-cov description=\"${name} ${genomecov}x genomic coverage (${analyzedReadsM}M analyzed reads) )\" maxHeightPixels=30 color=$trackcolor viewLimits=0:500 on=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.coverage.bw"
+        echo "track name=${name}-cov description=\"${name} ${genomecov}x genomic coverage (${analyzedReadsM}M analyzed reads) )\" maxHeightPixels=30 color=$trackcolor viewLimits=0:500 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.coverage.bw"
         
         echo
         echo "Making VCF track"
@@ -326,9 +322,9 @@ if [[ "${analysisCommand}" == "callsnps" ]]; then
         echo "Making variant track"
         echo "track type=bigBed name=${name}-variants description=\"${name} variants (${analyzedReadsM}M nonredundant reads)\" visibility=pack bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.variants.bb"
     fi
-elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" ]] || [[ "${analysisCommand}" == "chipseq" ]]; then
+elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "${sampleType}" == "chipseq" ]]; then
     echo
-    echo "Analyzing ${analysisCommand} data"
+    echo "Analyzing ${sampleType} data"
     date
     
     echo
@@ -360,7 +356,7 @@ elif [[ "${analysisCommand}" == "dnase" ]] || [[ "${analysisCommand}" == "atac" 
     echo "track name=${name}-dens description=\"${name} ${ucscTrackDescriptionDataType} Density (${analyzedReadsM}M analyzed reads; normalized to 1M)\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.density.bw"
     
     
-    if [[ "${analysisCommand}" != "chipseq" ]]; then
+    if [[ "${sampleType}" != "chipseq" ]]; then
         echo
         echo "Making cut count track"
         unstarch ${sampleOutdir}/${name}.${mappedgenome}.reads.starch |
@@ -602,7 +598,7 @@ echo -e "Num_SE_pass_filter_alignments\t${PFalignmentsSE}\t\t${name}\t${mappedge
 printfNA "Num_SE_analyzed_reads\t${analyzedReadsSE}\t%.1f%%\t${name}\t${mappedgenome}\n" "${pctanalyzedReadsSE}"
 
 
-if [[ "${analysisCommand}" == "callsnps" ]]; then
+if [[ "${sampleType}" == "callsnps" ]] || [[ "${sampleType}" == "callsnpsCapture" ]]; then
     #Repeat it here for ease of parsing
     echo -e "Genomic_coverage\t\t${genomecov}\t${name}\t${mappedgenome}"
 fi

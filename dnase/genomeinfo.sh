@@ -90,21 +90,26 @@ rn6_sacCer3)
 cegsvectors)
     bwaIndex=/vol/isg/annotation/bwaIndex/cegsvectors/cegsvectors
     ploidy="--ploidy 1"
-    referencefasta=/vol/cegs/sequences/vectors/vectors.incells.fa
+    referencefasta=/vol/cegs/sequences/cegsvectors/vectors.incells.fa
     dbsnpvcf=/dev/null
     ;;
 *)
-    echo "Don't recognize genome ${mappedgenome}";
+    echo "ERROR: Don't recognize genome ${mappedgenome}";
     exit 1;;
 esac
 
 
+#Deal with some of the more complex reference index names
+#NB this will call hotspots, etc. only on the first mammalian genome for the *_sacCer3 hybrid indices
+annotationgenome=`echo ${mappedgenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
+
+
 if [[ "${mappedgenome}" == "cegsvectors" ]]; then
-    chromsizes="/vol/cegs/sequences/vectors/vectors.incells.chrom.sizes"
+    chromsizes="/vol/cegs/sequences/cegsvectors/vectors.incells.chrom.sizes"
 else
     chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
 fi
 
 
-echo "genomeinfo for ${mappedgenome}: bwaIndex=${bwaIndex}, ploidy=${ploidy}, referencefasta=${referencefasta}, dbsnpvcf=${dbsnpvcf}, chromsizes=${chromsizes}"
+echo "genomeinfo for ${mappedgenome}: bwaIndex=${bwaIndex}, ploidy=${ploidy}, referencefasta=${referencefasta}, dbsnpvcf=${dbsnpvcf}, annotationgenome=${annotationgenome}, chromsizes=${chromsizes}"
 

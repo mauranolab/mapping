@@ -176,6 +176,7 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
     cat $TMPDIR/variants.${sampleid}.txt | awk -F "\t" 'BEGIN {OFS="\t"; num=0} $4=="." {num++; $4="snv" num} {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.variants.starch
     
     #NB UCSC link from analysis.sh will be wrong for multisample calling
+    #TODO switch to Personal Genome SNP format? https://genome.ucsc.edu/FAQ/FAQformat.html#format10
     #TODO no ... if truncated
     unstarch ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.variants.starch | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } {split($8, gt, "/"); print $1, $2, $3, $4 "_" truncgt(gt[1]) "_" truncgt(gt[2]), $5}' > $TMPDIR/${name}${vcfsamplename}.variants.ucsc.bed
 

@@ -53,7 +53,6 @@ def dedup_dir_adj(Counter):
             return Umi_adj_Dict
 
 
-
 #
         def get_connected_components_adjacency(graph, Counter):
             found = list()
@@ -74,15 +73,17 @@ def dedup_dir_adj(Counter):
                                     for node in adj_list[x]] + nodes)
             return cluster - nodes_to_remove
         
-        
         adj_list = get_adj_list_directional_adjacency(Counter.keys(), Counter)
         clusters = get_connected_components_adjacency(adj_list, Counter)
         return clusters
-        
 
 
 ###
 def replace_dedup(data, bcColNum, myUMIcounts, deduped_UMI, wr):
+    global numLinesProcessed
+    global numNonEmptyBCsProcessed
+    global numAmbiguousLines
+    
     #Create index of all deduplicated barcodes
     dedupMulti = [s for s in deduped_UMI if len(s) > 1]
     demul_index = defaultdict(list)
@@ -91,21 +92,25 @@ def replace_dedup(data, bcColNum, myUMIcounts, deduped_UMI, wr):
             demul_index[y].append(i)
     
     for line in data:
+        numLinesProcessed += 1
         oldBC = line[bcColNum]
-        results = demul_index[oldBC]
-        matches = [dedupMulti[x] for x in results]
-        if len(matches)>0 and oldBC!="":
-            if len(matches)==1:
-                barCount = dict((k, myUMIcounts[k]) for k in matches[0])
-                if max(barCount, key=barCount.get) == min(barCount, key=barCount.get):
-                    newBC = sorted(barCount)[0]
-                else:
-                    newBC = max(barCount, key=barCount.get)##TODO Barcodes with same number replace
-                #print(line)
-            if len(matches)>1:
-                newBC=""
-                #print('Ambigious') 
-            line[bcColNum] = line[bcColNum].replace(oldBC, newBC)
+        if oldBC!="":
+            numNonEmptyBCsProcessed += 1
+            results = demul_index[oldBC]
+            matches = [dedupMulti[x] for x in results]
+            if len(matches)>0:
+                if len(matches)==1:
+                    barCount = dict((k, myUMIcounts[k]) for k in matches[0])
+                    if max(barCount, key=barCount.get) == min(barCount, key=barCount.get):
+                        newBC = sorted(barCount)[0]
+                    else:
+                        newBC = max(barCount, key=barCount.get)##TODO Barcodes with same number replace
+                    #print(line)
+                if len(matches)>1:
+                    newBC = ""
+                    numAmbiguousLines += 1
+                    #print('Ambigious')
+                line[bcColNum] = newBC
         wr.writerows([line])
 
 
@@ -117,7 +122,7 @@ def process_lines(input_data, wr):
         #print(myUMIcounts, file=sys.stderr)
     if args.verbose:
         print("\nNumber of unique barcodes:", len(myUMIcounts), file=sys.stderr)
-        print("The 10 most common UMIs before directional adjacency correction:",myUMIcounts.most_common(10), file=sys.stderr)
+        print("The 10 most common UMIs before directional adjacency correction:", myUMIcounts.most_common(10), file=sys.stderr)
         print('\nDeduping barcodes', file=sys.stderr)
     #Deduplicate the barcodes using directional adjacency
     deduped_UMI = dedup_dir_adj(myUMIcounts)
@@ -135,19 +140,21 @@ def process_lines_byGroup(lastGroup, startRow, index, wr):
         #Only one BC in this group (or it's "") so just print
         if args.verbose:
             print("Only one BC in this group so just print", file=sys.stderr, sep="")
-        wr.writerows(input_data[startRow:(index)])###Writes only the unique barcodes
+        wr.writerows(input_data[startRow:(index)]) ###Writes only the unique barcodes
     else:
         #print(input_data[startRow:(index)], startRow,index)
-        process_lines(input_data[startRow:(index)], wr)#FIX Removed index-1 now it prints the last entry per group
+        process_lines(input_data[startRow:(index)], wr) #FIX Removed index-1 now it prints the last entry per group
 
 
-###Main
+###Argument parsing
+version="1.0"
+
 parser = argparse.ArgumentParser(prog = "DeDup_adjacencyOutput", description = "Deduplicate and correct barcodes", allow_abbrev=False)
 parser.add_argument('inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences (other columns are passed through)')
 parser.add_argument("--col", action='store', type=int, default=1, help = "Column with barcodes in it [%(default)s]")
 parser.add_argument("--groupcol", action='store', type=int, help = "BC will only be collapsed for sequences having the same value in this column. NB: must be sorted on this column. [%(default)s]")
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
-parser.add_argument('--version', action='version', version='%(prog)s 1.0')
+parser.add_argument('--version', action='version', version='%(prog)s ' + version)
 parser.add_argument('-o','--output', action='store', dest='output',help='Deduplicated barcode file')
 
 
@@ -161,11 +168,12 @@ col = args.col-1
 if args.groupcol is None:
     groupcol = None
 else:
-    groupcol = args.groupcol-1 #TODO groupcol not functioning as intended only 0 works
+    groupcol = args.groupcol-1
 
 
-print("Deduplicating and correcting barcodes.\n", file=sys.stderr)
-print(args, file=sys.stderr)
+###Main
+print("[AdjacencyDeDup] Deduplicating and correcting barcodes.", file=sys.stderr)
+print("[AdjacencyDeDup] " + str(args), file=sys.stderr)
 
 
 ## open file handles
@@ -175,7 +183,7 @@ else:
     inputfile = open(args.inputfilename, 'r') 
 
 input_data = inputfile.readlines()
-input_data = [line.rstrip().split('\t') for line in input_data]
+input_data = [line.rstrip("\n").split('\t') for line in input_data]
 
 
 if args.output=="-":
@@ -185,26 +193,10 @@ else:
 wr = csv.writer(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True)
 
 
-#Misses first line
-#if groupcol is None:
-#   process_lines(input_data, wr)
-#else:
-#   startRow = 0
-#   lastGroup = None
-#   for index in range(len(input_data)):
-#       line = input_data[index]#Gives the line number from input_data
-#       #print(line)#TEST
-#       curGroup = line[groupcol]#Assigns the barcode to curGroup for each line 
-#       #print(curGroup)#TEST if groupcol 1 it prints the FASTQ header fir the read
-#       if curGroup != lastGroup:
-#           if index>0:#This causes the code to skip the first line
-#               process_lines_byGroup(lastGroup, startRow, index, wr)
-#               #process_lines_byGroup(lastGroup, startRow, index+1, wr)#lastgroup is probably NONE
-#           lastGroup = curGroup
-#           startRow = index
-#       #Do last BC (index+1 because this would be done one past the last iteration)
-#       process_lines_byGroup(lastGroup, startRow, index+1, wr)
-    
+numLinesProcessed = 0
+numNonEmptyBCsProcessed = 0
+numAmbiguousLines = 0
+numGroupsRead = 0
 
 if groupcol is None:
     process_lines(input_data, wr)
@@ -216,6 +208,7 @@ else:
         curGroup = line[groupcol]
         if curGroup != lastGroup:
             if index>0:
+                numGroupsRead += 1
                 process_lines_byGroup(lastGroup, startRow, index, wr)
             lastGroup = curGroup
             startRow = index
@@ -223,14 +216,11 @@ else:
     process_lines_byGroup(lastGroup, startRow, index+1, wr)
 
 
-print("\nAll barcodes have been deduplicated", file=sys.stderr)
-
-
-
-#Do last BC (index+1 because this would be done one past the last iteration)
-#process_lines_byGroup(lastGroup, startRow, index+1, wr)
+print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + "lines processed with" + str(numNonEmptyBCsProcessed) + "non-empty BCs)", file=sys.stderr)
+if groupcol is not None:
+    print("[AdjacencyDeDup] " + str(numGroupsRead) + " unique groups were found", file=sys.stderr)
+print("[AdjacencyDeDup] " + str(numAmbiguousLines) + " reads with ambiguous BCs were masked out", file=sys.stderr)
 
 
 inputfile.close()
 outfile.close()
-

@@ -1,14 +1,18 @@
 #!/bin/bash
-#set -e # -o pipefail
+set -eu  -o pipefail
 
 src="/vol/mauranolab/transposon/src"
 
 module load samtools/1.9
-Dir=$1
-Flow=$(basename `pwd` | sed 's/aligned.//g')
-echo $Flow
-OUTDIR=$Dir/$Flow
+
+
+fc=$(basename `pwd`)
+
+OUTDIR=$1/${fc}
 mkdir -p $OUTDIR
+
+echo "Output to $OUTDIR"
+
 
 
 #####
@@ -17,16 +21,15 @@ mkdir -p $OUTDIR
 #######
 #HiC data
 ######
-if [[ `find -maxdepth 1 -type d | grep -v bak | grep 'HiC\|CapC\|dsDNA\|3C'| wc -l` -ge 1 ]]
-then
+if [[ `find -maxdepth 1 -type d | grep -v bak | grep 'HiC\|CapC\|dsDNA\|3C'| wc -l` -ge 1 ]]; then
     echo 'HiC samples found'
     mkdir -p $OUTDIR/HiC/
     
     
-    find -name *.R2.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs cp -t $OUTDIR/HiC/
-    find -name *.R1.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs cp -t $OUTDIR/HiC/
-    for i in `ls $OUTDIR/HiC/*R1.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/HiC/R1index.html
-    for i in `ls $OUTDIR/HiC/*R2.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1500px"; height="120"></a>' ; done  >$OUTDIR/HiC/R2index.html
+    find -name *.R2.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs --no-run-if-empty cp -t $OUTDIR/HiC/
+    find -name *.R1.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs --no-run-if-empty cp -t $OUTDIR/HiC/
+    for i in `ls $OUTDIR/HiC/*R1.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/HiC/R1index.html
+    for i in `ls $OUTDIR/HiC/*R2.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1500px"; height="120"></a>' ; done  >$OUTDIR/HiC/R2index.html
     cat $OUTDIR//HiC/R1index.html $OUTDIR/HiC//R2index.html |sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/HiC/Weblogoindex.html
     
 #    if [[ `find -name *R1.mmapstat |sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
@@ -82,7 +85,7 @@ then
 #        mappedR1=$(samtools view -F4 -q30 ${HiC}/${HiC}_R1.sorted.bam | wc -l); \
 #        mappedR2=$(samtools view -F4 -q30 ${HiC}/${HiC}_R2.sorted.bam | wc -l); \
 #        dangling=$(grep Dangling ${HiC}/hic_results/data/${HiC}/${HiC}.mRSstat | awk '{print $2}'); \
-#        echo $Flow $HiC $reads $adapter $mappedR1 $mappedR2 $gatcR1 $gatcR2 $numLinkR1 $numLinkR2 $dangling $validPairs $validPairsSameChrom  ; done | awk -v OFS='\t' '{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' > $OUTDIR/HiC/HiC_summary.tsv
+#        echo ${fc} $HiC $reads $adapter $mappedR1 $mappedR2 $gatcR1 $gatcR2 $numLinkR1 $numLinkR2 $dangling $validPairs $validPairsSameChrom  ; done | awk 'BEGIN {OFS="\t"} {print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' > $OUTDIR/HiC/HiC_summary.tsv
 #          
 #
 #    
@@ -183,6 +186,7 @@ then
 #    scale_y_continuous(label= fancy_scientific) +
 #    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
 #    
+#    pdf(NULL)
 #    gp = ggplotGrob(t)
 #    gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
 #    
@@ -241,64 +245,53 @@ then
 #        convert -density 300 $OUTDIR/HiC/2.mapping.pdf -quality 100 $OUTDIR/HiC/2.mapping.png
 #        convert -density 300 $OUTDIR/HiC/3.Interactions.pdf -quality 100 $OUTDIR/HiC/3.Interactions.png
 #        convert -density 300 $OUTDIR/HiC/4.ValidPairs.pdf -quality 100 $OUTDIR/HiC/4.ValidPairs.png
-#        for i in `ls $OUTDIR/HiC/*.png | grep 'SE_perChrom_mapping\|mapping\|Interactions\|ValidPairs' |sort | sed 's/.png//g' |awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }' >$OUTDIR/HiC/Images.html
+#        for i in `ls $OUTDIR/HiC/*.png | grep 'SE_perChrom_mapping\|mapping\|Interactions\|ValidPairs' |sort | sed 's/.png//g' |awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }' >$OUTDIR/HiC/Images.html
 #        cat $OUTDIR/HiC/HiCsummary.html <(echo "") <(echo "<br>") $OUTDIR/HiC/Weblogoindex.html <(echo "") <(echo "<br>") $OUTDIR/HiC/Images.html >$OUTDIR/HiC/index.html
 else
     echo 'No HiC samples found'
-    echo 'Exit'
 fi
-#
-#######
-#if [[ `find -type d | grep BS | grep -v bak | grep -v 'HiC\|CapC\|dsDNA\|3C'| wc -l` == 0 ]]
-#then
-#    exit
-#fi
+
+
 ######
 ##Weblogos
 #######
 ##For raw sequence
-#
-
-
-if [ "$Flow" != "Merged" ]; then
-    mkdir -p $OUTDIR/Weblogos_raw
-    find -name *.R2.raw.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_raw
-    find -name *.R1.raw.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_raw
-    for i in `ls $OUTDIR/Weblogos_raw/*R1.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R1index.html
-    for i in `ls $OUTDIR/Weblogos_raw/*R2.raw.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R2index.html
-    cat $OUTDIR/Weblogos_raw/R1index.html $OUTDIR/Weblogos_raw/R2index.html | sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_raw/index.html
+if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
+    echo "Copying raw weblogos"
     
+    mkdir -p $OUTDIR/Weblogos_raw
+    find -not -path "*/bak*" -not -path "*/trash*" -name "*.R2.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
+    find -not -path "*/bak*" -not -path "*/trash*" -name "*.R1.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
+    for i in `ls $OUTDIR/Weblogos_raw/*R1.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R1index.html
+    for i in `ls $OUTDIR/Weblogos_raw/*R2.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R2index.html
+    cat $OUTDIR/Weblogos_raw/R1index.html $OUTDIR/Weblogos_raw/R2index.html | sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_raw/index.html
     
     
     #For processed sequence
     mkdir -p $OUTDIR/Weblogos_processed
-    find -name *.BC.processed.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_processed
-    find -name *.plasmid.processed.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_processed
-    for i in `ls $OUTDIR/Weblogos_processed/*BC.processed.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/BCindex.html
-    for i in `ls $OUTDIR/Weblogos_processed/*plasmid.processed.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/plasmidindex.html
+    find -not -path "*/bak*" -not -path "*/trash*" -name "*.BC.processed.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_processed
+    find -not -path "*/bak*" -not -path "*/trash*" -name "*.plasmid.processed.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_processed
+    for i in `ls $OUTDIR/Weblogos_processed/*BC.processed.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/BCindex.html
+    for i in `ls $OUTDIR/Weblogos_processed/*plasmid.processed.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/plasmidindex.html
     cat $OUTDIR/Weblogos_processed/BCindex.html $OUTDIR/Weblogos_processed/plasmidindex.html | sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_processed/index.html
+    
+    echo "weblogo for UMI sequence"
+    mkdir -p $OUTDIR/Weblogos_UMI
+    find -not -path "*/bak*" -not -path "*/trash*" -name "*.UMIs.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_UMI
+    if find -not -path "*/bak*" -not -path "*/trash*" -name "*.UMIs.png" | grep -q "." ; then
+        for i in `ls $OUTDIR/Weblogos_UMI/*.UMIs.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_UMI/index.html
+    fi
 fi
 
-#For genomic reads
-if find -name *.genomic.png | grep -q "." ; then
-    mkdir -p $OUTDIR/Weblogos_genomic
-    find -name *.genomic.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_genomic
-    for i in `ls $OUTDIR/Weblogos_genomic/*.genomic.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_genomic/index.html
-fi
+echo "weblogo for genomic reads"
+mkdir -p $OUTDIR/Weblogos_genomic
+find -not -path "*/bak*" -not -path "*/trash*" -name "*.genomic.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_genomic
+for i in `ls $OUTDIR/Weblogos_genomic/*.genomic.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_genomic/index.html
 
-
-#For Barcode sequence
+echo "weblogo for Barcode sequence"
 mkdir -p $OUTDIR/Weblogos_Barcode
-find -name *barcodes.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_Barcode
-for i in `ls $OUTDIR/Weblogos_Barcode/*barcodes.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_Barcode/index.html
-
-#For UMI sequence
-mkdir -p $OUTDIR/Weblogos_UMI
-find -name *.UMIs.png | grep -v 'bak\|HiC\|CapC\|dsDNA\|3C'| xargs cp -t $OUTDIR/Weblogos_UMI
-for i in `ls $OUTDIR/Weblogos_UMI/*.UMIs.png | sort | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_UMI/index.html
-
-
-
+find -not -path "*/bak*" -not -path "*/trash*" -name "*barcodes.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_Barcode
+for i in `ls $OUTDIR/Weblogos_Barcode/*barcodes.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_Barcode/index.html
 
 #####
 #Summarize flowcell info
@@ -307,10 +300,7 @@ mkdir -p $OUTDIR/FlowcellSummary
 ${src}/FlowcellSummary.R $OUTDIR
 
 #Convert to Excel
-#!/bin/bash
-
-
-PYTHON_ARG="$Flow" INPUT_ARG="$OUTDIR/FlowcellSummary/summaryflowcell.tsv" OUTPUT_ARG="$OUTDIR/FlowcellSummary/${Flow}.xlsx" python - <<END
+PYTHON_ARG="${fc}" INPUT_ARG="$OUTDIR/FlowcellSummary/summaryflowcell.tsv" OUTPUT_ARG="$OUTDIR/FlowcellSummary/${fc}.xlsx" python - <<END
 import csv
 import os
 from xlsxwriter.workbook import Workbook
@@ -334,23 +324,22 @@ workbook.close()
 END
 
 
-echo '<a href="'${Flow}.xlsx'"><font size="6">FlowcellSummary</font></a>'| cat $OUTDIR/FlowcellSummary/index.html - > $OUTDIR/FlowcellSummary/index1
+echo '<a href="'${fc}.xlsx'"><font size="6">FlowcellSummary</font></a>'| cat $OUTDIR/FlowcellSummary/index.html - > $OUTDIR/FlowcellSummary/index1
 mv $OUTDIR/FlowcellSummary/index1 $OUTDIR/FlowcellSummary/index.html
 
-chmod 770 $OUTDIR/FlowcellSummary/${Flow}.xlsx
+
 ######
 #Levenstein distance per sample
 #######
-if [ "$Flow" != "Merged" ]
-then
+if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     mkdir -p $OUTDIR/EditDist
     
     for i in `find \( -name "extract*" -o -name "map*" \) | grep -v bak`; do Dist=$(grep 'BC Hamming distance' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g'| perl -pe 's/, /\t/g' | grep 'Hamming distance' > $OUTDIR/EditDist/BC_EditDist
     for i in `find \( -name "extract*" -o -name "map*" \) | grep -v bak`; do Dist=$(grep 'Plasmid Hamming distance' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g'| perl -pe 's/, /\t/g' | grep 'Hamming distance' > $OUTDIR/EditDist/Plasmid_EditDist
     
     
-    R  --quiet --no-save << EOF
-    source("/vol/mauranolab/transposon/src/maagj01_profile.R")
+    R --quiet --no-save << EOF
+    source("${src}/maagj01_profile.R")
     
     library(stringr)
     library(reshape2)
@@ -403,6 +392,7 @@ then
     #scale_x_continuous(label= fancy_scientific)+
     scale_y_continuous(label= fancy_scientific)
     #dev.off()
+    pdf(NULL)
     gp = ggplotGrob(bcl)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     ggsave(gp ,file="$OUTDIR/EditDist/LevenDistance_BC.pdf", width=13, height=height)
@@ -423,6 +413,7 @@ then
     #scale_x_continuous(label= fancy_scientific)+
     scale_y_continuous(label= fancy_scientific)
     #dev.off()
+    pdf(NULL)
     gp = ggplotGrob(pll)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     ggsave(gp ,file="$OUTDIR/EditDist/LevenDistance_Plasmid.pdf", width=13, height=height)
@@ -432,10 +423,10 @@ EOF
     convert -density 300 $OUTDIR/EditDist/LevenDistance_BC.pdf -quality 100 $OUTDIR/EditDist/LevenDistance_BC.png
     convert -density 300 $OUTDIR/EditDist/LevenDistance_Plasmid.pdf -quality 100 $OUTDIR/EditDist/LevenDistance_Plasmid.png
     
-    for i in `ls $OUTDIR/EditDist/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/EditDist/index.html
-    
-
+    for i in `ls $OUTDIR/EditDist/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/EditDist/index.html
 fi
+
+
 #####
 #Barcode frequency
 #####
@@ -443,7 +434,7 @@ mkdir -p $OUTDIR/BarcodeFreq
 for i in `find -name *barcode.counts.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do reads=$(cut -f2 ${i}/${i}.barcode.counts.txt | awk '{sum+=$1} END {print sum}'); sort -nk2 ${i}/${i}.barcode.counts.txt| awk -v OFS='\t' -F'\t' -v sample="$i" -v reads="$reads" '{print $1, $2, sample, reads}'; done > $OUTDIR/BarcodeFreq/BarcodeFreq.txt
 
 
-R  --quiet --no-save << EOF
+R --quiet --no-save << EOF
 library(dplyr)
 BC <- read("$OUTDIR/BarcodeFreq/BarcodeFreq.txt")
 colnames(BC) <- c("Barcodes","barcodeFreq", "Sample", 'TotalBCcount')
@@ -454,11 +445,11 @@ BC[,"BC.bin"] <- cut(BC[,"cpm"], breaks=c( 0, 1.1, 5.1, 10.1, 50.1, 100.1, 1000.
 #    group_by(Sample, cpm) %>%
 #    mutate(quantile = ntile(cpm, 10))
 #quantBCs <- lsit()
-#for (i in 1:length(unique(BC$Sample))) {
-#    quantile(BC[BC$Sample %in% 'BS493A-MSH_K562~A1~GGlo~HS2~A1~1Linear~ExoI_Rep2_DNA',]$cpm, prob = seq(0, 1, length = 11), type = 5
+#for (i in 1:length(unique(BC\$Sample))) {
+#    quantile(BC[BC\$Sample %in% 'BS493A-MSH_K562~A1~GGlo~HS2~A1~1Linear~ExoI_Rep2_DNA',]\$cpm, prob = seq(0, 1, length = 11), type = 5
 #
 myColors <- brewer.pal(4,"Set1")
-names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
+names(myColors) <- factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
 colScale <- scale_fill_manual(name = "Type",values = myColors)
 BC[,"Sample"]<- substr(BC[,"Sample"], 0, min(nchar(BC[,"Sample"])))
 
@@ -474,6 +465,7 @@ ggHist <- BC %>%
     coord_cartesian(xlim = c(0, 4))+
     theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
 
+pdf(NULL)
 gp = ggplotGrob(ggHist)
 gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
 ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeHist.pdf", width=13, height=height)
@@ -490,28 +482,28 @@ ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeHist.pdf", width=13, height=height)
 #theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=60,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
 ##ggsave(t,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
 #
+#pdf(NULL)
 #gp = ggplotGrob(t)
 #gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
 #ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
 #
-
 EOF
 
 rm $OUTDIR/BarcodeFreq/BarcodeFreq.txt
 for i in `ls  $OUTDIR/BarcodeFreq | grep pdf | sed 's/.pdf//g'`; do convert -density 300 $OUTDIR/BarcodeFreq//${i}.pdf -quality 100 $OUTDIR/BarcodeFreq/${i}.png; done
 
-for i in `ls $OUTDIR/BarcodeFreq/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a> <br>' ; done  >$OUTDIR/BarcodeFreq/index.html
+for i in `ls $OUTDIR/BarcodeFreq/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a> <br>' ; done  >$OUTDIR/BarcodeFreq/index.html
 
 
 #####
 #Barcode frequency with UMI
 #####
-if [[ `find -name *barcode.counts.withUMI.txt* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
+if [[ `find -name "*.barcode.counts.withUMI.txt.gz" | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
     then
     mkdir -p $OUTDIR/BarcodeFreq_UMI
-    for i in `find -name *barcode.counts.withUMI.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do uniqueMol=$(cat ${i}/${i}.barcode.counts.withUMI.txt | wc -l); awk '{print $1}' ${i}/${i}.barcode.counts.withUMI.txt| sort | uniq -c | sort -nk1| awk -v OFS='\t' '{print $2, $1}' | awk -v OFS='\t' -F'\t' -v sample="$i" -v uniqMol="$uniqueMol" '{print $1, $2, sample, uniqMol}'; done > $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt
+    for i in `find -name "*.barcode.counts.withUMI.txt.gz" | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do uniqueMol=$(zcat -f ${i}/${i}.barcode.counts.withUMI.txt.gz | wc -l); zcat -f ${i}/${i}.barcode.counts.withUMI.txt.gz | cut -f1 | sort | uniq -c | sort -nk1| awk 'BEGIN {OFS="\t"} {print $2, $1}' | awk -v OFS='\t' -F'\t' -v sample="$i" -v uniqMol="$uniqueMol" '{print $1, $2, sample, uniqMol}'; done > $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt
     
-    R  --quiet --no-save << EOF
+    R --quiet --no-save << EOF
     BC <- read("$OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt")
     colnames(BC) <- c("Barcodes","BarcodeFreq_UMI", "Sample", "TotalUMIcount")
     BC[,"Type"]<-gsub(".*_",'',gsub('_Merged','',BC[,"Sample"]))
@@ -537,7 +529,8 @@ if [[ `find -name *barcode.counts.withUMI.txt* | sed 's/^..//g' | sed 's/\/.*//g
     theme_classic()+
     coord_cartesian(xlim = c(0, 4))+
     theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
-
+    
+    pdf(NULL)
     gp = ggplotGrob(ggHist)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     ggsave(gp ,file="$OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI_hist.pdf", width=13, height=height)
@@ -552,6 +545,7 @@ if [[ `find -name *barcode.counts.withUMI.txt* | sed 's/^..//g' | sed 's/\/.*//g
     #theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=60,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
     ##ggsave(t,file="$OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.pdf", width=20, height=10)
     #
+    #pdf(NULL)
     #gp = ggplotGrob(t)
     #gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     #ggsave(gp ,file="$OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.pdf", width=20, height=10)
@@ -563,14 +557,14 @@ EOF
       # convert -density 300 $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.pdf -quality 100 $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.png
     for i in `ls  $OUTDIR/BarcodeFreq_UMI | grep pdf | sed 's/.pdf//g'`; do convert -density 300 $OUTDIR/BarcodeFreq_UMI//${i}.pdf -quality 100 $OUTDIR/BarcodeFreq_UMI/${i}.png; done
 
-    for i in `ls $OUTDIR/BarcodeFreq_UMI/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/BarcodeFreq_UMI/index.html
+    for i in `ls $OUTDIR/BarcodeFreq_UMI/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/BarcodeFreq_UMI/index.html
     
     
     mkdir -p $OUTDIR/UMI_distribution
-    for i in `find -name *barcode.counts.withUMI.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do  cat $i/$i.barcode.counts.withUMI.txt | awk -v OFS='\t' -F'\t' -v sample="$i" '{print $1, $2, $3, sample}' ; done > $OUTDIR/UMI_distribution/UMI_distribution.txt
+    for i in `find -name "*.barcode.counts.withUMI.txt.gz" | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do  zcat -f $i/$i.barcode.counts.withUMI.txt.gz | awk -v OFS='\t' -F'\t' -v sample="$i" '{print $1, $2, $3, sample}' ; done > $OUTDIR/UMI_distribution/UMI_distribution.txt
 
 
-    R  --quiet --no-save << EOF
+    R --quiet --no-save << EOF
     
     library(data.table)
     
@@ -600,6 +594,7 @@ EOF
     ylab('Counts')+
     theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=60,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
     
+    pdf(NULL)
     gp = ggplotGrob(ggmaxUMI)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     ggsave(gp ,file="$OUTDIR/UMI_distribution/UMI_distribution.pdf", width=13, height=height)
@@ -609,24 +604,21 @@ EOF
     rm $OUTDIR/UMI_distribution/UMI_distribution.txt
     convert -density 300 $OUTDIR/UMI_distribution/UMI_distribution.pdf -quality 100 $OUTDIR/UMI_distribution/UMI_distribution.png
     
-    for i in `ls $OUTDIR/UMI_distribution/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/UMI_distribution/index.html
-
+    for i in `ls $OUTDIR/UMI_distribution/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/UMI_distribution/index.html
 fi
-
 
 
 #####
 #Saturation curve
 #####
-if [[ `find -name *Saturation* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
-    then
+if [[ `find -name *Saturation* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]; then
     mkdir -p $OUTDIR/SaturationCurve
     for i in `find -name *Saturation* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do cat ${i}/${i}.Saturation*| awk -v OFS='\t' -F'\t' -v sample="$i" '{print $1, $2, sample}'; done | perl -pe 's/ /\t/g' > $OUTDIR/SaturationCurve/SaturationCurve.txt
     
-    rm $OUTDIR/SaturationCurve/*pdf
-    rm $OUTDIR/SaturationCurve/*png
-    R  --quiet --no-save << EOF
-    source("/vol/mauranolab/transposon/src/maagj01_profile.R")
+    rm -f $OUTDIR/SaturationCurve/*pdf
+    rm -f $OUTDIR/SaturationCurve/*png
+    R --quiet --no-save << EOF
+    source("${src}/maagj01_profile.R")
     
     SaturationCurve <- read("$OUTDIR/SaturationCurve/SaturationCurve.txt")
     
@@ -657,6 +649,7 @@ if [[ `find -name *Saturation* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak|
     scale_x_continuous(label= fancy_scientific)+
     scale_y_continuous(label= fancy_scientific)
     
+    pdf(NULL)
     gp = ggplotGrob(s1)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     ggsave(gp ,file="$OUTDIR/SaturationCurve/SaturationCurve.pdf", width=13, height=height)
@@ -666,15 +659,14 @@ EOF
     
     convert -density 300 $OUTDIR/SaturationCurve/SaturationCurve.pdf -quality 100 $OUTDIR/SaturationCurve/SaturationCurve.png
     
-    for i in `ls $OUTDIR/SaturationCurve/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/SaturationCurve/index.html
+    for i in `ls $OUTDIR/SaturationCurve/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/SaturationCurve/index.html
 fi
+
 
 ######
 #iPCR specific 
 ######
-
-if [[ `find -type d | grep BS | grep -v bak | grep iPCR| wc -l` -ge 1 ]]
-then
+if [[ `find -type d | grep BS | grep -v bak | grep iPCR| wc -l` -ge 1 ]]; then
     echo 'iPCR samples found'
     mkdir -p $OUTDIR/iPCR/
     if [[ `find -name *DistDpn.bed | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
@@ -702,128 +694,127 @@ then
         for iPCR in `find -name *DistMsp1.bed | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do awk -v OFS='\t' -F'\t' -v sample="$iPCR" '{print $1, $2, $3, $4, $5, sample}' ${iPCR}/DistMsp1.bed; done > $OUTDIR/iPCR/DistMsp1.bed
     fi
     
-
-        
-        R --quiet --no-save << EOF
-        library(stringr)
-        library(reshape2)
-        myColors <- brewer.pal(4,"Set1")
-        names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
-        colScale <- scale_fill_manual(name = "Type",values = myColors)
-
-        
-        Dpn<-read("$OUTDIR/iPCR/DistDpn.bed",stringsAsFactors=F)
-        colnames(Dpn)[1:6]<-c('chr','start','end','dpnsite','Distance','Sample')
-        Dpn[,5]<-as.numeric(as.character(Dpn[,5]))
-        Dpn\$Type<-gsub(".*_",'',gsub('_Merged','',Dpn\$Sample))
-        height <- ceiling(length(unique(Dpn[,"Sample"]))/3)*2
-
-        p<-ggplot(Dpn,aes(x=Sample,y=Distance,fill=Type))+
-        geom_boxplot(outlier.shape = NA,alpha=0.4)+
-        #scale_fill_brewer(palette ='Set1')+
-        theme_classic()+
-        theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-        ylab('Distance to Dpn sites')+
-        xlab('Samples')+
-        colScale+
-        coord_flip(ylim = c(0, 750))
-        ggsave(p, file="$OUTDIR/iPCR/DistDpn.pdf", width=13, height=10) 
     
     
-        DNase<-read("$OUTDIR/iPCR/DistToDNase.bed",stringsAsFactors=F)
-        colnames(DNase)[1:5]<-c('chr','start','end','Distance','Sample')
-        DNase[,4]<-as.numeric(as.character(DNase[,4]))
-        DNase\$Type<-gsub(".*_",'',gsub('_Merged','',DNase\$Sample))
-        
-        d<-ggplot(DNase, aes(x=abs(Distance+1),fill=Type)) +
-        geom_histogram(color="black", size=0.25,alpha=0.4)+ 
-        theme_classic()+
-        facet_wrap(~Sample,scales = "free_y", ncol=3)+ 
-        theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-        #xlim(c(0,1500))+
-        xlab('Distance to DNase site')+
-        colScale+
-        scale_x_log10(  breaks = scales::trans_breaks("log10", function(x) 10^x),  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
-        annotation_logticks(sides = "b",long = unit(0.2, "cm"))    
-        ggsave(d, file="$OUTDIR/iPCR/DistDNase.pdf", width=13, height=height) 
+    R --quiet --no-save << EOF
+    library(stringr)
+    library(reshape2)
+    myColors <- brewer.pal(4,"Set1")
+    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
+    colScale <- scale_fill_manual(name = "Type",values = myColors)
     
-        
-        TSS <- read("$OUTDIR/iPCR/DistToTSS.bed")
-        colnames(TSS) <- c("DistToTSS", "Sample")
-        #TSS\$DistToTSS.bin <- cut(TSS\$DistToTSS, breaks=c(-10^7, -10^6, -10^5, -10^4, -2500, 0, 5000, 10^4, 10^5, 10^6, 10^7), right=F, include.lowest=T, labels=c("-10 Mb", "-1 Mb", "-100 kb", "-10 kb", "-2.5 kb", "+5 kb", "+10 kb", "+100 kb", "+1 Mb", "+10 Mb"))
-        
-        TSS\$Type<-gsub(".*_",'',gsub('_Merged','',TSS\$Sample))
-        t<-ggplot(TSS, aes(x=abs(DistToTSS)+1,fill=Type)) +
-        #geom_bar(color="black", size=0.25,alpha=0.4) +
-        geom_histogram(binwidth=0.1, colour="black", size=0.25, alpha=0.4) + 
-        theme_classic()+
-        colScale+
-        facet_wrap(~Sample,scales="free_y", ncol=3)+ 
-        theme_classic()+
-        theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12)) +
-        scale_x_log10(  breaks = scales::trans_breaks("log10", function(x) 10^x),  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
-        annotation_logticks(sides = "b",long = unit(0.2, "cm"))    
-        ggsave(t,file="$OUTDIR/iPCR/DistToTSS.pdf", width=13, height=height)
-        
-        
-          # 
-          # Msp1<-read("$OUTDIR/iPCR/DistMsp1.bed",stringsAsFactors=F)
-          # colnames(Msp1)[1:6]<-c('chr','start','end','Msp1site','Distance','Sample')
-          # Msp1[,5]<-as.numeric(as.character(Msp1[,5]))
-          # Msp1[,"Type"]<-gsub(".*_",'',gsub('_Merged','',Msp1[,"Sample"]))
-#
-          # p<-ggplot(Msp1,aes(x=Sample,y=Distance,fill=Type))+
-          # geom_boxplot(outlier.shape = NA,alpha=0.4)+
-          # #scale_fill_brewer(palette ='Set1')+
-          # theme_classic()+
-          # theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-          # ylab('Distance to Msp1 sites')+
-          # xlab('Samples')+
-          # colScale+
-          # coord_flip(ylim = c(0, 1500))
-          # ggsave(p, file="$OUTDIR/iPCR/DistMsp1.pdf", width=13, height=10) 
-          # 
-          # ObsvsExp<-read('$OUTDIR/iPCR/ObsvsExp.txt',header=T)
-          # colnames(ObsvsExp)[1]<-c('Sample')
-          # ObsvsExp<-ObsvsExp[grep('l2fold',ObsvsExp\$l2fold,invert=T),]
-          # ObsvsExp\$l2fold<-as.numeric(ObsvsExp\$l2fold)
-          # ObsvsExp\$significant<-as.numeric(ObsvsExp\$qvalue)<0.05
-          # 
-          # 
-          # myColors <- c('#a6cee3','#e41a1c')
-          # names(myColors)<-factor(c('FALSE','TRUE'),levels=c('FALSE','TRUE'))
-          # colScale <- scale_fill_manual(name = "significant",values = myColors)
-#
-          # 
-          # o<-ggplot(ObsvsExp, aes(x=annotation,y=l2fold,fill=significant)) +
-          # geom_bar(stat='identity',color="black", size=0.25,alpha=0.4)+ 
-          # theme_classic()+
-          # colScale+
-          # #scale_fill_manual(values=c('#a6cee3','#e41a1c'))+
-          # theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-          # facet_wrap(~Sample, ncol=3)+ 
-          # ggtitle("Obs/Exp")+
-          # ylab('log2FC(Observed/Expected)')
-          # ggsave(o,file="$OUTDIR/iPCR/ObsvsExp.pdf", width=13, height=height)
+    
+    Dpn<-read("$OUTDIR/iPCR/DistDpn.bed",stringsAsFactors=F)
+    colnames(Dpn)[1:6]<-c('chr','start','end','dpnsite','Distance','Sample')
+    Dpn[,5]<-as.numeric(as.character(Dpn[,5]))
+    Dpn\$Type<-gsub(".*_",'',gsub('_Merged','',Dpn\$Sample))
+    height <- ceiling(length(unique(Dpn[,"Sample"]))/3)*2
+    
+    p<-ggplot(Dpn,aes(x=Sample,y=Distance,fill=Type))+
+    geom_boxplot(outlier.shape = NA,alpha=0.4)+
+    #scale_fill_brewer(palette ='Set1')+
+    theme_classic()+
+    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+    ylab('Distance to Dpn sites')+
+    xlab('Samples')+
+    colScale+
+    coord_flip(ylim = c(0, 750))
+    ggsave(p, file="$OUTDIR/iPCR/DistDpn.pdf", width=13, height=10) 
+    
+    
+    DNase<-read("$OUTDIR/iPCR/DistToDNase.bed",stringsAsFactors=F)
+    colnames(DNase)[1:5]<-c('chr','start','end','Distance','Sample')
+    DNase[,4]<-as.numeric(as.character(DNase[,4]))
+    DNase\$Type<-gsub(".*_",'',gsub('_Merged','',DNase\$Sample))
+    
+    d<-ggplot(DNase, aes(x=abs(Distance+1),fill=Type)) +
+    geom_histogram(color="black", size=0.25,alpha=0.4)+ 
+    theme_classic()+
+    facet_wrap(~Sample,scales = "free_y", ncol=3)+ 
+    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+    #xlim(c(0,1500))+
+    xlab('Distance to DNase site')+
+    colScale+
+    scale_x_log10(  breaks = scales::trans_breaks("log10", function(x) 10^x),  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
+    annotation_logticks(sides = "b",long = unit(0.2, "cm"))    
+    ggsave(d, file="$OUTDIR/iPCR/DistDNase.pdf", width=13, height=height) 
+    
+    
+    TSS <- read("$OUTDIR/iPCR/DistToTSS.bed")
+    colnames(TSS) <- c("DistToTSS", "Sample")
+    #TSS\$DistToTSS.bin <- cut(TSS\$DistToTSS, breaks=c(-10^7, -10^6, -10^5, -10^4, -2500, 0, 5000, 10^4, 10^5, 10^6, 10^7), right=F, include.lowest=T, labels=c("-10 Mb", "-1 Mb", "-100 kb", "-10 kb", "-2.5 kb", "+5 kb", "+10 kb", "+100 kb", "+1 Mb", "+10 Mb"))
+    
+    TSS\$Type<-gsub(".*_",'',gsub('_Merged','',TSS\$Sample))
+    t<-ggplot(TSS, aes(x=abs(DistToTSS)+1,fill=Type)) +
+    #geom_bar(color="black", size=0.25,alpha=0.4) +
+    geom_histogram(binwidth=0.1, colour="black", size=0.25, alpha=0.4) + 
+    theme_classic()+
+    colScale+
+    facet_wrap(~Sample,scales="free_y", ncol=3)+ 
+    theme_classic()+
+    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12)) +
+    scale_x_log10(  breaks = scales::trans_breaks("log10", function(x) 10^x),  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
+    annotation_logticks(sides = "b",long = unit(0.2, "cm"))    
+    ggsave(t,file="$OUTDIR/iPCR/DistToTSS.pdf", width=13, height=height)
+    
+    
+    # 
+    # Msp1<-read("$OUTDIR/iPCR/DistMsp1.bed",stringsAsFactors=F)
+    # colnames(Msp1)[1:6]<-c('chr','start','end','Msp1site','Distance','Sample')
+    # Msp1[,5]<-as.numeric(as.character(Msp1[,5]))
+    # Msp1[,"Type"]<-gsub(".*_",'',gsub('_Merged','',Msp1[,"Sample"]))
+    #
+    # p<-ggplot(Msp1,aes(x=Sample,y=Distance,fill=Type))+
+    # geom_boxplot(outlier.shape = NA,alpha=0.4)+
+    # #scale_fill_brewer(palette ='Set1')+
+    # theme_classic()+
+    # theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+    # ylab('Distance to Msp1 sites')+
+    # xlab('Samples')+
+    # colScale+
+    # coord_flip(ylim = c(0, 1500))
+    # ggsave(p, file="$OUTDIR/iPCR/DistMsp1.pdf", width=13, height=10) 
+    # 
+    # ObsvsExp<-read('$OUTDIR/iPCR/ObsvsExp.txt',header=T)
+    # colnames(ObsvsExp)[1]<-c('Sample')
+    # ObsvsExp<-ObsvsExp[grep('l2fold',ObsvsExp\$l2fold,invert=T),]
+    # ObsvsExp\$l2fold<-as.numeric(ObsvsExp\$l2fold)
+    # ObsvsExp\$significant<-as.numeric(ObsvsExp\$qvalue)<0.05
+    # 
+    # 
+    # myColors <- c('#a6cee3','#e41a1c')
+    # names(myColors)<-factor(c('FALSE','TRUE'),levels=c('FALSE','TRUE'))
+    # colScale <- scale_fill_manual(name = "significant",values = myColors)
+    #
+    # 
+    # o<-ggplot(ObsvsExp, aes(x=annotation,y=l2fold,fill=significant)) +
+    # geom_bar(stat='identity',color="black", size=0.25,alpha=0.4)+ 
+    # theme_classic()+
+    # colScale+
+    # #scale_fill_manual(values=c('#a6cee3','#e41a1c'))+
+    # theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=90,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+    # facet_wrap(~Sample, ncol=3)+ 
+    # ggtitle("Obs/Exp")+
+    # ylab('log2FC(Observed/Expected)')
+    # ggsave(o,file="$OUTDIR/iPCR/ObsvsExp.pdf", width=13, height=height)
 
-        
-        
+    
+    
 EOF
-        for i in `ls  $OUTDIR/iPCR | grep pdf | sed 's/.pdf//g'`; do convert -density 300 $OUTDIR/iPCR//${i}.pdf -quality 100 $OUTDIR/iPCR/${i}.png; done
+    for i in `ls  $OUTDIR/iPCR | grep pdf | sed 's/.pdf//g'`; do convert -density 300 $OUTDIR/iPCR//${i}.pdf -quality 100 $OUTDIR/iPCR/${i}.png; done
 
-        #convert -density 300 $OUTDIR/iPCR/DistDpn.pdf -quality 100 $OUTDIR/iPCR/DistDpn.png
-        #convert -density 300 $OUTDIR/iPCR/DistDNase.pdf -quality 100 $OUTDIR/iPCR/DistDNase.png
-        #convert -density 300 $OUTDIR/iPCR/DistToTSS.pdf -quality 100 $OUTDIR/iPCR/DistToTSS.png
-        #convert -density 300 $OUTDIR/iPCR/ObsvsExp.pdf -quality 100 $OUTDIR/iPCR/ObsvsExp.png
-        #convert -density 300 $OUTDIR/iPCR/DistMsp1.pdf -quality 100 $OUTDIR/iPCR/DistMsp1.png
-        for i in `ls $OUTDIR/iPCR/*.png | sort | sed 's/.png//g' | awk -F'/' '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }' >$OUTDIR/iPCR/index.html
+    #convert -density 300 $OUTDIR/iPCR/DistDpn.pdf -quality 100 $OUTDIR/iPCR/DistDpn.png
+    #convert -density 300 $OUTDIR/iPCR/DistDNase.pdf -quality 100 $OUTDIR/iPCR/DistDNase.png
+    #convert -density 300 $OUTDIR/iPCR/DistToTSS.pdf -quality 100 $OUTDIR/iPCR/DistToTSS.png
+    #convert -density 300 $OUTDIR/iPCR/ObsvsExp.pdf -quality 100 $OUTDIR/iPCR/ObsvsExp.png
+    #convert -density 300 $OUTDIR/iPCR/DistMsp1.pdf -quality 100 $OUTDIR/iPCR/DistMsp1.png
+    for i in `ls $OUTDIR/iPCR/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }' >$OUTDIR/iPCR/index.html
 else 
     echo 'No iPCR samples found'     
 fi
 
 
 
-
-
+echo
 echo 'Done!!!'
 date

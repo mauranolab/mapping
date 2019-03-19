@@ -123,8 +123,9 @@ colorAssignments <- NULL
 
 
 # Initialize "data" with just column names.  We'll be adding rows to this later on in the code.
-data <- data.frame(matrix(ncol=14, nrow=1))
-colnames(data) <- c("Name", "DS", "Replicate", "Color", "Assay", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Group", "Age", "Institution", "filebase")
+outputCols <- c("Name", "DS", "Replicate", "Color", "Assay", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Group", "Age", "Institution", "filebase")
+data <- data.frame(matrix(ncol=length(outputCols), nrow=1))
+colnames(data) <- outputCols
 i <- 0 # This will be our "data" output variable index.
 for(curdir in mappeddirs){
 	message("Working on ", curdir)
@@ -152,20 +153,20 @@ for(curdir in mappeddirs){
 			pipelineParameters <- analysisFileContents[grep('^Running [^,]+,[^,]+ analysis', analysisFileContents, perl=T)]
 			if(length(pipelineParameters)>0) {
 				pipelineParameters <- unlist(strsplit(pipelineParameters, " "))[2]
-				analysisCommand <- unlist(strsplit(pipelineParameters, ","))[2]
+				sampleType <- unlist(strsplit(pipelineParameters, ","))[2]
 			} else {
 				#assume dnase for old pipeline
-				analysisCommand <- "dnase"
+				sampleType <- "dnase"
 			}
 			
-			if(analysisCommand=="dnase") {
+			if(sampleType=="dnase") {
 				data$Assay[i] <- "DNase-seq"
-			} else if(analysisCommand=="callsnps") {
+			} else if(sampleType=="callsnps") {
 				data$Assay[i] <- "DNA"
-			} else if(analysisCommand=="chipseq") {
+			} else if(sampleType=="chipseq") {
 				data$Assay[i] <- SampleIDsplit[2]
 			} else {
-				message("WARNING don't recognize analysisCommand: ", analysisCommand)
+				message("WARNING don't recognize sampleType: ", sampleType)
 				data$Assay[i] <- NA
 			}
 			

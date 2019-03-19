@@ -76,6 +76,11 @@ if(!is.null(opt$samplesC)){
 if(is.null(opt$output)){
 	stop("Output file needs to be provided", call.=FALSE)
 }
+if(opt$output == "-") {
+	outfile = stdout()
+} else {
+	outfile = opt$output
+}
 
 
 
@@ -176,7 +181,7 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesB) & is.null(opt$samplesC)) {
 	BCpairs <- BCpairs[BCpairs$A != BCpairs$B,]
 	usefulBCs <- comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=F)
 	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=T), by=c("Sample", "BS_A", "BS_B"))
-	write.table(usefulBCs[order(usefulBCs[,1]),], file=opt$output, row.names=F, sep='\t', quote=F)
+	write.table(usefulBCs[order(usefulBCs[,1]),], file=outfile, row.names=F, sep='\t', quote=F)
 }
 
 
@@ -187,7 +192,7 @@ if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & is.null(opt$samplesC)) {
 	BCpairs <- data.frame("A"=samplesA, "B"=samplesB, stringsAsFactors=F)
 	usefulBCs <- comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=F)
 	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=T), by=c("Sample", "BS_A", "BS_B"))
-	write.table(usefulBCs[order(usefulBCs[,1]),], file=opt$output, row.names=F, sep='\t', quote=F)
+	write.table(usefulBCs[order(usefulBCs[,1]),], file=outfile, row.names=F, sep='\t', quote=F)
 }
 
 
@@ -248,5 +253,5 @@ if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & !is.null(opt$samplesC)) {
 		usefulBCs[,11][i] <- format(as.numeric(length(sampleB_sampleC_sampleA)), big.mark=",", trim=TRUE)
 		usefulBCs[,12][i] <- format(as.numeric(length(usampleB_sampleC_sampleA)), big.mark=",", trim=TRUE)
 	}
-	write.table(usefulBCs[order(usefulBCs[,1]),], file=opt$output, row.names=F, sep='\t', quote=F)
+	write.table(usefulBCs[order(usefulBCs[,1]),], file=outfile, row.names=F, sep='\t', quote=F)
 }
