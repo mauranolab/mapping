@@ -136,7 +136,7 @@ comparePair <- function(BCpairs, typeA, typeB, applyThreshold=FALSE) {
 	
 	message("\nComparing ", typeA, " vs. ", typeB, ". Thresholds=", threshA, "/", threshB)
 	
-	outputCols <- c("Sample", "BS_A", "BS_B", paste0("#A_", typeA, "_", threshA), paste0("#B_", typeB, "_", threshB), paste0("#Intersect_A", threshA, "_B", threshB), paste0("#Union_A", threshA, "_B", threshB), paste0("Intersect/Union_A", threshA, "_B", threshB))
+	outputCols <- c("Name", "BS_A", "BS_B", paste0("#A_", typeA, "_", threshA), paste0("#B_", typeB, "_", threshB), paste0("#Intersect_A", threshA, "_B", threshB), paste0("#Union_A", threshA, "_B", threshB), paste0("Intersect/Union_A", threshA, "_B", threshB))
 	usefulBCs <- data.frame(matrix(ncol=length(outputCols), nrow=nrow(BCpairs)))
 	colnames(usefulBCs) <- outputCols
 	
@@ -211,7 +211,7 @@ if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & !is.null(opt$samplesC)) {
 	threshB = getThreshold(typeB, applyThreshold=TRUE)
 	threshC = getThreshold(typeC, applyThreshold=TRUE)
 	
-	outputCols <- c("Sample", "BS_A", "BS_B", "BS_C", paste0("#A_", typeA, "_", threshA), paste0("#B_", typeB, "_", threshB), paste0("#C_", typeC, "_", threshC), paste0("#Intersect_A", threshA, "_B", threshB), paste0("#Intersect_A", threshA, "_C", threshC), paste0("#Intersect_B", threshB, "_C", threshC), paste0("#Intersect_A", threshA, "_B", threshB, "_C", threshC), paste0("#Union_A", threshA, "_B", threshB, "_C", threshC))
+	outputCols <- c("Name", "BS_A", "BS_B", "BS_C", paste0("#A_", typeA, "_", threshA), paste0("#B_", typeB, "_", threshB), paste0("#C_", typeC, "_", threshC), paste0("#Intersect_A", threshA, "_B", threshB), paste0("#Intersect_A", threshA, "_C", threshC), paste0("#Intersect_B", threshB, "_C", threshC), paste0("#Intersect_A", threshA, "_B", threshB, "_C", threshC), paste0("#Union_A", threshA, "_B", threshB, "_C", threshC))
 	usefulBCs <- data.frame(matrix(ncol=length(outputCols), nrow=nrow(BCpairs)))
 	colnames(usefulBCs) <- outputCols
 	
@@ -238,7 +238,7 @@ if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & !is.null(opt$samplesC)) {
 		sampleA_sampleC <- intersect(sampleA_BC$bc, sampleC_BC$bc)
 		sampleB_sampleC <- intersect(sampleC_BC$bc, sampleB_BC$bc)
 		sampleB_sampleC_sampleA <- intersect(sampleB_sampleC, sampleA_BC$bc)
-		usampleB_sampleC_sampleA <- union(sampleB_sampleC, sampleA_BC$bc)
+		usampleB_sampleC_sampleA <- union(sampleA_BC$bc, union(sampleB_BC$bc, sampleC_BC$bc))
 		
 		usefulBCs[,1][i] <- sample
 		usefulBCs[,2][i] <- bsA
