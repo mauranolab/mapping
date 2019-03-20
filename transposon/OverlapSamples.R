@@ -180,7 +180,7 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesB) & is.null(opt$samplesC)) {
 	BCpairs$B <- as.character(BCpairs$B)
 	BCpairs <- BCpairs[BCpairs$A != BCpairs$B,]
 	usefulBCs <- comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=F)
-	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=T), by=c("Sample", "BS_A", "BS_B"))
+	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=T), by=c("Name", "BS_A", "BS_B"))
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=outfile, row.names=F, sep='\t', quote=F)
 }
 
@@ -191,7 +191,7 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesB) & is.null(opt$samplesC)) {
 if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & is.null(opt$samplesC)) {
 	BCpairs <- data.frame("A"=samplesA, "B"=samplesB, stringsAsFactors=F)
 	usefulBCs <- comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=F)
-	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=T), by=c("Sample", "BS_A", "BS_B"))
+	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=T), by=c("Name", "BS_A", "BS_B"))
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=outfile, row.names=F, sep='\t', quote=F)
 }
 
