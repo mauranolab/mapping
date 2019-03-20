@@ -100,6 +100,7 @@ loadBCfile <- function(filename, type, thresh) {
 		suffix <- ".barcodes.coords.bed"
 		col.names <- c("chrom", "chromStart", "chromEnd", "bc", "count", "strand")
 	} else if (type %in% c("DNA", "RNA")) {
+		#TODO only works for UMI libraries
 		suffix <- ".barcode.counts.UMI.corrected.txt"
 		col.names <- c("bc", "count")
 	} else {
@@ -109,6 +110,11 @@ loadBCfile <- function(filename, type, thresh) {
 	colnames(data) <- col.names
 	
 	data <- data[data$count >= thresh,]
+	
+	#Add filename so we have a second column to keep it as a dataframe after subset but that won't affect the unique() call
+	data$name <- filename
+	#iPCR BCs can occur at multiple sites so take unique. This will affect per-sample counts, but not intersect/union (the latter operate as if on sets)
+	data <- unique(data[,c("name", "bc")])
 	
 	return(data)
 }
