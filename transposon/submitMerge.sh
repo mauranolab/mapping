@@ -2,7 +2,7 @@
 set -euo pipefail
 
 #Based on /home/maagj01/scratch/transposon/submitMerged.sh
-#TODO merge with submitMerge.sh a la dnase pipeline -- main issue is whether to remove files or not
+#TODO merge with submit.sh a la dnase pipeline -- main issue is whether to remove files or not
 
 
 #Limit thread usage by python processes using OPENBLAS (esp. scipy). Set here and will be inherited by spawned jobs
@@ -14,14 +14,21 @@ module load samtools/1.9
 
 src=/vol/mauranolab/transposon/src
 
+#Hardcoded right now rather than as parameters like dnase pipeline
+runMerge=0
+
+###Parse command line args
 sample=$1
 shift
 indivsamples=$@
 
-OUTDIR=${sample}
 
-bcfiles=`echo ${indivsamples} | perl -pe 's/\/+$//g;' -e 's/\/+( +)/\1/g;' | awk 'BEGIN {ORS=" "} {for(i=1; i<=NF; i++) {split($i, path, "/"); print $i "/" path[length(path)] ".barcodes.preFilter.txt.gz" }}'`
-echo -e "Will merge barcode files: ${bcfiles}\n"
+OUTDIR=${sample}
+mkdir -p ${OUTDIR}
+
+
+#export NSLOTS=1
+
 
 if [[ ${indivsamples} =~ _iPCR ]]; then
     sampleType="iPCR"
@@ -36,27 +43,37 @@ else
 fi
 
 
-cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -o ${sample} -terse > sgeid.merge.${sample}
-set -eu -o pipefail
-mkdir -p ${sample}
-echo "Merging barcodes"
-zcat -f ${bcfiles} | pigz -p ${NSLOTS} -c -9 > ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz
-
-if [[ ${sampleType} == "iPCR" ]]; then
-    echo "Merging bam files"
-    if [[ `echo ${bamfiles} | wc | awk '{print $2}'` -gt 1 ]]; then 
-        samtools merge -f -l 9 $OUTDIR/${sample}.bam ${bamfiles}
-    else 
-        cp ${bamfiles} $OUTDIR/${sample}.bam
+if [ ${runMerge} -eq 1 ]; then
+    bcfiles=`echo ${indivsamples} | perl -pe 's/\/+$//g;' -e 's/\/+( +)/\1/g;' | awk 'BEGIN {ORS=" "} {for(i=1; i<=NF; i++) {split($i, path, "/"); print $i "/" path[length(path)] ".barcodes.preFilter.txt.gz" }}'`
+    echo -e "Will merge barcode files: ${bcfiles}\n"
+    
+    cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -o ${sample} -terse > sgeid.merge.${sample}
+    set -eu -o pipefail
+    echo "Merging barcodes"
+    zcat -f ${bcfiles} | pigz -p ${NSLOTS} -c -9 > ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz
+    
+    if [[ ${sampleType} == "iPCR" ]]; then
+        echo "Merging bam files"
+        if [[ `echo ${bamfiles} | wc | awk '{print $2}'` -gt 1 ]]; then 
+            samtools merge -f -l 9 $OUTDIR/${sample}.bam ${bamfiles}
+        else 
+            cp ${bamfiles} $OUTDIR/${sample}.bam
+        fi
+        #TODO sort in mapIntegrations.sh?
+        #samtools index $OUTDIR/${sample}.bam
     fi
-    #TODO sort in mapIntegrations.sh?
-    #samtools index $OUTDIR/${sample}.bam
-fi
 EOF
+fi
+
+if [ ${runMerge} -eq 1 ]; then
+    analysisHold="-hold_jid `cat sgeid.merge.${sample}`"
+else
+    analysisHold=""
+fi
 
 
 #-o ${sample} breaks Jesper's Flowcell_Info.sh
-cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -terse -hold_jid `cat sgeid.merge.${sample}` | perl -pe 's/[^\d].+$//g;'  #> sgeid.analysis
+cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -terse ${analysisHold} | perl -pe 's/[^\d].+$//g;'  #> sgeid.analysis
 set -eu -o pipefail
 ${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
 
@@ -65,3 +82,4 @@ if [[ ${sampleType} == "iPCR" ]]; then
 fi
 EOF
 rm -f sgeid.merge.${sample}
+
