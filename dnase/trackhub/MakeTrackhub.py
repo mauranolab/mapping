@@ -52,9 +52,11 @@ for line in inputfile_reader:
     input_data_all.append(line)
 
 
+# If new Assay types are added in samplesforTrackhub.R, then changes must also be made
+# in the following for loop, as well as in the various track construction blocks below.
 assays = set([])
 for assay_type in set([line.get('Assay') for line in input_data_all]):
-    if(assay_type == "DNase-seq" or assay_type == "DNA"):
+    if(assay_type == "DNase-seq" or assay_type == "DNA" or assay_type == "Capture"):
         assays.add(assay_type)
     else:
         #ChIP-seq tracks have the epitope as the assay type
@@ -74,10 +76,7 @@ hub, genomes_file, genome, trackdb = default_hub(
     email="maurano@nyu.edu")
 
 
-# group="cegsvectors" keeps Flowcells, Aggregations, and cegsvectors out of the "Other" control group,
-# and in the CEGS control group, when the selected genome is cegsvectors. When the selected geneome is
-# one of the standard ones (hg38, mm10, rn6), then it is ignored. In that scenario, all our controls 
-# are placed in a group titled with the short hub label.
+# Initialize the supertrack
 if(args.supertrack is not None):
     if(args.genome == "cegsvectors"):
         supertrack = SuperTrack(
@@ -96,6 +95,7 @@ if(args.supertrack is not None):
 
 # Now build the composites, and add them all to the supertrack.
 for assay_type in assays:
+    # Note: This just take the "ChIP" from "ChIP-seq".
     assay_suffix = assay_type.split("-")[0]
     
     input_data = []
@@ -148,11 +148,6 @@ for assay_type in assays:
         lng_label = curGroup + '_' +  assay_type
         # lng_label = lng_label[0:76]
         
-        if(args.generateHTMLdescription):
-            html_file = 'descriptions/' + curGroup + '.html'
-        else:
-            html_file = ' '
-        
         composite = CompositeTrack(
             name=curGroup_trackname,
             short_label=shrt_label,
@@ -162,9 +157,11 @@ for assay_type in assays:
             visibility="hide",
             sortOrder=SortOrder,
             autoScale = "off",
-            html=html_file,
             bigDataUrl ='NULL',
             maxHeightPixels= "100:32:8")
+        
+        if(args.generateHTMLdescription):
+            composite.add_params(html='descriptions/' + curGroup + '.html')
         
         ########
         #Create view track
@@ -218,7 +215,7 @@ for assay_type in assays:
                 long_label="Peaks")
             composite.add_view(Peaks_view)
             
-        if (assay_type == "DNA"):
+        if (assay_type == "DNA" or assay_type == "Capture"):
             Coverage_view = ViewTrack(
                 name="Coverage_view_" + curGroup_trackname,
                 view="Coverage",
@@ -230,7 +227,7 @@ for assay_type in assays:
                 long_label="Coverage")
             composite.add_view(Coverage_view)
         
-        if (assay_type == "DNA"):
+        if (assay_type == "DNA" or assay_type == "Capture"):
             Variants_view = ViewTrack(
                 name="Variants_view_" + curGroup_trackname,
                 view="Variants",
@@ -324,7 +321,7 @@ for assay_type in assays:
             sampleName_trackname = cleanTrackName(args.genome + "_" + curGroup + "_" + sampleName + "_" + curSample['DS'])
             
             #longLabel must be <= 76 printable characters
-            if assay_type == "DNA":
+            if (assay_type == "DNA" or assay_type == "Capture"):
                 sampleDescription = sampleShortLabel + ' ' + curSample['Genomic_coverage'] + 'x Genomic Coverage (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads)' + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
             else:
                 if curSample['Num_hotspots'] == "NA":
@@ -348,7 +345,7 @@ for assay_type in assays:
             Reads_view.add_tracks(track)
             
             #Variants_view
-            if (assay_type == "DNA"):
+            if (assay_type == "DNA" or assay_type == "Capture"):
                 track = Track(
                     name=sampleName_trackname + '_var',
                     short_label=sampleShortLabel,
@@ -362,7 +359,7 @@ for assay_type in assays:
                 Variants_view.add_tracks(track)
             
             #Coverage_view
-            if (assay_type == "DNA"):
+            if (assay_type == "DNA" or assay_type == "Capture"):
                 track = Track(
                     name=sampleName_trackname + '_cov',
                     short_label=sampleShortLabel,
@@ -444,7 +441,7 @@ for assay_type in assays:
         #TODO #daler github trackhub/trackhub/track.py doesn't seem to offer dimensionAchecked as option
         if (assay_type == "DNase-seq"):
             composite.add_params(dimensions="dimY=sampleName dimA=replicate dimX=Age")
-        elif (assay_type == "DNA"):
+        elif (assay_type == "DNA" or assay_type == "Capture"):
             composite.add_params(dimensions="dimY=sampleName")
         else:
             # ChIP-seq

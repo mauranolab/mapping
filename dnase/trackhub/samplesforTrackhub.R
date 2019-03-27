@@ -68,6 +68,7 @@ if(project=="CEGS") {
 	for(flowcell in list.dirs(path=pwd, full.names=F, recursive = F)) {
 		if(flowcell=='src') next;
 		if(flowcell=='trackhub') next;
+
 		# To temporarily skip flowcell directories which are incomplete.
 		# if(flowcell=='FCH2NNMBBXY') next;
 		
@@ -181,10 +182,14 @@ for(curdir in mappeddirs){
                 data$Genome[i] <- NA
 			}
 			
+			# Adding a new Assay type also requires changes to be made to MakeTrackhub.py
+			# Look for the initialization of "assay_type" in MakeTrackhub.py for comments on this.
 			if(sampleType=="dnase") {
 				data$Assay[i] <- "DNase-seq"
 			} else if(sampleType=="callsnps") {
 				data$Assay[i] <- "DNA"
+			} else if(sampleType=="callsnpsCapture") {
+				data$Assay[i] <- "Capture"
 			} else if(sampleType=="chipseq") {
 				data$Assay[i] <- SampleIDsplit[2]
 			} else {
@@ -339,3 +344,4 @@ write.table(data, file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)
 # message(warnings())
 
 message("Done!!!")
+
