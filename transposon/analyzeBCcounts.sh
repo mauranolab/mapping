@@ -31,8 +31,8 @@ pigz -p ${NSLOTS} -c -9 ${TMPDIR}/${sample}.barcodes.txt > ${OUTDIR}/${sample}.b
 
 ###Overall summary statistics
 echo
-echo -n -e "${sample}\tNumber of total reads\t"
-zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | wc -l
+numTotalReads=`zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | wc -l`
+echo -n -e "${sample}\tNumber of total reads\t${numTotalReads}"
 echo -n -e "${sample}\tNumber of total read barcodes\t"
 zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | awk -F "\t" '$1!="" {count+=1} END {print count}'
 
@@ -120,18 +120,16 @@ awk '{print length($0)}' | sort -g | uniq -c | sort -k2,2 | awk '$2!=0'
 
 echo
 echo "Saturation curves"
-numlines=`zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | wc -l`
+#NB hardcoded limit of 120M reads
+for i in `echo {10000,50000,100000,250000,500000,1000000,2000000,3000000,4000000,5000000,10000000,15000000,20000000,25000000,30000000,35000000,40000000,45000000,50000000,55000000,60000000,70000000,80000000,90000000,100000000,110000000,120000000} | tr ' ' '\n' | gawk -v subset=${numTotalReads} '$1<=subset'`; do 
+    if [ "${minUMILength}" -ge 5 ]; then
+        saturation=$(zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | shuf -n $i | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $3}' | uniq | sort | uniq | awk -F "\t" '{print $1}' | sort | uniq -c | awk -v minReadCutoff=${minReadCutoff} '{if ($1>=minReadCutoff) print $2}' | wc -l)
+    else
+        saturation=$(zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | shuf -n $i | awk -F "\t" '{print $1}' | sort | uniq -c | awk -v minReadCutoff=${minReadCutoff} '{if ($1>=minReadCutoff) print $2}' | wc -l)
+    fi
+    echo "$i $saturation minreads${minReadCutoff}" 
+done > ${OUTDIR}/${sample}.Saturation.minReads_${minReadCutoff}.txt
 
-for i in `echo {10,1000,10000,50000,100000,250000,500000,1000000,2000000,3000000,4000000,5000000,10000000,15000000,20000000,25000000,30000000,35000000,40000000,45000000,50000000,55000000,60000000,70000000,80000000,90000000,100000000,110000000,120000000} | tr ' ' '\n' | gawk -v subset=$numlines '{if ($1<=subset) print}'`; do 
-saturation=$(zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | shuf -n $i | awk -F "\t" '{print $1}' | sort | uniq | wc -l); echo $i  $saturation 'minreads1' ;done > ${OUTDIR}/${sample}.Saturation_minReads1.txt
-
-if [[ `zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} length($3) > 4 {found=1} END {print found}'` == 1 ]]; then
-    for i in `echo {10,1000,10000,50000,100000,250000,500000,1000000,2000000,3000000,4000000,5000000,10000000,15000000,20000000,25000000,30000000,35000000,40000000,45000000,50000000,55000000,60000000,70000000,80000000,90000000,100000000,110000000,120000000} | tr ' ' '\n' | gawk -v subset=$numlines '{if ($1<=subset) print}'`; do 
-    saturation=$(zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | shuf -n $i | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $3}' | sort | uniq | awk -F "\t" '{print $1}' | sort | uniq -c | awk '{if ($1>=10) print $2}' | wc -l); echo $i $saturation 'minreads10' ;done > ${OUTDIR}/${sample}.Saturation_minReads10.txt
-else
-    for i in `echo {10,1000,10000,50000,100000,250000,500000,1000000,2000000,3000000,4000000,5000000,10000000,15000000,20000000,25000000,30000000,35000000,40000000,45000000,50000000,55000000,60000000,70000000,80000000,90000000,100000000,110000000,120000000} | tr ' ' '\n' | gawk -v subset=$numlines '{if ($1<=subset) print}'`; do 
-    saturation=$(zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | shuf -n $i | awk -F "\t" '{print $1}' | sort | uniq -c | awk '{if ($1>=10) print $2}' | wc -l); echo $i $saturation 'minreads10' ;done > ${OUTDIR}/${sample}.Saturation_minReads10.txt
-fi
 
 echo
 echo "Done!!!"
