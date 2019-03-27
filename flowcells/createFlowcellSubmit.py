@@ -11,9 +11,10 @@ version="1.3"
 parser = argparse.ArgumentParser(prog = "createFlowcellSubmit", description = "Outputs submit commands for all samples from the info.txt located in the flowcell data folder", allow_abbrev=False)
 
 parser.add_argument('--flowcellIDs', action='store', type = str, help='Flowcell IDs (will look for /vol/mauranolab/flowcells/FCxxx/info.txt, multiple FCs separated by comma)', required=True)
-parser.add_argument('--sampletypes', action='store', type = str, help='Only process samples of this type (multiple projects separated by comma)', required=False)
-parser.add_argument('--projects', action='store', type = str, help='Only process samples in these projects (multiple projects separated by comma)', required=False)
 parser.add_argument('--samples', action='store', type = str, help='Only process samples matching this BS number (multiple samples separated by comma, done as string matching)', required=False)
+parser.add_argument('--projects', action='store', type = str, help='Only process samples in these projects (multiple projects separated by comma)', required=False)
+parser.add_argument('--people', action='store', type = str, help='Only process samples made by these people (multiple names separated by comma)', required=False)
+parser.add_argument('--sampletypes', action='store', type = str, help='Only process samples of this type (multiple projects separated by comma)', required=False)
 parser.add_argument("--aggregate", action='store_true', default=False, help = "Aggregate samples with the same BS number")
 parser.add_argument("--aggregate-sublibraries", action='store_true', default=False, help = "Aggregate samples with the same BS number and sublibrary, and remark duplicates")
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
@@ -37,6 +38,11 @@ if args.projects is None:
     projects = None
 else:
     projects = args.projects.split(",")
+
+if args.people is None:
+    people = None
+else:
+    people = args.people.split(",")
 
 if args.sampletypes is None:
     sampletypes = None
@@ -234,6 +240,8 @@ if sampletypes is not None:
     flowcellFile = flowcellFile[flowcellFile['Sample Type'].isin(sampletypes)]
 if projects is not None:
     flowcellFile = flowcellFile[flowcellFile['Lab'].isin(projects)]
+if people is not None:
+    flowcellFile = flowcellFile[flowcellFile['Made By'].isin(people)]
 if samples is not None:
     #Do partial string matching rather than exact equality to allow flexible subsetting of certain sublibraries or of all sublibraries for a given BS number
     flowcellFile = flowcellFile[flowcellFile['Sample #'].apply(lambda bs: any([s in bs for s in samples]))]
