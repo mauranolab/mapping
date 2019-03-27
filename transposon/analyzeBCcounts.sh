@@ -66,7 +66,7 @@ if [ "${minUMILength}" -ge 5 ]; then
     #Format: BC, UMI, n
     awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' |
     pigz -p ${NSLOTS} -c -9 > ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz
-    zcat -f ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | cut -f1 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $1}' > ${OUTDIR}/${sample}.barcode.counts.UMI.corrected.txt
+    zcat -f ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | cut -f1 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $1}' > ${OUTDIR}/${sample}.barcode.counts.UMI_corrected.txt
     echo -n -e "${sample}\tNumber of unique barcodes+UMI\t"
     #TODO move to extract.py
     zcat -f ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz | wc -l

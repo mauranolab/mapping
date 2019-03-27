@@ -97,16 +97,18 @@ if(opt$output == "-") {
 
 loadBCfile <- function(filename, type, thresh) {
 	if(type=="iPCR") {
-		suffix <- ".barcodes.coords.bed"
+		bcfilename <- paste0(filename, '/', basename(filename), ".barcodes.coords.bed")
 		col.names <- c("chrom", "chromStart", "chromEnd", "bc", "count", "strand")
 	} else if (type %in% c("DNA", "RNA")) {
-		#TODO only works for UMI libraries
-		suffix <- ".barcode.counts.UMI.corrected.txt"
+		bcfilename <- paste0(filename, '/', basename(filename), ".barcode.counts.UMI_corrected.txt")
+		if(!file.exists(bcfilename)) {
+			bcfilename <- paste0(filename, '/', basename(filename), ".barcode.counts.txt")
+		}
 		col.names <- c("bc", "count")
 	} else {
 		stop("Do not recognize file type", type)
 	}
-	data <- read(paste0(filename, '/', basename(filename), suffix), header=F)
+	data <- read(bcfilename, header=F)
 	colnames(data) <- col.names
 	
 	data <- data[data$count >= thresh,]
@@ -185,8 +187,8 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesB) & is.null(opt$samplesC)) {
 	BCpairs$A <- as.character(BCpairs$A)
 	BCpairs$B <- as.character(BCpairs$B)
 	BCpairs <- BCpairs[BCpairs$A != BCpairs$B,]
-	usefulBCs <- comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=F)
-	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=T), by=c("Name", "BS_A", "BS_B"))
+	usefulBCs <- comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=TRUE)
+#	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=TRUE), by=c("Name", "BS_A", "BS_B"))
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=outfile, row.names=F, sep='\t', quote=F)
 }
 
@@ -196,8 +198,8 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesB) & is.null(opt$samplesC)) {
 #####
 if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & is.null(opt$samplesC)) {
 	BCpairs <- data.frame("A"=samplesA, "B"=samplesB, stringsAsFactors=F)
-	usefulBCs <- comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=F)
-	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=T), by=c("Name", "BS_A", "BS_B"))
+	usefulBCs <- comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=TRUE)
+#	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=TRUE), by=c("Name", "BS_A", "BS_B"))
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=outfile, row.names=F, sep='\t', quote=F)
 }
 
