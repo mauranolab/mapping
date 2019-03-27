@@ -122,8 +122,17 @@ nextColorFromPalette <- 0
 colorAssignments <- NULL
 
 
+# The "pipelineParameters" parser function. Will be used in the below for loop.
+pipelineParametersParser <- function(pipelineParameters, fieldName) {
+	regex_out <- regexpr('^Running (?<processingCommand>[^,]+),(?<analysisCommand>[^ ]+) analysis [^\\-]+\\-[^ ]+ \\(.+\\) against genome (?<mappedgenome>[^ ]+)( \\(aka (?<annotationgenome>[^ ]+)\\)?)?', pipelineParameters, perl=T)
+
+	regex_out.start <- attr(regex_out,"capture.start")[1, fieldName]
+	regex_out.lngth <- attr(regex_out,"capture.length")[1, fieldName]
+	return(substr(pipelineParameters, regex_out.start, regex_out.start+regex_out.lngth-1))
+}
+
 # Initialize "data" with just column names.  We'll be adding rows to this later on in the code.
-outputCols <- c("Name", "DS", "Replicate", "Color", "Assay", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Group", "Age", "Institution", "filebase")
+outputCols <- c("Name", "DS", "Replicate", "Color", "Assay", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Group", "Age", "Institution", "filebase", "Genome")
 data <- data.frame(matrix(ncol=length(outputCols), nrow=1))
 colnames(data) <- outputCols
 i <- 0 # This will be our "data" output variable index.
@@ -152,13 +161,29 @@ for(curdir in mappeddirs){
 			
 			pipelineParameters <- analysisFileContents[grep('^Running [^,]+,[^,]+ analysis', analysisFileContents, perl=T)]
 			if(length(pipelineParameters)>0) {
-				pipelineParameters <- unlist(strsplit(pipelineParameters, " "))[2]
-				sampleType <- unlist(strsplit(pipelineParameters, ","))[2]
+				annotationgenome <- pipelineParametersParser(pipelineParameters, "annotationgenome")
+                annotationgenome <- substr(annotationgenome, 1, nchar(annotationgenome)-1)   # remove the right paren
+				
+				# Is the annotation geneome in the "Running ... analysis ..." line ?
+ 				if(nchar(annotationgenome) > 0) {
+					# It is.
+ 					data$Genome[i] <- annotationgenome
+				} else {
+					# It is not. Extract it from the "mappedgenome" field.
+					mappedgenome <- pipelineParametersParser(pipelineParameters, "mappedgenome")
+ 					mappedgenome <- gsub("_.+$", "", mappedgenome)
+ 					data$Genome[i] <- gsub("all$", "", mappedgenome)
+				}
+				
+				sampleType <- pipelineParametersParser(pipelineParameters, "analysisCommand")
 			} else {
 				#assume dnase for old pipeline
 				sampleType <- "dnase"
+                data$Genome[i] <- NA
 			}
 			
+			# Adding a new Assay type also requires changes to be made to MakeTrackhub.py
+			# Look for the initialization of "assay_type" in MakeTrackhub.py for comments on this.
 			if(sampleType=="dnase") {
 				data$Assay[i] <- "DNase-seq"
 			} else if(sampleType=="callsnps") {
@@ -319,3 +344,4 @@ write.table(data, file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)
 # message(warnings())
 
 message("Done!!!")
+
