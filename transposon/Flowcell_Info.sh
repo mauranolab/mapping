@@ -14,6 +14,8 @@ mkdir -p $OUTDIR
 echo "Output to $OUTDIR"
 
 
+dirs=`find -maxdepth 1 -not -path "*/bak*" -not -path "*/trash*" -type d`
+
 
 #####
 #TODO fix if only HiC samples are running
@@ -21,60 +23,60 @@ echo "Output to $OUTDIR"
 #######
 #HiC data
 ######
-if [[ `find -maxdepth 1 -type d | grep -v bak | grep 'HiC\|CapC\|dsDNA\|3C'| wc -l` -ge 1 ]]; then
+if [[ `find ${dirs} -maxdepth 1 -type d | grep 'HiC\|CapC\|dsDNA\|3C'| wc -l` -ge 1 ]]; then
     echo 'HiC samples found'
     mkdir -p $OUTDIR/HiC/
     
     
-    find -name *.R2.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs --no-run-if-empty cp -t $OUTDIR/HiC/
-    find -name *.R1.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| grep -v bak| xargs --no-run-if-empty cp -t $OUTDIR/HiC/
+    find ${dirs} -maxdepth 1 -name *.R2.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| xargs --no-run-if-empty cp -t $OUTDIR/HiC/
+    find ${dirs} -maxdepth 1 -name *.R1.raw.png | grep 'HiC\|CapC\|dsDNA\|3C'| xargs --no-run-if-empty cp -t $OUTDIR/HiC/
     for i in `ls $OUTDIR/HiC/*R1.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/HiC/R1index.html
     for i in `ls $OUTDIR/HiC/*R2.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1500px"; height="120"></a>' ; done  >$OUTDIR/HiC/R2index.html
     cat $OUTDIR//HiC/R1index.html $OUTDIR/HiC//R2index.html |sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/HiC/Weblogoindex.html
     
-#    if [[ `find -name *R1.mmapstat |sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
+#    if [[ `find ${dirs} -name *R1.mmapstat |sed 's/^..//g' | sed 's/\/.*//g' | wc -l` -ge 1 ]]
 #    then
-#        for HiC in `find -name *R1.mmapstat | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, "R1", HiC}' ${HiC}/bowtie_results/bwt2/${HiC}/*R1.mmapstat |
+#        for HiC in `find ${dirs} -name *R1.mmapstat | sed 's/^..//g' | sed 's/\/.*//g' `; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, "R1", HiC}' ${HiC}/bowtie_results/bwt2/${HiC}/*R1.mmapstat |
 #        grep -v "#" ; done > $OUTDIR/HiC/mmapstatR1.tsv
-#        for HiC in `find -name *R2.mmapstat | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, "R2", HiC}' ${HiC}/bowtie_results/bwt2/${HiC}/*R2.mmapstat |
+#        for HiC in `find ${dirs} -name *R2.mmapstat | sed 's/^..//g' | sed 's/\/.*//g' `; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, "R2", HiC}' ${HiC}/bowtie_results/bwt2/${HiC}/*R2.mmapstat |
 #        grep -v "#" ; done >$OUTDIR/HiC/mmapstatR2.tsv
 #    fi
 #    
-#    if [[ `find -name *mpairstat |sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
+#    if [[ `find ${dirs} -name *mpairstat |sed 's/^..//g' | sed 's/\/.*//g' | wc -l` -ge 1 ]]
 #    then
-#        for HiC in `find -name *mmapstat | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, $3, HiC}' ${HiC}/bowtie_results/bwt2/${HiC}/*mpairstat |
+#        for HiC in `find ${dirs} -name *mmapstat | sed 's/^..//g' | sed 's/\/.*//g' `; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, $3, HiC}' ${HiC}/bowtie_results/bwt2/${HiC}/*mpairstat |
 #        grep -v "#" ; done > $OUTDIR/HiC/mpairstat.tsv
 #    fi
 #    
-#    if [[ `find -maxdepth 2 -name *_R1.bam |grep -v bak| wc -l` -ge 1 ]]
+#    if [[ `find ${dirs} -maxdepth 2 -name *_R1.bam |grep -v bak| wc -l` -ge 1 ]]
 #    then
-#        for HiC in `find -maxdepth 1 -type d | grep 'HiC\|CapC\|dsDNA\|3C'|sed 's/^..//g'| grep -v bak`; do samtools view -F4 -q30 ${HiC}/${HiC}_R1.bam |
+#        for HiC in `find ${dirs} -maxdepth 1 -type d | grep 'HiC\|CapC\|dsDNA\|3C'|sed 's/^..//g'`; do samtools view -F4 -q30 ${HiC}/${HiC}_R1.bam |
 #        cut -f3 | sort | uniq -c | awk -v OFS='\t' -v name="$HiC" '{print $2, $1, "R1", name}' ; done > $OUTDIR/HiC/SE_mappingR1.tsv
-#        for HiC in `find -maxdepth 1 -type d | grep 'HiC\|CapC\|dsDNA\|3C'|sed 's/^..//g'| grep -v bak`; do samtools view -F4 -q30 ${HiC}/${HiC}_R2.bam |
+#        for HiC in `find ${dirs} -maxdepth 1 -type d | grep 'HiC\|CapC\|dsDNA\|3C'|sed 's/^..//g'`; do samtools view -F4 -q30 ${HiC}/${HiC}_R2.bam |
 #        cut -f3 | sort | uniq -c | awk -v OFS='\t' -v name="$HiC" '{print $2, $1, "R2", name}' ; done > $OUTDIR/HiC/SE_mappingR2.tsv
 #    fi
 #    
-#    if [[ `find -name *.bwt2glob.unmap_trimmed.fastq | grep -v bak| wc -l` -ge 1 ]]
+#    if [[ `find ${dirs} -name *.bwt2glob.unmap_trimmed.fastq | wc -l` -ge 1 ]]
 #    then
-#        for HiC in `find -name *.bwt2glob.unmap_trimmed.fastq | awk -F '/' '{print $2}' | grep -v bak | sort | uniq`; do cat ${HiC}/bowtie_results/bwt2_global/${HiC}/*R1*.bwt2glob.unmap_trimmed.fastq |
+#        for HiC in `find ${dirs} -name *.bwt2glob.unmap_trimmed.fastq | awk -F '/' '{print $2}'  | sort | uniq`; do cat ${HiC}/bowtie_results/bwt2_global/${HiC}/*R1*.bwt2glob.unmap_trimmed.fastq |
 #        awk 'NR%4==2 {print length($1)}' | sort | uniq -c | awk -v OFS='\t' -v sample="$HiC" '{print $2, $1, "R1", sample}' ; done > $OUTDIR/HiC/trimmedReadsR1.tsv
-#        for HiC in `find -name *.bwt2glob.unmap_trimmed.fastq | awk -F '/' '{print $2}' | grep -v bak | sort | uniq`; do cat ${HiC}/bowtie_results/bwt2_global/${HiC}/*R2*.bwt2glob.unmap_trimmed.fastq |
+#        for HiC in `find ${dirs} -name *.bwt2glob.unmap_trimmed.fastq | awk -F '/' '{print $2}'  | sort | uniq`; do cat ${HiC}/bowtie_results/bwt2_global/${HiC}/*R2*.bwt2glob.unmap_trimmed.fastq |
 #        awk 'NR%4==2 {print length($1)}' | sort | uniq -c | awk -v OFS='\t' -v sample="$HiC" '{print $2, $1, "R2", sample}'; done > $OUTDIR/HiC/trimmedReadsR2.tsv
 #    fi
 #    
-#    if [[ `find -name *mergestat | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
+#    if [[ `find ${dirs} -name *mergestat | sed 's/^..//g' | sed 's/\/.*//g' | wc -l` -ge 1 ]]
 #    then
-#        for HiC in `find -name *mergestat | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, HiC}' ${HiC}/hic_results/data/${HiC}/*mergestat |
+#        for HiC in `find ${dirs} -name *mergestat | sed 's/^..//g' | sed 's/\/.*//g' `; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, HiC}' ${HiC}/hic_results/data/${HiC}/*mergestat |
 #        grep -v "#" ; done > $OUTDIR/HiC/mergestat.tsv
 #    fi
 #    
-#    if [[ `find -name *mRSstat | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
+#    if [[ `find ${dirs} -name *mRSstat | sed 's/^..//g' | sed 's/\/.*//g' | wc -l` -ge 1 ]]
 #    then
-#        for HiC in `find -name *mRSstat | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, HiC}' ${HiC}/hic_results/data/${HiC}/*mRSstat|
+#        for HiC in `find ${dirs} -name *mRSstat | sed 's/^..//g' | sed 's/\/.*//g' `; do awk -v OFS='\t' -F'\t' -v HiC="$HiC" '{print $1, $2, HiC}' ${HiC}/hic_results/data/${HiC}/*mRSstat|
 #        grep -v "#" ; done > $OUTDIR/HiC/mRSstat.tsv
 #    fi
 #    
-#     for HiC in `find -maxdepth 1 -type d | grep 'HiC\|CapC\|dsDNA\|3C' | grep -v bak| sed 's/^..//g'`; do reads=$(grep Surviving submit.${HiC}* | awk '{print $4}'); \
+#     for HiC in `find ${dirs} -maxdepth 1 -type d | grep 'HiC\|CapC\|dsDNA\|3C' | sed 's/^..//g'`; do reads=$(grep Surviving submit.${HiC}* | awk '{print $4}'); \
 #        adapter=$(grep Surviving submit.${HiC}* | awk '{print $7}'); \
 #        validPairs=$(cat ${HiC}/hic_results/data/${HiC}/${HiC}_allValidPairs | wc -l); \
 #        validPairsSameChrom=$(cat ${HiC}/hic_results/data/${HiC}/${HiC}_allValidPairs | awk '$2==$5' | wc -l); \
@@ -260,8 +262,8 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     echo "Copying raw weblogos"
     
     mkdir -p $OUTDIR/Weblogos_raw
-    find -not -path "*/bak*" -not -path "*/trash*" -name "*.R2.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
-    find -not -path "*/bak*" -not -path "*/trash*" -name "*.R1.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
+    find ${dirs} -maxdepth 1-name "*.R2.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
+    find ${dirs} -maxdepth 1 -name "*.R1.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
     for i in `ls $OUTDIR/Weblogos_raw/*R1.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R1index.html
     for i in `ls $OUTDIR/Weblogos_raw/*R2.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R2index.html
     cat $OUTDIR/Weblogos_raw/R1index.html $OUTDIR/Weblogos_raw/R2index.html | sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_raw/index.html
@@ -269,28 +271,28 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     
     #For processed sequence
     mkdir -p $OUTDIR/Weblogos_processed
-    find -not -path "*/bak*" -not -path "*/trash*" -name "*.BC.processed.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_processed
-    find -not -path "*/bak*" -not -path "*/trash*" -name "*.plasmid.processed.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_processed
+    find ${dirs} -maxdepth 1 -name "*.BC.processed.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_processed
+    find ${dirs} -maxdepth 1 -name "*.plasmid.processed.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_processed
     for i in `ls $OUTDIR/Weblogos_processed/*BC.processed.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/BCindex.html
-    for i in `ls $OUTDIR/Weblogos_processed/*plasmid.processed.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/plasmidindex.html
+    for i in `ls $OUTDIR/Weblogos_processed/*plasmid.processed.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_processed/plasmidindex.html
     cat $OUTDIR/Weblogos_processed/BCindex.html $OUTDIR/Weblogos_processed/plasmidindex.html | sort| awk ' {print;} NR % 2 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_processed/index.html
     
     echo "weblogo for UMI sequence"
     mkdir -p $OUTDIR/Weblogos_UMI
-    find -not -path "*/bak*" -not -path "*/trash*" -name "*.UMIs.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_UMI
-    if find -not -path "*/bak*" -not -path "*/trash*" -name "*.UMIs.png" | grep -q "." ; then
+    find ${dirs} -maxdepth 1 -name "*.UMIs.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_UMI
+    if find ${dirs} -maxdepth 1 -name "*.UMIs.png" | grep -q "." ; then
         for i in `ls $OUTDIR/Weblogos_UMI/*.UMIs.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_UMI/index.html
     fi
 fi
 
 echo "weblogo for genomic reads"
 mkdir -p $OUTDIR/Weblogos_genomic
-find -not -path "*/bak*" -not -path "*/trash*" -name "*.genomic.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_genomic
+find ${dirs} -maxdepth 1 -name "*.genomic.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_genomic
 for i in `ls $OUTDIR/Weblogos_genomic/*.genomic.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_genomic/index.html
 
 echo "weblogo for Barcode sequence"
 mkdir -p $OUTDIR/Weblogos_Barcode
-find -not -path "*/bak*" -not -path "*/trash*" -name "*barcodes.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_Barcode
+find ${dirs} -maxdepth 1 -name "*barcodes.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_Barcode
 for i in `ls $OUTDIR/Weblogos_Barcode/*barcodes.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_Barcode/index.html
 
 #####
@@ -334,8 +336,8 @@ mv $OUTDIR/FlowcellSummary/index1 $OUTDIR/FlowcellSummary/index.html
 if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     mkdir -p $OUTDIR/EditDist
     
-    for i in `find \( -name "extract*" -o -name "map*" \) | grep -v bak`; do Dist=$(grep 'BC Hamming distance' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g'| perl -pe 's/, /\t/g' | grep 'Hamming distance' > $OUTDIR/EditDist/BC_EditDist
-    for i in `find \( -name "extract*" -o -name "map*" \) | grep -v bak`; do Dist=$(grep 'Plasmid Hamming distance' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g'| perl -pe 's/, /\t/g' | grep 'Hamming distance' > $OUTDIR/EditDist/Plasmid_EditDist
+    for i in `find ${dirs} -maxdepth 1 \( -name "extract*" -o -name "map*" \)`; do Dist=$(grep 'BC Hamming distance' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g'| perl -pe 's/, /\t/g' | grep 'Hamming distance' > $OUTDIR/EditDist/BC_EditDist
+    for i in `find ${dirs} -maxdepth 1 \( -name "extract*" -o -name "map*" \)`; do Dist=$(grep 'Plasmid Hamming distance' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g'| perl -pe 's/, /\t/g' | grep 'Hamming distance' > $OUTDIR/EditDist/Plasmid_EditDist
     
     
     R --quiet --no-save << EOF
@@ -431,7 +433,7 @@ fi
 #Barcode frequency
 #####
 mkdir -p $OUTDIR/BarcodeFreq
-for i in `find -name *barcode.counts.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do reads=$(cut -f2 ${i}/${i}.barcode.counts.txt | awk '{sum+=$1} END {print sum}'); sort -nk2 ${i}/${i}.barcode.counts.txt| awk -v OFS='\t' -F'\t' -v sample="$i" -v reads="$reads" '{print $1, $2, sample, reads}'; done > $OUTDIR/BarcodeFreq/BarcodeFreq.txt
+for i in `find ${dirs} -maxdepth 1 -name *barcode.counts.txt | sed 's/^..//g' | sed 's/\/.*//g'`; do reads=$(cut -f2 ${i}/${i}.barcode.counts.txt | awk '{sum+=$1} END {print sum}'); sort -nk2 ${i}/${i}.barcode.counts.txt| awk -v OFS='\t' -F'\t' -v sample="$i" -v reads="$reads" '{print $1, $2, sample, reads}'; done > $OUTDIR/BarcodeFreq/BarcodeFreq.txt
 
 
 R --quiet --no-save << EOF
@@ -498,10 +500,9 @@ for i in `ls $OUTDIR/BarcodeFreq/*.png | sort | sed 's/.png//g' | awk -F "/" '{p
 #####
 #Barcode frequency with UMI
 #####
-if [[ `find -name "*.barcode.counts.withUMI.txt.gz" | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
-    then
+if [[ `find ${dirs} -maxdepth 1 -name "*.barcode.counts.withUMI.txt.gz" | sed 's/^..//g' | sed 's/\/.*//g' | wc -l` -ge 1 ]]; then
     mkdir -p $OUTDIR/BarcodeFreq_UMI
-    for i in `find -name "*.barcode.counts.withUMI.txt.gz" | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do uniqueMol=$(zcat -f ${i}/${i}.barcode.counts.withUMI.txt.gz | wc -l); zcat -f ${i}/${i}.barcode.counts.withUMI.txt.gz | cut -f1 | sort | uniq -c | sort -nk1| awk 'BEGIN {OFS="\t"} {print $2, $1}' | awk -v OFS='\t' -F'\t' -v sample="$i" -v uniqMol="$uniqueMol" '{print $1, $2, sample, uniqMol}'; done > $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt
+    for i in `find ${dirs} -maxdepth 1 -name "*.barcode.counts.withUMI.txt.gz" | sed 's/^..//g' | sed 's/\/.*//g'`; do uniqueMol=$(zcat -f ${i}/${i}.barcode.counts.withUMI.txt.gz | wc -l); zcat -f ${i}/${i}.barcode.counts.withUMI.txt.gz | cut -f1 | sort | uniq -c | sort -nk1| awk 'BEGIN {OFS="\t"} {print $2, $1}' | awk -v OFS='\t' -F'\t' -v sample="$i" -v uniqMol="$uniqueMol" '{print $1, $2, sample, uniqMol}'; done > $OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt
     
     R --quiet --no-save << EOF
     BC <- read("$OUTDIR/BarcodeFreq_UMI/BarcodeFreq_UMI.txt")
@@ -561,7 +562,7 @@ EOF
     
     
     mkdir -p $OUTDIR/UMI_distribution
-    for i in `find -name "*.barcode.counts.withUMI.txt.gz" | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do  zcat -f $i/$i.barcode.counts.withUMI.txt.gz | awk -v OFS='\t' -F'\t' -v sample="$i" '{print $1, $2, $3, sample}' ; done > $OUTDIR/UMI_distribution/UMI_distribution.txt
+    for i in `find ${dirs} -maxdepth 1 -name "*.barcode.counts.withUMI.txt.gz" | sed 's/^..//g' | sed 's/\/.*//g'`; do  zcat -f $i/$i.barcode.counts.withUMI.txt.gz | awk -v OFS='\t' -F'\t' -v sample="$i" '{print $1, $2, $3, sample}' ; done > $OUTDIR/UMI_distribution/UMI_distribution.txt
 
 
     R --quiet --no-save << EOF
@@ -611,9 +612,9 @@ fi
 #####
 #Saturation curve
 #####
-if [[ `find -name *Saturation* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]; then
+if [[ `find ${dirs} -maxdepth 1 -name "*Saturation*.txt" | sed 's/^..//g' | sed 's/\/.*//g' | wc -l` -ge 1 ]]; then
     mkdir -p $OUTDIR/SaturationCurve
-    for i in `find -name *Saturation* | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do cat ${i}/${i}.Saturation*| awk -v OFS='\t' -F'\t' -v sample="$i" '{print $1, $2, sample}'; done | perl -pe 's/ /\t/g' > $OUTDIR/SaturationCurve/SaturationCurve.txt
+    for i in `find ${dirs} -maxdepth 1 -name "*Saturation*.txt" | sed 's/^..//g' | sed 's/\/.*//g'`; do cat ${i}/${i}.Saturation*| awk -v OFS='\t' -F'\t' -v sample="$i" '{print $1, $2, sample}'; done | perl -pe 's/ /\t/g' > $OUTDIR/SaturationCurve/SaturationCurve.txt
     
     rm -f $OUTDIR/SaturationCurve/*pdf
     rm -f $OUTDIR/SaturationCurve/*png
@@ -666,32 +667,27 @@ fi
 ######
 #iPCR specific 
 ######
-if [[ `find -type d | grep BS | grep -v bak | grep iPCR| wc -l` -ge 1 ]]; then
+if [[ `find ${dirs} -maxdepth 1 -type d | grep BS | grep iPCR| wc -l` -ge 1 ]]; then
     echo 'iPCR samples found'
     mkdir -p $OUTDIR/iPCR/
-    if [[ `find -name *DistDpn.bed | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
-    then
-        for iPCR in `find -name *DistDpn.bed | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do awk -v OFS='\t' -F'\t' -v sample="$iPCR" '{print $1, $2, $3, $4, $5, sample}' ${iPCR}/DistDpn.bed; done > $OUTDIR/iPCR/DistDpn.bed
+    if [[ `find ${dirs} -maxdepth 1 -name *DistDpn.bed | sed 's/^..//g' | sed 's/\/.*//g'| wc -l` -ge 1 ]]; then
+        for iPCR in `find ${dirs} -maxdepth 1 -name *DistDpn.bed | sed 's/^..//g' | sed 's/\/.*//g' `; do awk -v OFS='\t' -F'\t' -v sample="$iPCR" '{print $1, $2, $3, $4, $5, sample}' ${iPCR}/DistDpn.bed; done > $OUTDIR/iPCR/DistDpn.bed
     fi
     
-    if [[ `find -name *DistToTSS.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
-    then
-        for iPCR in `find -name *DistToTSS.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do awk -v OFS='\t' -F'\t' -v sample="$iPCR" '{print $1, sample}' ${iPCR}/DistToTSS.txt; done >$OUTDIR/iPCR/DistToTSS.bed
+    if [[ `find ${dirs} -maxdepth 1 -name *DistToTSS.txt | sed 's/^..//g' | sed 's/\/.*//g' | wc -l` -ge 1 ]]; then
+        for iPCR in `find ${dirs} -maxdepth 1 -name *DistToTSS.txt | sed 's/^..//g' | sed 's/\/.*//g' `; do awk -v OFS='\t' -F'\t' -v sample="$iPCR" '{print $1, sample}' ${iPCR}/DistToTSS.txt; done >$OUTDIR/iPCR/DistToTSS.bed
     fi
     
-    if [[ `find -name *ObsvsExp.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
-    then
-        for iPCR in `find -name *ObsvsExp.txt | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do awk -v OFS='\t' -F'\t' -v sample="$iPCR" '{print sample, $0}' ${iPCR}/${iPCR}.ObsvsExp.txt; done >$OUTDIR/iPCR/ObsvsExp.txt
+    if [[ `find ${dirs} -maxdepth 1 -name *ObsvsExp.txt | sed 's/^..//g' | sed 's/\/.*//g' | wc -l` -ge 1 ]]; then
+        for iPCR in `find ${dirs} -maxdepth 1 -name *ObsvsExp.txt | sed 's/^..//g' | sed 's/\/.*//g' `; do awk -v OFS='\t' -F'\t' -v sample="$iPCR" '{print sample, $0}' ${iPCR}/${iPCR}.ObsvsExp.txt; done >$OUTDIR/iPCR/ObsvsExp.txt
     fi
     
-    if [[ `find -name *DistToDNase.bed | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
-    then
-        for iPCR in `find -name *DistToDNase.bed | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do awk -v OFS='\t' -F'\t' -v sample="$iPCR"  '{print $1, $2, $3, $4, sample}' ${iPCR}/DistToDNase.bed; done >$OUTDIR/iPCR/DistToDNase.bed
+    if [[ `find ${dirs} -maxdepth 1 -name *DistToDNase.bed | sed 's/^..//g' | sed 's/\/.*//g' | wc -l` -ge 1 ]]; then
+        for iPCR in `find ${dirs} -maxdepth 1 -name *DistToDNase.bed | sed 's/^..//g' | sed 's/\/.*//g' `; do awk -v OFS='\t' -F'\t' -v sample="$iPCR"  '{print $1, $2, $3, $4, sample}' ${iPCR}/DistToDNase.bed; done >$OUTDIR/iPCR/DistToDNase.bed
     fi
     
-    if [[ `find -name *DistMsp1.bed | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak| wc -l` -ge 1 ]]
-    then
-        for iPCR in `find -name *DistMsp1.bed | sed 's/^..//g' | sed 's/\/.*//g' | grep -v bak`; do awk -v OFS='\t' -F'\t' -v sample="$iPCR" '{print $1, $2, $3, $4, $5, sample}' ${iPCR}/DistMsp1.bed; done > $OUTDIR/iPCR/DistMsp1.bed
+    if [[ `find ${dirs} -maxdepth 1 -name *DistMsp1.bed | sed 's/^..//g' | sed 's/\/.*//g' | wc -l` -ge 1 ]]; then
+        for iPCR in `find ${dirs} -maxdepth 1 -name *DistMsp1.bed | sed 's/^..//g' | sed 's/\/.*//g' `; do awk -v OFS='\t' -F'\t' -v sample="$iPCR" '{print $1, $2, $3, $4, $5, sample}' ${iPCR}/DistMsp1.bed; done > $OUTDIR/iPCR/DistMsp1.bed
     fi
     
     
