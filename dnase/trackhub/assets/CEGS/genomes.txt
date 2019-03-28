@@ -1,0 +1,9 @@
+genome cegsvectors
+trackDb cegsvectors/trackDb_001.txt
+groups cegsvectors/cegsvectors_groups.txt
+description CEGS vectors
+twoBitPath cegsvectors/data/vectors.incells.2bit
+organism Landing Pad
+defaultPos LP058:1-5392
+htmlPath genomes_description.html
+ 
