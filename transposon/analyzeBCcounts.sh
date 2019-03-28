@@ -32,7 +32,7 @@ pigz -p ${NSLOTS} -c -9 ${TMPDIR}/${sample}.barcodes.txt > ${OUTDIR}/${sample}.b
 ###Overall summary statistics
 echo
 numTotalReads=`zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | wc -l`
-echo -n -e "${sample}\tNumber of total reads\t${numTotalReads}"
+echo -e "${sample}\tNumber of total reads\t${numTotalReads}"
 echo -n -e "${sample}\tNumber of total read barcodes\t"
 zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | awk -F "\t" '$1!="" {count+=1} END {print count}'
 
