@@ -262,7 +262,7 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     echo "Copying raw weblogos"
     
     mkdir -p $OUTDIR/Weblogos_raw
-    find ${dirs} -maxdepth 1-name "*.R2.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
+    find ${dirs} -maxdepth 1 -name "*.R2.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
     find ${dirs} -maxdepth 1 -name "*.R1.raw.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_raw
     for i in `ls $OUTDIR/Weblogos_raw/*R1.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R1index.html
     for i in `ls $OUTDIR/Weblogos_raw/*R2.raw.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'"  style= "position:absolute; LEFT:1200px"; height="120"></a>' ; done  >$OUTDIR/Weblogos_raw/R2index.html
