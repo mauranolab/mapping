@@ -210,7 +210,8 @@ UCSCbaseURL="https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/transposon/${p
 echo "${UCSCbaseURL}/${sample}.barcodes.coords.ucsc.bed"
 
 
-cat $OUTDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq > $OUTDIR/${sample}.uniqcoords.bed
+#NB retains strand so a few sites are represented twice
+cat $OUTDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq | sort-bed - > $OUTDIR/${sample}.uniqcoords.bed
 
 
 echo
