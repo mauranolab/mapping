@@ -148,7 +148,7 @@ for genome in "${genome_dirs[@]}"; do
 
     for assmbly in "${assmbly_dirs[@]}"; do
         # Note we that ignore emacs backups in the next line via the [/d]?$
-        bed_files=($(ls "${BASE}${genome}${assmbly}"* | egrep *[.]bed[0-9]+?$))
+        bed_files=($(ls "${BASE}${genome}${assmbly}"* | egrep *[.]bed[0-9]*$))
     
         cd "${TMPDIR}/assembly_tracks"
         for bed_file in "${bed_files[@]}"; do
