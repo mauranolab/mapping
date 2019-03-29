@@ -147,7 +147,8 @@ for genome in "${genome_dirs[@]}"; do
     assmbly_dirs=($(ls -d */))   # Elements will look like:  HPRT1/
 
     for assmbly in "${assmbly_dirs[@]}"; do
-        bed_files=($(ls "${BASE}${genome}${assmbly}"* | egrep *[.]bed[/d]?))
+        # Note we that ignore emacs backups in the next line via the [/d]?$
+        bed_files=($(ls "${BASE}${genome}${assmbly}"* | egrep *[.]bed[0-9]*$))
     
         cd "${TMPDIR}/assembly_tracks"
         for bed_file in "${bed_files[@]}"; do

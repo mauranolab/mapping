@@ -67,9 +67,9 @@ sortOrder LPgrp=+ feature=+
    parent cegsvectors_01 on
    subGroups LPgrp=LP58 feature=is_feature
    visibility pack
-   longLabel LP 58 Features (HAs: 58-1,000 61-250 62-100)
+   longLabel LP Features (HAs: 58-1,000 61-250 62-100)
    shortLabel cegsvectors Features
-   bigDataUrl data/LP58/vectors.incells.bb
+   bigDataUrl data/vectors.incells.bb
    type bigBed 4
    priority 10
 
