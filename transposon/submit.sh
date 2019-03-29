@@ -50,8 +50,8 @@ extractBCargs=$9
 shift 9
 basedir=$@
 echo "Looking for files in ${basedir}"
-f1=`find ${basedir}/ -maxdepth 1 -name "*_R1_*.fastq.gz"`
-f2=`find ${basedir}/ -maxdepth 1 -name "*_R2_*.fastq.gz"`
+f1=`find ${basedir}/ -maxdepth 1 -name "*_R1_*.fastq.gz" | sort`
+f2=`find ${basedir}/ -maxdepth 1 -name "*_R2_*.fastq.gz" | sort`
 
 
 if [[ "${sampleType}" != "DNA" ]] && [[ "${sampleType}" != "RNA" ]] && [[ "${sampleType}" != "iPCR" ]]; then
