@@ -51,6 +51,12 @@ header="chrom\tchromStart\tchromEnd\tBC\tstrand\tDNA\tRNA\tiPCR"
 echo -e $header | cat - $TMPDIR/AllBCs.txt | awk -F "\t" 'BEGIN {OFS="\t"} {print $4, $6, $7, $8}' > ${OUTBASE}.AllBCs.txt
 
 
+echo
+echo -n "Number of starting sites: "
+cat ${OUTBASE}.AllBCs.txt | wc -l
+
+
+
 OUTPUT=${OUTBASE}.txt
 
 #Remove iPCR insertions with more than one location
@@ -65,6 +71,13 @@ cat $TMPDIR/AllBCs.txt | awk  -F "\t" 'BEGIN {OFS="\t"} $1!="NA" && $1!="chrY" &
 awk -F "\t" 'BEGIN {OFS="\t"} NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${PREFIX}.singleIns.txt - |
 sort-bed - > $OUTPUT.new 
 mv $OUTPUT.new $OUTPUT
+
+
+echo
+echo -n "Number of remaining sites: "
+cat $OUTPUT | wc -l
+
+
 
 echo
 echo "Adding annotation"
@@ -114,21 +127,41 @@ prefix <- "${PREFIX}"
 outbase <- "${OUTBASE}"
 
 sampleData <- read(curFile, header=T)
-cat(prefix, dim(sampleData), '\n')
 
+
+###Basic filtering
 sampleData <- sampleData[!is.na(sampleData[,"DNA"]),]
 sampleData <- sampleData[!is.na(sampleData[,"RNA"]),]
 sampleData <- sampleData[!is.na(sampleData[,"iPCR"]),]
 
-sampleData  <- subset(sampleData, RNA >=1 & DNA >=1)
 #NB throws away sites with the same coords. There's not a ton of these, and I assume they are odd sequencing errors, but some have high read counts
 #throwing away sites at same position, opposite strand for now: sampleData[,"strand"]
 sampleData <- sampleData[!duplicaterows(paste(sampleData[,"chrom"], sampleData[,"chromStart"])),]
 
-sampleData\$expression <- sampleData[,"RNA"]/sampleData[,"DNA"]
-sampleData\$zscore <- scale(log10(sampleData[,"expression"]))
 
-sampleData[,"zscore"] <- sampleData[,"zscore"] + 4
+###Thresholding
+numDNAreads <- sum(sampleData[,"DNA"])
+numRNAreads <- sum(sampleData[,"RNA"])
+
+
+#This is redundant as barcodes.coords.bed is already thresholded
+sampleData  <- subset(sampleData, iPCR >= 2)
+#But DNA/RNA counts are not
+sampleData  <- subset(sampleData, DNA >= 10)
+
+#Normalize to counts per 1M reads
+sampleData[,"DNA"] <- sampleData[,"DNA"] / numDNAreads * 10^6
+sampleData[,"RNA"] <- sampleData[,"RNA"] / numRNAreads * 10^6
+
+
+sampleData\$expression <- sampleData[,"RNA"]/sampleData[,"DNA"]
+sampleData\$zscore <- scale(log(sampleData[,"expression"], base=2))
+
+cat("Clipping ", length(sampleData[,"zscore"] > 3), " sites z > 3")
+sampleData[sampleData[,"zscore"] > 3,"zscore"] <- 3
+cat("Clipping ", length(sampleData[,"zscore"] < -3), " sites z < -3")
+sampleData[sampleData[,"zscore"] < -3,"zscore"] <- -3
+sampleData[,"zscore"] <- (sampleData[,"zscore"] + 3) / 6
 
 write.table(subset(sampleData, select=c("chrom", "chromStart", "chromEnd",  "zscore")), file=paste0(outbase, '.zscore.bed'), quote=F, sep='\t', col.names=F, row.names=F) 
 EOF
@@ -136,10 +169,12 @@ EOF
 
 echo
 echo "Generating UCSC track"
+numUCSCsites=`cat ${OUTBASE}.zscore.bed | wc -l`
+echo "Num of sites in browser track: ${numUCSCsites}"
 
 bedGraphToBigWig ${OUTBASE}.zscore.bed /vol/isg/annotation/fasta/hg38/hg38.chrom.sizes ${OUTBASE}.zscore.bw
 UCSCbaseURL="https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
-echo "track name=${PREFIX}-activity description=\"${PREFIX} activity\" maxHeightPixels=30 viewLimits=0:8 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}.zscore.bw"
+echo "track name=${PREFIX}-activity description=\"${PREFIX} activity (zscore of log(RNA/DNA) scaled onto [0,1]), ${numUCSCsites} sites\" maxHeightPixels=30 viewLimits=0:1 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}.zscore.bw"
 
 
 echo
