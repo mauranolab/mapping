@@ -87,10 +87,10 @@ rn6_sacCer3)
     referencefasta=/vol/isg/annotation/fasta/rn6_sacCer3/rn6_sacCer3.fa.gz
     dbsnpvcf=/dev/null
     ;;
-cegsvectors)
-    bwaIndex=/vol/isg/annotation/bwaIndex/cegsvectors/cegsvectors
+cegsvectors*)
+    bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy 1"
-    referencefasta=/vol/cegs/sequences/cegsvectors/vectors.incells.fa
+    referencefasta=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.fa
     dbsnpvcf=/dev/null
     ;;
 *)
@@ -104,8 +104,8 @@ esac
 annotationgenome=`echo ${mappedgenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
 
 
-if [[ "${mappedgenome}" == "cegsvectors" ]]; then
-    chromsizes="/vol/cegs/sequences/cegsvectors/vectors.incells.chrom.sizes"
+if [[ "${mappedgenome}" =~ ^cegsvectors ]]; then
+    chromsizes="/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.chrom.sizes"
 else
     chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
 fi

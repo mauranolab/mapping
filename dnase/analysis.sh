@@ -676,7 +676,7 @@ samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "
 
 
 PEreads=`cat $TMPDIR/${name}.${mappedgenome}.flagstat.txt | grep "paired in sequencing" | awk '{print $1+$3}'`
-if [[ "${PEreads}" -gt 0 ]] && [[ "${mappedgenome}" != "cegsvectors" ]]; then
+if [[ "${PEreads}" -gt 0 ]] && [[ ! "${mappedgenome}" =~ ^cegsvectors ]]; then
     echo
     echo "Template lengths"
     samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrM"' | awk -F "\t" 'BEGIN {OFS="\t"} $9>0 {print $9}' | sort -k2,2n | tee ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt |
