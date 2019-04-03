@@ -119,5 +119,5 @@ For debugging trackhub, add "udcTimeout=1&" to browser URL
 
 You can also debug error messages with:
 ```
-hubCheck -udcDir=/tmp https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/hub.txt
+hubCheck -udcDir=/tmp https://cascade.isg.med.nyu.edu/mauranolab/encode/trackhub/hub.txt
 ```
