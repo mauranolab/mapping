@@ -3,6 +3,8 @@ set -eu -o pipefail
 
 #Based on stampipes/scripts/fastq/splitfastq.bash
 #Requires sequences/qualities to be on single line
+#NB doesn't work with SE fastq files
+
 
 module add pigz
 
