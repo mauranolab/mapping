@@ -41,7 +41,7 @@ hg19)
     bwaIndex=/vol/isg/annotation/bwaIndex/hg19all/hg19all
     ploidy="--ploidy GRCh37"
     referencefasta=/vol/isg/annotation/fasta/hg19/hg19.fa
-    dbsnpvcf=/dev/null
+    dbsnpvcf=/vol/isg/annotation/bed/hg19/snp151/All_20180418.vcf.gz
     ;;
 hg38_noalt)
     bwaIndex=/vol/isg/annotation/bwaIndex/hg38_noalt/hg38_noalt
