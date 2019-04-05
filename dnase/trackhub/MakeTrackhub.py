@@ -103,19 +103,14 @@ hub, genomes_file, genome, trackdb = default_hub(
 
 # Initialize the supertrack
 if args.supertrack is not None:
+    supertrack = SuperTrack(
+        name=cleanTrackName(args.supertrack),
+        short_label=args.supertrack,
+        long_label=args.supertrack,
+        supertrackonoff="show")
     if args.genome == "cegsvectors":
-        supertrack = SuperTrack(
-            name=cleanTrackName(args.supertrack),
-            group="cegsvectors",
-            short_label=args.supertrack,
-            long_label=args.supertrack)
-        trackdb.add_tracks(supertrack)
-    else:
-        supertrack = SuperTrack(
-            name=cleanTrackName(args.supertrack),
-            short_label=args.supertrack,
-            long_label=args.supertrack)
-        trackdb.add_tracks(supertrack)
+        supertrack.add_params(group="cegsvectors")
+    trackdb.add_tracks(supertrack)
 
 
 # Now build the composites, and add them all to the supertrack.
