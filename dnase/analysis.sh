@@ -103,7 +103,7 @@ getcolor () {
        *)
                    trackcolor="0,0,0";; #black
     esac
-    echo $trackcolor
+    echo ${trackcolor}
 }
 
 
@@ -313,14 +313,14 @@ if [[ "${sampleType}" == "callsnps" ]] || [[ "${sampleType}" == "callsnpsCapture
         #Print track links here for convenience even if the files are not created yet
         echo
         echo "Making coverage track"
-        echo "track name=${name}-cov description=\"${name} ${genomecov}x genomic coverage (${analyzedReadsM}M analyzed reads) )\" maxHeightPixels=30 color=$trackcolor viewLimits=0:500 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.coverage.bw"
+        echo "track name=${name}-cov description=\"${name} ${genomecov}x genomic coverage (${analyzedReadsM}M analyzed reads) )\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:500 autoScale=on visibility=full db=${annotationgenome} type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.coverage.bw"
         
         echo
         echo "Making VCF track"
-        echo "track type=vcfTabix name=${name}-vcf description=\"${name} VCF (${analyzedReadsM}M nonredundant reads)\" visibility=pack bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.filtered.vcf.gz"
+        echo "track name=${name}-vcf description=\"${name} VCF (${analyzedReadsM}M nonredundant reads)\" visibility=pack applyMinQual=true minQual=10 db=${annotationgenome} type=vcfTabix  bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.filtered.vcf.gz"
         
         echo "Making variant track"
-        echo "track type=bigBed name=${name}-variants description=\"${name} variants (${analyzedReadsM}M nonredundant reads)\" visibility=pack bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.variants.bb"
+        echo "track name=${name}-gts description=\"${name} genotypes (${analyzedReadsM}M nonredundant reads)\" visibility=pack db=${annotationgenome} type=bigBed  bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.genotypes.bb"
     fi
 elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "${sampleType}" == "chipseq" ]]; then
     echo
@@ -353,7 +353,7 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
     #Kent tools can't use STDIN
     wigToBigWig $TMPDIR/${name}.${mappedgenome}.density.wig ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.density.bw
     
-    echo "track name=${name}-dens description=\"${name} ${ucscTrackDescriptionDataType} Density (${analyzedReadsM}M analyzed reads; normalized to 1M)\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.density.bw"
+    echo "track name=${name}-dens description=\"${name} ${ucscTrackDescriptionDataType} Density (${analyzedReadsM}M analyzed reads; normalized to 1M)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full db=${annotationgenome} type=bigWig  bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.density.bw"
     
     
     if [[ "${sampleType}" != "chipseq" ]]; then
@@ -369,10 +369,12 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
         
         #Skip chrM since UCSC doesn't like the cut count to the right of the last bp in a chromosome
         unstarch ${sampleOutdir}/${name}.${mappedgenome}.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM"' > $TMPDIR/${name}.${mappedgenome}.perBase.bedGraph
+        #Fix problems with reads running off end of chromosome
+        bedClip $TMPDIR/${name}.${mappedgenome}.perBase.bedGraph ${chromsizes} $TMPDIR/${name}.${mappedgenome}.perBase.clipped.bedGraph
         #Kent tools can't use STDIN
-        bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.perBase.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.perBase.bw
+        bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.perBase.clipped.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.perBase.bw
         
-        echo "track name=${name}-cuts description=\"${name} ${ucscTrackDescriptionDataType} cut counts (${analyzedReadsM}M analyzed reads)\" maxHeightPixels=30 color=$trackcolor viewLimits=0:3 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.perBase.bw"
+        echo "track name=${name}-cuts description=\"${name} ${ucscTrackDescriptionDataType} cut counts (${analyzedReadsM}M analyzed reads)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full db=${annotationgenome} type=bigWig  bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.perBase.bw"
         
         
         #echo "Making fragment coverage track"
@@ -551,10 +553,11 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
                 fi
                 
                 #Peaks
+                #NB peaks have "i" in col 4 instead of id-# identifier
                 hotspot2peakfile=${sampleOutdir}/hotspot2/${name}.${mappedgenome}.peaks.starch
                 if [ -s "${hotspot2peakfile}" ] && [ `unstarch --elements ${hotspot2peakfile}` -gt 0 ]; then
-                    unstarch ${hotspot2peakfile} | cut -f1-4 > $TMPDIR/${name}.${mappedgenome}.peaks.bed
-                    bedToBigBed -type=bed4 $TMPDIR/${name}.${mappedgenome}.peaks.bed ${chromsizes} ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.peaks.bb
+                    unstarch ${hotspot2peakfile} | cut -f1-3 > $TMPDIR/${name}.${mappedgenome}.peaks.bed
+                    bedToBigBed -type=bed3 $TMPDIR/${name}.${mappedgenome}.peaks.bed ${chromsizes} ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.peaks.bb
                 else
                     echo "WARNING could not find ${hotspot2peakfile} to make bigBed"
                 fi
@@ -674,7 +677,7 @@ samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "
 
 
 PEreads=`cat $TMPDIR/${name}.${mappedgenome}.flagstat.txt | grep "paired in sequencing" | awk '{print $1+$3}'`
-if [[ "${PEreads}" -gt 0 ]] && [[ "${mappedgenome}" != "cegsvectors" ]]; then
+if [[ "${PEreads}" -gt 0 ]] && [[ ! "${mappedgenome}" =~ ^cegsvectors ]]; then
     echo
     echo "Template lengths"
     samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrM"' | awk -F "\t" 'BEGIN {OFS="\t"} $9>0 {print $9}' | sort -k2,2n | tee ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt |

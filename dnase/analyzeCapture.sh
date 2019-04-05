@@ -16,6 +16,14 @@ hg38_full)
     annotationgenome="hg38"
     mappableFile="/vol/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K36.mappable_only.starch"
     ;;
+mm10)
+    annotationgenome="mm10"
+    mappableFile="/vol/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K36.mappable_only.starch"
+    ;;
+cegsvectors)
+    annotationgenome="cegsvectors"
+    mappableFile="/dev/null"
+    ;;
 rn6)
     annotationgenome="rn6"
     mappableFile="/dev/null"
@@ -32,6 +40,10 @@ HPRT1_bait)
     ;;
 RnHoxa_bait)
     grep -w "RnHoxa_assembly" /vol/cegs/sequences/rn6/RnHoxa/RnHoxa_assembly.bed | bedops -m - > $TMPDIR/target.bed
+    ;;
+LP087_bait)
+    #TODO not counting backbone since we don't support multiple chromosomes
+    cat /vol/cegs/sequences/cegsvectors/vectors.incells.chrom.sizes | awk -F "\t" 'BEGIN {OFS="\t"} $1=="LP087" {print $1, 0, $2}' > $TMPDIR/target.bed
     ;;
 *)
     echo "ERROR: Don't recognize bait ${bait}";
@@ -52,10 +64,10 @@ echo "Analyzing ${bait} bait mapped to ${mappedgenome}"
 #Summary of on-target coverage
 #NB genomecov is over all chrom.sizes -- right way?
 
-echo -e "Sample\tNum_sequenced_reads\tNonredundant_reads_analyzed\tNonredundant_reads_on_target\tDuplicate_reads_on_target\tcov.wholegenome\tcov.mean\tcov.median\tcov.5th.pctile\tcov.sd"
+echo -e "Sample\tBait\tNum_sequenced_reads\tNonredundant_reads_analyzed\tNonredundant_reads_on_target\tDuplicate_reads_on_target\tcov.wholegenome\tcov.mean\tcov.median\tcov.5th.pctile\tcov.sd"
 for covfile in `find ${dirs} -name "*.${mappedgenome}.coverage.binned.starch"`; do
     base=`basename ${covfile} .${mappedgenome}.coverage.binned.starch`
-    echo -n -e "${base}\t"
+    echo -n -e "${base}\t${bait}\t"
     
     readsfile=`echo ${covfile} | perl -pe 's/\.coverage.binned.starch$/.reads.starch/g;'`
     bamfile=`echo ${covfile} | perl -pe 's/\.coverage.binned.starch$/.bam/g;'`

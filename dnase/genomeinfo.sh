@@ -41,7 +41,7 @@ hg19)
     bwaIndex=/vol/isg/annotation/bwaIndex/hg19all/hg19all
     ploidy="--ploidy GRCh37"
     referencefasta=/vol/isg/annotation/fasta/hg19/hg19.fa
-    dbsnpvcf=/dev/null
+    dbsnpvcf=/vol/isg/annotation/bed/hg19/snp151/All_20180418.vcf.gz
     ;;
 hg38_noalt)
     bwaIndex=/vol/isg/annotation/bwaIndex/hg38_noalt/hg38_noalt
@@ -87,10 +87,10 @@ rn6_sacCer3)
     referencefasta=/vol/isg/annotation/fasta/rn6_sacCer3/rn6_sacCer3.fa.gz
     dbsnpvcf=/dev/null
     ;;
-cegsvectors)
-    bwaIndex=/vol/isg/annotation/bwaIndex/cegsvectors/cegsvectors
+cegsvectors*)
+    bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy 1"
-    referencefasta=/vol/cegs/sequences/cegsvectors/vectors.incells.fa
+    referencefasta=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.fa
     dbsnpvcf=/dev/null
     ;;
 *)
@@ -104,8 +104,8 @@ esac
 annotationgenome=`echo ${mappedgenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
 
 
-if [[ "${mappedgenome}" == "cegsvectors" ]]; then
-    chromsizes="/vol/cegs/sequences/cegsvectors/vectors.incells.chrom.sizes"
+if [[ "${mappedgenome}" =~ ^cegsvectors ]]; then
+    chromsizes="/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.chrom.sizes"
 else
     chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
 fi

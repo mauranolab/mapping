@@ -56,15 +56,13 @@ echo -n "Number of starting sites: "
 cat ${OUTBASE}.AllBCs.txt | wc -l
 
 
-
 OUTPUT=${OUTBASE}.txt
 
 #Remove iPCR insertions with more than one location
 cat ${ipcrfile} | awk -F "\t" 'BEGIN {OFS="\t"} {print $4}' | sort  | uniq -c | sort -nk1 | awk '$1==1 {print $2}' > $TMPDIR/${PREFIX}.singleIns.txt
 
-#Create bed file of all inserted sites, including NAs
 echo
-echo "Creating bed-file and removing barcodes with multiple insertions sites"
+echo "Creating bed file for all BCs with a single integration site"
 header="chrom\tchromStart\tchromEnd\tBC\tvalue\tstrand\tDNA\tRNA\tiPCR"
 cat $TMPDIR/AllBCs.txt | awk  -F "\t" 'BEGIN {OFS="\t"} $1!="NA" && $1!="chrY" && $1!="chrM" {print $1, $2, $3, $4, 0, $5, $6, $7, $8}' |
 #Retains barcodes from $OUTPUT that are present in $TMPDIR/${PREFIX}.singleIns.txt
@@ -121,50 +119,7 @@ mv $OUTPUT.new $OUTPUT
 
 echo
 echo "Processing data in R"
-R --quiet --no-save << EOF
-curFile <- "${OUTPUT}"
-prefix <- "${PREFIX}"
-outbase <- "${OUTBASE}"
-
-sampleData <- read(curFile, header=T)
-
-
-###Basic filtering
-sampleData <- sampleData[!is.na(sampleData[,"DNA"]),]
-sampleData <- sampleData[!is.na(sampleData[,"RNA"]),]
-sampleData <- sampleData[!is.na(sampleData[,"iPCR"]),]
-
-#NB throws away sites with the same coords. There's not a ton of these, and I assume they are odd sequencing errors, but some have high read counts
-#throwing away sites at same position, opposite strand for now: sampleData[,"strand"]
-sampleData <- sampleData[!duplicaterows(paste(sampleData[,"chrom"], sampleData[,"chromStart"])),]
-
-
-###Thresholding
-numDNAreads <- sum(sampleData[,"DNA"])
-numRNAreads <- sum(sampleData[,"RNA"])
-
-
-#This is redundant as barcodes.coords.bed is already thresholded
-sampleData  <- subset(sampleData, iPCR >= 2)
-#But DNA/RNA counts are not
-sampleData  <- subset(sampleData, DNA >= 10)
-
-#Normalize to counts per 1M reads
-sampleData[,"DNA"] <- sampleData[,"DNA"] / numDNAreads * 10^6
-sampleData[,"RNA"] <- sampleData[,"RNA"] / numRNAreads * 10^6
-
-
-sampleData\$expression <- sampleData[,"RNA"]/sampleData[,"DNA"]
-sampleData\$zscore <- scale(log(sampleData[,"expression"], base=2))
-
-cat("Clipping ", length(sampleData[,"zscore"] > 3), " sites z > 3")
-sampleData[sampleData[,"zscore"] > 3,"zscore"] <- 3
-cat("Clipping ", length(sampleData[,"zscore"] < -3), " sites z < -3")
-sampleData[sampleData[,"zscore"] < -3,"zscore"] <- -3
-sampleData[,"zscore"] <- (sampleData[,"zscore"] + 3) / 6
-
-write.table(subset(sampleData, select=c("chrom", "chromStart", "chromEnd",  "zscore")), file=paste0(outbase, '.zscore.bed'), quote=F, sep='\t', col.names=F, row.names=F) 
-EOF
+/vol/mauranolab/transposon/src/combineSignalWithInsertions.R ${PREFIX} ${OUTBASE}
 
 
 echo

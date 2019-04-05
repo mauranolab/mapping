@@ -167,7 +167,8 @@ def bwaPipeline(sampleName, sampleID, sampleType, mappedgenome, processingComman
 def DNase(line):
     speciesToGenomeReference = {
         'Human': 'hg38_noalt',
-        'Mouse': 'mm10'
+        'Mouse': 'mm10',
+        'Mouse+rat': 'mm10,rn6'
     }
     mappedgenome = speciesToGenomeReference[line["Species"]]
     

@@ -1,5 +1,6 @@
 #!/bin/env python
 from trackhub import Track, CompositeTrack, ViewTrack, default_hub, SuperTrack
+from trackhub.track import SubGroupDefinition
 from sys import argv
 import sys
 import re
@@ -16,11 +17,9 @@ parser.add_argument('Input', action = 'store', help = 'Input tsv file with sampl
 parser.add_argument('--genome', action = 'store', required = True, help = 'genome assembly name')
 parser.add_argument('--URLbase', action = 'store', required = True, help = 'URL base at which track files are hosted')
 parser.add_argument('--includeSampleIDinSampleCol', action = 'store_true', default = False, help = 'Append the Sample ID in the Sample column')
-parser.add_argument('--supertrack', action = 'store', required = False, help = 'Encompass all composite tracks generated within supertrack. Supertrack name specifiied as parameter.')
+parser.add_argument('--checksamples', action = 'store_true', default = False, help = 'Mark Density and Coverage tracks for display by turning on composite track without going to configuration page')
+parser.add_argument('--supertrack', action = 'store', required = False, help = 'Encompass all composite tracks generated within supertrack. Supertrack name specified as parameter.')
 parser.add_argument('--generateHTMLdescription', action = 'store_true', default = False, help = 'Link to HTML descriptions for composite tracks, assumed to be present at [genome]/descriptions/[group name].html')
-
-def natural_key(string_):
-    return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
 try:
     args = parser.parse_args()
@@ -35,6 +34,27 @@ def cleanTrackName(x):
     x = re.sub(r'-', '_', x)
     x = re.sub(r'[^a-zA-Z0-9_]', '', x)
     return x
+
+
+#Helper functions for managing subGroups
+def natural_key(string_):
+    return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
+
+def createSubGroup(subGroups, subGroupNames, keys, name, label):
+    uniqkeys = set(keys)
+    if uniqkeys and not all(x == 'NA' for x in uniqkeys):
+        subGroupDict = dict(zip(uniqkeys, uniqkeys))
+        subGroupDef = SubGroupDefinition(
+            # The "label" below needs to have the underscore in it, else only the part up to the first
+            # space will be displayed. However, the underscore will not be displayed in the browser. 
+            # Kent converts the underscores to spaces for display purposes.
+            # Hyphens seem to be retained though.
+            name=name,
+            label=label,
+            mapping=OrderedDict(sorted(subGroupDict.items(), key=lambda x: x[1]))
+        )
+        subGroups.append(subGroupDef)
+        subGroupNames[name] = len(uniqkeys)
 
 
 ########
@@ -56,13 +76,18 @@ for line in inputfile_reader:
 # in the following for loop, as well as in the various track construction blocks below.
 assays = set([])
 for assay_type in set([line.get('Assay') for line in input_data_all]):
-    if(assay_type == "DNase-seq" or assay_type == "DNA" or assay_type == "Capture"):
+    if assay_type == "DNase-seq" or assay_type == "DNA" or assay_type == "Capture":
         assays.add(assay_type)
     else:
         #ChIP-seq tracks have the epitope as the assay type
         #NB this will pick up any samples whose type doesn't match the above
         assays.add("ChIP-seq")
 
+
+if args.checksamples:
+    DensCovTracksDefaultDisplayMode="on"
+else:
+    DensCovTracksDefaultDisplayMode="off"
 
 ########
 #Create hub file
@@ -77,17 +102,17 @@ hub, genomes_file, genome, trackdb = default_hub(
 
 
 # Initialize the supertrack
-if(args.supertrack is not None):
-    if(args.genome == "cegsvectors"):
+if args.supertrack is not None:
+    if args.genome == "cegsvectors":
         supertrack = SuperTrack(
-            name=args.supertrack,
+            name=cleanTrackName(args.supertrack),
             group="cegsvectors",
             short_label=args.supertrack,
             long_label=args.supertrack)
         trackdb.add_tracks(supertrack)
     else:
         supertrack = SuperTrack(
-            name=args.supertrack,
+            name=cleanTrackName(args.supertrack),
             short_label=args.supertrack,
             long_label=args.supertrack)
         trackdb.add_tracks(supertrack)
@@ -100,7 +125,7 @@ for assay_type in assays:
     
     input_data = []
     for line in input_data_all:
-        if(line['Assay'] == assay_type or assay_type == "ChIP-seq" and line['Assay'] not in assays):
+        if line['Assay'] == assay_type or assay_type == "ChIP-seq" and line['Assay'] not in assays:
             input_data.append(line)
         else:
             continue
@@ -114,17 +139,30 @@ for assay_type in assays:
     Group = sorted(set([line['Group'] for line in input_data]), reverse=True)
     
     for curGroup in Group:
-        # Suppress Replicate and/or Age in the Track Settings screen if they are all NAs.
+        ########
+        #Create subgroup definitions
+        ########
+        matchingSamples = [line for line in input_data if curGroup == line['Group']]
+        
+        subGroupDefs = []
+        #Dict containing the active subgroup internal names and the number of unique levels
+        subGroupNames = dict()
+        createSubGroup(subGroupDefs, subGroupNames, sorted([re.sub(r'_L$|_R$', '', line['Name']) + ('-' + line['DS'] if args.includeSampleIDinSampleCol else '') for line in matchingSamples]), "sampleName", "Sample")
+        if not args.includeSampleIDinSampleCol:
+            createSubGroup(subGroupDefs, subGroupNames, sorted([line['DS'] for line in matchingSamples]), "DS", "Sample_ID")
+        createSubGroup(subGroupDefs, subGroupNames, sorted([line['Replicate'] for line in matchingSamples]), "replicate", "Replicate")
+        createSubGroup(subGroupDefs, subGroupNames, sorted([line['Assay'] for line in matchingSamples]), "assay", "Assay")
+        createSubGroup(subGroupDefs, subGroupNames, sorted([re.sub(' ', '_', line['Age']) for line in matchingSamples], key=natural_key), "age", "Age")
+        
         # SortOrder controls what is displayed, even if we retain all the subgroup definitions.
-        SortOrder = "sampleName=+ DS=+ view=+ "
-        
-        uniqueReplicates = [line['Replicate'] for line in input_data if(line['Group'] == curGroup)]
-        if(not all(x == 'NA' for x in uniqueReplicates)):
-            SortOrder = SortOrder + "replicate=+ "
-        
-        uniqueAges = [line['Age'] for line in input_data if(line['Group'] == curGroup)]
-        if(not all(x == 'NA' for x in uniqueAges)):
-            SortOrder = SortOrder + "Age=+ "
+        SortOrder = "sampleName=+"
+        if 'DS' in subGroupNames:
+            SortOrder = SortOrder + " DS=+"
+        if 'replicate' in subGroupNames:
+            SortOrder = SortOrder + " replicate=+ "
+        if 'age' in subGroupNames:
+            SortOrder = SortOrder + " age=+ "
+        SortOrder = SortOrder + " view=+"
         
         # Adding suffix
         curGroup_trackname = cleanTrackName(args.genome + "_" + curGroup + "_" + assay_suffix)
@@ -134,12 +172,6 @@ for assay_type in assays:
         # priority=bignumber - mydate
         # Why is priority="2" not showing up in the output?
         # Should be a number anyway.
-        
-        # Change bigBed to 'bed 3' ?
-        #    Typically, a single level composite has the same type as all of its subtracks 
-        #    and offers user configuration options at the top level. But a multi-view composite
-        #    is most often given the bare-bones "type bed 3", and offers user configuration
-        #    options at the view level. Exceptions to this pattern do exist but they are rare.
         
         # short labels are supposed to be 17 chars max. However, the browser does not seem to care.
         shrt_label = curGroup + '_' + assay_type
@@ -155,13 +187,34 @@ for assay_type in assays:
             tracktype="bigBed",
             priority="2",
             visibility="hide",
+            parentonoff="off",
             sortOrder=SortOrder,
             autoScale = "off",
             bigDataUrl ='NULL',
             maxHeightPixels= "100:32:8")
+        composite.add_subgroups(subGroupDefs)
         
-        if(args.generateHTMLdescription):
+        if args.generateHTMLdescription:
             composite.add_params(html='descriptions/' + curGroup + '.html')
+        
+        params_dimensions = ""
+        if assay_type == "DNase-seq" or assay_type == "DNA" or assay_type == "Capture":
+            params_dimensions="dimY=sampleName"
+            if 'age' in subGroupNames:
+                params_dimensions = params_dimensions + " dimX=age"
+        else:
+            # ChIP-seq
+            if subGroupNames['assay'] < subGroupNames['sampleName']:
+                params_dimensions="dimX=assay dimY=sampleName"
+            else:
+                params_dimensions="dimY=assay dimX=sampleName"
+        if 'replicate' in subGroupNames:
+            params_dimensions = params_dimensions + " dimA=replicate"
+            #NB requires mauranolab fork of daler/trackhub
+            #Likely also compatible with pull request to revamp daler parameter support: https://github.com/daler/trackhub/pull/33
+            composite.add_params(dimensionAchecked="rep1")
+        composite.add_params(dimensions=params_dimensions)
+        
         
         ########
         #Create view track
@@ -169,139 +222,113 @@ for assay_type in assays:
         #Notes
         #adding viewUi="off" seems to expand the panel by default, opposite expectation
         
-        if (assay_type == "DNase-seq") or (assay_type == "ChIP-seq"):
-            Dens_view = ViewTrack(
-                name="Dens_view_" + curGroup_trackname,
-                view="Density",
-                visibility="full",
-                tracktype="bigWig",
-                viewLimits = "0:3",
-                autoScale='off',
-                short_label="Density",
-                long_label="Density")
-            composite.add_view(Dens_view)
-            
-        if (assay_type == "DNase-seq"):
-            Cuts_view = ViewTrack(
-                name="Cuts_view_" + curGroup_trackname,
-                view="Cuts",
-                visibility="hide",
-                tracktype="bigWig",
-                viewLimits = "0:2",
-                autoScale='off',
-                short_label="Cut Counts",
-                long_label="Cut Counts")
-            composite.add_view(Cuts_view)
-        
-        if (assay_type == "DNase-seq") or (assay_type == "ChIP-seq"):
-            Hotspots_view = ViewTrack(
-                name="Hotspots_view_" + curGroup_trackname,
-                view="Hotspots",
-                visibility="hide",
-                tracktype="bigBed 3",
-                maxItems=10000,
-                short_label="Hotspots",
-                long_label="Hotspots")
-            composite.add_view(Hotspots_view)
-        
-        if (assay_type == "DNase-seq") or (assay_type == "ChIP-seq"):
-            Peaks_view = ViewTrack(
-                name="Peaks_view_" + curGroup_trackname,
-                view="Peaks",
-                visibility="hide",
-                tracktype="bigBed 3",
-                maxItems=10000,
-                short_label="Peaks",
-                long_label="Peaks")
-            composite.add_view(Peaks_view)
-            
-        if (assay_type == "DNA" or assay_type == "Capture"):
-            Coverage_view = ViewTrack(
-                name="Coverage_view_" + curGroup_trackname,
-                view="Coverage",
-                visibility="full",
-                tracktype="bigWig",
-                viewLimits = "0:500",
-                autoScale='on',
-                short_label="Coverage",
-                long_label="Coverage")
-            composite.add_view(Coverage_view)
-        
-        if (assay_type == "DNA" or assay_type == "Capture"):
-            Variants_view = ViewTrack(
-                name="Variants_view_" + curGroup_trackname,
-                view="Variants",
-                visibility="hide",
-                tracktype="bigBed",
-                autoScale='off',
-                maxItems=10000,
-                short_label="Variants",
-                long_label="Variants")
-            composite.add_view(Variants_view)
-        
         Reads_view = ViewTrack(
             name="Reads_view_" + curGroup_trackname,
             view="Reads",
             visibility="hide",
+            parentonoff="off",
             tracktype="bam",
             short_label="Reads",
-            maxItems=10000,
+            maxItems=250,
             pairEndsByName="on",
             long_label="Reads")
         composite.add_view(Reads_view)
         
+        if assay_type == "DNA" or assay_type == "Capture":
+            Coverage_view = ViewTrack(
+                name="Coverage_view_" + curGroup_trackname,
+                view="Coverage",
+                visibility="full",
+                parentonoff=DensCovTracksDefaultDisplayMode,
+                tracktype="bigWig",
+                viewLimits="0:500",
+                autoScale='on',
+                maxHeightPixels="100:30:10",
+                short_label="Coverage",
+                long_label="Coverage")
+            composite.add_view(Coverage_view)
+        
+        if assay_type == "DNase-seq" or assay_type == "ChIP-seq":
+            Dens_view = ViewTrack(
+                name="Dens_view_" + curGroup_trackname,
+                view="Density",
+                visibility="full",
+                parentonoff=DensCovTracksDefaultDisplayMode,
+                tracktype="bigWig",
+                viewLimits="0:3",
+                autoScale='off',
+                maxHeightPixels="100:30:10",
+                short_label="Density",
+                long_label="Density")
+            composite.add_view(Dens_view)
+            
+        if assay_type == "DNase-seq" or assay_type == "ChIP-seq":
+            Hotspots_view = ViewTrack(
+                name="Hotspots_view_" + curGroup_trackname,
+                view="Hotspots",
+                visibility="hide",
+                parentonoff="off",
+                tracktype="bigBed",
+                maxItems=250,
+                short_label="Hotspots",
+                long_label="Hotspots")
+            composite.add_view(Hotspots_view)
+            
+            Peaks_view = ViewTrack(
+                name="Peaks_view_" + curGroup_trackname,
+                view="Peaks",
+                visibility="hide",
+                parentonoff="off",
+                tracktype="bigBed",
+                maxItems=250,
+                short_label="Peaks",
+                long_label="Peaks")
+            composite.add_view(Peaks_view)
+        
+        if assay_type == "DNase-seq":
+            Cuts_view = ViewTrack(
+                name="Cuts_view_" + curGroup_trackname,
+                view="Cuts",
+                visibility="hide",
+                parentonoff="off",
+                tracktype="bigWig",
+                viewLimits="0:2",
+                autoScale='off',
+                maxHeightPixels="100:30:10",
+                short_label="Cut Counts",
+                long_label="Cut Counts")
+            composite.add_view(Cuts_view)
+        
+        if args.genome != "cegsvectors":
+            if assay_type == "DNA" or assay_type == "Capture":
+                Variants_view = ViewTrack(
+                    name="Variants_view_" + curGroup_trackname,
+                    view="Variants",
+                    visibility="hide",
+                    parentonoff="off",
+                    tracktype='vcfTabix',
+                    maxItems=250,
+                    applyMinQual="true",
+                    minQual=10,
+                    short_label="Variants",
+                    long_label="Variants")
+                composite.add_view(Variants_view)
+        
+        if assay_type == "DNA" or assay_type == "Capture":
+            Genotypes_view = ViewTrack(
+                name="Genotypes_view_" + curGroup_trackname,
+                view="Genotypes",
+                visibility="hide",
+                parentonoff="off",
+                tracktype="bigBed",
+                maxItems=250,
+                short_label="Genotypes",
+                long_label="Genotypes")
+            composite.add_view(Genotypes_view)
+        
+        
         for view in composite.views:
             view.add_params(configurable="on")
-        
-        
-        ########
-        #Create subgroup definitions
-        ########
-        matchingSamples = [line for line in input_data if curGroup == line['Group']]
-        sampleNames = sorted(set([re.sub(r'_L$|_R$', '', line['Name']) + ('-' + line['DS'] if args.includeSampleIDinSampleCol else '') for line in matchingSamples]))
-        DSnumbers = sorted(set([line['DS'] for line in matchingSamples]))
-        Replicates = sorted(set([line['Replicate'] for line in matchingSamples]))
-        Assay = sorted(set([line['Assay'] for line in matchingSamples]))
-        Age = sorted(set([re.sub(' ', '_', line['Age']) for line in matchingSamples]), key=natural_key)
-        
-        sampleNameDict = dict(zip(sampleNames, sampleNames))
-        dictAssay = dict(zip(Assay, Assay))
-        DSdict = dict(zip(DSnumbers, DSnumbers))
-        repDict = dict(zip(Replicates, Replicates))
-        ageDict= dict(zip(Age, Age))
-        
-        from trackhub.track import SubGroupDefinition
-        subgroups = [
-            SubGroupDefinition(
-                name="sampleName",
-                label="Sample",
-                mapping=OrderedDict(sorted(sampleNameDict.items(), key=lambda x: x[1]))),
-            
-            SubGroupDefinition(
-                name="Assay",
-                label="Assay",
-                mapping=OrderedDict(sorted(dictAssay.items(), key=lambda x: x[1]))),
-            
-            SubGroupDefinition(
-                name="replicate",
-                label="Replicate",
-                mapping=OrderedDict(sorted(repDict.items(), key=lambda x: x[1]))),
-                
-            # The "label" below  needs to have the underscore in it, else only the part up to the first
-            # space will be displayed. However, the underscore will not be displayed in the browser. 
-            # Kent converts the underscores to spaces for display purposes.
-            # Hyphens seem to be retained though.
-            SubGroupDefinition(
-                name="DS",
-                label="Sample_ID",
-                mapping=OrderedDict(sorted(DSdict.items(), key=lambda x: x[1]))),
-                
-            SubGroupDefinition(
-                name="Age",
-                label="Age",
-                mapping=OrderedDict(sorted(ageDict.items(), key=lambda x: x[1]))),
-        ]
-        composite.add_subgroups(subgroups)
         
         
         ########
@@ -321,16 +348,26 @@ for assay_type in assays:
             sampleName_trackname = cleanTrackName(args.genome + "_" + curGroup + "_" + sampleName + "_" + curSample['DS'])
             
             #longLabel must be <= 76 printable characters
-            if (assay_type == "DNA" or assay_type == "Capture"):
-                sampleDescription = sampleShortLabel + ' ' + curSample['Genomic_coverage'] + 'x Genomic Coverage (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads)' + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
+            if assay_type == "DNA" or assay_type == "Capture":
+                sampleDescription = sampleShortLabel + ' ' + curSample['Genomic_coverage'] + 'x Genomic Coverage (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads)' 
             else:
                 if curSample['Num_hotspots'] == "NA":
                     sampleDescriptionNumHotspots = "no"
                 else:
                     sampleDescriptionNumHotspots = locale.format("%d", int(curSample['Num_hotspots']), grouping=True) 
-                sampleDescription = sampleShortLabel + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, ' + curSample['SPOT'] + ' SPOT, ' + sampleDescriptionNumHotspots + ' Hotspots)' + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
+                if assay_type == "ChIP-seq":
+                    sampleDescription = sampleName + "-" + curSample['Assay'] + "-" + curSample['DS']
+                else:
+                    sampleDescription = sampleShortLabel
+                sampleDescription = sampleDescription + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, ' + curSample['SPOT'] + ' SPOT, ' + sampleDescriptionNumHotspots + ' Hotspots)'
+            if 'age' in subGroupNames:
+                sampleDescription = sampleDescription + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
             
-            sampleSubgroups = dict(sampleName=sampleName + ('-' + curSample['DS'] if args.includeSampleIDinSampleCol else ''), Assay=curSample['Assay'], replicate=curSample['Replicate'], DS=curSample['DS'], Age=re.sub(' ', '_', curSample['Age']))
+            sampleSubgroups = dict(sampleName=sampleName + ('-' + curSample['DS'] if args.includeSampleIDinSampleCol else ''), assay=curSample['Assay'], DS=curSample['DS'])
+            if 'replicate' in subGroupNames:
+                sampleSubgroups['replicate'] = curSample['Replicate']
+            if 'age' in subGroupNames:
+                sampleSubgroups['age'] = re.sub(' ', '_', curSample['Age'])
             
             
             track = Track(
@@ -340,26 +377,12 @@ for assay_type in assays:
                 url=args.URLbase + curSample['filebase'] + '.bam',
                 subgroups=sampleSubgroups,
                 tracktype='bam',
-                parentonoff="off",
-                )
+                parentonoff="off"
+            )
             Reads_view.add_tracks(track)
             
-            #Variants_view
-            if (assay_type == "DNA" or assay_type == "Capture"):
-                track = Track(
-                    name=sampleName_trackname + '_var',
-                    short_label=sampleShortLabel,
-                    long_label=assay_type + ' Variants ' + sampleDescription,
-                    url=args.URLbase + curSample['filebase'] + '.variants.bb',
-                    subgroups=sampleSubgroups,
-                    tracktype='bigBed',
-                    color=curSample['Color'],
-                    parentonoff="off",
-                    )
-                Variants_view.add_tracks(track)
-            
             #Coverage_view
-            if (assay_type == "DNA" or assay_type == "Capture"):
+            if assay_type == "DNA" or assay_type == "Capture":
                 track = Track(
                     name=sampleName_trackname + '_cov',
                     short_label=sampleShortLabel,
@@ -368,12 +391,12 @@ for assay_type in assays:
                     subgroups=sampleSubgroups,
                     tracktype='bigWig',
                     color=curSample['Color'],
-                    parentonoff="off",
-                    )
+                    parentonoff=DensCovTracksDefaultDisplayMode
+                )
                 Coverage_view.add_tracks(track)
             
             #Dens_view
-            if (assay_type == "DNase-seq") or (assay_type == "ChIP-seq"):
+            if assay_type == "DNase-seq" or assay_type == "ChIP-seq":
                 track = Track(
                     name=sampleName_trackname + '_dens',
                     short_label=sampleShortLabel,
@@ -382,44 +405,12 @@ for assay_type in assays:
                     subgroups=sampleSubgroups, 
                     tracktype='bigWig',
                     color=curSample['Color'],
-                    parentonoff="off",
-                    )
+                    parentonoff=DensCovTracksDefaultDisplayMode
+                )
                 Dens_view.add_tracks(track)
             
-            #PerBaseCutCount
-            if (assay_type == "DNase-seq"):
-                track = Track(
-                    name=sampleName_trackname + '_cuts',
-                    short_label=sampleShortLabel,
-                    long_label=assay_type + ' Cut counts ' + sampleDescription,
-                    url=args.URLbase + curSample['filebase'] + '.perBase.bw',
-                    subgroups=sampleSubgroups,
-                    tracktype='bigWig',
-                    color=curSample['Color'],
-                    parentonoff="off",
-                    )
-                Cuts_view.add_tracks(track)
-            
-            #Peaks_View
-            if (assay_type == "DNase-seq") or (assay_type == "ChIP-seq"):
-                hotspot_base = os.path.basename(curSample['filebase'])
-                hotspot_dir = os.path.dirname(curSample['filebase'])
-                hotspot_path = hotspot_dir + "/hotspot2/" + hotspot_base
-                
-                track = Track(
-                    name=sampleName_trackname + '_pks',
-                    short_label=sampleShortLabel,
-                    long_label=assay_type + ' Peaks ' + sampleDescription,
-                    url=args.URLbase + hotspot_path  + '.peaks.bb',
-                    subgroups=sampleSubgroups,
-                    tracktype='bigBed 3',
-                    color=curSample['Color'],
-                    parentonoff="off",
-                    )
-                Peaks_view.add_tracks(track)
-            
             #Hotspots_view
-            if (assay_type == "DNase-seq") or (assay_type == "ChIP-seq"):
+            if assay_type == "DNase-seq" or assay_type == "ChIP-seq":
                 hotspot_base = os.path.basename(curSample['filebase'])
                 hotspot_dir = os.path.dirname(curSample['filebase'])
                 hotspot_path = hotspot_dir + "/hotspot2/" + hotspot_base
@@ -430,22 +421,66 @@ for assay_type in assays:
                     long_label=assay_type + ' Hotspots (5% FDR) ' + sampleDescription,
                     url=args.URLbase + hotspot_path + '.hotspots.fdr0.05.bb',
                     subgroups=sampleSubgroups,
+                    tracktype='bigBed 4',
+                    color=curSample['Color'],
+                    parentonoff="off"
+                )
+                Hotspots_view.add_tracks(track)
+                
+                #Peaks_View
+                track = Track(
+                    name=sampleName_trackname + '_pks',
+                    short_label=sampleShortLabel,
+                    long_label=assay_type + ' Peaks ' + sampleDescription,
+                    url=args.URLbase + hotspot_path  + '.peaks.bb',
+                    subgroups=sampleSubgroups,
                     tracktype='bigBed 3',
                     color=curSample['Color'],
-                    parentonoff="off",
+                    parentonoff="off"
+                )
+                Peaks_view.add_tracks(track)
+            
+            #PerBaseCutCount
+            if assay_type == "DNase-seq":
+                track = Track(
+                    name=sampleName_trackname + '_cuts',
+                    short_label=sampleShortLabel,
+                    long_label=assay_type + ' Cut counts ' + sampleDescription,
+                    url=args.URLbase + curSample['filebase'] + '.perBase.bw',
+                    subgroups=sampleSubgroups,
+                    tracktype='bigWig',
+                    color=curSample['Color'],
+                    parentonoff="off"
+                )
+                Cuts_view.add_tracks(track)
+            
+            if args.genome != "cegsvectors":
+                #Variants_view
+                if assay_type == "DNA" or assay_type == "Capture":
+                    track = Track(
+                        name=sampleName_trackname + '_vcf',
+                        short_label=sampleShortLabel,
+                        long_label=assay_type + ' Variants ' + sampleDescription,
+                        url=args.URLbase + curSample['filebase'] + '.filtered.vcf.gz',
+                        subgroups=sampleSubgroups,
+                        tracktype='vcfTabix',
+                        parentonoff="off"
                     )
-                Hotspots_view.add_tracks(track)
-        
-        
-        #TODO needs to pick the dimensions better
-        #TODO #daler github trackhub/trackhub/track.py doesn't seem to offer dimensionAchecked as option
-        if (assay_type == "DNase-seq"):
-            composite.add_params(dimensions="dimY=sampleName dimA=replicate dimX=Age")
-        elif (assay_type == "DNA" or assay_type == "Capture"):
-            composite.add_params(dimensions="dimY=sampleName")
-        else:
-            # ChIP-seq
-            composite.add_params(dimensions="dimY=Assay dimA=replicate dimX=sampleName")
+                    Variants_view.add_tracks(track)
+            
+            #Genotypes_view
+            if assay_type == "DNA" or assay_type == "Capture":
+                track = Track(
+                    name=sampleName_trackname + '_gts',
+                    short_label=sampleShortLabel,
+                    long_label=assay_type + ' Genotypes ' + sampleDescription,
+                    url=args.URLbase + curSample['filebase'] + '.genotypes.bb',
+                    subgroups=sampleSubgroups,
+                    tracktype='bigBed 5',
+                    color=curSample['Color'],
+                    parentonoff="off"
+                )
+                Genotypes_view.add_tracks(track)
         
         
         # Demonstrate some post-creation adjustments...here, just make control samples gray
@@ -453,12 +488,10 @@ for assay_type in assays:
         #    if 'control' in track.name:
         #     track.add_params(color="100,100,100")
         
-        if(args.supertrack is not None):
+        if args.supertrack is not None:
             supertrack.add_tracks(composite)
         else:
             trackdb.add_tracks(composite)
 
-#This would print the entire set of tracks if we took out the #'s.
-#print("\n")
 print(trackdb)
 print("\n")

@@ -352,7 +352,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     elif [[ "${processingCommand}" == "mapBwaMem" ]]; then
         #       -V            output the reference FASTA header in the XR tag
         bwaMemOptions=""
-#        if [[ "${curGenome}" == "cegsvectors" ]]; then
+#        if [[ "${curGenome}" =~ ^cegsvectors ]]; then
 #            Mainly seems to add spurious secondary alignments where one read in the pair maps to a different reference within cegsvectors
 #            bwaMemOptions="-a"
 #        fi
@@ -391,7 +391,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         unwanted_refs=""
     fi
     
-    if [[ "${curGenome}" == "cegsvectors" ]]; then
+    if [[ "${curGenome}" =~ ^cegsvectors ]]; then
         dropUnmappedReads="--dropUnmappedReads"
         minMAPQ=0
     else

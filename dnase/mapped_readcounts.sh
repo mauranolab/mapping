@@ -34,7 +34,7 @@ find . -regextype posix-awk -maxdepth 2 -regex ".+\/[^\/]+(BS|SRR|GSM)[^\/]+\/.+
 #awk '$1!="$1!="Num_hotspots" && SPOT"' |
 perl -p -e's/[ \t]\(?([\d\.]+)\%\)?/\t$1/g;' -e's/ /_/g;' -e's/\-(BS|SRR|GSM)/\t\1/g;' | 
 #perl -pe 's/^(Genomic_coverage\t[^\t]+\t)/\1\t/g;' |
-awk -F "\t" 'BEGIN {OFS="\t"; print "Label", "Value", "Cell_type", "BS", "Genome"} $2!="" {print $1, $2, $4, $5, $6} $3!="" {gsub("Num_", "Pct_", $1); if($3=="NA%") {$3="NA"} print $1, $3, $4, $5, $6}' | cut -f1-6 > $TMPDIR/readcounts.summary.long.txt
+awk -F "\t" 'BEGIN {OFS="\t"; print "Label", "Value", "Sample_Name", "BS", "Genome"} $2!="" {print $1, $2, $4, $5, $6} $3!="" {gsub("Num_", "Pct_", $1); if($3=="NA%") {$3="NA"} print $1, $3, $4, $5, $6}' | cut -f1-6 > $TMPDIR/readcounts.summary.long.txt
 
 
 R --quiet --no-save << 'EOF'
@@ -72,7 +72,7 @@ read <- function(filename, nrows=100, header=F, col.classes=NULL, stringsAsFacto
 }
 
 data <- read(paste(Sys.getenv("TMPDIR"), "/readcounts.summary.long.txt", sep=""), header=T)
-data <- reshape(data, idvar=c("Genome", "Cell_type", "BS"), timevar="Label", direction="wide")
+data <- reshape(data, idvar=c("Genome", "Sample_Name", "BS"), timevar="Label", direction="wide")
 data <- data[,!apply(data, MARGIN=2, FUN=function(x) {all(is.na(x))})]
 colnames(data) <- gsub("^Value\\.", "", colnames(data))
 
