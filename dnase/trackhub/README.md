@@ -106,6 +106,11 @@ ${src}/trackhub/samplesforTrackhub.R --inputfile ../SampleIDs.tsv --project mous
 ```
 MakeTrackhub.py creates the trackdb file. You will need to create the trackhub/hub.txt and trackhub/genomes.txt landing page.
 ```
+#MakeTrackhub.py requires the forked daler/trackhub from mauranolab. It can be installed locally:
+pip install --upgrade --user . 
+#Or directly from git
+pip install --upgrade --user git+git://github.com/mauranolab/trackhub.git
+
 #Make hub
 mkdir -p /vol/isg/encode/trackhub/mm10 /vol/isg/encode/trackhub/hg38
 cd /vol/isg/encode/trackhub
