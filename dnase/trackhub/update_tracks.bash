@@ -99,6 +99,8 @@
 #                          - Creates html files from simple data tables.
 #
 ############################################################################
+module load ucsckentutils/379
+############################################################################
 
 hub_type=$1
 hub_target=$2
@@ -250,7 +252,6 @@ done
 #########################################################
 # Some special work for cegsvectors
 if [ "${hub_type}" = "CEGS" ]; then
-    module load ucsckentutils/12152017
     cd "${TMPDIR}/assembly_tracks"
     chrom_sizes="/vol/cegs/sequences/cegsvectors/vectors.incells.chrom.sizes"
     myBEDfile="/vol/cegs/sequences/cegsvectors/vectors.incells.bed"
@@ -261,6 +262,7 @@ if [ "${hub_type}" = "CEGS" ]; then
     
     sort -k1,1 -k2,2n ${myBEDfile} | cut -d $'\t' -f1-4 > myBEDfile_sorted.bed
     
+    # Make sure some version of the ucsckentutils module has already been loaded.
     bedToBigBed -tab -type="bed4" myBEDfile_sorted.bed ${chrom_sizes} ${output_file} 2>> make_bigBED.log
     
     mv "${output_file}" "${hub_target}/cegsvectors/data/${output_file}"
@@ -284,8 +286,8 @@ echo "The UCSC browser url to this hub is:" | tee "${hub_target}/README"
 echo "${URL_path}/hub.txt" | tee -a "${hub_target}/README"
 
 ######################################################################################
-# Check for hub errors. Load kent module here in case makeAssemblyTracks.bash is ever not previously executed.
-module load ucsckentutils/12152017
+# Check for hub errors.
+# Make sure some version of the ucsckentutils module has already been loaded.
 
 hubCheck -noTracks -udcDir=${TMPDIR} "${URL_path}/hub.txt"
 ierr=$?

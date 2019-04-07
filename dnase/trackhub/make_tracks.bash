@@ -304,6 +304,7 @@ make_tracks () {
            --includeSampleIDinSampleCol \
            --supertrack ${supertrack} \
            --genome ${mappedgenome} \
+           --checksamples \
            --URLbase ${urlbase} > ${outfile}
 }
 ###############################
@@ -345,7 +346,7 @@ else
     urlbase_in="https://mauranolab:chromatin@cascade.isg.med.nyu.edu/~cadlej01/publicdata/"
 fi
 
-supertrack_in="Publicdata"
+supertrack_in="Public_Data"
 
 for i in "${genome_array[@]}"; do
     make_tracks ${i} ${consol_suffix_in} ${urlbase_in} ${supertrack_in}
