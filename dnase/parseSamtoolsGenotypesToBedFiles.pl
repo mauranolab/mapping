@@ -74,9 +74,9 @@ while (<IN>) {
         }
         my $min0 = $pos - 1;
         my $max1 = $pos - 1 + length($ref) ;
-        unless ($chrom =~ /^chr/) {
-            $chrom = "chr$chrom";
-        }
+#        unless ($chrom =~ /^chr/) {
+#            $chrom = "chr$chrom";
+#        }
         my $bed3 = "$chrom\t$min0\t$max1";
         for (my $i = 0; $i < $NUM_SAMPLES; ++$i) {
             my $sampleName = $sampleNames[$i];
