@@ -250,27 +250,8 @@ for i in "${genome_array[@]}"; do
 done
 
 #########################################################
-# Some special work for cegsvectors
 if [ "${hub_type}" = "CEGS" ]; then
-    cd "${TMPDIR}/assembly_tracks"
-    chrom_sizes="/vol/cegs/sequences/cegsvectors/vectors.incells.chrom.sizes"
-    myBEDfile="/vol/cegs/sequences/cegsvectors/vectors.incells.bed"
-    output_file="vectors.incells.bb"
-    
-    # For debugging
-    echo ${myBEDfile} "bed" >> make_bigBED.log
-    
-    sort -k1,1 -k2,2n ${myBEDfile} | cut -d $'\t' -f1-4 > myBEDfile_sorted.bed
-    
-    # Make sure some version of the ucsckentutils module has already been loaded.
-    bedToBigBed -tab -type="bed4" myBEDfile_sorted.bed ${chrom_sizes} ${output_file} 2>> make_bigBED.log
-    
-    mv "${output_file}" "${hub_target}/cegsvectors/data/${output_file}"
-    
-    cp "/vol/cegs/sequences/cegsvectors/vectors.incells.2bit" "${hub_target}/cegsvectors/data/vectors.incells.2bit"
-    
-    # Clean up
-    rm myBEDfile_sorted.bed
+    cp "/vol/cegs/sequences/cegsvectors/cegsvectors.2bit" "${hub_target}/cegsvectors/data/cegsvectors.2bit"
 fi
 #########################################################
 
