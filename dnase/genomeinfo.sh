@@ -41,19 +41,19 @@ hg19)
     bwaIndex=/vol/isg/annotation/bwaIndex/hg19all/hg19all
     ploidy="--ploidy GRCh37"
     referencefasta=/vol/isg/annotation/fasta/hg19/hg19.fa
-    dbsnpvcf=/vol/isg/annotation/bed/hg19/snp151/All_20180418.vcf.gz
+    dbsnpvcf=/vol/isg/annotation/bed/hg19/snp151/src/All_20180418.vcf.gz
     ;;
 hg38_noalt)
     bwaIndex=/vol/isg/annotation/bwaIndex/hg38_noalt/hg38_noalt
     ploidy="--ploidy GRCh38"
     referencefasta=/vol/isg/annotation/fasta/hg38_noalt/hg38_noalt.fa.gz
-    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/All_20180418.vcf.gz
+    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/src/All_20180418.vcf.gz
     ;;
 hg38_full)
     bwaIndex=/vol/isg/annotation/bwaIndex/hg38_full/hg38_full
     ploidy="--ploidy GRCh38"
     referencefasta=/vol/isg/annotation/fasta/hg38_full/hg38_full.fa.gz
-    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/All_20180418.vcf.gz
+    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/src/All_20180418.vcf.gz
     ;;
 mm10)
     bwaIndex=/vol/isg/annotation/bwaIndex/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set
@@ -73,7 +73,7 @@ hg38_sacCer3)
     bwaIndex=/vol/isg/annotation/bwaIndex/hg38_sacCer3/hg38_sacCer3
     ploidy="--ploidy GRCh38"
     referencefasta=/vol/isg/annotation/fasta/hg38_sacCer3/hg38_sacCer3.fa.gz
-    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/All_20180418.vcf.gz
+    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/src/All_20180418.vcf.gz
     ;;
 mm10_sacCer3)
     bwaIndex=/vol/isg/annotation/bwaIndex/mm10_sacCer3/mm10_sacCer3
@@ -88,7 +88,7 @@ rn6_sacCer3)
     dbsnpvcf=/dev/null
     ;;
 cegsvectors*)
-    bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
+    bwaIndex=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy 1"
     referencefasta=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.fa
     dbsnpvcf=/dev/null
