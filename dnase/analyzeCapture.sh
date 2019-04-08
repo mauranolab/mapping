@@ -20,7 +20,7 @@ mm10)
     annotationgenome="mm10"
     mappableFile="/vol/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K36.mappable_only.starch"
     ;;
-cegsvectors)
+cegsvectors*)
     annotationgenome="cegsvectors"
     mappableFile="/dev/null"
     ;;
