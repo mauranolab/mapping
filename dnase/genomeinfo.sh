@@ -90,7 +90,7 @@ rn6_sacCer3)
 cegsvectors*)
     bwaIndex=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy 1"
-    referencefasta=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.fa
+    referencefasta=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/dev/null
     ;;
 *)
