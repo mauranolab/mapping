@@ -11,6 +11,14 @@ import locale
 import csv
 import os
 
+#####################################################################################################
+# MakeTrackhub.py requires the forked daler/trackhub from mauranolab. It can be installed locally:
+#     pip install --upgrade --user .
+#
+# Or directly from git:
+#     pip install --upgrade --user git+git://github.com/mauranolab/trackhub.git
+#####################################################################################################
+
 parser = argparse.ArgumentParser(prog = "MakeTrackhub.py", description = "Creates a trackhub with composite and subtracks for all tracks.", add_help = True)
 parser.add_argument('Input', action = 'store', help = 'Input tsv file with sample metadata. Name, DS, Replicate, Color, Assay, analyzed_reads, SPOT, Num_hotspots, Exclude, Genomic_coverage, Group, Age, filebase')
 #NB Exclude not used right now 
@@ -102,6 +110,7 @@ hub, genomes_file, genome, trackdb = default_hub(
 
 
 # Initialize the supertrack
+# "supertrackonoff" requires the forked daler/trackhub
 if args.supertrack is not None:
     supertrack = SuperTrack(
         name=cleanTrackName(args.supertrack),

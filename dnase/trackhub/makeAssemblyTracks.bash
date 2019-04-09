@@ -1,5 +1,7 @@
 #!/bin/bash
 ####################################################################
+# Make sure some version of the ucsckentutils module has already been loaded.
+####################################################################
 # Get input parameters
 path_to_main_driver_script=$1
 hub_target=$2
@@ -7,9 +9,6 @@ TMPDIR=$3
 shift 3
 genome_array=("$@")
 
-####################################################################
-# We use the Kent utilities.
-module load ucsckentutils/12152017
 ####################################################################
 # We need to make bigBED files from bed files. To do this we need 
 # chrom.sizes files. So move to the right place for downloading them.
@@ -137,16 +136,29 @@ genome_dirs=($(ls -d */))   # Elements will look like:  hg38/
 # genome_array could be bigger than genome_dirs though.
 
 for genome in "${genome_dirs[@]}"; do
-    # cegsvectors assembly tracks are hand made at this time.
-    if [ "${genome}" = "cegsvectors/" ]; then
-        cp "${path_to_main_driver_script}/assets/CEGS/trackDb_assemblies_cegsvectors.txt" "${TMPDIR}/assembly_tracks"
+    if [[ "${genome}" == "bak"* ]] || [[ "${genome}" == "trash"* ]]; then
         continue
+    fi
+
+    if [[ ${genome} == "cegsvectors_"* ]]; then
+        # New cegsvectors directories are being added to /vol/cegs/sequences - Ignore them.
+        continue
+    elif [ "${genome}" = "cegsvectors/" ]; then
+        chrom_sizes="/vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes"
+        cp "${path_to_main_driver_script}/assets/CEGS/trackDb_cegsvectors_Analyses.txt" \
+           "${TMPDIR}/assembly_tracks/trackDb_assemblies_cegsvectors.txt"
+    else
+        chrom_sizes="/vol/isg/annotation/fasta/${genome/\//}/${genome/\//}.chrom.sizes"
     fi
 
     cd ${BASE}${genome}
     assmbly_dirs=($(ls -d */))   # Elements will look like:  HPRT1/
 
     for assmbly in "${assmbly_dirs[@]}"; do
+        if [[ "${assmbly}" == "bak"* ]] || [[ "${assmbly}" == "trash"* ]] || [[ "${assmbly}" == "src"* ]]; then
+            continue
+        fi
+
         # Note we that ignore emacs backups in the next line via the [/d]?$
         bed_files=($(ls "${BASE}${genome}${assmbly}"* | egrep *[.]bed[0-9]*$))
     
@@ -164,7 +176,6 @@ for genome in "${genome_dirs[@]}"; do
             make_directory ${genome} "${hub_target}/${genome}data/${assmbly}"
 
             # Make the .bb files
-            chrom_sizes="/vol/isg/annotation/fasta/${genome/\//}/${genome/\//}.chrom.sizes"
             out_file=$(make_bigBED ${bed_file} ${chrom_sizes})
         
             # Move the .bb files into the appropriate directories
@@ -215,10 +226,16 @@ while read -r line_in ; do
         out_file="trackDb_assemblies_"${genome}".txt"
         old_genome=${genome}
 
-        echo track Assemblies >> ${out_file}
-        echo shortLabel Assemblies >> ${out_file}
-        echo longLabel Assemblies >> ${out_file}
-        echo superTrack on >> ${out_file}
+        echo "track ${genome}_Assemblies" >> ${out_file}
+        echo "shortLabel Assemblies" >> ${out_file}
+        echo "longLabel Assemblies" >> ${out_file}
+
+        # We need this to avoid having the cegsvectors Assemblies being shown in the "Other" control group.
+        if [[ "${genome}" == "cegsvectors" ]]; then
+            echo "group cegsvectors" >> ${out_file}
+        fi
+
+        echo superTrack on show >> ${out_file}
         echo " " >> ${out_file}
 
         # Since we have a new genome, we also need to give it new composite tracks.
@@ -229,12 +246,13 @@ while read -r line_in ; do
     if [ "${assmbly}" != "${old_assmbly}" ]; then
         # A new assmbly was found. So give it new composite tracks.
         old_assmbly=${assmbly}
-        echo "    track ${assmbly}" >> ${out_file}
+        echo "    track ${genome}_${assmbly}" >> ${out_file}
         echo "    compositeTrack on" >> ${out_file}
+        echo "    visibility pack" >> ${out_file}
         echo "    type bigBed" >> ${out_file}
         echo "    shortLabel ${assmbly}" >> ${out_file}
         echo "    longLabel ${assmbly}" >> ${out_file}
-        echo "    parent Assemblies on" >> ${out_file}
+        echo "    parent ${genome}_Assemblies off" >> ${out_file}
         echo " " >> ${out_file}
     fi
 
@@ -248,8 +266,10 @@ while read -r line_in ; do
 
     lbl_name=${tr_name//_/ }     # Replace underscores with spaces, for track labels.
 
+    tr_name="${genome}_sequences_${tr_name}_bed"
+
     echo "        track ${tr_name}" >> ${out_file}
-    echo "        parent ${assmbly} off" >> ${out_file}
+    echo "        parent ${genome}_${assmbly} on" >> ${out_file}
     echo "        visibility pack" >> ${out_file}
     echo "        longLabel ${lbl_name}" >> ${out_file}
     echo "        shortLabel ${lbl_name}" >> ${out_file}
