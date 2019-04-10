@@ -301,7 +301,11 @@ def getLIMS():
         df = None
     return df
 
-lims = getLIMS()
+if any(flowcellFile['Lab']=='CEGS'):
+    print("Loading google!")
+    lims = getLIMS()
+else:
+    lims = None
 
 #Will map to these custom genomes when specified, stored as they appear in LIMS (without cegsvectors_ prefix)
 cegsGenomes = [ re.sub(r'^cegsvectors_', '', os.path.basename(x)) for x in glob.glob("/vol/cegs/sequences/cegsvectors_*") ]
