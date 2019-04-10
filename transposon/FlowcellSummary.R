@@ -108,6 +108,10 @@ for (i in 1:length(analysisFiles)) {
 }
 
 
+#Save a tsv without commas in numeric columns
+write.table(data, file = paste0(outdir, "/FlowcellSummary/summaryflowcell.tsv"), sep='\t', quote=F, col.names=T, row.names=F)
+
+
 #Format for printing
 for (i in 1:ncol(data)) {
 	if(is.numeric(data[,i])) {
@@ -116,6 +120,5 @@ for (i in 1:ncol(data)) {
 }
 
 
-SumHTMLtable <- tableHTML(data, rownames=F, footer='N.B.: Unique BC and integration site counts require requires 10+ reads for DNA/RNA, and 2+ reads for iPCR') %>% add_css_row(css = list('background-color', 'lightblue'), rows = odd(1:nrow(data)))
+SumHTMLtable <- tableHTML(data, rownames=F, footer='N.B.: Unique BC and integration site counts require requires 10+ reads for DNA/RNA, and 2+ reads for iPCR') %>% add_css_row(css = list('background-color', 'lightblue'), rows=odd(1:nrow(data)))
 write_tableHTML(SumHTMLtable, file = paste0(outdir, "/FlowcellSummary/index.html"))
-write.table(data, file = paste0(outdir, "/FlowcellSummary/summaryflowcell.tsv"), sep='\t', quote=F, col.names=T, row.names=F)
