@@ -88,6 +88,8 @@ rn6_sacCer3)
     dbsnpvcf=/dev/null
     ;;
 cegsvectors*)
+    #If this genome is an symlink, then substitute it with its target for the purposes of looking up annotation
+    mappedgenome=`readlink -f /vol/cegs/sequences/cegsvectors_LP062 | xargs basename`
     bwaIndex=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy 1"
     referencefasta=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.fa.gz
