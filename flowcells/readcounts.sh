@@ -69,7 +69,7 @@ for d in `find ${basedir}  -maxdepth 1 -name "Project_*" -type d | grep -v Proje
     project=`basename $d`
     echo
     echo "${project}"
-    base="${project}_${fc}"
+    base="${project}_${fc}_"`date +%Y%b%d`
     cd $d
     tar cvf /vol/mauranolab/flowcells/public_html/${base}_fastq.tar .
     
