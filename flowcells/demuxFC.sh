@@ -16,6 +16,14 @@ module add bcl2fastq2/2.20
 echo
 echo "Demultiplexing ${fc}; userDemuxOptions=${userDemuxOptions}"
 date
+
+
+if [ -e "../../fastq/${fc}" ]; then
+    echo "ERROR: ../../fastq/${fc} already exists!"
+    exit 1
+fi
+
+
 #https://hpc.nih.gov/apps/bcl2fastq.html says optimal relative allocations but doesn't seem to change runtime much
 #-r 0.25 -w 0.25 -p 0.875
 #I bumped up based on observed CPU usage
