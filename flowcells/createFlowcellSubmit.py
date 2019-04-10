@@ -3,10 +3,13 @@ import sys
 import re
 import argparse
 import pandas as pd
+import pygsheets
+import os
+import glob
 
 
 ###Argument parsing
-version="1.3"
+version="1.4"
 
 parser = argparse.ArgumentParser(prog = "createFlowcellSubmit", description = "Outputs submit commands for all samples from the info.txt located in the flowcell data folder", allow_abbrev=False)
 
@@ -147,10 +150,35 @@ def chromConfCapture(line):
     return(submitCommand)
 
 
-def bwaPipeline(sampleName, sampleID, sampleType, mappedgenome, processingCommand):
+def addCEGSgenomes(line):
+    if line['Lab'] != "CEGS":
+        return []
+    else:
+        sampleName = line["#Sample Name"]
+        
+#        Disable finding reference -- only support getting it through google sheets
+#        if re.search(r'_(Amplicon|BAC|Yeast)$', sampleName) is not None:
+#            return ",cegsvectors_" + "_".join(sampleName.split("_")[0:3])
+        
+        additionalGenomesToMap = []
+        if lims is not None:
+            #Multiple matches should never occur if BS numbers are unique so take first
+            geneticModification = lims[lims['Sample #']==line['Original Sample #']]['Genetic modification'].unique()[0]
+            for curGeneticModification in geneticModification.split(","):
+                for curCegsGenome in cegsGenomes:
+                    #Genome must match entire contents of a field (e.g., HPRT1 doesn't match dHPRT1), excepting the square brackets denoting integration site
+                    if curCegsGenome == re.sub(r'\[.+\]$', '', curGeneticModification):
+                        #Add the genome including the cegsvectors_ prefix
+                        additionalGenomesToMap.append("cegsvectors_" + curCegsGenome)
+                        #Not possible to match any further genomes since wildcards are not allowed
+                        break
+        return additionalGenomesToMap
+
+
+def bwaPipeline(sampleName, sampleID, sampleType, mappedgenomes, processingCommand):
     analysisCommandMap = { "ChIP-seq": "chipseq", "DNase-seq": "dnase", "DNA": "callsnps", "DNA Capture": "callsnpsCapture" }
     
-    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + mappedgenome + " " + processingCommand + "," + analysisCommandMap[sampleType] + " " + sampleName + " " + sampleID
+    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + analysisCommandMap[sampleType] + " " + sampleName + " " + sampleID
     
     global doDNaseCleanup
     doDNaseCleanup = True
@@ -163,14 +191,15 @@ def bwaPipeline(sampleName, sampleID, sampleType, mappedgenome, processingComman
     return(submitCommand)
 
 
-#DNase/ ChIP-seq
+#DNase / ChIP-seq
 def DNase(line):
     speciesToGenomeReference = {
         'Human': 'hg38_noalt',
         'Mouse': 'mm10',
-        'Mouse+rat': 'mm10,rn6'
+        'Rat': 'rn6'
     }
-    mappedgenome = speciesToGenomeReference[line["Species"]]
+    mappedgenomes = [ speciesToGenomeReference[curSpecies] for curSpecies in line["Species"].split(",") ]
+    mappedgenomes += addCEGSgenomes(line)
     
     if args.aggregate:
         processingCommand="aggregate"
@@ -179,7 +208,7 @@ def DNase(line):
     else:
         processingCommand="mapBwaAln"
     
-    return(bwaPipeline(line["#Sample Name"], line["Sample #"], line["Sample Type"], mappedgenome, processingCommand))
+    return(bwaPipeline(line["#Sample Name"], line["Sample #"], line["Sample Type"], mappedgenomes, processingCommand))
 
 
 def DNA(line):
@@ -187,13 +216,12 @@ def DNA(line):
         'Human': 'hg38_full',
         'Mouse': 'mm10',
         'Rat': 'rn6',
-        'Human+mouse': 'hg38_full,mm10',
         'Human+yeast': 'hg38_sacCer3',
         'Mouse+yeast': 'mm10_sacCer3',
         'Rat+yeast': 'rn6_sacCer3',
-        'Mouse+rat': 'mm10,rn6'
     }
-    mappedgenome = speciesToGenomeReference[line["Species"]]
+    mappedgenomes = [ speciesToGenomeReference[curSpecies] for curSpecies in line["Species"].split(",") ]
+    mappedgenomes += addCEGSgenomes(line)
     
     if args.aggregate:
         processingCommand="aggregate"
@@ -206,7 +234,7 @@ def DNA(line):
         global doDNACaptureCleanup
         doDNACaptureCleanup = True
     
-    return(bwaPipeline(line["#Sample Name"], line["Sample #"], line["Sample Type"], mappedgenome, processingCommand))
+    return(bwaPipeline(line["#Sample Name"], line["Sample #"], line["Sample Type"], mappedgenomes, processingCommand))
 
 
 
@@ -249,13 +277,34 @@ if samples is not None:
 
 
 #Adjust sample IDs and drop duplicate rows to handle aggregations
+flowcellFile['Original Sample #'] = flowcellFile['Sample #']
 if args.aggregate or args.aggregate_sublibraries:
-    flowcellFile['Original Sample #'] = flowcellFile['Sample #']
     if args.aggregate:
         flowcellFile['Sample #'] = flowcellFile['Sample #'].apply(lambda bs: re.sub("(BS[0-9]{5})[A-Z]", "\\1", bs))
     #BWA pipeline just needs last entry per sample
     if len(set(flowcellFile['Sample Type']).intersection(set(['DNA', 'DNA Capture', 'DNase-seq', 'Nano-DNase', 'ChIP-seq']))) > 0:
         flowcellFile = flowcellFile[flowcellFile.duplicated('Sample #', keep='last')]
+
+
+#Pull the LIMS sheet from google using the service account secrets file and spreadsheet ID.
+def getLIMS():
+    try:
+        lims_gsheets_ID_file = open('/vol/mauranolab/flowcells/LIMS.gsheets_ID.txt', 'r')
+        lims_gsheets_ID = lims_gsheets_ID_file.readlines()[0].rstrip("\n")
+        lims_gsheets_ID_file.close()
+        gc = pygsheets.authorize(service_file='/vol/mauranolab/flowcells/mauranolab.json')
+        sh = gc.open_by_key(lims_gsheets_ID)
+        wks = sh.worksheet_by_title("LIMS")
+        df = wks.get_as_df()
+    except Exception as e:
+        print("WARNING could not load LIMS from google sheets: ", e.message, '\n', e.argument)
+        df = None
+    return df
+
+lims = getLIMS()
+
+#Will map to these custom genomes when specified, stored as they appear in LIMS (without cegsvectors_ prefix)
+cegsGenomes = [ re.sub(r'^cegsvectors_', '', os.path.basename(x)) for x in glob.glob("/vol/cegs/sequences/cegsvectors_*") ]
 
 
 ###Pre-processing
@@ -325,7 +374,8 @@ if doDNaseCleanup:
     #TODO run separate plots for each sample type?
     print("qsub -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeInserts.R " + str(DNaseFragmentLengthPlot) + "\"")
     print("qsub -S /bin/bash -j y -N mapped_readcounts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/mapped_readcounts.sh")
-    print("rm -f sgeid.analysis")
+#Leave this around so the hold_jid args don't fail
+#    print("rm -f sgeid.analysis")
 
 
 #TODO placeholder for now
