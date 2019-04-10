@@ -87,7 +87,7 @@ rn6_sacCer3)
     referencefasta=/vol/isg/annotation/fasta/rn6_sacCer3/rn6_sacCer3.fa.gz
     dbsnpvcf=/dev/null
     ;;
-cegsvectors*)
+cegsvectors_*)
     #If this genome is an symlink, then substitute it with its target for the purposes of looking up annotation
     mappedgenome=`readlink -f /vol/cegs/sequences/cegsvectors_LP062 | xargs basename`
     bwaIndex=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}
