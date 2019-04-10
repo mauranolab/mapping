@@ -73,7 +73,7 @@ mkdir -p ${sampleOutdir}
 src=`pwd`/${sampleOutdir}/.src
 mkdir -p ${src}
 #use cp -p to preserve timestamps
-find /vol/mauranolab/mapped/src -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}
+find /vol/mauranolab/mapped/src/dnase -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}
 
 
 if [[ "${analysisType}" =~ ^map ]]; then

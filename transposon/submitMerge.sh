@@ -12,10 +12,10 @@ export OPENBLAS_NUM_THREADS=1
 module load pigz
 module load samtools/1.9
 
-src=/vol/mauranolab/transposon/src
+src=/vol/mauranolab/mapped/src/transposon
 
 #Hardcoded right now rather than as parameters like dnase pipeline
-runMerge=0
+runMerge=1
 
 ###Parse command line args
 sample=$1

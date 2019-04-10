@@ -3,7 +3,7 @@ set -eu -o pipefail
 
 #NSLOTS=1
 
-src=/vol/mauranolab/transposon/src
+src=/vol/mauranolab/mapped/src/transposon
 
 
 ###Parse command line args
@@ -95,7 +95,7 @@ bwa ${extractcmd} |
 #No need to sort SE data
 #samtools sort -@ $NSLOTS -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
 #TODO UMIs don't seem to be in format filter_reads.py expects so they are not getting passed into bam
-${src}/filter_reads.py --reqFullyAligned --failUnwantedRefs --max_mismatches ${permittedMismatches} --min_mapq 10 - - |
+${src}/../dnase/filter_reads.py --reqFullyAligned --failUnwantedRefs --max_mismatches ${permittedMismatches} --min_mapq 10 - - |
 samtools view -@ NSLOTS -1 - > $OUTDIR/${sample}.bam
 
 

@@ -119,7 +119,7 @@ mv $OUTPUT.new $OUTPUT
 
 echo
 echo "Processing data in R"
-/vol/mauranolab/transposon/src/combineSignalWithInsertions.R ${PREFIX} ${OUTBASE}
+/vol/mauranolab/mapped/src/transposon/combineSignalWithInsertions.R ${PREFIX} ${OUTBASE}
 
 
 echo
@@ -129,7 +129,7 @@ echo "Num of sites in browser track: ${numUCSCsites}"
 
 bedGraphToBigWig ${OUTBASE}.zscore.bed /vol/isg/annotation/fasta/hg38/hg38.chrom.sizes ${OUTBASE}.zscore.bw
 UCSCbaseURL="https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
-echo "track name=${PREFIX}-activity description=\"${PREFIX} activity (zscore of log(RNA/DNA) scaled onto [0,1]), ${numUCSCsites} sites\" maxHeightPixels=30 viewLimits=0:1 autoScale=off visibility=full type=bigWig bigDataUrl=${UCSCbaseURL}.zscore.bw"
+echo "track name=${PREFIX}-activity description=\"${PREFIX} activity (zscore of log(RNA/DNA) scaled onto [0,1]), ${numUCSCsites} sites\" maxHeightPixels=30 viewLimits=0:1 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.zscore.bw"
 
 
 echo

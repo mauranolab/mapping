@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu -o pipefail
 
-src=/vol/mauranolab/transposon/src
+src=/vol/mauranolab/mapped/src/transposon
 
 sample=$1
 
@@ -204,10 +204,10 @@ cat $OUTDIR/${sample}.barcodes.coords.bed | wc -l
 
 echo
 echo "Generating UCSC track"
-awk -v sample=${sample} -F "\t" 'BEGIN {OFS="\t"; print "track name=" sample " description=" sample "-integrations"} {print}' $OUTDIR/${sample}.barcodes.coords.bed > $OUTDIR/${sample}.barcodes.coords.ucsc.bed
 projectdir=`pwd | perl -pe 's/^\/vol\/mauranolab\/transposon\///g;'`
 UCSCbaseURL="https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/transposon/${projectdir}/${OUTDIR}"
-echo "${UCSCbaseURL}/${sample}.barcodes.coords.ucsc.bed"
+echo "track name=${sample} description=${sample}-integrations db=hg38"
+echo "${UCSCbaseURL}/${sample}.barcodes.coords.bed"
 
 
 #NB retains strand so a few sites are represented twice

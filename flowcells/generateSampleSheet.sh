@@ -4,7 +4,7 @@ set -eu -o pipefail
 echo "Paste in a full flowcell entry (including #header lines, followed by a newline and CTRL-D"
 
 #Boilerplate header
-cat /vol/mauranolab/flowcells/src/SampleSheet.template.txt > SampleSheet.csv
+cat /vol/mauranolab/mapped/src/flowcells/SampleSheet.template.txt > SampleSheet.csv
 
 
 ###Parse the sequencing sheet info from STDIN

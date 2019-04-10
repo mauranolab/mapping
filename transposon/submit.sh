@@ -24,7 +24,7 @@ floor()
     set -u
 };
 
-src=/vol/mauranolab/transposon/src
+src=/vol/mauranolab/mapped/src/transposon
 
 #Hardcoded right now rather than as parameters like dnase pipeline
 runPreprocess=1
@@ -112,7 +112,7 @@ if [ ${runPreprocess} -eq 1 ]; then
     date
     zcat -f ${f1} | gzip -1 > $TMPDIR/${sample}.R1.fastq.gz
     zcat -f ${f2} | gzip -1 > $TMPDIR/${sample}.R2.fastq.gz
-    ${src}/filterNextSeqReadsForPolyG.py --inputfileR1 $TMPDIR/${sample}.R1.fastq.gz --inputfileR2 $TMPDIR/${sample}.R2.fastq.gz --maxPolyG 75 --outputfileR1 $TMPDIR/${sample}.filtered.R1.fastq.gz --outputfileR2 $TMPDIR/${sample}.filtered.R2.fastq.gz
+    ${src}/../dnase/filterNextSeqReadsForPolyG.py --inputfileR1 $TMPDIR/${sample}.R1.fastq.gz --inputfileR2 $TMPDIR/${sample}.R2.fastq.gz --maxPolyG 75 --outputfileR1 $TMPDIR/${sample}.filtered.R1.fastq.gz --outputfileR2 $TMPDIR/${sample}.filtered.R2.fastq.gz
     
     
     ##BCread:

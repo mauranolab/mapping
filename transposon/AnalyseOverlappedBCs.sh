@@ -1564,7 +1564,7 @@ date
 
 
 echo 'Plotting data in R'
-/vol/mauranolab/transposon/src/AnalyseOverlappedBCs_plotting.R --SampleName ${SampleName} --OUTDIR ${OUTDIR}
+/vol/mauranolab/mapped/src/transposon/AnalyseOverlappedBCs_plotting.R --SampleName ${SampleName} --OUTDIR ${OUTDIR}
 echo 'Finished plotting in R'
 
 
@@ -1643,7 +1643,7 @@ echo -e $RegionHeader | cat - <(sort-bed $REGOUT) > $OUTDIR/AllRegions.annotated
 date
 mkdir -p $OUTDIR/Regiongraphs/
 echo 'Plotting data in R'
-/vol/mauranolab/transposon/src/AnalyseOverlappedBCs_Region_plotting.R --SampleName ${SampleName} --OUTDIR ${OUTDIR}
+/vol/mauranolab/mapped/src/transposon/AnalyseOverlappedBCs_Region_plotting.R --SampleName ${SampleName} --OUTDIR ${OUTDIR}
 echo 'Finished plotting in R'
 
 
