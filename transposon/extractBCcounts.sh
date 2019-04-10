@@ -4,7 +4,7 @@ set -eu -o pipefail
 
 #NSLOTS=1
 
-src=/vol/mauranolab/transposon/src
+src=/vol/mauranolab/mapped/src/transposon
 
 
 ###Parse command line args

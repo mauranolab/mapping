@@ -84,7 +84,7 @@ def aggregateTransposonSamples(lines):
     #Exact parameters don't matter
     basedir = getBasedir(None, "Transposon DNA")
     
-    return '/vol/mauranolab/transposon/src/submitMerge.sh ' + lines.iloc[0]['Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + " " + ' '.join([ basedir + line['FC'] + "/" + line['Original Sample #'] + "-" + line['#Sample Name'] + '/' for index, line in lines.iterrows() ])
+    return '/vol/mauranolab/mapped/src/transposon/submitMerge.sh ' + lines.iloc[0]['Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + " " + ' '.join([ basedir + line['FC'] + "/" + line['Original Sample #'] + "-" + line['#Sample Name'] + '/' for index, line in lines.iterrows() ])
 
 
 def transposonSamples(line):
@@ -93,7 +93,7 @@ def transposonSamples(line):
     sampleTypeShort= sampleType.split(' ')[1]
     
     #Might like to put submit logfile in sample directory but would need to mkdir first, or change qsub to do mkdir on -o: ' -o ' + fullSampleName + 
-    qsub = "qsub -S /bin/bash -j y -b y -N submit." + fullSampleName + ' "/vol/mauranolab/transposon/src/submit.sh '
+    qsub = "qsub -S /bin/bash -j y -b y -N submit." + fullSampleName + ' "/vol/mauranolab/mapped/src/transposon/submit.sh '
     
     fileLocation = getBasedir(line['Lab'], sampleType) + line["FC"] + "/Project_" + line["Lab"] + "/Sample_" + line["Sample #"] + '/"'
     
@@ -178,7 +178,7 @@ def addCEGSgenomes(line):
 def bwaPipeline(sampleName, sampleID, sampleType, mappedgenomes, processingCommand):
     analysisCommandMap = { "ChIP-seq": "chipseq", "DNase-seq": "dnase", "DNA": "callsnps", "DNA Capture": "callsnpsCapture" }
     
-    submitCommand = "/vol/mauranolab/mapped/src/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + analysisCommandMap[sampleType] + " " + sampleName + " " + sampleID
+    submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + analysisCommandMap[sampleType] + " " + sampleName + " " + sampleID
     
     global doDNaseCleanup
     doDNaseCleanup = True
@@ -372,8 +372,8 @@ if doDNaseCleanup:
     print()
     #Just use max fragment length for now
     #TODO run separate plots for each sample type?
-    print("qsub -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeInserts.R " + str(DNaseFragmentLengthPlot) + "\"")
-    print("qsub -S /bin/bash -j y -N mapped_readcounts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/mapped_readcounts.sh")
+    print("qsub -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(DNaseFragmentLengthPlot) + "\"")
+    print("qsub -S /bin/bash -j y -N mapped_readcounts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/dnase/mapped_readcounts.sh")
 #Leave this around so the hold_jid args don't fail
 #    print("rm -f sgeid.analysis")
 
@@ -381,12 +381,12 @@ if doDNaseCleanup:
 #TODO placeholder for now
 if doDNACaptureCleanup:
     print()
-    print("#qsub -b y -S /bin/bash -j y -N analyzeCapture -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/analyzeCapture.sh mappedgenome bait dirs\"")
+    print("#qsub -b y -S /bin/bash -j y -N analyzeCapture -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeCapture.sh mappedgenome bait dirs\"")
 
 
 #BUGBUG doesn't work since we don't have the pid of the final job at submission time
 #if doTransposonCleanup:
 #    print()
-#    print("qsub -S /bin/bash -b y -j y -N transposon_info -hold_jid `cat sgeid.merge | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/transposon/src/Flowcell_Info.sh /home/mauram01/public_html/flowcellInfo/\"")
+#    print("qsub -S /bin/bash -b y -j y -N transposon_info -hold_jid `cat sgeid.merge | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/transposon/Flowcell_Info.sh /home/mauram01/public_html/flowcellInfo/\"")
 #    print("rm -f sgeid.merge")
 

@@ -17,7 +17,7 @@ alias closest-features='closest-features --header'
 #    mappedgenome=`basename ${f} | cut -d "." -f2`
 #    echo "${sampleOutdir}"
 #    src="${sampleOutdir}/.src"
-#    cp -p /vol/mauranolab/mapped/src/* ${src}
+#    cp -p /vol/mauranolab/mapped/src/dnase/* ${src}
 #    
 #    qsub -S /bin/bash -cwd -V -terse -j y -b y -o ${sampleOutdir} -N merge.callsnps.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${BS} ${src}" #| perl -pe 's/[^\d].+$//g;'
 #done
