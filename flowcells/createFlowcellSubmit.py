@@ -302,7 +302,6 @@ def getLIMS():
     return df
 
 if any(flowcellFile['Lab']=='CEGS'):
-    print("Loading google!")
     lims = getLIMS()
 else:
     lims = None
