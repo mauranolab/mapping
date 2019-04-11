@@ -279,11 +279,13 @@ if samples is not None:
 #Adjust sample IDs and drop duplicate rows to handle aggregations
 flowcellFile['Original Sample #'] = flowcellFile['Sample #']
 if args.aggregate or args.aggregate_sublibraries:
+    #Sort aggregations by BS number since sample sheet order doesn't matter
+    flowcellFile = flowcellFile.sort_values(by='Sample #')
     if args.aggregate:
         flowcellFile['Sample #'] = flowcellFile['Sample #'].apply(lambda bs: re.sub("(BS[0-9]{5})[A-Z]", "\\1", bs))
     #BWA pipeline just needs last entry per sample
     if len(set(flowcellFile['Sample Type']).intersection(set(['DNA', 'DNA Capture', 'DNase-seq', 'Nano-DNase', 'ChIP-seq']))) > 0:
-        flowcellFile = flowcellFile[flowcellFile.duplicated('Sample #', keep='last')]
+        flowcellFile = flowcellFile[~flowcellFile.duplicated('Sample #', keep='last')]
 
 
 #Pull the LIMS sheet from google using the service account secrets file and spreadsheet ID.
@@ -319,10 +321,13 @@ if len(set(flowcellFile['Sample Type']).intersection(set(['DNA', 'DNA Capture', 
     if flowcellIDs is not None and projects is not None and len(projects) is 1:
         #Just handle the single-project case
         #getBasedir returns the same for all these types, so just hardcode DNA
+        findCmd = 'find ' + ' '.join([(getBasedir(projects[0], 'DNA')  + '%/Project_' + str(projects[0]) + '/*').replace("%", s) for s in flowcellIDs]) + ' -maxdepth 1'
+        findCmd += ' -regextype posix-awk -regex "^.+(' + '|'.join(sorted(flowcellFile['Sample #'].unique())) + ').+$"'
         if args.aggregate or args.aggregate_sublibraries:
-            print('find ' + ' '.join([(getBasedir(projects[0], 'DNA')  + '%/Project_' + str(projects[0]) + '/*').replace("%", s) for s in flowcellIDs]) + ' -maxdepth 1 -name "*.bam" | sort > inputs.txt')
+            findCmd += ' -name "*.bam"'
         else:
-            print('find ' + ' '.join([(getBasedir(projects[0], 'DNA')  + '%/Project_' + str(projects[0]) + '/*').replace("%", s) for s in flowcellIDs]) + ' -maxdepth 1 -name "*.fastq.gz" | sort > inputs.txt')
+            findCmd += ' -name "*.fastq.gz"'
+        print(findCmd + ' | sort > inputs.txt')
         print()
 
 
