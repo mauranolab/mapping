@@ -250,7 +250,7 @@ fi
 #Now that we have analyzedReadsM we can print this track line, which is universal for all sampleTypes
 echo
 echo "Making BAM track"
-echo "track type=bam name=${name}-reads description=\"${name} reads (${analyzedReadsM}M nonredundant reads)\" visibility=pack bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.bam pairEndsByName=T visibility=dense maxWindowToDraw=10000"
+echo "track name=${name}-reads description=\"${name} reads (${analyzedReadsM}M reads analyzed)\" visibility=dense visibility=pack pairEndsByName=T maxWindowToDraw=10000 maxItems=250 db=${annotationgenome} type=bam bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.bam"
 
 
 if [[ "${sampleType}" == "callsnps" ]] || [[ "${sampleType}" == "callsnpsCapture" ]]; then
@@ -297,15 +297,22 @@ if [[ "${sampleType}" == "callsnps" ]] || [[ "${sampleType}" == "callsnpsCapture
         #but don't have binned coverage track yet
         #genomecov=`unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.binned.starch | awk -F "\t" 'BEGIN {OFS="\t"; sum=0; count=0} {sum+=$5; count+=1} END {print sum/count}'`
         #BUGBUG includes non-mappable regions, alt contigs etc.; mappable hg38 is about 82% of chrom sizes length
-        sequencedbases=`awk -v col="PF_HQ_ALIGNED_Q20_BASES" -F "\t" 'BEGIN {OFS="\t"} $1=="CATEGORY" {for(i=1; i<=NF; i++) {if($i==col) {colnum=i; next}}} $1=="PAIR" || $1=="UNPAIRED" {sum+=$colnum} END {print sum}' ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.alignment_summary_metrics`
+        sequencedbases=`awk -v col="PF_HQ_ALIGNED_Q20_BASES" -F "\t" 'BEGIN {OFS="\t"; sum=0} $1=="CATEGORY" {for(i=1; i<=NF; i++) {if($i==col) {colnum=i; next}}} $1=="PAIR" || $1=="UNPAIRED" {sum+=$colnum} END {print sum}' ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.alignment_summary_metrics`
         genomelen=`awk -F "\t" 'BEGIN {OFS="\t"} {sum+=$2} END {print sum}' ${chromsizes}`
         genomecov=`echo "${sequencedbases}/${genomelen}" | bc -l -q`
         genomecov=$(round ${genomecov} 2)
+
+        meanCov=`awk -v col="MEAN_COVERAGE" -F "\t" 'BEGIN {OFS="\t"; parse=0} $1=="GENOME_TERRITORY" {for(i=1; i<=NF; i++) {if($i==col) {colnum=i; parse=1; next}}} parse==1 {print $colnum; exit}' ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics`
+        sdCov=`awk -v col="SD_COVERAGE" -F "\t" 'BEGIN {OFS="\t"; parse=0} $1=="GENOME_TERRITORY" {for(i=1; i<=NF; i++) {if($i==col) {colnum=i; parse=1; next}}} parse==1 {print $colnum; exit}' ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics`
+        pctBases10xCov=`awk -v col="PCT_10X" -F "\t" 'BEGIN {OFS="\t"; parse=0} $1=="GENOME_TERRITORY" {for(i=1; i<=NF; i++) {if($i==col) {colnum=i; parse=1; next}}} parse==1 {print $colnum; exit}' ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics`
         echo
         echo "*** Coverage Stats ***"
         echo -e "Sequenced_bases\t${sequencedbases}\t${name}\t${mappedgenome}"
         echo -e "Ref_genome_length\t${genomelen}\t${name}\t${mappedgenome}"
         echo -e "Genomic_coverage\t${genomecov}\t${name}\t${mappedgenome}"
+        echo -e "Mean_coverage_(Picard)\t${meanCov}\t${name}\t${mappedgenome}"
+        echo -e "SD_coverage_(Picard)\t${sdCov}\t${name}\t${mappedgenome}"
+        echo -e "Pct_bases_10x_coverage\t${pctBases10xCov}\t${name}\t${mappedgenome}"
         
         echo
         echo "UCSC track links (actual tracks will be generated in parallel)"
@@ -317,10 +324,10 @@ if [[ "${sampleType}" == "callsnps" ]] || [[ "${sampleType}" == "callsnpsCapture
         
         echo
         echo "Making VCF track"
-        echo "track name=${name}-vcf description=\"${name} VCF (${analyzedReadsM}M nonredundant reads)\" visibility=pack applyMinQual=true minQual=10 db=${annotationgenome} type=vcfTabix  bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.filtered.vcf.gz"
+        echo "track name=${name}-vcf description=\"${name} VCF (${analyzedReadsM}M reads analyzed)\" visibility=pack applyMinQual=true minQual=10 db=${annotationgenome} type=vcfTabix  bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.filtered.vcf.gz"
         
         echo "Making variant track"
-        echo "track name=${name}-gts description=\"${name} genotypes (${analyzedReadsM}M nonredundant reads)\" visibility=pack db=${annotationgenome} type=bigBed  bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.genotypes.bb"
+        echo "track name=${name}-gts description=\"${name} genotypes (${analyzedReadsM}M reads analyzed)\" visibility=pack db=${annotationgenome} type=bigBed  bigDataUrl=${UCSCbaseURL}/${name}.${mappedgenome}.genotypes.bb"
     fi
 elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "${sampleType}" == "chipseq" ]]; then
     echo
@@ -334,7 +341,7 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
     #BUGBUG double counts fragments where both reads are in window
     cat ${chromsizes} | 
     awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="chrEBV"' |
-    awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk -v step=20 -v binwidth=150 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
+    awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - | cut -f1,3 | awk -v step=20 -v binwidth=150 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
     #--faster is ok since we are dealing with bins and read starts
     bedmap --faster --delim "\t" --bp-ovr 1 --echo --count - ${sampleOutdir}/${name}.${mappedgenome}.reads.starch |
     #resize intervals down from full bin width to step size
