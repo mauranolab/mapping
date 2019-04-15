@@ -99,7 +99,7 @@ date
 #Make windowed coverage track of number of overlapping reads per fixed 100-bp window
 #This track excludes PCR duplicates, unmapped segments, and QC fail reads
 awk -v chrom=${chrom} -F "\t" 'BEGIN {OFS="\t"} $1==chrom' ${chromsizes} | 
-awk '{OFS="\t"; $3=$2; $2=0; print}' | sort-bed - | cut -f1,3 | awk -v step=100 -v binwidth=100 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
+awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - | cut -f1,3 | awk -v step=100 -v binwidth=100 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
 bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed |
 #Transform score column into average coverage of base pairs within bin
 awk -v binwidth=100 -F "\t" 'BEGIN {OFS="\t"} {$NF=$NF/binwidth; print}' |
