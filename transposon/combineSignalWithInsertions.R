@@ -111,7 +111,7 @@ cat("Clipping", length(which(sampleData[,"zscore"] < -3)), "sites z < -3\n")
 sampleData[sampleData[,"zscore"] < -3,"zscore"] <- -3
 sampleData[,"zscore"] <- (sampleData[,"zscore"] + 3) / 6
 
-write.table(subset(sampleData, select=c("chrom", "chromStart", "chromEnd",  "zscore")), file=paste0(outbase, '.zscore.bed'), quote=F, sep='\t', col.names=F, row.names=F) 
+write.table(subset(sampleData, select=c("chrom", "chromStart", "chromEnd", "BC", "zscore")), file=paste0(outbase, '.zscore.bed'), quote=F, sep='\t', col.names=F, row.names=F) 
 
 
 cat("\nDone!!!\n")

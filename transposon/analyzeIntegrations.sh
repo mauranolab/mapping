@@ -3,8 +3,24 @@ set -eu -o pipefail
 
 src=/vol/mauranolab/mapped/src/transposon
 
+
+getcolor () {
+    local trackcolor
+    
+    trackcolor="51,128,195" #blue
+    if [[ "$1" =~ A1fw ]] || [[ "$1" =~ C1fw ]] || [[ "$1" =~ A1rv ]] || [[ "$1" =~ C1rv ]]; then
+        trackcolor="120,88,165" #purple
+    elif [[ "$1" =~ HS2 ]]; then
+        trackcolor="238,54,36" #red
+    fi
+    
+    echo ${trackcolor}
+}
+
+
 sample=$1
 
+trackcolor=$(getcolor $sample)
 
 minReadCutoff=2
 
@@ -13,7 +29,7 @@ samflags="-F 512"
 OUTDIR=${sample}
 
 hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed
-
+chromsizes=/vol/isg/annotation/fasta/hg38_noalt/hg38_noalt.chrom.sizes
 
 
 if [ ! -s "$OUTDIR/${sample}.barcodes.txt.gz" ]; then
@@ -43,12 +59,12 @@ cat $TMPDIR/${sample}.flagstat.txt | grep "in total" | awk '{print $1}'
 echo
 readlengths=`samtools view ${samflags} $OUTDIR/${sample}.bam | cut -f10 | awk 'BEGIN {ORS=", "} {lengths[length($0)]++} END {for (l in lengths) {print l " (" lengths[l] ")" }}' | perl -pe 's/, $//g;'`
 echo -e "${sample}\tRead lengths (number of reads)\t${readlengths}"
-minReadLength=`echo "${readlengths}" | perl -pe 's/ \([0-9]+\)//g;' -e 's/,/\n/g;' | sort -n | awk 'NR==1'`
+minReadLength=`echo "${readlengths}" | perl -pe 's/ \([0-9]+\)//g;' -e 's/, /\n/g;' | sort -n | awk 'NR==1'`
 echo -e "${sample}\tMinimum read length\t${minReadLength}"
 
 #Get the reads from the bam since we don't save the trimmed fastq
 #Need to trim in case not all the same length
-samtools view $OUTDIR/${sample}.bam | cut -f10 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -v trim=${minReadLength} -F "\t" 'BEGIN {OFS="\t"} {print substr($0, 0, trim)}' | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
+samtools view $OUTDIR/${sample}.bam | cut -f10 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -F "\t" -v trim=${minReadLength} 'BEGIN {OFS="\t"} {print substr($0, 0, trim)}' | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
 weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} genomic" --stacks-per-line 100 > $TMPDIR/${sample}.genomic.eps
 convert $TMPDIR/${sample}.genomic.eps ${OUTDIR}/${sample}.genomic.png
 
@@ -206,7 +222,7 @@ echo
 echo "Generating UCSC track"
 projectdir=`pwd | perl -pe 's/^\/vol\/mauranolab\/transposon\///g;'`
 UCSCbaseURL="https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/transposon/${projectdir}/${OUTDIR}"
-echo "track name=${sample} description=${sample}-integrations db=hg38"
+echo "track name=${sample} description=${sample}-integrations db=hg38 color=$trackcolor"
 echo "${UCSCbaseURL}/${sample}.barcodes.coords.bed"
 
 
@@ -252,6 +268,54 @@ bedtools intersect -wa -a - -b $OUTDIR/${sample}.barcodes.coords.bed |
 sort | uniq -c | awk '{print $1}' |
 awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' |
 sort | uniq -c | sort -k2,2g
+
+
+echo
+echo "Density track"
+
+##Prep CNV track, set regions without data to baseline of 0 (which is really 2N)
+#cat ${chromsizes} | 
+#awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="chrEBV"' |
+#awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - |
+#bedops -d - /vol/mauranolab/publicdata/K562_copynumber/CCLE.CNV.hg38.bed |
+#awk -F "\t" '{OFS="\t"; print $1, $2, $3, "..", -1}' |
+#bedops -u - /vol/mauranolab/publicdata/K562_copynumber/CCLE.CNV.hg38.bed |
+#awk -F "\t" 'BEGIN {OFS="\t"} {$NF=2^($NF+1); print}' > $TMPDIR/K562.CCLE.CNV.hg38.bed
+
+#score is insertion count per Mb bin. Disabled code normalizes to N=2 by CCLE CNV map
+cat ${chromsizes} | 
+awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="chrEBV"' |
+awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - | cut -f1,3 | awk -v step=100000 -v binwidth=1000000 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
+#--faster is ok since we are dealing with bins and read starts
+bedmap --faster --delim "\t" --bp-ovr 1 --echo --count - $OUTDIR/${sample}.uniqcoords.bed |
+#resize intervals down from full bin width to step size
+#Intervals then conform to Richard's convention that the counts are reported in 20bp windows including reads +/-75 from the center of that window
+awk -v step=100000 -v binwidth=1000000 -F "\t" 'BEGIN {OFS="\t"} {offset=(binwidth-step)/2 ; $2+=offset; $3-=offset; print}' |
+
+##Take a distance-weighted average of the copy number over the interval and normalize to N=2
+#bedmap --delim "|" --multidelim "|" --echo --echo-map - $TMPDIR/K562.CCLE.CNV.hg38.bed |
+#awk -F "|" 'BEGIN {OFS="\t"} { \
+#    split($1, dens, "\t"); avg=0; \
+#    for(i=2; i<=NF; i++) { \
+#        split($i, curCN, "\t");\
+#        if(curCN[2] < dens[2]) {curCN[2]=dens[2]} \
+#        if(curCN[3] > dens[3]) {curCN[3]=dens[3]} \
+#        avg += curCN[5]*(curCN[3]-curCN[2])/(dens[3]-dens[2]); \
+#    } \
+#    print dens[1], dens[2], dens[3], dens[4], dens[5] / avg * 2}' |
+
+tee $TMPDIR/${sample}.insertions.density.bed |
+#Remember wig is 1-indexed
+#NB assumes span == step
+#bedgraph would be simpler but produces 5x larger file. Would variablestep result in smaller .bw file?
+awk -F "\t" 'lastChrom!=$1 || $2 != lastChromEnd || $3-$2 != curspan {curstep=$3-$2; curspan=curstep; print "fixedStep chrom=" $1 " start=" $2+1 " step=" curstep " span=" curspan} {lastChrom=$1; lastChromStart=$2; lastChromEnd=$3; print $5}' > $TMPDIR/${sample}.insertions.density.wig
+
+awk -F "\t" 'BEGIN {OFS="\t"} $5!=0' $TMPDIR/${sample}.insertions.density.bed | starch - > ${OUTDIR}/${sample}.insertions.density.starch
+
+#Kent tools can't use STDIN
+wigToBigWig $TMPDIR/${sample}.insertions.density.wig ${chromsizes} ${OUTDIR}/${sample}.insertions.density.bw
+
+echo "track name=${sample}-dens description=\"${sample}-density\" maxHeightPixels=30 color=$trackcolor viewLimits=0:100 autoScale=on visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}/${sample}.insertions.density.bw"
 
 
 echo
