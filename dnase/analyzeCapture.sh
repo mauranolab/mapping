@@ -43,7 +43,7 @@ RnHoxa_bait)
     ;;
 LP087_bait)
     #TODO not counting backbone since we don't support multiple chromosomes
-    cat /vol/cegs/sequences/cegsvectors/vectors.incells.chrom.sizes | awk -F "\t" 'BEGIN {OFS="\t"} $1=="LP087" {print $1, 0, $2}' > $TMPDIR/target.bed
+    cat /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes | awk -F "\t" 'BEGIN {OFS="\t"} $1=="LP087" {print $1, 0, $2}' > $TMPDIR/target.bed
     ;;
 *)
     echo "ERROR: Don't recognize bait ${bait}";
