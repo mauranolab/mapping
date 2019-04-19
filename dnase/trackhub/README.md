@@ -5,14 +5,14 @@ For info on files, hub links, etc. see:
 https://cascade.isg.med.nyu.edu/~cadlej01/blog/tag_Hubs.shtml#1550256952
 
 
-# Procedure for mapping ENCODE data
+## Procedure for mapping ENCODE data
 
 ```
 base=/vol/isg/encode/dnase
 src=/vol/mauranolab/mapped/src
 ```
 
-## Download fastq files info and metadata
+### Download fastq files info and metadata
 
 1) Visit www.encodeproject.org  
 2) In top bar, select Data --> Search  
@@ -36,15 +36,14 @@ bqsub -j y -N md5sum.validate "md5sum -c metadata.md5sum.txt"
 cd ..
 ```
 
-## Download all JSON files
+### Download all JSON files
 6) mkdir JSON && cd JSON
 7) To download all JSON files per fastq-file run the following command
 ```
 for i in `tail -n +2 ../metadata.tsv | awk '{print $1}'`; do echo https://www.encodeproject.org/files/${i}/?format=json -O $i;done | xargs -n1 -P6 -L 1 wget
 ```
 
-
-## SampleID file
+### SampleID file
 8) This step takes the metadata file as input, the folder with all JSON files, and a output filename  
 ```
 ${src}/trackhub/extractDSfromENCODE_JSON.py metadata.tsv -j JSON/ -o /tmp/SampleIDs.raw.tsv
@@ -70,7 +69,7 @@ cd ..
 ```
 
 
-## Mapped folder with inputs.txt and submit.sh
+### Mapped folder with inputs.txt and submit.sh
 ```
 mkdir mapped && cd mapped
 awk -v base="${base}/renamed" -F "\t" 'BEGIN {OFS="\t"} $1==$7 {print base "/" $1 "_" $3 "_R1.fastq.gz", $3; if($8!="") {print base "/" $1 "_" $3 "_R2.fastq.gz", $2}}' ../SampleIDs.tsv |
@@ -94,7 +93,7 @@ EOF
 cd ..
 ```
 
-## Annotate samples and create trackhub
+### Annotate samples and create trackhub
 This should be run after all DNase samples have been processed. 
 samplesforTrackhub.R combines metadata from SamplesForTrackhub.tsv with the pipeline output of analysis.sh.
 ```
