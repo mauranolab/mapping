@@ -53,7 +53,7 @@ if [[ "${processingCommand}" != "none" ]] && [[ "${processingCommand}" != "aggre
 fi
 
 if [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "callsnps" ]] && [[ "${sampleType}" != "callsnpsCapture" ]] && [[ "${sampleType}" != "none" ]]; then 
-    echo "ERROR submit: unknown analysis command ${sampleType} in analysisType ${analysisType}"
+    echo "ERROR submit: unknown sample type ${sampleType} in analysisType ${analysisType}"
     exit 2
 fi
 
@@ -112,20 +112,18 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     analysisname="${sample}-${BS}.${curGenome}"
     
     #Submit job even if none so that the read count stats get run
-    if [[ "1" == "1" ]]; then
-        if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
-            analysisHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${analysisname}`"
-        else
-            analysisHold=""
-        fi
-        
-        echo "${analysisname} analysis"
-        qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sample}-${BS} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
-        
-        cat ${sampleOutdir}/sgeid.analysis.${analysisname} >> sgeid.analysis
-        
-        rm -f ${sampleOutdir}/sgeid.analysis.${analysisname}
+    if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
+        analysisHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${analysisname}`"
+    else
+        analysisHold=""
     fi
+    
+    echo "${analysisname} analysis"
+    qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sample}-${BS} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
+    
+    cat ${sampleOutdir}/sgeid.analysis.${analysisname} >> sgeid.analysis
+    
+    rm -f ${sampleOutdir}/sgeid.analysis.${analysisname}
     
     #Clean up sgeid even if we don't run analysis
     rm -f ${sampleOutdir}/sgeid.merge.${analysisname}
