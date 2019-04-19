@@ -304,20 +304,19 @@ for assay_type in assays:
                 long_label="Cut Counts")
             composite.add_view(Cuts_view)
         
-        if args.genome != "cegsvectors":
-            if assay_type == "DNA" or assay_type == "Capture":
-                Variants_view = ViewTrack(
-                    name="Variants_view_" + curGroup_trackname,
-                    view="Variants",
-                    visibility="hide",
-                    parentonoff="off",
-                    tracktype='vcfTabix',
-                    maxItems=250,
-                    applyMinQual="true",
-                    minQual=10,
-                    short_label="Variants",
-                    long_label="Variants")
-                composite.add_view(Variants_view)
+        if assay_type == "DNA" or assay_type == "Capture":
+            Variants_view = ViewTrack(
+                name="Variants_view_" + curGroup_trackname,
+                view="Variants",
+                visibility="hide",
+                parentonoff="off",
+                tracktype='vcfTabix',
+                maxItems=250,
+                applyMinQual="true",
+                minQual=10,
+                short_label="Variants",
+                long_label="Variants")
+            composite.add_view(Variants_view)
         
         if assay_type == "DNA" or assay_type == "Capture":
             Genotypes_view = ViewTrack(
