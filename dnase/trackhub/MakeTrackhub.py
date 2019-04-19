@@ -234,6 +234,7 @@ for assay_type in assays:
             tracktype="bam",
             short_label="Reads",
             maxItems=250,
+#            maxWindowToDraw=10000,
             pairEndsByName="on",
             long_label="Reads")
         composite.add_view(Reads_view)
@@ -458,19 +459,18 @@ for assay_type in assays:
                 )
                 Cuts_view.add_tracks(track)
             
-            if args.genome != "cegsvectors":
-                #Variants_view
-                if assay_type == "DNA" or assay_type == "Capture":
-                    track = Track(
-                        name=sampleName_trackname + '_vcf',
-                        short_label=sampleShortLabel,
-                        long_label=assay_type + ' Variants ' + sampleDescription,
-                        url=args.URLbase + curSample['filebase'] + '.filtered.vcf.gz',
-                        subgroups=sampleSubgroups,
-                        tracktype='vcfTabix',
-                        parentonoff="off"
-                    )
-                    Variants_view.add_tracks(track)
+            #Variants_view
+            if assay_type == "DNA" or assay_type == "Capture":
+                track = Track(
+                    name=sampleName_trackname + '_vcf',
+                    short_label=sampleShortLabel,
+                    long_label=assay_type + ' Variants ' + sampleDescription,
+                    url=args.URLbase + curSample['filebase'] + '.filtered.vcf.gz',
+                    subgroups=sampleSubgroups,
+                    tracktype='vcfTabix',
+                    parentonoff="off"
+                )
+                Variants_view.add_tracks(track)
             
             #Genotypes_view
             if assay_type == "DNA" or assay_type == "Capture":
