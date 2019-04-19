@@ -1,4 +1,11 @@
-# DNase pipeline - procedure for mapping ENCODE data
+# Trackhub generation from mapping pipeline
+This uses the maurnaolab fork of daler trackhub: https://daler.github.io/trackhub/
+
+For info on files, hub links, etc. see:
+https://cascade.isg.med.nyu.edu/~cadlej01/blog/tag_Hubs.shtml#1550256952
+
+
+# Procedure for mapping ENCODE data
 
 ```
 base=/vol/isg/encode/dnase
