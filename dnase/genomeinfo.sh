@@ -87,12 +87,14 @@ rn6_sacCer3)
     referencefasta=/vol/isg/annotation/fasta/rn6_sacCer3/rn6_sacCer3.fa.gz
     dbsnpvcf=/dev/null
     ;;
-cegsvectors_*)
-    #If this genome is an symlink, then substitute it with its target for the purposes of looking up annotation
-    mappedgenome=`readlink -f /vol/cegs/sequences/${mappedgenome} | xargs basename`
+cegsvectors*)
+    if [[ "${mappedgenome}" =~ cegsvectors_ ]]; then
+        #If this genome is an symlink, then substitute it with its target for the purposes of looking up annotation
+        mappedgenome=`readlink -f /vol/cegs/sequences/${mappedgenome} | xargs basename`
+    fi
     bwaIndex=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy 1"
-    referencefasta=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.fa.gz
+    referencefasta=/vol/cegs/sequences/cegsvectors/cegsvectors.fa.gz
     dbsnpvcf=/dev/null
     ;;
 *)
@@ -107,7 +109,7 @@ annotationgenome=`echo ${mappedgenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
 
 
 if [[ "${mappedgenome}" =~ ^cegsvectors ]]; then
-    chromsizes="/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.chrom.sizes"
+    chromsizes="/vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes"
 else
     chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
 fi
