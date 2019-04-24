@@ -104,7 +104,7 @@ ${src}/trackhub/samplesforTrackhub.R --inputfile ../SampleIDs.tsv --project huma
 cd /vol/isg/encode/chipseq/mapped/
 ${src}/trackhub/samplesforTrackhub.R --inputfile ../SampleIDs.tsv --project humanENCODEchipseq --out ../SamplesForTrackhub.tsv 2>&1 | grep -E -i "(warning|error)"
 
-cd /vol/isg/encode/mouseencode_2019/mapped/
+cd /vol/isg/encode/mouseencode/mapped/
 ${src}/trackhub/samplesforTrackhub.R --inputfile ../SampleIDs.tsv --project mouseENCODEdnase --out ../SamplesForTrackhub.tsv 2>&1 | grep -E -i "(warning|error)"
 
 cd /vol/isg/encode/mouseencode_chipseq/mapped/
