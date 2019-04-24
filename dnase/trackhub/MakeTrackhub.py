@@ -65,6 +65,19 @@ def createSubGroup(subGroups, subGroupNames, keys, name, label):
         subGroupNames[name] = len(uniqkeys)
 
 
+#https://stackoverflow.com/questions/22468435/how-would-i-look-for-the-shortest-unique-subsequence-from-a-set-of-words-in-pyth
+def shortest_unique_strings(array):
+    ret = {}
+    for k in array:
+        for ix in range(len(k)):
+            # When the list-comp only has one item.
+            # 'key[:ix+1]' == the current substring
+            if len([key for key in array if key.startswith(k[:ix+1])]) == 1:
+                ret[k] = k[:ix+1]
+                break
+    return ret
+
+
 ########
 #import metadata
 ########
@@ -157,6 +170,11 @@ for assay_type in assays:
         createSubGroup(subGroupDefs, subGroupNames, sorted([line['Replicate'] for line in matchingSamples]), "replicate", "Replicate")
         createSubGroup(subGroupDefs, subGroupNames, sorted([line['Assay'] for line in matchingSamples]), "assay", "Assay")
         createSubGroup(subGroupDefs, subGroupNames, sorted([re.sub(' ', '_', line['Age']) for line in matchingSamples], key=natural_key), "age", "Age")
+        if args.genome == "cegsvectors":
+            #Add cegsvectors to make sure a minimum label is printed if there is only a single Mapped_Genome
+            cegsvectorsAbbreviatedNames = shortest_unique_strings(set(["cegsvectors"] + [line['Mapped_Genome'] for line in matchingSamples]))
+            #cegsvectorsAbbreviatedNames = {k: re.sub(r'^cegsvectors_', '', v) for k, v in cegsvectorsAbbreviatedNames.items()}
+            createSubGroup(subGroupDefs, subGroupNames, sorted([line['Mapped_Genome'] for line in matchingSamples]), "mappedgenome", "Mapped_Genome")
         
         # SortOrder controls what is displayed, even if we retain all the subgroup definitions.
         SortOrder = "sampleName=+"
@@ -204,7 +222,9 @@ for assay_type in assays:
         params_dimensions = ""
         if assay_type == "DNase-seq" or assay_type == "DNA" or assay_type == "Capture":
             params_dimensions="dimY=sampleName"
-            if 'age' in subGroupNames:
+            if args.genome == "cegsvectors":
+                params_dimensions = params_dimensions + " dimX=mappedgenome"
+            elif 'age' in subGroupNames:
                 params_dimensions = params_dimensions + " dimX=age"
         else:
             # ChIP-seq
@@ -347,9 +367,14 @@ for assay_type in assays:
             sampleShortLabel = sampleName + "-" + curSample['DS']
             
             #Internal track name (never displayed) must be unique within the Genome Browser or dataHub and must begin with a letter
+            if args.genome == "cegsvectors":
+                sampleNameGenome = cegsvectorsAbbreviatedNames[curSample['Mapped_Genome']]
+            else:
+                sampleNameGenome = curSample['Annotation_Genome']
+            
             #There is a length limit of 128 characters, but in practice some are used for an internal prefix/suffix
             #Probably could omit sampleName here to save space
-            sampleName_trackname = cleanTrackName(args.genome + "_" + curGroup + "_" + sampleName + "_" + curSample['DS'])
+            sampleName_trackname = cleanTrackName(sampleNameGenome + "_" + curGroup + "_" + sampleName + "_" + curSample['DS'])
             
             #longLabel must be <= 76 printable characters
             if assay_type == "DNA" or assay_type == "Capture":
@@ -372,6 +397,8 @@ for assay_type in assays:
                 sampleSubgroups['replicate'] = curSample['Replicate']
             if 'age' in subGroupNames:
                 sampleSubgroups['age'] = re.sub(' ', '_', curSample['Age'])
+            if 'mappedgenome' in subGroupNames:
+                sampleSubgroups['mappedgenome'] = curSample['Mapped_Genome']
             
             
             track = Track(

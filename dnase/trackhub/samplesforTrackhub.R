@@ -22,9 +22,9 @@ opt = parse_args(opt_parser);
 
 
 if(!is.null(opt$out)) {
-	message('Output file: ', opt$out)
+	message("[samplesforTrackhub] ", 'Output file: ', opt$out)
 } else {
-	message('Output file: ', 'stdout')
+	message("[samplesforTrackhub] ", 'Output file: ', 'stdout')
 }
 
 if(!is.null(opt$workingDir)) {
@@ -33,10 +33,9 @@ if(!is.null(opt$workingDir)) {
 } else {
 	pwd <- getwd()
 }
-message('Working Directory: ', pwd)
 
 project=opt$project
-message('Project: ', project)
+message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", project)
 
 
 ##############################################################
@@ -50,9 +49,9 @@ if(!is.null(opt$inputfile)) {
 		stop("DS column is required in provided inputfile", call.=FALSE)
 	} else {
 		inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$DS),]
-		message('Number of unique DS numbers: ', length(unique(inputSampleIDs$DS)))
+		message("[samplesforTrackhub] ", 'Number of unique DS numbers: ', length(unique(inputSampleIDs$DS)))
 	}
-	message('Dimensions of Input file: ', nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
+	message("[samplesforTrackhub] ", 'Dimensions of Input file: ', nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
 } else {
 	# This is the case for project==CEGS
 	inputSampleIDs <- NULL
@@ -80,7 +79,7 @@ if(project=="CEGS") {
 			infofile_lines <- readLines(infofile)
 			flowcell_dates[[flowcell]] <- gsub(unlist(strsplit(infofile_lines[grep("#Load date", infofile_lines)], '\t'))[2], pattern='-', replacement='')
 		} else { 
-			message("WARNING No info.txt file found for ", infofile)
+			message("[samplesforTrackhub] ", "WARNING No info.txt file found for ", infofile)
 			flowcell_dates[[flowcell]] <- NA
 		}
 	}
@@ -108,7 +107,7 @@ mappeddirs <- mappeddirs[grep('trash', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('hotspots', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('fastqc', mappeddirs, invert=TRUE)]
 
-message('Mapped directories to process: ', length(mappeddirs))
+message("[samplesforTrackhub] ", 'Mapped directories to process: ', length(mappeddirs))
 
 
 #Initialize color palette
@@ -124,7 +123,7 @@ colorAssignments <- NULL
 
 # The "pipelineParameters" parser function. Will be used in the below for loop.
 pipelineParametersParser <- function(pipelineParameters, fieldName) {
-	regex_out <- regexpr('^Running (?<processingCommand>[^,]+),(?<analysisCommand>[^ ]+) analysis [^\\-]+\\-[^ ]+ \\(.+\\) against genome (?<mappedgenome>[^ ]+)( \\(aka (?<annotationgenome>[^ ]+)\\)?)?', pipelineParameters, perl=T)
+	regex_out <- regexpr('^Running (?<processingCommand>[^,]+),(?<analysisCommand>[^ ]+) analysis [^\\-]+\\-[^ ]+ \\(.+\\) against genome (?<mappedgenome>[^ ]+)( \\(aka (?<annotationgenome>[^ ]+)\\))?', pipelineParameters, perl=T)
 
 	regex_out.start <- attr(regex_out,"capture.start")[1, fieldName]
 	regex_out.lngth <- attr(regex_out,"capture.length")[1, fieldName]
@@ -132,12 +131,12 @@ pipelineParametersParser <- function(pipelineParameters, fieldName) {
 }
 
 # Initialize "data" with just column names.  We'll be adding rows to this later on in the code.
-outputCols <- c("Name", "DS", "Replicate", "Color", "Assay", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Group", "Age", "Institution", "filebase", "Genome")
+outputCols <- c("Name", "DS", "Replicate", "Color", "Assay", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Group", "Age", "Institution", "filebase", "Mapped_Genome", "Annotation_Genome")
 data <- data.frame(matrix(ncol=length(outputCols), nrow=1))
 colnames(data) <- outputCols
 i <- 0 # This will be our "data" output variable index.
 for(curdir in mappeddirs){
-	message("Working on ", curdir)
+	message("[samplesforTrackhub] ", curdir)
 	SampleID <- basename(curdir)
 	SampleIDsplit <- unlist(strsplit(SampleID, "-"))
 	
@@ -145,7 +144,7 @@ for(curdir in mappeddirs){
 	analysisFiles <- list.files(path=paste0(pwd, '/', curdir), pattern="^(makeTracks|analysis).*")
 	
 	if(length(analysisFiles)==0) {
-		message("WARNING No analysis files found in ", curdir)
+		message("[samplesforTrackhub] ", "WARNING No analysis files found in ", curdir)
 		next # Nothing follows here except for the long 'for(analysisFile...' loop.
 	}
 	
@@ -153,7 +152,7 @@ for(curdir in mappeddirs){
 		analysisFileContents <- readLines(paste0(pwd, '/', curdir, '/', analysisFile), n=2000)
 		
 		if(tail(analysisFileContents, 2)[1] != "Done!"){
-			message("WARNING ", analysisFile, " appears not to have completed successfully")
+			message("[samplesforTrackhub] ", "WARNING ", analysisFile, " appears not to have completed successfully")
 		} else {
 			i <- i+1
 			# We need to add a new row to "data".  The values will be set within this for loop.
@@ -161,25 +160,26 @@ for(curdir in mappeddirs){
 			
 			pipelineParameters <- analysisFileContents[grep('^Running [^,]+,[^,]+ analysis', analysisFileContents, perl=T)]
 			if(length(pipelineParameters)>0) {
+				sampleType <- pipelineParametersParser(pipelineParameters, "analysisCommand")
+				mappedgenome <- pipelineParametersParser(pipelineParameters, "mappedgenome")
 				annotationgenome <- pipelineParametersParser(pipelineParameters, "annotationgenome")
-                annotationgenome <- substr(annotationgenome, 1, nchar(annotationgenome)-1)   # remove the right paren
+				
+				data$Mapped_Genome[i] <- mappedgenome
 				
 				# Is the annotation geneome in the "Running ... analysis ..." line ?
  				if(nchar(annotationgenome) > 0) {
 					# It is.
- 					data$Genome[i] <- annotationgenome
+ 					data$Annotation_Genome[i] <- annotationgenome
 				} else {
 					# It is not. Extract it from the "mappedgenome" field.
-					mappedgenome <- pipelineParametersParser(pipelineParameters, "mappedgenome")
- 					mappedgenome <- gsub("_.+$", "", mappedgenome)
- 					data$Genome[i] <- gsub("all$", "", mappedgenome)
+ 					annotationgenome <- gsub("_.+$", "", mappedgenome)
+ 					data$Annotation_Genome[i] <- gsub("all$", "", annotationgenome)
 				}
-				
-				sampleType <- pipelineParametersParser(pipelineParameters, "analysisCommand")
 			} else {
 				#assume dnase for old pipeline
 				sampleType <- "dnase"
-                data$Genome[i] <- NA
+				data$Mapped_Genome[i] <- NA
+				data$Annotation_Genome[i] <- NA
 			}
 			
 			# Adding a new Assay type also requires changes to be made to MakeTrackhub.py
@@ -193,7 +193,7 @@ for(curdir in mappeddirs){
 			} else if(sampleType=="chipseq") {
 				data$Assay[i] <- SampleIDsplit[2]
 			} else {
-				message("WARNING don't recognize sampleType: ", sampleType)
+				message("[samplesforTrackhub] ", "WARNING don't recognize sampleType: ", sampleType)
 				data$Assay[i] <- NA
 			}
 			
@@ -309,7 +309,7 @@ if(project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipseq", 
 #	Replicates <- unique(subset(data, select=c(Name, Assay)))
 #	Replicates$Name <- gsub('_L$|_R$', '', Replicates$Name)
 #	for (i in 1:nrow(Replicates)){
-#		#message(Replicates$Name[i], Replicates$Group[i])
+#		#message("[samplesforTrackhub] ", Replicates$Name[i], Replicates$Group[i])
 #		matchingRows <- gsub('_L$|_R$', '', data$Name)==Replicates$Name[i] & data$Assay==Replicates$Assay[i]
 #		data[matchingRows,]$Replicate <- rank(-as.numeric(data[matchingRows,]$analyzed_reads))
 #		#Fix color for Left and right tissues
@@ -341,7 +341,7 @@ if(project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipseq", 
 #Output file:
 write.table(data, file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)
 
-# message(warnings())
+# message("[samplesforTrackhub] ", warnings())
 
-message("Done!!!")
+message("[samplesforTrackhub] ", "Done!!!")
 
