@@ -141,7 +141,8 @@ fi
 
 
 #Prep for UCSC track links
-projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab|isg\/encode)\///g;'`
+#Remove "new" from the end of path so that we can reprocess data without affecting live data
+projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab|isg\/encode)\///g;' | perl -pe 's/\/new$//g;'`
 if [[ `pwd` =~ ^\/vol\/cegs\/ ]]; then
     UCSCbaseURL="https://cegs@cascade.isg.med.nyu.edu/cegs/${projectdir}/${sampleOutdir}"
 elif [[ `pwd` =~ ^\/vol\/isg\/encode\/ ]]; then
