@@ -64,8 +64,8 @@ make_bigBED () {
 
     if [ ${num_bad_lines} -ne 0 ]; then
         # Issue a warning when a line in myBEDfile contains an unexpected number of fields.
-        echo "Unexpected number of fields in ${myBEDfile}"  >> make_bigBED.log
-        (>&2 echo "Unexpected number of fields in ${myBEDfile}")
+        echo "WARNING Unexpected number of fields in ${myBEDfile}"  >> make_bigBED.log
+        (>&2 echo "WARNING Unexpected number of fields in ${myBEDfile}")
     fi
 
     sort -k1,1 -k2,2n ${myBEDfile} | cut -d $'\t' -f1-${expected_N} > myBEDfile_sorted.bed
