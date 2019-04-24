@@ -81,6 +81,7 @@ if [[ "${analysisType}" =~ ^map ]]; then
     n=`cat ${sampleOutdir}/inputs.map.txt | wc -l`
     mapname="${sample}-${BS}.${genomesToMap}"
     #SGE doesn't accept a -t specification with gaps, so we'll start R2 jobs that will die instantly rather than prune here
+    echo
     echo "Mapping ${n} jobs for ${mapname}"
     #NB running many jobs with threads < 4 can sometimes get memory errors, not quite sure of the culprit
     qsub -S /bin/bash -cwd -V $qsubargs -pe threads ${mapThreads} -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sample}-${BS} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
@@ -96,6 +97,7 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggrega
     
     for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         mergename="${sample}-${BS}.${curGenome}"
+        echo
         echo "${mergename} merge"
         #NB compression threads are multithreaded. However, samblaster and index are not; former is ~1/4 of time and latter is trivial
         qsub -S /bin/bash -cwd -V $qsubargs -pe threads ${mergeThreads} -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sample}-${BS} ${BS} ${curGenome}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
@@ -118,6 +120,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         analysisHold=""
     fi
     
+    echo
     echo "${analysisname} analysis"
     qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sample}-${BS} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
     
