@@ -68,7 +68,8 @@ make_bigBED () {
         (>&2 echo "WARNING Unexpected number of fields in ${myBEDfile}")
     fi
 
-    sort -k1,1 -k2,2n ${myBEDfile} | cut -d $'\t' -f1-${expected_N} > myBEDfile_sorted.bed
+    # bedToBigBed requires case-sensitive sorting, so set LC_ALL=C.
+    LC_ALL=C sort -k1,1 -k2,2n ${myBEDfile} | cut -d $'\t' -f1-${expected_N} > myBEDfile_sorted.bed
 
     if [ "${expected_N}" -ge 5 ]; then
         # Round column 5 of the bed file to an integer.

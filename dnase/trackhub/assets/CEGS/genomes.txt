@@ -4,6 +4,6 @@ groups cegsvectors/cegsvectors_groups.txt
 description CEGS vectors
 twoBitPath cegsvectors/data/cegsvectors.2bit
 organism Landing Pad
-defaultPos LP058:1-5392
+defaultPos LP087:1-6634
 htmlPath genomes_description.html
  
