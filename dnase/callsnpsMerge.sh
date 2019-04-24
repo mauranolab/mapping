@@ -172,10 +172,10 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
         #for multisample calling, include the sample name in the variants file name
         vcfsamplename=".${sampleid}"
     fi
-    cat $TMPDIR/variants.${sampleid}.txt | awk -F "\t" 'BEGIN {OFS="\t"; num=0} $4=="." {num++; $4="var" num} {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.variants.starch
+    cat $TMPDIR/variants.${sampleid}.txt | awk -F "\t" 'BEGIN {OFS="\t"; num=0} $4=="." {num++; $4="var" num} {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch
     
     #NB UCSC link from analysis.sh will be wrong for multisample calling
-    unstarch ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.variants.starch | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } {split($8, gt, "/"); print $1, $2, $3, $4 "_" truncgt(gt[1]) "/" truncgt(gt[2]), $5}' > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
+    unstarch ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } {split($8, gt, "/"); gtout=truncgt(gt[1]); if(length(gt)>1) {gtout=gtout "/" truncgt(gt[2])} print $1, $2, $3, $4 "_" gtout, $5}' > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
     bedToBigBed -type=bed5 $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.bb
     
     #Personal Genome SNP format displays two alleles in vertical fashion and provides amino acid changes, but doesn't permit IDs
