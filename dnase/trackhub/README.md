@@ -9,7 +9,7 @@ https://cascade.isg.med.nyu.edu/~cadlej01/blog/tag_Hubs.shtml#1550256952
 
 ```
 base=/vol/isg/encode/dnase
-src=/vol/mauranolab/mapped/src
+src=/vol/mauranolab/mapped/src/dnase
 ```
 
 ### Download fastq files info and metadata
