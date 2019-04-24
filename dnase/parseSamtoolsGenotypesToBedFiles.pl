@@ -129,6 +129,12 @@ sub parseGenotype {
         $qualityScore = $GQ;
         $GT = $GT1;
         $PL = $PL1;
+    } elsif ($format eq "GT:PL:DP:AD") {
+        my ($GT1,$PL1,$DP,$AD,$GQ) = split /\:/, $genotype;
+        $readDepth = $DP;
+        $qualityScore = "NA";
+        $GT = $GT1;
+        $PL = $PL1;
     } elsif ($format eq "GT:AD:DP:GQ:PP") {
         my ($GT1,$AD,$DP,$GQ,$PP) = split /\:/, $genotype;
         $readDepth = $DP;
