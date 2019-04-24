@@ -111,8 +111,9 @@ echo "Calling variants for genome ${mappedgenome} using ploidy ${ploidy} and ref
 date
 
 #Current documentation at https://samtools.github.io/bcftools/howtos/index.html
-echo "TODO WARNING assuming male sample"
-samtools view -H ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1=="@RG" {for(i=2; i<=NF; i++) {split($i, tag, ":"); if (tag[1]=="SM") {print tag[2], "M"}}}' > $TMPDIR/samplesfile.txt
+sex="M"
+echo "WARNING assuming sample sex=${sex}"
+samtools view -H ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -v sex=${sex} -F "\t" 'BEGIN {OFS="\t"} $1=="@RG" {for(i=2; i<=NF; i++) {split($i, tag, ":"); if (tag[1]=="SM") {print tag[2], sex}}}' > $TMPDIR/samplesfile.txt
 ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
 
 
@@ -130,6 +131,9 @@ bcftools call ${ploidy} --keep-alts --multiallelic-caller --variants-only -f GQ 
 bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 
+#TODO add track without --variants-only
+#bcftools filter -i 'AD[*:1-] > 10' --output-type v | to filter on min AD for alt alleles
+
 
 echo "Filter and normalize variants"
 date
@@ -138,7 +142,7 @@ minSNPQ=10
 minGQ=99
 minDP=10
 
-bcftools filter -i "INFO/DP>=${minDP} && QUAL>=${minSNPQ} && GQ>=${minGQ}" --SnpGap 3 --IndelGap 10 -O u ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz |
+bcftools filter -i "INFO/DP>=${minDP} && QUAL>=${minSNPQ} && GQ>=${minGQ}" --SnpGap 3 --IndelGap 10 --output-type u ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz |
 #Iyer et al PLoS Genet 2018 uses -m -any (split multiallelics)
 bcftools norm --threads $NSLOTS --check-ref w --fasta-ref ${referencefasta} --output-type z - > $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 bcftools index $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
