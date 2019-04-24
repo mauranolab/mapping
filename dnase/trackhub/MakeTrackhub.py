@@ -174,7 +174,7 @@ for assay_type in assays:
             #Add cegsvectors to make sure a minimum label is printed if there is only a single Mapped_Genome
             cegsvectorsAbbreviatedNames = shortest_unique_strings(set(["cegsvectors"] + [line['Mapped_Genome'] for line in matchingSamples]))
             #cegsvectorsAbbreviatedNames = {k: re.sub(r'^cegsvectors_', '', v) for k, v in cegsvectorsAbbreviatedNames.items()}
-            createSubGroup(subGroupDefs, subGroupNames, sorted([line['Mapped_Genome'] for line in matchingSamples]), "mappedgenome", "Mapped_Genome")
+            createSubGroup(subGroupDefs, subGroupNames, sorted([re.sub(r'^cegsvectors_', '', line['Mapped_Genome']) for line in matchingSamples]), "mappedgenome", "Mapped_Genome")
         
         # SortOrder controls what is displayed, even if we retain all the subgroup definitions.
         SortOrder = "sampleName=+"
@@ -398,7 +398,7 @@ for assay_type in assays:
             if 'age' in subGroupNames:
                 sampleSubgroups['age'] = re.sub(' ', '_', curSample['Age'])
             if 'mappedgenome' in subGroupNames:
-                sampleSubgroups['mappedgenome'] = curSample['Mapped_Genome']
+                sampleSubgroups['mappedgenome'] = re.sub(r'^cegsvectors_', '', curSample['Mapped_Genome'])
             
             
             track = Track(
