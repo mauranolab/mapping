@@ -9,6 +9,8 @@ TMPDIR=$3
 shift 3
 genome_array=("$@")
 
+module load bedops/2.4.35
+
 ####################################################################
 # We need to make bigBED files from bed files. To do this we need 
 # chrom.sizes files. So move to the right place for downloading them.
@@ -68,7 +70,7 @@ make_bigBED () {
         (>&2 echo "WARNING Unexpected number of fields in ${myBEDfile}")
     fi
 
-    sort -k1,1 -k2,2n ${myBEDfile} | cut -d $'\t' -f1-${expected_N} > myBEDfile_sorted.bed
+    grep -v '^#' ${myBEDfile} | sort-bed - | cut -d $'\t' -f1-${expected_N} > myBEDfile_sorted.bed
 
     if [ "${expected_N}" -ge 5 ]; then
         # Round column 5 of the bed file to an integer.
