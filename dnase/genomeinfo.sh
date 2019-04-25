@@ -94,7 +94,8 @@ cegsvectors*)
     fi
     bwaIndex=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy 1"
-    referencefasta=/vol/cegs/sequences/cegsvectors/cegsvectors.fa.gz
+    #Tried using the full cegsvectors.fa.gz but picard (esp CollectMultipleMetrics) has trouble with it)
+    referencefasta=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/dev/null
     ;;
 *)
