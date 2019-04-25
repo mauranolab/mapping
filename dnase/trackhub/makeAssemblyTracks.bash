@@ -70,7 +70,6 @@ make_bigBED () {
         (>&2 echo "WARNING Unexpected number of fields in ${myBEDfile}")
     fi
 
-    # LC_ALL=C sort -k1,1 -k2,2n ${myBEDfile} | cut -d $'\t' -f1-${expected_N} > myBEDfile_sorted.bed
     grep -v '^#' ${myBEDfile} | sort-bed - | cut -d $'\t' -f1-${expected_N} > myBEDfile_sorted.bed
 
     if [ "${expected_N}" -ge 5 ]; then
