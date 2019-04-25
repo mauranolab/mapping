@@ -104,6 +104,7 @@ else
     fi
     
     #TODO this has massive memory usage for large runs (e.g. a full mouse genome uses 90% of 256 GB)
+    #would -p be worth it for map runs to clean up the superfluous @PG tags in header?
     samtools merge -c -@ $NSLOTS ${mergeOpts} ${sampleOutdir}/${name}.${mappedgenome}.bam ${files}
 fi
 
@@ -122,6 +123,7 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggrega
     #samblaster used an average of 1GB memory mapping ENCODE DNase data to hg38. 10/889 jobs used >5GB.
     samtools view -h ${sampleOutdir}/${name}.${mappedgenome}.bam |
     samblaster --addMateTags |
+    #BUGBUG samblaster does not add a PP field in its @PG tag; when we are merging after map PP should just be bwa, but would be the prior tag SAMBLASTER when doing aggregateRemarkDups
     samtools view -Sb - > $TMPDIR/${name}.${mappedgenome}.markedDups.bam
     samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${name}.sort -l 9 $TMPDIR/${name}.${mappedgenome}.markedDups.bam > ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam && mv ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
 fi
