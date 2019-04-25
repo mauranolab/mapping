@@ -12,7 +12,8 @@ alias closest-features='closest-features --header'
 mappedgenome=$1
 analysisType=$2
 name=$3
-src=$4
+sampleAnnotation=$4
+src=$5
 
 source ${src}/genomeinfo.sh ${mappedgenome}
 
@@ -22,6 +23,7 @@ jobid=$SGE_TASK_ID
 sampleOutdir=${name}
 chrom=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | awk -v jobid=$jobid 'NR==jobid'`
 echo "Running ${analysisType} analysis for ${chrom} of sample ${name} against genome ${mappedgenome}"
+echo "SampleAnnotation:${sampleAnnotation}"
 date
 
 
@@ -111,11 +113,22 @@ echo "Calling variants for genome ${mappedgenome} using ploidy ${ploidy} and ref
 date
 
 #Current documentation at https://samtools.github.io/bcftools/howtos/index.html
-sex="M"
-echo "WARNING assuming sample sex=${sex}"
+
+#Set up ploidy
+sampleAnnotationSex=`echo "${sampleAnnotation}" | awk -v key="Sex" -F "," '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
+case "${sampleAnnotationSex}" in
+Male)
+    sex="M";;
+Female)
+    sex="F";;
+*)
+    sex="M"
+    echo "WARNING assuming sample sex=${sex}"
+    ;;
+esac
+
 samtools view -H ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -v sex=${sex} -F "\t" 'BEGIN {OFS="\t"} $1=="@RG" {for(i=2; i<=NF; i++) {split($i, tag, ":"); if (tag[1]=="SM") {print tag[2], sex}}}' > $TMPDIR/samplesfile.txt
 ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
-
 
 #TODO --min-BQ 20 --max-depth 10000 were carried over from 2015 nat genet paper -- still useful? Handling of the latter changed in samtools 1.9
 #from Iyer et al PLoS Genet 2018

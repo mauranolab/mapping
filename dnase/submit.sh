@@ -41,6 +41,7 @@ genomesToMap=$1
 analysisType=$2
 sample=$3
 BS=$4
+sampleAnnotation=$5
 #Files for a given sample will be output to a folder named "${sample}-${BS}-$genome"
 
 
@@ -64,7 +65,6 @@ fi
 
 
 echo "Will process ${sample} (${BS}) using ${analysisType} pipeline for genomes ${genomesToMap}"
-
 
 sampleOutdir="${sample}-${BS}"
 mkdir -p ${sampleOutdir}
@@ -122,7 +122,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     
     echo
     echo "${analysisname} analysis"
-    qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sample}-${BS} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
+    qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sample}-${BS} ${BS} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
     
     cat ${sampleOutdir}/sgeid.analysis.${analysisname} >> sgeid.analysis
     
