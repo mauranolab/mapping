@@ -34,12 +34,13 @@ if sys.version_info[0] < 3:
     sys.exit(1)
 
 import re
-#import getopt
+import copy
 import pysam
 import argparse
+import collections
 
 
-version="1.2"
+version="1.3"
 
 
 parser = argparse.ArgumentParser(prog = "filter_reads", description = "manually corrects the flags in a single- or pair-end BAM alignment file", allow_abbrev=False)
@@ -50,6 +51,7 @@ parser.add_argument("--failUnwantedRefs", action = "store_true", default = False
 parser.add_argument("--unwanted_refs_list", action = "store", type = str, default = "hap|random|^chrUn_|_alt$|scaffold|^C\d+", help = "Regex defining unwanted reference sequences [%(default)s]")
 parser.add_argument("--min_mapq", action = "store", type = int, default = 0, help = "Reads must have at least this MAPQ to pass filter [%(default)s]")
 parser.add_argument("--reqFullyAligned", action = "store_true", default = False, help = "Require full length of read to align without insertions, deletions, or clipping")
+parser.add_argument("--reheader", action = "store", type = str, help = "Merge in header information from bam or text file (SAM format; alignment section ignored) [%(default)s]")
 parser.add_argument("--max_mismatches", action = "store", type = float, default = 2, help = "Maximum mismatches to pass filter, either an integer representing a fixed cutoff or a decimal [0-1] for a variable cutoff as a proportion of read length [%(default)s]")
 parser.add_argument("--min_insert_size", action = "store", type = int, default = 0, help = "Minimum insert size to pass filter [%(default)s]")
 parser.add_argument("--max_insert_size", action = "store", type = int, default = 500, help = "Maximum insert size to pass filter [%(default)s]")
@@ -89,7 +91,7 @@ maxPermittedTrailingOverrun = args.maxPermittedTrailingOverrun
 failUnwantedRefs = args.failUnwantedRefs
 unwanted_refs_list = args.unwanted_refs_list
 dropUnmappedReads = args.dropUnmappedReads
-
+reheader = args.reheader
 
 
 class ReadException(Exception):
@@ -236,6 +238,64 @@ def validateSingleRead(read):
     return;
 
 
+###Helper functions for merging SAM headers
+#Converts a list of dicts to a dict of dicts where the key is the required SAM header fields
+commentnum = 0
+def samHeaderTagListToDict(header, tag):
+    #Globally unique ID for comment lines
+    global commentnum
+    
+    #Deep copy for help in debugging
+    if tag in header:
+        header = copy.deepcopy(header[tag])
+    else:
+        header = []
+    
+    #Don't use dict comprehension since dicts are unordered in python <3.6
+    headerDict = collections.OrderedDict()
+    for value in header:
+        if tag == "SQ":
+            key = value['SN'] + "_" + str(value['LN'])
+        elif tag == "CO":
+            #Use simple incremented to get unique ID so that comments are never merged
+            key = value
+            commentnum += 1
+        else:
+            key = value['ID']
+        headerDict[key] = value
+    return headerDict
+
+
+def mergeSamHeadersAsDict(header, reheader):
+    #Deep copy for help in debugging
+    header = copy.deepcopy(header)
+    reheader = copy.deepcopy(reheader)
+    
+    #Don't want to overwrite the main header tag
+    if 'HD' in reheader:
+        del reheader['HD']
+    #Go through @SQ, @RG, @PG, @CO tags individually
+    for tag in reheader:
+        if tag in reheader:
+            #Now we have a list of dicts
+            header_tag_dict = samHeaderTagListToDict(header, tag)
+            reheader_tag_dict = samHeaderTagListToDict(reheader, tag)
+            
+            for fieldID in reheader_tag_dict:
+                if fieldID in header_tag_dict:
+                    #Now we simply have two dicts that can be merged with update
+                    header_tag_dict[fieldID].update(reheader_tag_dict[fieldID])
+                else:
+                    #Otherwise just add it
+                    header_tag_dict[fieldID] = reheader_tag_dict[fieldID]
+            #Now replace the entire tag list with the updated one from the dict
+            header[tag] = list(header_tag_dict.values())
+        else:
+            #Our bam file does not have any of this tag at all, e.g. comments
+            header[tag] = reheader[tag]
+    return header
+
+
 
 ###Initialization and processing
 totalReads = 0
@@ -243,13 +303,30 @@ totalReadsFailed = 0
 totalReadsDropped = 0
 readPairFailureCodes = dict()
 
-#TODO newer pysam takes threads argument but doesn't seem to do much
+#newer pysam takes threads argument but doesn't seem to do much
 unfiltered_reads = pysam.AlignmentFile(args.raw_alignment, "rb")
 
+
 print("[filter_reads.py] Processing header", file=sys.stderr)
-newheader = unfiltered_reads.header.to_dict() #to_dict() is for the changes from version 0.14
+newheader = unfiltered_reads.header.to_dict()
+
+if reheader is not None:
+    try:
+        if re.search('\.bam$', reheader) is not None:
+            reheaderFile = pysam.AlignmentFile(reheader, "rb")
+            reheaderDict = reheaderFile.header.to_dict()
+        else:
+            #Read in header lines from a text file, in sam format but we ignore the non-header lines
+            reheaderFile = open(reheader, 'rt')
+            headerLineRE = re.compile(r'^@')
+            reheaderDict = pysam.AlignmentHeader.from_text(''.join(filter(headerLineRE.search, reheaderFile.readlines()))).to_dict()
+        newheader = mergeSamHeadersAsDict(newheader, reheaderDict)
+    finally:
+        reheaderFile.close()
+
 #Set PP tag to last @PG entry listed (should be bwa, but technically order is not specified)
 newheader['PG'].append({'ID':'filter_reads.py', 'PP':newheader['PG'][-1]['ID'], 'PN':'filter_reads.py', 'VN':version, 'CL':' '.join(sys.argv)})
+
 filtered_reads = pysam.AlignmentFile(args.filtered_alignment, "wbu", header = newheader)
 
 
