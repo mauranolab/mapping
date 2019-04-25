@@ -58,6 +58,13 @@ else:
     samples = args.samples.split(",")
 
 
+###Utility functions
+def quoteStringsWithSpaces(str):
+    if " " in str:
+        str = "\"" + str + "\""
+    return str
+
+
 #File locations based on lab/sampleType
 def getBasedir(lab, sampleType):
     if args.aggregate or args.aggregate_sublibraries:
@@ -75,6 +82,22 @@ def getBasedir(lab, sampleType):
     else:
         basedir="/vol/mauranolab/flowcells/fastq/"
     return basedir
+
+
+#Pull the LIMS sheet from google using the service account secrets file and spreadsheet ID.
+def getLIMS():
+    try:
+        lims_gsheets_ID_file = open('/vol/mauranolab/flowcells/LIMS.gsheets_ID.txt', 'r')
+        lims_gsheets_ID = lims_gsheets_ID_file.readlines()[0].rstrip("\n")
+        lims_gsheets_ID_file.close()
+        gc = pygsheets.authorize(service_file='/vol/mauranolab/flowcells/mauranolab.json')
+        sh = gc.open_by_key(lims_gsheets_ID)
+        wks = sh.worksheet_by_title("LIMS")
+        df = wks.get_as_df()
+    except Exception as e:
+        print("WARNING could not load LIMS from google sheets: ", e.message, '\n', e.argument)
+        df = None
+    return df
 
 
 ###Handlers for individual data types
@@ -176,15 +199,25 @@ def addCEGSgenomes(line):
 
 
 def bwaPipeline(sampleName, sampleID, sampleType, mappedgenomes, processingCommand):
-    analysisCommandMap = { "ChIP-seq": "chipseq", "DNase-seq": "dnase", "DNA": "callsnps", "DNA Capture": "callsnpsCapture" }
+    analysisCommandMap = { "ChIP-seq": "chipseq", "DNase-seq": "dnase", "Nano-DNase": "dnase", "DNA": "callsnps", "DNA Capture": "callsnpsCapture" }
     
-    submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + analysisCommandMap[sampleType] + " " + sampleName + " " + sampleID
+    sampleAnnotation = [ ]
+    #Multiple matches should never occur if BS numbers are unique so take first
+    sex = lims[lims['Sample #']==line['Original Sample #']]['Sex'].unique()[0]
+    if sex is not "":
+        sampleAnnotation.append("Sex=" + sex)
+    #Multiple matches should never occur if BS numbers are unique so take first
+    bait_set=lims[lims['Sample #']==line['Original Sample #']]['Bait set'].unique()[0]
+    if bait_set is not "":
+        sampleAnnotation.append("Bait_set=" + bait_set)
+    
+    submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + analysisCommandMap[sampleType] + " " + sampleName + " " + sampleID + " " + ','.join(sampleAnnotation)
     
     global doDNaseCleanup
     doDNaseCleanup = True
     
     global DNaseFragmentLengthPlot
-    fragmentLengths = { 'DNase-seq': 300, 'ChIP-seq': 500, 'DNA': 750 , 'DNA Capture': 750 }
+    fragmentLengths = { 'DNase-seq': 300, 'Nano-DNase': 300, 'ChIP-seq': 500, 'DNA': 750 , 'DNA Capture': 750 }
     if fragmentLengths[sampleType] > DNaseFragmentLengthPlot:
         DNaseFragmentLengthPlot = fragmentLengths[sampleType]
     
@@ -287,33 +320,14 @@ if args.aggregate or args.aggregate_sublibraries:
     if len(set(flowcellFile['Sample Type']).intersection(set(['DNA', 'DNA Capture', 'DNase-seq', 'Nano-DNase', 'ChIP-seq']))) > 0:
         flowcellFile = flowcellFile[~flowcellFile.duplicated('Sample #', keep='last')]
 
-
-#Pull the LIMS sheet from google using the service account secrets file and spreadsheet ID.
-def getLIMS():
-    try:
-        lims_gsheets_ID_file = open('/vol/mauranolab/flowcells/LIMS.gsheets_ID.txt', 'r')
-        lims_gsheets_ID = lims_gsheets_ID_file.readlines()[0].rstrip("\n")
-        lims_gsheets_ID_file.close()
-        gc = pygsheets.authorize(service_file='/vol/mauranolab/flowcells/mauranolab.json')
-        sh = gc.open_by_key(lims_gsheets_ID)
-        wks = sh.worksheet_by_title("LIMS")
-        df = wks.get_as_df()
-    except Exception as e:
-        print("WARNING could not load LIMS from google sheets: ", e.message, '\n', e.argument)
-        df = None
-    return df
-
-if any(flowcellFile['Lab']=='CEGS'):
-    lims = getLIMS()
-else:
-    lims = None
+lims = getLIMS()
 
 #Will map to these custom genomes when specified, stored as they appear in LIMS (without cegsvectors_ prefix)
 cegsGenomes = [ re.sub(r'^cegsvectors_', '', os.path.basename(x)) for x in glob.glob("/vol/cegs/sequences/cegsvectors_*") ]
 
 
 ###Pre-processing
-print("#", ' '.join(sys.argv), sep="")
+print("#", ' '.join([ quoteStringsWithSpaces(arg) for arg in sys.argv ]), sep="")
 print()
 
 #Initialize inputs.txt
