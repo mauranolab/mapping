@@ -89,13 +89,13 @@ rn6_sacCer3)
     ;;
 cegsvectors*)
     if [[ "${mappedgenome}" =~ cegsvectors_ ]]; then
-        #If this genome is an symlink, then substitute it with its target for the purposes of looking up annotation
-        mappedgenome=`readlink -f /vol/cegs/sequences/${mappedgenome} | xargs basename`
+        #If this genome is an symlink, then substitute it with its target for the purposes of looking up bwa index and fasta file
+        bwagenome=`readlink -f /vol/cegs/sequences/${mappedgenome} | xargs basename`
     fi
-    bwaIndex=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}
+    bwaIndex=/vol/cegs/sequences/${bwagenome}/${bwagenome}
     ploidy="--ploidy 1"
     #Tried using the full cegsvectors.fa.gz but picard (esp CollectMultipleMetrics) has trouble with it)
-    referencefasta=/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.fa.gz
+    referencefasta=/vol/cegs/sequences/${bwagenome}/${bwagenome}.fa.gz
     dbsnpvcf=/dev/null
     ;;
 *)
