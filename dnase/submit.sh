@@ -53,7 +53,7 @@ if [[ "${processingCommand}" != "none" ]] && [[ "${processingCommand}" != "aggre
     exit 1
 fi
 
-if [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "callsnps" ]] && [[ "${sampleType}" != "callsnpsCapture" ]] && [[ "${sampleType}" != "none" ]]; then 
+if [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "dna" ]] && [[ "${sampleType}" != "capture" ]] && [[ "${sampleType}" != "none" ]]; then 
     echo "ERROR submit: unknown sample type ${sampleType} in analysisType ${analysisType}"
     exit 2
 fi

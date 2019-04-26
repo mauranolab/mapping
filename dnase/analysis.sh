@@ -20,15 +20,15 @@ src=$6
 sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
 
-if [[ "${sampleType}" != "none" ]] && [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "callsnps" ]] && [[ "${sampleType}" != "callsnpsCapture" ]]; then 
+if [[ "${sampleType}" != "none" ]] && [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "dna" ]] && [[ "${sampleType}" != "capture" ]]; then
     echo "ERROR: unknown analysis command ${sampleType} in analysisType ${analysisType}"
     exit 1
 fi
 
 case "${sampleType}" in
-    callsnps)
+    dna)
         ucscTrackDescriptionDataType="DNA";;
-    callsnpsCapture)
+    capture)
         ucscTrackDescriptionDataType="Capture";;
     dnase)
         ucscTrackDescriptionDataType="DNase-seq";;
@@ -261,7 +261,7 @@ echo "Making BAM track"
 echo "track name=${name}-reads description=\"${name} reads (${analyzedReadsM}M reads analyzed)\" visibility=dense visibility=pack pairEndsByName=T maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${name}.${mappedgenome}.bam"
 
 
-if [[ "${sampleType}" == "callsnps" ]] || [[ "${sampleType}" == "callsnpsCapture" ]]; then
+if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
     if [ "${PFalignments}" -lt 50000000 ] && [[ "${analyzedReads}" > 0 ]]; then
         #Call hotspot 2 for debugging weird issues in coverage tracks, but not on large datasets
         callHotspots1=0
@@ -279,12 +279,12 @@ if [[ "${sampleType}" == "callsnps" ]] || [[ "${sampleType}" == "callsnpsCapture
         date
         
         #TODO switch to breaking up by coordinate rather than chromosome to split up larger jobs
-        samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*" {print $1}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
-        #unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
-        n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
-        qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
-        qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;'
-        rm -f ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
+        samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*" {print $1}' > ${sampleOutdir}/inputs.dna.${mappedgenome}.txt
+        #unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch > ${sampleOutdir}/inputs.dna.${mappedgenome}.txt
+        n=`cat ${sampleOutdir}/inputs.dna.${mappedgenome}.txt | wc -l`
+        qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N dna.${name}.${mappedgenome} "${src}/dnaByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.dna.${mappedgenome}
+        qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.dna.${mappedgenome}` -o ${sampleOutdir} -N dnaMerge.${name}.${mappedgenome} "${src}/dnaMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;'
+        rm -f ${sampleOutdir}/sgeid.dna.${mappedgenome}
         
         
         echo
@@ -616,7 +616,7 @@ echo -e "Num_SE_pass_filter_alignments\t${PFalignmentsSE}\t\t${name}\t${mappedge
 printfNA "Num_SE_analyzed_reads\t${analyzedReadsSE}\t%.1f%%\t${name}\t${mappedgenome}\n" "${pctanalyzedReadsSE}"
 
 
-if [[ "${sampleType}" == "callsnps" ]] || [[ "${sampleType}" == "callsnpsCapture" ]]; then
+if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
     #Repeat it here for ease of parsing
     echo -e "Genomic_coverage\t\t${genomecov}\t${name}\t${mappedgenome}"
 fi
