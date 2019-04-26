@@ -186,9 +186,9 @@ for(curdir in mappeddirs){
 			# Look for the initialization of "assay_type" in MakeTrackhub.py for comments on this.
 			if(sampleType=="dnase") {
 				data$Assay[i] <- "DNase-seq"
-			} else if(sampleType=="callsnps") {
+			} else if(sampleType=="dna" || sampleType=="callsnps") {
 				data$Assay[i] <- "DNA"
-			} else if(sampleType=="callsnpsCapture") {
+			} else if(sampleType=="capture" || sampleType=="callsnpsCapture") {
 				data$Assay[i] <- "Capture"
 			} else if(sampleType=="chipseq") {
 				data$Assay[i] <- SampleIDsplit[2]

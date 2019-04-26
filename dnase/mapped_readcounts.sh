@@ -16,19 +16,19 @@ projectdir=`pwd | perl -pe 's/^\/vol\/mauranolab\/mapped\///g;'`
 projectdir=${projectdir//\//\\/}
 
 echo "Density tracks"
-grep -h "Making density track" -A 1 */analysis.* | grep -v cegsvectors | grep -v "Making density track" | awk '$0!="--"'
+grep -h "Making density track" -A 1 ${dir}/*/analysis.* | grep -v cegsvectors | grep -v "Making density track" | awk '$0!="--"'
 
 echo
 echo "Coverage tracks"
-grep -h "Making coverage track" -A 1 */analysis.* | grep -v cegsvectors | grep -v "Making coverage track" | awk '$0!="--"'
+grep -h "Making coverage track" -A 1 ${dir}/*/analysis.* | grep -v cegsvectors | grep -v "Making coverage track" | awk '$0!="--"'
 
 echo
 echo "variant tracks"
-grep -h "variants.bb" */analysis.* | grep -v cegsvectors
+grep -h "variants.bb" ${dir}/*/analysis.* | grep -v cegsvectors
 
 echo
 echo "BAM tracks"
-grep -h "Making BAM track" -A 1 */analysis.* | grep -v cegsvectors | grep -v "Making BAM track" | awk '$0!="--"'
+grep -h "Making BAM track" -A 1 ${dir}/*/analysis.* | grep -v cegsvectors | grep -v "Making BAM track" | awk '$0!="--"'
 
 
 set -eu -o pipefail
@@ -43,6 +43,7 @@ perl -p -e's/[ \t]\(?([\d\.]+)\%\)?/\t$1/g;' -e's/ /_/g;' -e's/\-(BS|SRR|GSM)/\t
 awk -F "\t" 'BEGIN {OFS="\t"; print "Label", "Value", "Sample_Name", "BS", "Genome"} $2!="" {print $1, $2, $4, $5, $6} $3!="" {gsub("Num_", "Pct_", $1); if($3=="NA%") {$3="NA"} print $1, $3, $4, $5, $6}' | cut -f1-6 > $TMPDIR/readcounts.summary.long.txt
 
 
+cd ${dir}
 R --quiet --no-save << 'EOF'
 #read() -- smarter wrapper around read.table
 #BUGBUG who knows why i'm getting "zcat: stdout: Broken pipe" on first read.table
@@ -88,8 +89,9 @@ data[,grepl("^Prop_", colnames(data))] <- apply(data[,grepl("^Prop.", colnames(d
 
 data <- data[order(data[,"Genome"], data[,"BS"]),]
 print.data.frame(data, row.names=F)
-write.table(data, row.names=F, col.names=T, quote=F, file="${dir}/readcounts.summary.txt", append=F, sep="\t")
+write.table(data, row.names=F, col.names=T, quote=F, file="readcounts.summary.txt", append=F, sep="\t")
 EOF
+cd - > /dev/null
 
 
 echo

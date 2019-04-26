@@ -9,7 +9,7 @@ alias closest-features='closest-features --header'
 
 
 ###To re-run just the merge
-#analysisType=callsnps
+#analysisType=dna
 #for f in `ls *BS*/*.bam`; do
 #    sampleOutdir=`dirname ${f} | xargs basename`
 #    DS=`echo $sampleOutdir | cut -d "-" -f2`
@@ -19,7 +19,7 @@ alias closest-features='closest-features --header'
 #    src="${sampleOutdir}/.src"
 #    cp -p /vol/mauranolab/mapped/src/dnase/* ${src}
 #    
-#    qsub -S /bin/bash -cwd -V -terse -j y -b y -o ${sampleOutdir} -N merge.callsnps.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${BS} ${src}" #| perl -pe 's/[^\d].+$//g;'
+#    qsub -S /bin/bash -cwd -V -terse -j y -b y -o ${sampleOutdir} -N merge.dna.${name}.${mappedgenome} "${src}/dnaMerge.sh ${mappedgenome} ${analysisType} ${name} ${BS} ${src}" #| perl -pe 's/[^\d].+$//g;'
 #done
 
 
@@ -70,7 +70,7 @@ echo
 echo "Merge coverage tracks"
 date
 #NB: for hg38_full, many jobs will not generate coverage tracks
-covfiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.starch"`
+covfiles=`cat ${sampleOutdir}/inputs.dna.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.starch"`
 covfiles=$(getFilesToMerge ${covfiles})
 starchcat ${covfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch
 rm -f ${covfiles}
@@ -89,7 +89,7 @@ echo
 echo "Merge allreads coverage tracks"
 date
 #NB: for hg38_full, many jobs will not generate coverage tracks
-allreadscovfiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.allreads.starch"`
+allreadscovfiles=`cat ${sampleOutdir}/inputs.dna.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.allreads.starch"`
 allreadscovfiles=$(getFilesToMerge ${allreadscovfiles})
 starchcat ${allreadscovfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.starch
 rm -f ${allreadscovfiles}
@@ -109,7 +109,7 @@ echo
 echo "Merge windowed coverage tracks"
 date
 #NB: for hg38_full, many jobs will not generate coverage tracks
-windowedcovfiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.binned.starch"`
+windowedcovfiles=`cat ${sampleOutdir}/inputs.dna.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.binned.starch"`
 windowedcovfiles=$(getFilesToMerge ${windowedcovfiles})
 starchcat ${windowedcovfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.binned.starch
 rm -f ${windowedcovfiles}
@@ -118,7 +118,7 @@ rm -f ${windowedcovfiles}
 echo
 echo "Merge SNPs"
 date
-fullvcffiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.vcf.gz"`
+fullvcffiles=`cat ${sampleOutdir}/inputs.dna.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.vcf.gz"`
 fullvcffiles=$(getFilesToMerge ${fullvcffiles})
 numfullvcffiles=`echo "${fullvcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
 case "${numfullvcffiles}" in
@@ -135,7 +135,7 @@ tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.vcf.gz
 rm -f ${fullvcffiles}
 
 
-fltvcffiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.filtered.vcf.gz"`
+fltvcffiles=`cat ${sampleOutdir}/inputs.dna.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.filtered.vcf.gz"`
 fltvcffiles=$(getFilesToMerge ${fltvcffiles})
 numfltvcffiles=`echo "${fullvcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
 case "${numfltvcffiles}" in
