@@ -26,7 +26,7 @@ alias closest-features='closest-features --header'
 ###Parameters
 mappedgenome=$1
 analysisType=$2
-name=$3
+sampleOutdir=$3
 sampleAnnotation=$4
 src=$5
 
@@ -34,7 +34,7 @@ src=$5
 source ${src}/genomeinfo.sh ${mappedgenome}
 
 
-sampleOutdir=${name}
+name=`basename ${sampleOutdir}`
 echo "Merging ${analysisType} analysis for of sample ${name} against genome ${mappedgenome}"
 echo "SampleAnnotation:${sampleAnnotation}"
 date

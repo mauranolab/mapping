@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [ "$#" -ge 1 ]; then
+    dir="$1"
+else
+    dir="."
+fi
+
 echo
 echo "Errors in log files"
 find . -regextype posix-awk -maxdepth 2 -regex ".+\/[^\/]+(BS|SRR|GSM)[^\/]+\/.+" -and -name "*.o*" | xargs grep -i error
@@ -30,9 +36,9 @@ set -eu -o pipefail
 
 echo
 echo "Read count summaries"
-find . -regextype posix-awk -maxdepth 2 -regex ".+\/[^\/]+(BS|SRR|GSM)[^\/]+\/.+" -and -name "analysis.*.o*" | xargs grep -h -A 11 "Num_sequenced_reads" | awk 'BEGIN {skip=0} $0=="--" {skip=0;next} $0=="" {skip=1;next} skip==0' | grep -v -e "syntax[ _]error" | grep -v "Num_SE_" | grep -v "Prop_SE_" | 
+find ${dir} -regextype posix-awk -maxdepth 2 -regex ".+\/[^\/]+(BS|SRR|GSM)[^\/]+\/.+" -and -name "analysis.*.o*" | xargs grep -h -A 11 "Num_sequenced_reads" | awk 'BEGIN {skip=0} $0=="--" {skip=0;next} $0=="" {skip=1;next} skip==0' | grep -v -e "syntax[ _]error" | grep -v "Num_SE_" | grep -v "Prop_SE_" |
 #awk '$1!="$1!="Num_hotspots" && SPOT"' |
-perl -p -e's/[ \t]\(?([\d\.]+)\%\)?/\t$1/g;' -e's/ /_/g;' -e's/\-(BS|SRR|GSM)/\t\1/g;' | 
+perl -p -e's/[ \t]\(?([\d\.]+)\%\)?/\t$1/g;' -e's/ /_/g;' -e's/\-(BS|SRR|GSM)/\t\1/g;' |
 #perl -pe 's/^(Genomic_coverage\t[^\t]+\t)/\1\t/g;' |
 awk -F "\t" 'BEGIN {OFS="\t"; print "Label", "Value", "Sample_Name", "BS", "Genome"} $2!="" {print $1, $2, $4, $5, $6} $3!="" {gsub("Num_", "Pct_", $1); if($3=="NA%") {$3="NA"} print $1, $3, $4, $5, $6}' | cut -f1-6 > $TMPDIR/readcounts.summary.long.txt
 
@@ -82,7 +88,7 @@ data[,grepl("^Prop_", colnames(data))] <- apply(data[,grepl("^Prop.", colnames(d
 
 data <- data[order(data[,"Genome"], data[,"BS"]),]
 print.data.frame(data, row.names=F)
-write.table(data, row.names=F, col.names=T, quote=F, file="readcounts.summary.txt", append=F, sep="\t")
+write.table(data, row.names=F, col.names=T, quote=F, file="${dir}/readcounts.summary.txt", append=F, sep="\t")
 EOF
 
 

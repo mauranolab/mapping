@@ -10,7 +10,7 @@ alias closest-features='closest-features --header'
 ###Parameters
 mappedgenome=$1
 analysisType=$2
-name=$3
+sampleOutdir=$3
 BS=$4
 sampleAnnotation=$5
 src=$6
@@ -114,7 +114,7 @@ getcolor () {
 #mkdir -p $TMPDIR
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
-sampleOutdir=${name}
+name=`basename ${sampleOutdir}`
 echo "Running ${analysisType} analysis for sample ${name} (${BS}) against genome ${mappedgenome} (aka ${annotationgenome})"
 echo "SampleAnnotation:${sampleAnnotation}"
 
@@ -282,8 +282,8 @@ if [[ "${sampleType}" == "callsnps" ]] || [[ "${sampleType}" == "callsnpsCapture
         samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*" {print $1}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
         #unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
         n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
-        qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${name} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
-        qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${name} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;'
+        qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
+        qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;'
         rm -f ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
         
         

@@ -8,18 +8,19 @@ alias bedmap='bedmap --ec --header --sweep-all'
 alias closest-features='closest-features --header'
 
 analysisType=$1
-name=$2
+sampleOutdir=$2
 BS=$3
 mappedgenome=$4
 
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 #analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
+name=`basename ${sampleOutdir}`
+
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 echo "Merging bams (${processingCommand} analysis); output name ${name} (${BS}) against genome ${mappedgenome}"
 date
 
-sampleOutdir=${name}
 
 files=""
 numfiles=0
