@@ -1,0 +1,96 @@
+track cegsvectors_Analyses
+compositeTrack on
+type bigBed
+group cegsvectors
+shortLabel Analyses
+longLabel CEGS Analyses
+subGroup1 feature Track_Type: \
+          is_feature=Features \
+          not_feature=Reads
+subGroup2 LPgrp LP_Group: \
+          LP58=LP058 \
+          LP87=LP087 \
+          LPICE=LPICE
+dimensions dimX=feature dimY=LPgrp
+sortOrder LPgrp=+ feature=+
+
+   track cegs_LP87track_01
+   parent cegsvectors_Analyses on
+   subGroups LPgrp=LP87 feature=not_feature
+   visibility pack
+   longLabel Single Mapped LP 87 Reads BS02549A
+   shortLabel LP87 reads BS02549A
+   bigDataUrl data/LP87/mapped_BS02549A_cegs_sorted.bam
+   type bam
+   priority 17
+
+   track cegs_LP87track_02
+   parent cegsvectors_Analyses on
+   subGroups LPgrp=LP87 feature=not_feature
+   visibility pack
+   longLabel Single Mapped LP 87 Reads BS02638A
+   shortLabel LP87 reads BS02638A
+   bigDataUrl data/LP87/mapped_BS02638A_cegs_sorted.bam
+   type bam
+   priority 18
+
+   track cegs_LP87track_03
+   parent cegsvectors_Analyses on
+   subGroups LPgrp=LP87 feature=not_feature
+   visibility pack
+   longLabel Single Mapped LP 87 Reads BS02639A
+   shortLabel LP87 reads BS02639A
+   bigDataUrl data/LP87/mapped_BS02639A_cegs_sorted.bam
+   type bam
+   priority 19
+
+   track SP_hHPRT_clone1-BS01614B
+   parent cegsvectors_Analyses on
+   subGroups LPgrp=LPICE feature=not_feature
+   visibility pack
+   longLabel SP_hHPRT_clone1-BS01614B reads (0.0M nonredundant reads)
+   shortLabel SP_hHPRT_clone1-BS01614B
+   bigDataUrl https://cegs:bigdna@cascade.isg.med.nyu.edu/cegs/mapped/FCHCF2FDMXX/Project_CEGS/SP_hHPRT_clone1-BS01614B/SP_hHPRT_clone1-BS01614B.cegsvectors.bam
+   type bam
+   priority 40
+
+   track cegs_track_01
+   parent cegsvectors_Analyses on
+   subGroups LPgrp=LP58 feature=not_feature
+   visibility pack
+   longLabel Unmapped Mate LP 61 Reads
+   shortLabel LP61 reads
+   bigDataUrl data/LP58/mapped61_cegs_sorted.bam
+   type bam
+   priority 20
+
+   track cegs_track_02
+   parent cegsvectors_Analyses on
+   subGroups LPgrp=LP58 feature=not_feature
+   visibility pack
+   longLabel Unmapped Mate LP 62 Reads
+   shortLabel LP62 reads
+   bigDataUrl data/LP58/mapped62_cegs_sorted.bam
+   type bam
+   priority 30
+
+   track RB_H1_HPRT_LP061Pool_025HA_Capture-BS01749D
+   parent cegsvectors_Analyses off
+   subGroups LPgrp=LP58 feature=not_feature
+   visibility pack
+   longLabel RB_H1_HPRT_LP061Pool_025HA_Capture-BS01749D reads (0.0M nonredundant reads- BWA alignment
+   shortLabel RB_H1_HPRT_LP061Pool_025HA_Capture-BS01749D
+   bigDataUrl https://cegs:bigdna@cascade.isg.med.nyu.edu/cegs/mapped/FCHMYT7BGX7/Project_CEGS/RB_H1_HPRT_LP061Pool_025HA_Capture-BS01749D/RB_H1_HPRT_LP061Pool_025HA_Capture-BS01749D.cegsvectors_LP061.bam
+   type bam
+   priority 40
+
+   track RB_H1_HPRT_LP062Pool_010HA_Capture-BS01750D
+   parent cegsvectors_Analyses off
+   subGroups LPgrp=LP58 feature=not_feature
+   visibility pack
+   longLabel RB_H1_HPRT_LP062Pool_010HA_Capture-BS01750D reads (15.4M nonredundant reads- BWA alignment
+   shortLabel RB_H1_HPRT_LP062Pool_010HA_Capture-BS01750D
+   bigDataUrl https://cegs:bigdna@cascade.isg.med.nyu.edu/cegs/mapped/FCHMYT7BGX7/Project_CEGS/RB_H1_HPRT_LP062Pool_010HA_Capture-BS01750D/RB_H1_HPRT_LP062Pool_010HA_Capture-BS01750D.cegsvectors_LP062.bam
+   type bam
+   priority 50
+
