@@ -65,15 +65,17 @@ def createSubGroup(subGroups, subGroupNames, keys, name, label):
         subGroupNames[name] = len(uniqkeys)
 
 
+#For an array, return a dict mapping the elements of the array to their shortest unique prefix
 #https://stackoverflow.com/questions/22468435/how-would-i-look-for-the-shortest-unique-subsequence-from-a-set-of-words-in-pyth
 def shortest_unique_strings(array):
     ret = {}
-    for k in array:
+    for k in set(array):
         for ix in range(len(k)):
-            # When the list-comp only has one item.
-            # 'key[:ix+1]' == the current substring
-            if len([key for key in array if key.startswith(k[:ix+1])]) == 1:
-                ret[k] = k[:ix+1]
+            #Initialize with the full element in case k is fully a prefix of another
+            ret[k] = k
+            #When array has only 1 element, return identity map rather than truncating element
+            if len([key for key in array if key.startswith(k[:ix])]) == 1 and len(array)>1:
+                ret[k] = k[:ix]
                 break
     return ret
 
