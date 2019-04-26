@@ -68,7 +68,7 @@ def quoteStringsWithSpaces(str):
 #File locations based on lab/sampleType
 def getBasedir(lab, sampleType):
     if args.aggregate or args.aggregate_sublibraries:
-        if sampleType in ['DNA', 'DNA Capture', 'DNase-seq', 'Nano-DNase', 'ChIP-seq']:
+        if sampleType in bwaPipelineAnalysisCommandMap.keys():
             if lab == "Maurano":
                 basedir = "/vol/mauranolab/mapped/"
             elif lab == "CEGS":
@@ -173,6 +173,11 @@ def chromConfCapture(line):
     return(submitCommand)
 
 
+#BWA pipeline for DNA / DNase / ChIP-seq
+bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ChIP-seq": "chipseq", "DNA": "callsnps", "DNA Capture": "callsnpsCapture" }
+bwaPipelineFragmentLengthsMap = { 'DNase-seq': 300, 'Nano-DNase': 300, 'ChIP-seq': 500, 'DNA': 750 , 'DNA Capture': 750 }
+
+
 def addCEGSgenomes(line):
     if line['Lab'] != "CEGS":
         return []
@@ -197,9 +202,44 @@ def addCEGSgenomes(line):
                         break
         return additionalGenomesToMap
 
-
-def bwaPipeline(sampleName, sampleID, sampleType, mappedgenomes, processingCommand):
-    analysisCommandMap = { "ChIP-seq": "chipseq", "DNase-seq": "dnase", "Nano-DNase": "dnase", "DNA": "callsnps", "DNA Capture": "callsnpsCapture" }
+def bwaPipeline(line):
+    sampleType = line["Sample Type"]
+    
+    if sampleType in ["DNA", "DNA Capture"]:
+        speciesToGenomeReference = {
+            'Human': 'hg38_full',
+            'Mouse': 'mm10',
+            'Rat': 'rn6',
+            'Human+yeast': 'hg38_sacCer3',
+            'Mouse+yeast': 'mm10_sacCer3',
+            'Rat+yeast': 'rn6_sacCer3',
+        }
+    elif sampleType in ["Nano-DNase", "ChIP-seq", "DNase-seq"]:
+        speciesToGenomeReference = {
+            'Human': 'hg38_noalt',
+            'Mouse': 'mm10',
+            'Rat': 'rn6'
+        }
+    else:
+        raise Exception("Can't parse " + sampleType)
+    mappedgenomes = [ speciesToGenomeReference[curSpecies ] for curSpecies in line["Species"].split(",") ]
+    mappedgenomes += addCEGSgenomes(line)
+    
+    if args.aggregate:
+        processingCommand="aggregate"
+    elif args.aggregate_sublibraries:
+        processingCommand="aggregateRemarkDups"
+    else:
+        if sampleType in ["DNA", "DNA Capture"]:
+            processingCommand="mapBwaMem"
+        elif sampleType in ["Nano-DNase", "ChIP-seq", "DNase-seq"]:
+            processingCommand="mapBwaAln"
+        else:
+            raise Exception("Can't parse " + sampleType)
+    
+    if line["Sample Type"]=="DNA Capture":
+        global doDNACaptureCleanup
+        doDNACaptureCleanup = True
     
     sampleAnnotation = [ ]
     #Multiple matches should never occur if BS numbers are unique so take first
@@ -211,64 +251,12 @@ def bwaPipeline(sampleName, sampleID, sampleType, mappedgenomes, processingComma
     if bait_set is not "":
         sampleAnnotation.append("Bait_set=" + bait_set)
     
-    submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + analysisCommandMap[sampleType] + " " + sampleName + " " + sampleID + " " + ','.join(sampleAnnotation)
+    submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + bwaPipelineAnalysisCommandMap[sampleType] + "/" + line["#Sample Name"] + " " + line["Sample #"] + " " + ','.join(sampleAnnotation)
     
     global doDNaseCleanup
     doDNaseCleanup = True
     
-    global DNaseFragmentLengthPlot
-    fragmentLengths = { 'DNase-seq': 300, 'Nano-DNase': 300, 'ChIP-seq': 500, 'DNA': 750 , 'DNA Capture': 750 }
-    if fragmentLengths[sampleType] > DNaseFragmentLengthPlot:
-        DNaseFragmentLengthPlot = fragmentLengths[sampleType]
-    
     return(submitCommand)
-
-
-#DNase / ChIP-seq
-def DNase(line):
-    speciesToGenomeReference = {
-        'Human': 'hg38_noalt',
-        'Mouse': 'mm10',
-        'Rat': 'rn6'
-    }
-    mappedgenomes = [ speciesToGenomeReference[curSpecies] for curSpecies in line["Species"].split(",") ]
-    mappedgenomes += addCEGSgenomes(line)
-    
-    if args.aggregate:
-        processingCommand="aggregate"
-    elif args.aggregate_sublibraries:
-        processingCommand="aggregateRemarkDups"
-    else:
-        processingCommand="mapBwaAln"
-    
-    return(bwaPipeline(line["#Sample Name"], line["Sample #"], line["Sample Type"], mappedgenomes, processingCommand))
-
-
-def DNA(line):
-    speciesToGenomeReference = {
-        'Human': 'hg38_full',
-        'Mouse': 'mm10',
-        'Rat': 'rn6',
-        'Human+yeast': 'hg38_sacCer3',
-        'Mouse+yeast': 'mm10_sacCer3',
-        'Rat+yeast': 'rn6_sacCer3',
-    }
-    mappedgenomes = [ speciesToGenomeReference[curSpecies] for curSpecies in line["Species"].split(",") ]
-    mappedgenomes += addCEGSgenomes(line)
-    
-    if args.aggregate:
-        processingCommand="aggregate"
-    elif args.aggregate_sublibraries:
-        processingCommand="aggregateRemarkDups"
-    else:
-        processingCommand="mapBwaMem"
-    
-    if line["Sample Type"]=="DNA Capture":
-        global doDNACaptureCleanup
-        doDNACaptureCleanup = True
-    
-    return(bwaPipeline(line["#Sample Name"], line["Sample #"], line["Sample Type"], mappedgenomes, processingCommand))
-
 
 
 ####
@@ -317,7 +305,7 @@ if args.aggregate or args.aggregate_sublibraries:
     if args.aggregate:
         flowcellFile['Sample #'] = flowcellFile['Sample #'].apply(lambda bs: re.sub("(BS[0-9]{5})[A-Z]", "\\1", bs))
     #BWA pipeline just needs last entry per sample
-    if len(set(flowcellFile['Sample Type']).intersection(set(['DNA', 'DNA Capture', 'DNase-seq', 'Nano-DNase', 'ChIP-seq']))) > 0:
+    if len(set(flowcellFile['Sample Type']).intersection(set(bwaPipelineFragmentLengthsMap.keys()))) > 0:
         flowcellFile = flowcellFile[~flowcellFile.duplicated('Sample #', keep='last')]
 
 lims = getLIMS()
@@ -331,7 +319,7 @@ print("#", ' '.join([ quoteStringsWithSpaces(arg) for arg in sys.argv ]), sep=""
 print()
 
 #Initialize inputs.txt
-if len(set(flowcellFile['Sample Type']).intersection(set(['DNA', 'DNA Capture', 'DNase-seq', 'Nano-DNase', 'ChIP-seq']))) > 0:
+if len(set(flowcellFile['Sample Type']).intersection(set(bwaPipelineFragmentLengthsMap.keys()))) > 0:
     if flowcellIDs is not None and projects is not None and len(projects) is 1:
         #Just handle the single-project case
         #getBasedir returns the same for all these types, so just hardcode DNA
@@ -373,12 +361,10 @@ for index, line in flowcellFile.iterrows():
             if  args.aggregate or args.aggregate_sublibraries:
                 continue
             qsubLine = transposonSamples(line)
-        elif sampleType == "Hi-C" or sampleType == "3C-seq" or sampleType == "Capture-C":
+        elif sampleType in ["Hi-C", "3C-seq", "Capture-C"]:
             qsubLine =  "#" + chromConfCapture(line)
-        elif sampleType == "Nano-DNase" or sampleType == "ChIP-seq" or sampleType == "DNase-seq":
-            qsubLine = DNase(line)
-        elif sampleType == "DNA" or sampleType == "DNA Capture":
-            qsubLine = DNA(line)
+        elif sampleType in bwaPipelineAnalysisCommandMap:
+            qsubLine = bwaPipeline(line)
         else:
             raise Exception("Don't know how to process " + sampleType)
         
@@ -392,18 +378,17 @@ for index, line in flowcellFile.iterrows():
 ###Cleanup calls
 if doDNaseCleanup:
     print()
-    #Just use max fragment length for now
-    #TODO run separate plots for each sample type?
-    print("qsub -b y -j y -N analyzeInserts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(DNaseFragmentLengthPlot) + "\"")
-    print("qsub -S /bin/bash -j y -N mapped_readcounts -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` /vol/mauranolab/mapped/src/dnase/mapped_readcounts.sh")
-#Leave this around so the hold_jid args don't fail
-#    print("rm -f sgeid.analysis")
+    for sampleType in flowcellFile['Sample Type'][flowcellFile['Sample Type'].isin(bwaPipelineAnalysisCommandMap.keys())].unique():
+        print("qsub -b y -j y -N analyzeInserts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + bwaPipelineAnalysisCommandMap[sampleType] + "/" + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(bwaPipelineFragmentLengthsMap[sampleType]) + " " + bwaPipelineAnalysisCommandMap[sampleType] + "\"")
+        print("qsub -S /bin/bash -j y -N mapped_readcounts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + bwaPipelineAnalysisCommandMap[sampleType] + "/" + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/mapped_readcounts.sh " + bwaPipelineAnalysisCommandMap[sampleType] + "\"")
+    #Leave this around so the hold_jid args don't fail
+    #    print("rm -f sgeid.analysis")
 
 
 #TODO placeholder for now
 if doDNACaptureCleanup:
     print()
-    print("#qsub -b y -S /bin/bash -j y -N analyzeCapture -hold_jid `cat sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeCapture.sh mappedgenome bait dirs\"")
+    print("#qsub -b y -S /bin/bash -j y -N analyzeCapture -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + bwaPipelineAnalysisCommandMap[sampleType] + "/" + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeCapture.sh mappedgenome bait dirs\"")
 
 
 #BUGBUG doesn't work since we don't have the pid of the final job at submission time

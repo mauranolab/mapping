@@ -13,12 +13,16 @@ old <- theme_update(panel.border = element_blank(), strip.background = element_b
 #Try to work around "unable to start device PNG" on ISG cluster
 options(bitmapType="cairo") 
 
-if(length(commandArgs(TRUE) == 1)) {
+if(length(commandArgs(TRUE) >= 1)) {
 	maxlength <- as.integer(commandArgs(TRUE)[1])
 } else {
 	maxlength <- 300
 }
-
+if(length(commandArgs(TRUE) >= 2)) {
+	dir <- commandArgs(TRUE)[2]
+} else {
+	dir <- "."
+}
 
 if (maxlength <= 300) {
 	breaks <- c(36, 50, 75, 100, 125, 150, 175, seq.int(200, maxlength, 50))
@@ -29,7 +33,7 @@ if (maxlength <= 300) {
 cat("Loading insert lengths upto", maxlength, "bp\n")
 #TODO parallelize?
 results <- NULL
-for(d in c(list.dirs(path=".", recursive=F, full.names=T))) {
+for(d in c(list.dirs(path=dir, recursive=F, full.names=T))) {
 	for(f in list.files(path=d, pattern=".insertlengths.txt.gz$", recursive=F, full.names=T)) {
 		cat("Doing", f, "\n")
 		data <- read(f)
@@ -75,13 +79,13 @@ theme(legend.position = c(.85, 0.9)) +
 geom_dl(method=list("top.points", cex=0.8))
 #theme(plot.margin=unit(c(0,0,0,0), "lines"))) #NB top, rt, bot, left
 
-pdf("insertlengths.pdf", width=7, height=5)
+pdf(paste0(dir, "/insertlengths.pdf"), width=7, height=5)
 print(p)
 dev.off()
 
 
 old <- theme_set(theme_classic(base_size=15)) #png
-png("insertlengths.png", width=700, height=500)
+png(paste0(dir, "/insertlengths.png"), width=700, height=500)
 print(p)
 dev.off()
 

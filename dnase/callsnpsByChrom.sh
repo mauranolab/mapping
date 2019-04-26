@@ -11,7 +11,7 @@ alias closest-features='closest-features --header'
 ###Parameters
 mappedgenome=$1
 analysisType=$2
-name=$3
+sampleOutdir=$3
 sampleAnnotation=$4
 src=$5
 
@@ -20,7 +20,7 @@ source ${src}/genomeinfo.sh ${mappedgenome}
 jobid=$SGE_TASK_ID
 #jobid=10
 
-sampleOutdir=${name}
+name=`basename ${sampleOutdir}`
 chrom=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | awk -v jobid=$jobid 'NR==jobid'`
 echo "Running ${analysisType} analysis for ${chrom} of sample ${name} against genome ${mappedgenome}"
 echo "SampleAnnotation:${sampleAnnotation}"
