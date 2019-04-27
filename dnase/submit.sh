@@ -18,7 +18,7 @@ module load bcftools/1.9
 module load trimmomatic/0.38
 module load python/3.5.0
 module load samblaster/0.1.24
-module load ucsckentutils/12152017
+module load ucsckentutils/379
 module load hotspot/4.1
 module load hotspot2/2.1.1
 module load pigz
@@ -41,7 +41,11 @@ genomesToMap=$1
 analysisType=$2
 samplePrefix=$3
 BS=$4
-sampleAnnotation=$5
+if [ "$#" -ge 5 ]; then
+    sampleAnnotation=$5
+else
+    sampleAnnotation=""
+fi
 #Files for a given sample will be output to a folder named "${samplePrefix}-${BS}" (samplePrefix may include subsequent subdirectories)
 
 
@@ -53,7 +57,7 @@ if [[ "${processingCommand}" != "none" ]] && [[ "${processingCommand}" != "aggre
     exit 1
 fi
 
-if [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "dna" ]] && [[ "${sampleType}" != "capture" ]] && [[ "${sampleType}" != "none" ]]; then 
+if [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "dna" ]] && [[ "${sampleType}" != "capture" ]] && [[ "${sampleType}" != "none" ]]; then
     echo "ERROR submit: unknown sample type ${sampleType} in analysisType ${analysisType}"
     exit 2
 fi
