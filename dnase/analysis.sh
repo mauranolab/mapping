@@ -25,11 +25,12 @@ if [[ "${sampleType}" != "none" ]] && [[ "${sampleType}" != "atac" ]] && [[ "${s
     exit 1
 fi
 
+sampleAnnotationBait=`echo "${sampleAnnotation}" | awk -v key="Bait_set" -F "," '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
 case "${sampleType}" in
     dna)
         ucscTrackDescriptionDataType="DNA";;
     capture)
-        ucscTrackDescriptionDataType="Capture";;
+        ucscTrackDescriptionDataType="Capture (${sampleAnnotationBait})";;
     dnase)
         ucscTrackDescriptionDataType="DNase-seq";;
     atac)
@@ -116,7 +117,7 @@ echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
 name=`basename ${sampleOutdir}`
 echo "Running ${analysisType} analysis for sample ${name} (${BS}) against genome ${mappedgenome} (aka ${annotationgenome})"
-echo "SampleAnnotation:${sampleAnnotation}"
+echo -e "SampleAnnotation\t${sampleAnnotation}"
 
 
 #Required files
@@ -258,7 +259,7 @@ fi
 #Now that we have analyzedReadsM we can print this track line, which is universal for all sampleTypes
 echo
 echo "Making BAM track"
-echo "track name=${name}-reads description=\"${name} reads (${analyzedReadsM}M reads analyzed)\" visibility=dense visibility=pack pairEndsByName=T maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${name}.${mappedgenome}.bam"
+echo "track name=${name}-reads description=\"${ucscTrackDescriptionDataType} Reads (${analyzedReadsM}M reads analyzed)\" visibility=dense visibility=pack pairEndsByName=T maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${name}.${mappedgenome}.bam"
 
 
 if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
@@ -282,9 +283,9 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
         samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*" {print $1}' > ${sampleOutdir}/inputs.dna.${mappedgenome}.txt
         #unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch > ${sampleOutdir}/inputs.dna.${mappedgenome}.txt
         n=`cat ${sampleOutdir}/inputs.dna.${mappedgenome}.txt | wc -l`
-        qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N dna.${name}.${mappedgenome} "${src}/dnaByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.dna.${mappedgenome}
-        qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.dna.${mappedgenome}` -o ${sampleOutdir} -N dnaMerge.${name}.${mappedgenome} "${src}/dnaMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;'
-        rm -f ${sampleOutdir}/sgeid.dna.${mappedgenome}
+        qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N dna.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
+        qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;'
+        rm -f ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
         
         
         echo
@@ -328,14 +329,14 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
         #Print track links here for convenience even if the files are not created yet
         echo
         echo "Making coverage track"
-        echo "track name=${name}-cov description=\"${name} ${genomecov}x genomic coverage (${analyzedReadsM}M analyzed reads) )\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:500 autoScale=on visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.coverage.bw"
+        echo "track name=${name}-cov description=\"${ucscTrackDescriptionDataType} Coverage (${analyzedReadsM}M analyzed reads), ${genomecov}x genomic coverage\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:500 autoScale=on visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.coverage.bw"
         
         echo
         echo "Making VCF track"
-        echo "track name=${name}-vcf description=\"${name} VCF (${analyzedReadsM}M reads analyzed)\" visibility=pack applyMinQual=true minQual=10 type=vcfTabix  ${UCSCbase}/${name}.${mappedgenome}.filtered.vcf.gz"
+        echo "track name=${name}-vcf description=\"${ucscTrackDescriptionDataType} Variants (${analyzedReadsM}M reads analyzed)\" visibility=pack applyMinQual=true minQual=10 type=vcfTabix ${UCSCbase}/${name}.${mappedgenome}.filtered.vcf.gz"
         
         echo "Making variant track"
-        echo "track name=${name}-gts description=\"${name} genotypes (${analyzedReadsM}M reads analyzed)\" visibility=pack type=bigBed ${UCSCbase}/${name}.${mappedgenome}.genotypes.bb"
+        echo "track name=${name}-gts description=\"${ucscTrackDescriptionDataType} Genotypes (${analyzedReadsM}M reads analyzed)\" visibility=pack type=bigBed ${UCSCbase}/${name}.${mappedgenome}.genotypes.bb"
     fi
 elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "${sampleType}" == "chipseq" ]]; then
     echo
@@ -368,7 +369,7 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
     #Kent tools can't use STDIN
     wigToBigWig $TMPDIR/${name}.${mappedgenome}.density.wig ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.density.bw
     
-    echo "track name=${name}-dens description=\"${name} ${ucscTrackDescriptionDataType} Density (${analyzedReadsM}M analyzed reads; normalized to 1M)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full type=bigWig  ${UCSCbase}/${name}.${mappedgenome}.density.bw"
+    echo "track name=${name}-dens description=\"${ucscTrackDescriptionDataType} Density (${analyzedReadsM}M analyzed reads; normalized to 1M)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.density.bw"
     
     
     if [[ "${sampleType}" != "chipseq" ]]; then
@@ -389,7 +390,7 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
         #Kent tools can't use STDIN
         bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.perBase.clipped.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.perBase.bw
         
-        echo "track name=${name}-cuts description=\"${name} ${ucscTrackDescriptionDataType} cut counts (${analyzedReadsM}M analyzed reads)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.perBase.bw"
+        echo "track name=${name}-cuts description=\"${ucscTrackDescriptionDataType} Cut counts (${analyzedReadsM}M analyzed reads)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.perBase.bw"
         
         
         #echo "Making fragment coverage track"
