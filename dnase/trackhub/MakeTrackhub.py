@@ -222,7 +222,7 @@ for assay_type in assays:
             composite.add_params(html='descriptions/' + curGroup + '.html')
         
         params_dimensions = ""
-        if assay_type == "DNase-seq" or assay_type == "DNA" or assay_type == "Capture":
+        if assay_type in ["DNase-seq", "DNA", "Capture"]:
             params_dimensions="dimY=sampleName"
             if args.genome == "cegsvectors":
                 params_dimensions = params_dimensions + " dimX=mappedgenome"
@@ -261,7 +261,7 @@ for assay_type in assays:
             long_label="Reads")
         composite.add_view(Reads_view)
         
-        if assay_type == "DNA" or assay_type == "Capture":
+        if assay_type in ["DNA", "Capture"]:
             Coverage_view = ViewTrack(
                 name="Coverage_view_" + curGroup_trackname,
                 view="Coverage",
@@ -275,7 +275,7 @@ for assay_type in assays:
                 long_label="Coverage")
             composite.add_view(Coverage_view)
         
-        if assay_type == "DNase-seq" or assay_type == "ChIP-seq":
+        if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
             Dens_view = ViewTrack(
                 name="Dens_view_" + curGroup_trackname,
                 view="Density",
@@ -289,7 +289,7 @@ for assay_type in assays:
                 long_label="Density")
             composite.add_view(Dens_view)
             
-        if assay_type == "DNase-seq" or assay_type == "ChIP-seq":
+        if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
             Hotspots_view = ViewTrack(
                 name="Hotspots_view_" + curGroup_trackname,
                 view="Hotspots",
@@ -326,7 +326,7 @@ for assay_type in assays:
                 long_label="Cut Counts")
             composite.add_view(Cuts_view)
         
-        if assay_type == "DNA" or assay_type == "Capture":
+        if assay_type in ["DNA", "Capture"]:
             Variants_view = ViewTrack(
                 name="Variants_view_" + curGroup_trackname,
                 view="Variants",
@@ -340,7 +340,7 @@ for assay_type in assays:
                 long_label="Variants")
             composite.add_view(Variants_view)
         
-        if assay_type == "DNA" or assay_type == "Capture":
+        if assay_type in ["DNA", "Capture"]:
             Genotypes_view = ViewTrack(
                 name="Genotypes_view_" + curGroup_trackname,
                 view="Genotypes",
@@ -365,35 +365,41 @@ for assay_type in assays:
         for curSample in matchingSamples:
             sampleName = re.sub(r'_L$|_R$', '', curSample['Name'])
             
-            #shortLabel must be <= 17 printable characters (sampleName + DS)
-            sampleShortLabel = sampleName + "-" + curSample['DS']
             
-            #Internal track name (never displayed) must be unique within the Genome Browser or dataHub and must begin with a letter
+            ###Internal track name (never displayed) must be unique within the Genome Browser or dataHub and must begin with a letter
             if args.genome == "cegsvectors":
                 sampleNameGenome = cegsvectorsAbbreviatedNames[curSample['Mapped_Genome']]
             else:
-                sampleNameGenome = curSample['Annotation_Genome']
-            
+                if 'Annotation_Genome' in curSample:
+                    sampleNameGenome = curSample['Annotation_Genome']
+                else:
+                    sampleNameGenome = args.genome
             #There is a length limit of 128 characters, but in practice some are used for an internal prefix/suffix
             #Probably could omit sampleName here to save space
             sampleName_trackname = cleanTrackName(sampleNameGenome + "_" + curGroup + "_" + sampleName + "_" + curSample['DS'])
             
-            #longLabel must be <= 76 printable characters
-            if assay_type == "DNA" or assay_type == "Capture":
-                sampleDescription = sampleShortLabel + ' ' + curSample['Genomic_coverage'] + 'x Genomic Coverage (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads)' 
+            
+            ###Set up description - longLabel must be <= 76 printable characters
+            sampleDescription = sampleName + "-"
+            if assay_type == "ChIP-seq":
+                sampleDescription += curSample['Assay']
+            sampleDescription += curSample['DS'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, '
+            if assay_type in ["DNA", "Capture"]:
+                sampleDescription +=  + curSample['Genomic_coverage'] + 'x genomic coverage)'
             else:
                 if curSample['Num_hotspots'] == "NA":
                     sampleDescriptionNumHotspots = "no"
                 else:
                     sampleDescriptionNumHotspots = locale.format("%d", int(curSample['Num_hotspots']), grouping=True) 
-                if assay_type == "ChIP-seq":
-                    sampleDescription = sampleName + "-" + curSample['Assay'] + "-" + curSample['DS']
-                else:
-                    sampleDescription = sampleShortLabel
-                sampleDescription = sampleDescription + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, ' + curSample['SPOT'] + ' SPOT, ' + sampleDescriptionNumHotspots + ' Hotspots)'
+                sampleDescription += curSample['SPOT'] + ' SPOT, ' + sampleDescriptionNumHotspots + ' Hotspots)'
+            
             if 'age' in subGroupNames:
                 sampleDescription = sampleDescription + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
             
+            if 'Bait_set' in curSample and curSample['Bait_set'] != 'NA':
+                sampleDescription = sampleDescription + ', Bait = ' + curSample['Bait_set']
+            
+            ####Set up subgroups
             sampleSubgroups = dict(sampleName=sampleName + ('-' + curSample['DS'] if args.includeSampleIDinSampleCol else ''), assay=curSample['Assay'], DS=curSample['DS'])
             if 'replicate' in subGroupNames:
                 sampleSubgroups['replicate'] = curSample['Replicate']
@@ -403,6 +409,11 @@ for assay_type in assays:
                 sampleSubgroups['mappedgenome'] = re.sub(r'^cegsvectors_', '', curSample['Mapped_Genome'])
             
             
+            ###shortLabel must be <= 17 printable characters (sampleName + DS)
+            sampleShortLabel = sampleName + "-" + curSample['DS']
+            
+            
+            ###
             track = Track(
                 name=sampleName_trackname + '_bam',
                 short_label=sampleShortLabel,
@@ -415,7 +426,7 @@ for assay_type in assays:
             Reads_view.add_tracks(track)
             
             #Coverage_view
-            if assay_type == "DNA" or assay_type == "Capture":
+            if assay_type in ["DNA", "Capture"]:
                 track = Track(
                     name=sampleName_trackname + '_cov',
                     short_label=sampleShortLabel,
@@ -429,7 +440,7 @@ for assay_type in assays:
                 Coverage_view.add_tracks(track)
             
             #Dens_view
-            if assay_type == "DNase-seq" or assay_type == "ChIP-seq":
+            if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
                 track = Track(
                     name=sampleName_trackname + '_dens',
                     short_label=sampleShortLabel,
@@ -443,7 +454,7 @@ for assay_type in assays:
                 Dens_view.add_tracks(track)
             
             #Hotspots_view
-            if assay_type == "DNase-seq" or assay_type == "ChIP-seq":
+            if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
                 hotspot_base = os.path.basename(curSample['filebase'])
                 hotspot_dir = os.path.dirname(curSample['filebase'])
                 hotspot_path = hotspot_dir + "/hotspot2/" + hotspot_base
@@ -474,7 +485,7 @@ for assay_type in assays:
                 Peaks_view.add_tracks(track)
             
             #PerBaseCutCount
-            if assay_type == "DNase-seq":
+            if assay_type in ["DNase-seq", "ATAC-seq"]:
                 track = Track(
                     name=sampleName_trackname + '_cuts',
                     short_label=sampleShortLabel,
@@ -488,7 +499,7 @@ for assay_type in assays:
                 Cuts_view.add_tracks(track)
             
             #Variants_view
-            if assay_type == "DNA" or assay_type == "Capture":
+            if assay_type in ["DNA", "Capture"]:
                 track = Track(
                     name=sampleName_trackname + '_vcf',
                     short_label=sampleShortLabel,
@@ -501,7 +512,7 @@ for assay_type in assays:
                 Variants_view.add_tracks(track)
             
             #Genotypes_view
-            if assay_type == "DNA" or assay_type == "Capture":
+            if assay_type in ["DNA", "Capture"]:
                 track = Track(
                     name=sampleName_trackname + '_gts',
                     short_label=sampleShortLabel,
