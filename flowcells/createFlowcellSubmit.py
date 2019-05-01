@@ -85,19 +85,22 @@ def getBasedir(lab, sampleType):
 
 
 #Pull the LIMS sheet from google using the service account secrets file and spreadsheet ID.
-def getLIMS():
+def getLIMSsheet(sheet):
     try:
         lims_gsheets_ID_file = open('/vol/mauranolab/flowcells/LIMS.gsheets_ID.txt', 'r')
         lims_gsheets_ID = lims_gsheets_ID_file.readlines()[0].rstrip("\n")
         lims_gsheets_ID_file.close()
         gc = pygsheets.authorize(service_file='/vol/mauranolab/flowcells/mauranolab.json')
         sh = gc.open_by_key(lims_gsheets_ID)
-        wks = sh.worksheet_by_title("LIMS")
+        wks = sh.worksheet_by_title(sheet)
         df = wks.get_as_df()
+        #Remove per-FC headers and space between FCs (any row that is only empty lines)
+        mask = ~df['Sample Name'].str.startswith('#') & (df!="").any(1)
     except Exception as e:
-        print("WARNING could not load LIMS from google sheets: ", e.message, '\n', e.argument)
+        print("WARNING could not load sheet " + sheet + " from google sheets: ", e.message, '\n', e.argument)
+        wks = None
         df = None
-    return df
+    return wks, df, mask
 
 
 ###Handlers for individual data types
@@ -178,6 +181,15 @@ bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "
 bwaPipelineFragmentLengthsMap = { 'DNase-seq': 300, 'Nano-DNase': 300, 'ChIP-seq': 500, 'DNA': 750 , 'DNA Capture': 750 }
 
 
+def getBwaPipelineOutdir(sampleType):
+    if args.aggregate or args.aggregate_sublibraries:
+        bwaPipelineOutdir = ""
+    else:
+        #Segregate FC directories by assay type
+        bwaPipelineOutdir = bwaPipelineAnalysisCommandMap[sampleType] + "/"
+    return(bwaPipelineOutdir)
+
+
 def addCEGSgenomes(line):
     if line['Lab'] != "CEGS":
         return []
@@ -251,7 +263,7 @@ def bwaPipeline(line):
     if bait_set is not "":
         sampleAnnotation.append("Bait_set=" + bait_set)
     
-    submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + bwaPipelineAnalysisCommandMap[sampleType] + "/" + line["#Sample Name"] + " " + line["Sample #"] + " " + ','.join(sampleAnnotation)
+    submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["#Sample Name"] + " " + line["Sample #"] + " " + ','.join(sampleAnnotation)
     
     global doDNaseCleanup
     doDNaseCleanup = True
@@ -307,8 +319,10 @@ if args.aggregate or args.aggregate_sublibraries:
     #BWA pipeline just needs last entry per sample
     if len(set(flowcellFile['Sample Type']).intersection(set(bwaPipelineFragmentLengthsMap.keys()))) > 0:
         flowcellFile = flowcellFile[~flowcellFile.duplicated('Sample #', keep='last')]
+    #We
 
-lims = getLIMS()
+
+limsWks, lims, limsMask = getLIMSsheet("LIMS")
 
 #Will map to these custom genomes when specified, stored as they appear in LIMS (without cegsvectors_ prefix)
 cegsGenomes = [ re.sub(r'^cegsvectors_', '', os.path.basename(x)) for x in glob.glob("/vol/cegs/sequences/cegsvectors_*") ]
@@ -323,6 +337,7 @@ if len(set(flowcellFile['Sample Type']).intersection(set(bwaPipelineFragmentLeng
     if flowcellIDs is not None and projects is not None and len(projects) is 1:
         #Just handle the single-project case
         #getBasedir returns the same for all these types, so just hardcode DNA
+        #BUGBUG using old Project_ organization for aggregations
         findCmd = 'find ' + ' '.join([(getBasedir(projects[0], 'DNA')  + '%/Project_' + str(projects[0]) + '/*').replace("%", s) for s in flowcellIDs]) + ' -maxdepth 1'
         findCmd += ' -regextype posix-awk -regex "^.+(' + '|'.join(sorted(flowcellFile['Sample #'].unique())) + ').+$"'
         if args.aggregate or args.aggregate_sublibraries:
@@ -343,7 +358,6 @@ if args.aggregate or args.aggregate_sublibraries:
 ###Dispatch appropriate function handler per sample line
 doDNaseCleanup = False
 doDNACaptureCleanup = False
-DNaseFragmentLengthPlot = 0
 doTransposonCleanup = False
 
 for index, line in flowcellFile.iterrows():
@@ -379,8 +393,8 @@ for index, line in flowcellFile.iterrows():
 if doDNaseCleanup:
     print()
     for sampleType in flowcellFile['Sample Type'][flowcellFile['Sample Type'].isin(bwaPipelineAnalysisCommandMap.keys())].unique():
-        print("qsub -b y -j y -N analyzeInserts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + bwaPipelineAnalysisCommandMap[sampleType] + "/" + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(bwaPipelineFragmentLengthsMap[sampleType]) + " " + bwaPipelineAnalysisCommandMap[sampleType] + "\"")
-        print("qsub -S /bin/bash -j y -N mapped_readcounts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + bwaPipelineAnalysisCommandMap[sampleType] + "/" + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/mapped_readcounts.sh " + bwaPipelineAnalysisCommandMap[sampleType] + "\"")
+        print("qsub -b y -j y -N analyzeInserts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir(sampleType) + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(bwaPipelineFragmentLengthsMap[sampleType]) + " " + bwaPipelineAnalysisCommandMap[sampleType] + "\"")
+        print("qsub -S /bin/bash -j y -N mapped_readcounts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir(sampleType) + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/mapped_readcounts.sh " + bwaPipelineAnalysisCommandMap[sampleType] + "\"")
     #Leave this around so the hold_jid args don't fail
     #    print("rm -f sgeid.analysis")
 
@@ -388,7 +402,7 @@ if doDNaseCleanup:
 #TODO placeholder for now
 if doDNACaptureCleanup:
     print()
-    print("#qsub -b y -S /bin/bash -j y -N analyzeCapture -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + bwaPipelineAnalysisCommandMap[sampleType] + "/" + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeCapture.sh mappedgenome bait dirs\"")
+    print("#qsub -b y -S /bin/bash -j y -N analyzeCapture -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir('DNA Capture') + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeCapture.sh mappedgenome bait dirs\"")
 
 
 #BUGBUG doesn't work since we don't have the pid of the final job at submission time
