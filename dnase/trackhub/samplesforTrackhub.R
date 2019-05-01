@@ -34,7 +34,7 @@ if(!is.null(opt$workingDir)) {
 	pwd <- getwd()
 }
 
-project=opt$project
+project <- opt$project
 message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", project)
 
 
@@ -99,7 +99,7 @@ for(curdir in projectdirs) {
 }
 
 # Prune unwanted directories
-mappeddirs <- mappeddirs[grep('Project_CEGS/new', mappeddirs, invert=TRUE)]
+mappeddirs <- mappeddirs[grep('/new', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('bak', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('trash', mappeddirs, invert=TRUE)]
 
@@ -131,11 +131,11 @@ pipelineParametersParser <- function(pipelineParameters, fieldName) {
 }
 
 # Initialize "data" with just column names.  We'll be adding rows to this later on in the code.
-outputCols <- c("Name", "DS", "Replicate", "Color", "Assay", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Group", "Age", "Institution", "filebase", "Mapped_Genome", "Annotation_Genome")
+outputCols <- c("Name", "DS", "Replicate", "Color", "Assay", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Group", "Age", "Institution", "filebase", "Mapped_Genome", "Annotation_Genome", "Bait_set")
 data <- data.frame(matrix(ncol=length(outputCols), nrow=1))
 colnames(data) <- outputCols
 i <- 0 # This will be our "data" output variable index.
-for(curdir in mappeddirs){
+for(curdir in mappeddirs) {
 	message("[samplesforTrackhub] ", curdir)
 	SampleID <- basename(curdir)
 	SampleIDsplit <- unlist(strsplit(SampleID, "-"))
@@ -186,6 +186,8 @@ for(curdir in mappeddirs){
 			# Look for the initialization of "assay_type" in MakeTrackhub.py for comments on this.
 			if(sampleType=="dnase") {
 				data$Assay[i] <- "DNase-seq"
+			} else if(sampleType=="atac") {
+				data$Assay[i] <- "ATAC-seq"
 			} else if(sampleType=="dna" || sampleType=="callsnps") {
 				data$Assay[i] <- "DNA"
 			} else if(sampleType=="capture" || sampleType=="callsnpsCapture") {
@@ -211,6 +213,29 @@ for(curdir in mappeddirs){
 			data$Color[i] <- colorAssignments[colorAssignments$group == data$Name[i], "rgb"]
 			
 			data$analyzed_reads[i] <- strsplit(analysisFileContents[grep('^Num_analyzed_(tags|reads)\t', analysisFileContents)], '\t')[[1]][2] #Tags is for old pipeline
+			
+			#Parse SampleAnnotation as a list of values with the key as name
+			if(any(grep('^SampleAnnotation:\t', analysisFileContents))) {
+				SampleAnnotation <- strsplit(analysisFileContents[grep('^SampleAnnotation:\t', analysisFileContents)], '\t')[[1]][2]
+				#Split up comma-delimited key/value pairs
+				SampleAnnotation <- strsplit(SampleAnnotation, ",")[[1]]
+				#Split up key/value
+				SampleAnnotation <- sapply(SampleAnnotation, USE.NAMES=F, FUN=function(x) {
+					ret=list()
+					for(cur in strsplit(x, "=")) { 
+						ret[cur[1]] = cur[2] 
+					}
+					return(ret)
+				})
+			} else {
+				SampleAnnotation <- list()
+			}
+			
+			if( !is.null(SampleAnnotation[["Bait_set"]]) ) {
+				data$Bait_set[i] <- SampleAnnotation[["Bait_set"]]
+			} else {
+				data$Bait_set[i] <- NA
+			}
 			
 			if(any(grepl('^Genomic_coverage\t', analysisFileContents))) {
 				data$Genomic_coverage[i] <- strsplit(analysisFileContents[grep('^Genomic_coverage\t', analysisFileContents)], '\t')[[1]][2]
