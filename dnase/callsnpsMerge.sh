@@ -36,7 +36,7 @@ source ${src}/genomeinfo.sh ${mappedgenome}
 
 name=`basename ${sampleOutdir}`
 echo "Merging ${analysisType} analysis for of sample ${name} against genome ${mappedgenome}"
-echo "SampleAnnotation:${sampleAnnotation}"
+echo -e "SampleAnnotation\t${sampleAnnotation}"
 date
 
 
