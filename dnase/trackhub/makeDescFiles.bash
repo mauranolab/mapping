@@ -119,27 +119,6 @@ AWK_HEREDOC_01
                 grep ${i} ${target} >> ${!ref}
             done
 
-            if [ "${hub_type}" = "CEGS" ]; then
-                # Need to deal with a special case of Project_Maurano here.
-                # See: 20181114_FCHHWC2BGX7 (DNA & DNase-seq)
-                # Maurano has 16 elements, and CEGS has only 15.
-                # Maurano adds a SPOT column between Num_hotspots and Num_hotspots2.
- 
-                # A kluge for now.  Delete the SPOT column. This should only happen here: FCHHWC2BGX7
-                local target_PM=${dir_base}${flowcell}"Project_Maurano/readcounts.summary.txt"
-                if [ -f ${target_PM} ]; then
-                    cut -f1-13,15-16 ${target_PM} > ${TMPDIR}"/PM_tmp"     
-
-                    for i in "${genome_array[@]}"; do
-                        ref="${i}"
-                        grep ${i}  ${TMPDIR}"/PM_tmp" >> ${!ref}
-                    done
-
-                    rm ${TMPDIR}"/PM_tmp"
-                fi
-            fi
-
-
             for i in "${genome_array[@]}"; do
                 ref="${i}"
                 make_html ${!ref}
@@ -179,7 +158,8 @@ else
     dir_base="/vol/mauranolab/mapped/"
     cd ${dir_base}
     dir_names=($(ls -d */))     # These have trailing slashes.
-    suffix="Project_Maurano/readcounts.summary.txt"
+    # suffix="Project_Maurano/readcounts.summary.txt"
+    suffix="dnase/readcounts.summary.txt"
     find_readcounts ${dir_base} ${suffix} "${dir_names[@]}"
     
     # Maurano aggregations
@@ -217,19 +197,8 @@ move_html () {
         # overlap the horizontal line placed by the browser.
         echo "<br>" > ${i}".tmp"
 
-        # Change the header periods into spaces.
-        awk -f <(cat << "AWK_HEREDOC_02"
-        BEGIN {}
-        {
-            if(match($0, /<th id=/))
-            {
-                gsub(/\./, " ", $0)
-            }
-            print $0
-        }
-        END {}
-AWK_HEREDOC_02
-) < ${i} >> ${i}".tmp"
+        # Add the HTML file
+        cat ${i} >> ${i}".tmp"
 
         local j=${i%${suffix}}
         mv ${i}".tmp" ${hub_target}/${genome}/descriptions/${j}.html
