@@ -44,7 +44,8 @@ BS=$4
 if [ "$#" -ge 5 ]; then
     sampleAnnotation=$5
 else
-    sampleAnnotation=""
+    #Dummy value to preserve argument position
+    sampleAnnotation="NULL"
 fi
 #Files for a given sample will be output to a folder named "${samplePrefix}-${BS}" (samplePrefix may include subsequent subdirectories)
 
