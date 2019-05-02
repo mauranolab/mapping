@@ -215,7 +215,7 @@ for(curdir in mappeddirs) {
 			data$analyzed_reads[i] <- strsplit(analysisFileContents[grep('^Num_analyzed_(tags|reads)\t', analysisFileContents)], '\t')[[1]][2] #Tags is for old pipeline
 			
 			#Parse SampleAnnotation as a list of values with the key as name
-			if(any(grep('^SampleAnnotation:\t', analysisFileContents))) {
+			if(any(grep('^SampleAnnotation\t', analysisFileContents))) {
 				SampleAnnotation <- strsplit(analysisFileContents[grep('^SampleAnnotation:\t', analysisFileContents)], '\t')[[1]][2]
 				#Split up comma-delimited key/value pairs
 				SampleAnnotation <- strsplit(SampleAnnotation, ",")[[1]]
