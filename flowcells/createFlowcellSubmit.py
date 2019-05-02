@@ -265,8 +265,8 @@ def bwaPipeline(line):
     
     submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["#Sample Name"] + " " + line["Sample #"] + " " + ','.join(sampleAnnotation)
     
-    global doDNaseCleanup
-    doDNaseCleanup = True
+    global doBwaCleanup
+    doBwaCleanup = True
     
     return(submitCommand)
 
@@ -356,7 +356,7 @@ if args.aggregate or args.aggregate_sublibraries:
 
 
 ###Dispatch appropriate function handler per sample line
-doDNaseCleanup = False
+doBwaCleanup = False
 doDNACaptureCleanup = False
 doTransposonCleanup = False
 
@@ -390,9 +390,10 @@ for index, line in flowcellFile.iterrows():
 
 
 ###Cleanup calls
-if doDNaseCleanup:
-    print()
+if doBwaCleanup:
     for sampleType in flowcellFile['Sample Type'][flowcellFile['Sample Type'].isin(bwaPipelineAnalysisCommandMap.keys())].unique():
+        print()
+        print("#" + sampleType)
         print("qsub -b y -j y -N analyzeInserts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir(sampleType) + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(bwaPipelineFragmentLengthsMap[sampleType]) + " " + bwaPipelineAnalysisCommandMap[sampleType] + "\"")
         print("qsub -S /bin/bash -j y -N mapped_readcounts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir(sampleType) + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/mapped_readcounts.sh " + bwaPipelineAnalysisCommandMap[sampleType] + "\"")
     #Leave this around so the hold_jid args don't fail
