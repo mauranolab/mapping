@@ -31,7 +31,7 @@ fi
 cat info.txt | awk -F "\t" 'BEGIN {OFS="\t"; inheader=1; lastBSnum=0}
 $1=="#Sample Name" && inheader==1 { inheader=0; next}
 inheader==0 && $1~/[\-%\(\)\"\/\. ]/ { print "WARNING: Sample name for " $1 "-" $2 " contains invalid characters"; }
-inheader==0 { curBSnum=substr($2, 3, 5); if(curBSnum < lastBSnum) { print "WARNING: Sample " $2 " appears out of order"; } lastBSnum=curBSnum; }'
+inheader==0 { curBSnum=substr($2, 3, 5); if(curBSnum < lastBSnum) { print "WARNING: Sample " $1 "-" $2 " appears out of order"; } lastBSnum=curBSnum; }'
 
 
 R --quiet --no-save << 'EOF'
