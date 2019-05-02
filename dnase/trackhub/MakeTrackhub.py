@@ -385,7 +385,7 @@ for assay_type in assays:
                 sampleDescription += curSample['Assay']
             sampleDescription += curSample['DS'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, '
             if assay_type in ["DNA", "Capture"]:
-                sampleDescription +=  + curSample['Genomic_coverage'] + 'x genomic coverage)'
+                sampleDescription += curSample['Genomic_coverage'] + 'x genomic coverage)'
             else:
                 if curSample['Num_hotspots'] == "NA":
                     sampleDescriptionNumHotspots = "no"
