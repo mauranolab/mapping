@@ -97,19 +97,20 @@ echo Group_col is ${Group_col}
 # Before moving on, below we define a few functions. There will be a comment
 # when we return to the main line of code.
 ###########################################################################
-# The aggregation_loop function section.
-#
-# This function is called once for each aggregation directory.
+# This function is called once for each aggregation/publicdata directory.
 # It calls samplesforTrackhub.R for that directory, then splits the output by genome.
 
-aggregation_loop () {
+agg_pub_loop () {
     local dir_loop_name=$1
+
+    # aggregations or publicdata
+    local loop_type=$2
 
     local workingDir
     if [ ${hub_type} = "CEGS" ]; then
-        workingDir="/vol/cegs/aggregations/${dir_loop_name}"
+        workingDir="/vol/cegs/${loop_type}/${dir_loop_name}"
     else
-        workingDir="/vol/mauranolab/aggregations/${dir_loop_name}"
+        workingDir="/vol/mauranolab/${loop_type}/${dir_loop_name}"
     fi
 
     Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
@@ -152,65 +153,7 @@ AWK_HEREDOC_03
         grep ${i} ${outfile} >> ${!ref}
     done
 }
-# End of the aggregation_loop function section.
-
-###########################################################################
-# The pubicdata_loop function section.
-#
-# This function is called once for each publicdata directory.
-# It calls samplesforTrackhub.R for that directory, then splits the output by genome.
-
-publicdata_loop () {
-    local dir_loop_name=$1
-
-    local workingDir
-    if [ ${hub_type} = "CEGS" ]; then
-        workingDir="/vol/cegs/publicdata/${dir_loop_name}"
-    else
-        workingDir="/vol/mauranolab/publicdata/${dir_loop_name}"
-    fi
-
-    Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
-            --out ${outfile} \
-            --workingDir ${workingDir}
-
-###
-# Make some adjustments to the "outfile" columns, as publicdata is
-# structured somewhat differently than the flowcells, and the CEGS version 
-# of samplesforTrackhub.R was written with the flowcells in mind.
-awk -v f_col=${filebase_col} \
-    -v G_col=${Group_col} \
-    -v dir_name=${dir_loop_name} \
-    -f <(cat << "AWK_HEREDOC_03"
-BEGIN{FS="\t"; OFS="\t"; dir_name2=sprintf("%s%s", dir_name, "/")}
-{
-    if(NR == 1) next;
-
-    sub(/^/, dir_name2, $f_col)
-    sub(/NA/, dir_name, $G_col)
-    print
-}
-AWK_HEREDOC_03
-) < ${outfile} > "${TMP_OUT}/tmp"
-
-    cp "${TMP_OUT}/tmp" ${outfile}
-    rm "${TMP_OUT}/tmp"
-# Adjustment of outfile columns complete.
-###
-
-    # Split up the samplesforTrackhub.R output into separate files for each genome.
-    for i in "${genome_array[@]}"; do
-        # Note that prior to entering this function, "outfile" was set to be: "${outfile_base}_all_pub.tsv".
-        # This never changes, so each call to this function over-writes the previous "outfile".
-        # However, the output from the below call to grep is APPENDED to previous output from calls
-        # to this function. So the genome specific output files get bigger as we do more publicdata directories,
-        # and call this function for each one of them.
-
-        ref="outfile_${i}"
-        grep ${i} ${outfile} >> ${!ref}
-    done
-}
-# End of the publicdata_loop function section.
+# End of the agg_pub_loop function section.
 
 ###########################################################################
 # Back in the main line of code.
@@ -243,7 +186,7 @@ done
 
 # Call samplesforTrackhub.R for each aggregation directory.
 for i in "${agg_names[@]}"; do
-    aggregation_loop $i
+    agg_pub_loop $i aggregations
 done
 
 # End of the samplesforTrackhub.R section for "aggregation" samples.
@@ -277,7 +220,7 @@ done
 
 # Call samplesforTrackhub.R for each publicdata directory.
 for i in "${pub_names[@]}"; do
-    publicdata_loop $i
+    agg_pub_loop $i publicdata
 done
 
 # End of the samplesforTrackhub.R section for "publicdata" samples.
