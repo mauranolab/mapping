@@ -100,8 +100,8 @@ for(curdir in projectdirs) {
 
 # Prune unwanted directories
 mappeddirs <- mappeddirs[grep('/new', mappeddirs, invert=TRUE)]
-mappeddirs <- mappeddirs[grep('bak', mappeddirs, invert=TRUE)]
-mappeddirs <- mappeddirs[grep('trash', mappeddirs, invert=TRUE)]
+mappeddirs <- mappeddirs[grep('/bak', mappeddirs, invert=TRUE)]
+mappeddirs <- mappeddirs[grep('/trash', mappeddirs, invert=TRUE)]
 
 #NB These show up in old pipeline
 mappeddirs <- mappeddirs[grep('hotspots', mappeddirs, invert=TRUE)]
