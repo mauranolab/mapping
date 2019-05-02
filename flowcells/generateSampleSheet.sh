@@ -36,12 +36,18 @@ inheader==0 { curBSnum=substr($2, 3, 5); if(curBSnum < lastBSnum) { print "WARNI
 
 R --quiet --no-save << 'EOF'
 data <- read.table("SampleSheet.csv", header=T, skip=19, sep=",", comment.char = "", quote = "", strip.white = TRUE, stringsAsFactors = F)
+
+if(nrow(data) == 0) {
+	warning("ERROR: No data found!")
+	quit(1, save="no", status=0)
+}
+
 data[is.na(data[,"index"]),"index"] <- ""
 data[is.na(data[,"index2"]),"index2"] <- ""
 
 #I can't find a builtin hamming distance implementation for R
 strdist <- function(x,y) {
-	if(length(x)!=length(y)) {
+	if(length(x) != length(y)) {
 		stop("ERROR: diff lengths unsupported!")
 	}
 	length(which(unlist(strsplit(x, "")) != unlist(strsplit(y, ""))))
@@ -72,7 +78,7 @@ countBCcollisions <- function(data, bc1len=8, bc2len=8) {
                 if(bc2!="_") {
                     results[i,j] = strdist(bc1, bc2)
                     if(results[i,j] <=2) {
-                        cat("pair ", i, " (", bc1, ") and ", j, " (", bc2, ") differ by only", results[i,j], "\n", sep="")
+                        cat("pair ", i, " (", bc1, ") and ", j, " (", bc2, ") differ by only ", results[i,j], "\n", sep="")
                         numSamplesTooClose <- numSamplesTooClose + 1
                     }
                 }
