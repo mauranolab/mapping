@@ -84,7 +84,7 @@ data <- data[,!apply(data, MARGIN=2, FUN=function(x) {all(is.na(x))})]
 colnames(data) <- gsub("^Value\\.", "", colnames(data))
 
 colnames(data) <- gsub("^Pct_", "Prop_", colnames(data))
-#gives error for columns with NA
+#fails for columns with NA
 data[,grepl("^Prop_", colnames(data))] <- apply(data[,grepl("^Prop.", colnames(data))], MARGIN=c(1,2), FUN=function(x) {as.numeric(x)/100})
 
 data <- data[order(data[,"Genome"], data[,"BS"]),]
