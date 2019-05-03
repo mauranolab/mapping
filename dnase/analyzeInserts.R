@@ -13,18 +13,18 @@ old <- theme_update(panel.border = element_blank(), strip.background = element_b
 #Try to work around "unable to start device PNG" on ISG cluster
 options(bitmapType="cairo") 
 
-if(length(commandArgs(TRUE) >= 1)) {
+if(length(commandArgs(TRUE)) >= 1) {
 	maxlength <- as.integer(commandArgs(TRUE)[1])
 } else {
 	maxlength <- 300
 }
-if(length(commandArgs(TRUE) >= 2)) {
+if(length(commandArgs(TRUE)) >= 2) {
 	dir <- commandArgs(TRUE)[2]
 } else {
 	dir <- "."
 }
 
-if (maxlength <= 300) {
+if(maxlength <= 300) {
 	breaks <- c(36, 50, 75, 100, 125, 150, 175, seq.int(200, maxlength, 50))
 } else {
 	breaks <- seq.int(50, maxlength, 50)
