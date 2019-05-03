@@ -43,6 +43,11 @@ if [ ! -e "${omit_satellite}" ]; then
 fi
 
 
+if grep -q chrX ${chromsizes}; then
+    check="T"
+else
+    check="F"
+fi
 
 HOTSPOT_DISTR=/cm/shared/apps/hotspot/4.1/hotspot-master/hotspot-distr/
 
@@ -127,7 +132,7 @@ _RANDIR_ = $outdir
 _OMIT_REGIONS_: "${omit_satellite} /vol/mauranolab/mapped/src/dnase/hotspots.omit.chrM.bed"
 
 ## Set to T if you want scripts to skip steps that have already been done.
-_CHECK_ = T
+_CHECK_ = ${check}
 
 ## If _CHECK_ = T, outputs are checked for completeness by searching
 ## for results for the following chromsome.
