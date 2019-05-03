@@ -65,8 +65,8 @@ def quoteStringsWithSpaces(str):
     return str
 
 
-#File locations based on lab/sampleType
-def getBasedir(lab, sampleType):
+#Get base location of fastq or mapped files based on lab/sampleType
+def getBasedir(lab, sampleType, fc):
     if args.aggregate or args.aggregate_sublibraries:
         if sampleType in bwaPipelineAnalysisCommandMap.keys():
             if lab == "Maurano":
@@ -75,12 +75,13 @@ def getBasedir(lab, sampleType):
                 basedir = "/vol/cegs/mapped/"
             else:
                 raise Exception("Don't know how to aggregate data from " + lab)
+            basedir += fc + "/" + bwaPipelineAnalysisCommandMap[sampleType] + "/"
         elif sampleType in ['Transposon DNA', 'Transposon RNA', 'Transposon iPCR', 'Transposon iPCR Capture']:
-           basedir = "/vol/mauranolab/transposon/"
+           basedir = "/vol/mauranolab/transposon/" + fc
         else:
             raise Exception("Don't know how to aggregate data for " + sampleType) 
     else:
-        basedir="/vol/mauranolab/flowcells/fastq/"
+        basedir="/vol/mauranolab/flowcells/fastq/" + fc + "/Project_" + lab + "/"
     return basedir
 
 
@@ -107,10 +108,7 @@ def getLIMSsheet(sheet):
 #Each function takes dict representing a single row from the FC file iterator and returns the processing command line
 #Transposon pipeline
 def aggregateTransposonSamples(lines):
-    #Exact parameters don't matter
-    basedir = getBasedir(None, "Transposon DNA")
-    
-    return '/vol/mauranolab/mapped/src/transposon/submitMerge.sh ' + lines.iloc[0]['Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + " " + ' '.join([ basedir + line['FC'] + "/" + line['Original Sample #'] + "-" + line['#Sample Name'] + '/' for index, line in lines.iterrows() ])
+    return '/vol/mauranolab/mapped/src/transposon/submitMerge.sh ' + lines.iloc[0]['Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + " " + ' '.join([ getBasedir(None, line['Sample Type'], line['FC']) + "/" + line['Original Sample #'] + "-" + line['#Sample Name'] + '/' for index, line in lines.iterrows() ])
 
 
 def transposonSamples(line):
@@ -121,7 +119,7 @@ def transposonSamples(line):
     #Might like to put submit logfile in sample directory but would need to mkdir first, or change qsub to do mkdir on -o: ' -o ' + fullSampleName + 
     qsub = "qsub -S /bin/bash -j y -b y -N submit." + fullSampleName + ' "/vol/mauranolab/mapped/src/transposon/submit.sh '
     
-    fileLocation = getBasedir(line['Lab'], sampleType) + line["FC"] + "/Project_" + line["Lab"] + "/Sample_" + line["Sample #"] + '/"'
+    fileLocation = getBasedir(line['Lab'], sampleType, line['FC']) + "Sample_" + line["Sample #"] + '/"'
     
     #default parameters that can be overriden below
     BCreadSeq = "CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBGCTAGTTGTGGGATCTTTGTCCAAACTCATCGAGCTCGGGA"
@@ -170,7 +168,7 @@ def chromConfCapture(line):
     
     sampleUnique = "/home/maagj01/scratch/transposon/captureC/config/config_Dpn.txt  /home/maagj01/scratch/transposon/captureC/genomeFrag/hg38_dpnii.bed K562_Dpn " + organism
     
-    fileLocation = getBasedir(line['Lab'], line["Sample Type"]) + flowcellID + "/Project_" + line["Lab"] + "/Sample_" + line["Sample #"] + '/"'
+    fileLocation = getBasedir(line['Lab'], line["Sample Type"], line['FC']) + "Sample_" + line["Sample #"] + '/"'
     
     submitCommand = qsub + sampleUnique + " " + fileLocation
     return(submitCommand)
@@ -296,6 +294,11 @@ for flowcellID in flowcellIDs:
     curFlowcellFile['FC'] = flowcellID
     flowcellFile = pd.concat([flowcellFile, curFlowcellFile])
 
+
+###Pre-processing
+print("#", ' '.join([ quoteStringsWithSpaces(arg) for arg in sys.argv ]), sep="")
+print()
+
 #Subset to samples we're interested in
 flowcellFile = flowcellFile[flowcellFile['Sample Type' ] != "Pool"]
 if sampletypes is not None:
@@ -309,6 +312,20 @@ if samples is not None:
     flowcellFile = flowcellFile[flowcellFile['Sample #'].apply(lambda bs: any([s in bs for s in samples]))]
 
 
+#Initialize inputs.txt - must be done before we drop duplicate sample rows
+if len(set(flowcellFile['Sample Type']).intersection(set(bwaPipelineFragmentLengthsMap.keys()))) > 0:
+    dirs = set([])
+    for index, line in flowcellFile[flowcellFile['Sample Type'].isin(bwaPipelineFragmentLengthsMap.keys())].iterrows():
+        dirs.add(getBasedir(line['Lab'], line['Sample Type'], line['FC']) + '*')
+    findCmd =  'find ' + ' '.join(dirs) + ' -maxdepth 1 -regextype posix-awk -regex "^.+(' + '|'.join(sorted(flowcellFile['Sample #'].unique())) + ').+$"'
+    if args.aggregate or args.aggregate_sublibraries:
+        findCmd += ' -name "*.bam"'
+    else:
+        findCmd += ' -name "*.fastq.gz"'
+    print(findCmd + ' | sort > inputs.txt')
+    print()
+
+
 #Adjust sample IDs and drop duplicate rows to handle aggregations
 flowcellFile['Original Sample #'] = flowcellFile['Sample #']
 if args.aggregate or args.aggregate_sublibraries:
@@ -319,33 +336,6 @@ if args.aggregate or args.aggregate_sublibraries:
     #BWA pipeline just needs last entry per sample
     if len(set(flowcellFile['Sample Type']).intersection(set(bwaPipelineFragmentLengthsMap.keys()))) > 0:
         flowcellFile = flowcellFile[~flowcellFile.duplicated('Sample #', keep='last')]
-    #We
-
-
-limsWks, lims, limsMask = getLIMSsheet("LIMS")
-
-#Will map to these custom genomes when specified, stored as they appear in LIMS (without cegsvectors_ prefix)
-cegsGenomes = [ re.sub(r'^cegsvectors_', '', os.path.basename(x)) for x in glob.glob("/vol/cegs/sequences/cegsvectors_*") ]
-
-
-###Pre-processing
-print("#", ' '.join([ quoteStringsWithSpaces(arg) for arg in sys.argv ]), sep="")
-print()
-
-#Initialize inputs.txt
-if len(set(flowcellFile['Sample Type']).intersection(set(bwaPipelineFragmentLengthsMap.keys()))) > 0:
-    if flowcellIDs is not None and projects is not None and len(projects) is 1:
-        #Just handle the single-project case
-        #getBasedir returns the same for all these types, so just hardcode DNA
-        #BUGBUG using old Project_ organization for aggregations
-        findCmd = 'find ' + ' '.join([(getBasedir(projects[0], 'DNA')  + '%/Project_' + str(projects[0]) + '/*').replace("%", s) for s in flowcellIDs]) + ' -maxdepth 1'
-        findCmd += ' -regextype posix-awk -regex "^.+(' + '|'.join(sorted(flowcellFile['Sample #'].unique())) + ').+$"'
-        if args.aggregate or args.aggregate_sublibraries:
-            findCmd += ' -name "*.bam"'
-        else:
-            findCmd += ' -name "*.fastq.gz"'
-        print(findCmd + ' | sort > inputs.txt')
-        print()
 
 
 #Some aggregations must be processed in groups of samples
@@ -356,6 +346,12 @@ if args.aggregate or args.aggregate_sublibraries:
 
 
 ###Dispatch appropriate function handler per sample line
+#Get LIMS info
+limsWks, lims, limsMask = getLIMSsheet("LIMS")
+
+#Will map to these custom genomes when specified, stored as they appear in LIMS (without cegsvectors_ prefix)
+cegsGenomes = [ re.sub(r'^cegsvectors_', '', os.path.basename(x)) for x in glob.glob("/vol/cegs/sequences/cegsvectors_*") ]
+
 doBwaCleanup = False
 doDNACaptureCleanup = False
 doTransposonCleanup = False
@@ -394,8 +390,8 @@ if doBwaCleanup:
     for sampleType in flowcellFile['Sample Type'][flowcellFile['Sample Type'].isin(bwaPipelineAnalysisCommandMap.keys())].unique():
         print()
         print("#" + sampleType)
-        print("qsub -b y -j y -N analyzeInserts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir(sampleType) + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(bwaPipelineFragmentLengthsMap[sampleType]) + " " + bwaPipelineAnalysisCommandMap[sampleType] + "\"")
-        print("qsub -S /bin/bash -j y -N mapped_readcounts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir(sampleType) + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/mapped_readcounts.sh " + bwaPipelineAnalysisCommandMap[sampleType] + "\"")
+        print("qsub -b y -j y -N analyzeInserts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir(sampleType) + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(bwaPipelineFragmentLengthsMap[sampleType]) + " " + getBwaPipelineOutdir(sampleType) + "\"")
+        print("qsub -S /bin/bash -j y -N mapped_readcounts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir(sampleType) + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/mapped_readcounts.sh " + getBwaPipelineOutdir(sampleType) + "\"")
     #Leave this around so the hold_jid args don't fail
     #    print("rm -f sgeid.analysis")
 
