@@ -33,7 +33,34 @@ make_html () {
     fi
 }
 ##############################################################################
-# This function makes html versions of the readcounts files, by genome.
+# These functions makes html versions of the readcounts files, by genome.
+
+find_targets () {
+    # This function loads target_vec for the flowcell directories.
+
+    local subdir_names=("$@")
+    local target
+    local BASE
+    local BASE2
+
+    for i in "${subdir_names[@]}"; do
+        BASE2=${i%/}       # Kill trailing slash
+        BASE=${BASE2##*/}  # Get subdir name
+ 
+        # Test - kill Project_CEGS later
+        if [ "${BASE}" = "trash" ] || [ "${BASE}" = "bak" ] || [ "${BASE}" = "Project_CEGS" ]; then
+             continue
+        fi
+
+        target="${i}readcounts.summary.txt"
+        if [ -f ${target} ]; then
+            echo ${target}
+            target_vec+=( ${target} )
+        else
+            echo ${target} does not exist
+        fi
+    done
+}
 
 find_readcounts () {
     local dir_base=$1
@@ -43,6 +70,10 @@ find_readcounts () {
 
     local flowcell
     local ymd
+    local BASE
+    local BASE2
+    local BASE3
+    local target
 
     # Each flowcell directory may be associated with a readcounts file.
     # Get the data from the readcounts file if it is there, and make a table from the data.
@@ -52,82 +83,104 @@ find_readcounts () {
         #     /vol/mauranolab/mapped/src/
         #     /vol/mauranolab/mapped/trackhub/
 
-        # This is the name of the flowcell's readcounts file, if it exists.
-        local target=${dir_base}${flowcell}${suffix}
-
-        if [ -f ${target} ]; then
-            # There is a readcounts file in the flowcell directory.
-            echo ${target}
-
-            # Find a date to associate with the flowcell from the info.txt file
-            local info_file="/vol/mauranolab/flowcells/data/"${flowcell}"info.txt"
-
-            # Make sure the file is there:
-            if [ ! -f ${info_file} ]; then
-                # It is not.
-                ierr=0
-            else
-                # It is, but is the date there?
-                ierr=$(grep -c '#Load date' ${info_file})
+        # Fill up target_vec:
+        if [ ${dir_base} = "/vol/cegs/mapped/" ] || [ ${dir_base} = "/vol/mauranolab/mapped/" ] ; then
+            subdir_names=($(ls -d ${dir_base}${flowcell}*/))    # These are full paths, with trailing slashes.
+            target_vec=()
+            find_targets  "${subdir_names[@]}"
+        else
+            # For non-flowcell directories, there is only one place for the readcounts file to be:
+            target=${dir_base}${flowcell}${suffix}
+            if [ -f ${target} ]; then
+                # Need to do this here to get the progress notices in correct order.
+                echo ${target}
             fi
 
-            if (( ierr == 0)); then
-                ymd="00000000"
-            else
-                local d_out=$(grep '#Load date' ${info_file})
-                local yyyy=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f1)
-                local mm=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f2)
-                local dd=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f3)
-                ymd=${yyyy}${mm}${dd}
-            fi
+            target_vec=()
+            target_vec+=( ${target} )
+        fi
 
-            # We now have a date. Next, construct a genome related filename for the output.
-            local tmp_flowcell
-            if [ "${ymd}" = "00000000" ]; then
-                tmp_flowcell="/"${flowcell%/}
-            else
-                tmp_flowcell="/"${ymd}"_"${flowcell%/}
-            fi
-            # tmp_flowcell will be used after the HEREDOC sections below.
+        for target in ${target_vec[@]}; do
+            if [ -f ${target} ]; then
+                # There is a readcounts file in the flowcell directory.
+    
+                # Find a date to associate with the flowcell from the info.txt file
+                local info_file="/vol/mauranolab/flowcells/data/"${flowcell}"info.txt"
+    
+                # Make sure the file is there:
+                if [ ! -f ${info_file} ]; then
+                    # It is not.
+                    ierr=0
+                else
+                    # It is, but is the date there?
+                    ierr=$(grep -c '#Load date' ${info_file})
+                fi
+    
+                if (( ierr == 0)); then
+                    ymd="00000000"
+                else
+                    local d_out=$(grep '#Load date' ${info_file})
+                    local yyyy=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f1)
+                    local mm=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f2)
+                    local dd=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f3)
+                    ymd=${yyyy}${mm}${dd}
+                fi
+    
+                # We now have a date. Next, construct a genome related filename for the output.
+                local tmp_flowcell
+                if [ "${ymd}" = "00000000" ]; then
+                    tmp_flowcell="/"${flowcell%/}
+                else
+                    tmp_flowcell="/"${ymd}"_"${flowcell%/}
+                fi
 
-
-            # Initialize the output files with header lines.
-               # Also replace header underscores with a space. But R's read.table function bashes the space with a . !!!
-               # We use this later, to replace the .'s with a space, but not touch the underscores in the html table tags.
-               # See the move_html function below, where this is done.
-               #
-               # This HEREDOC also surrounds field values with quotes, to retain the spaces we are making.
-            awk -f <(cat << "AWK_HEREDOC_01"
-            BEGIN { FS = "\t" ; q="\"";  OFS = q FS q }
-            {
-                if(NR == 2) exit;
-
-                $1 = $1;  # Causes awk to remove excess white space from all the fields. Necessary!
-                gsub("_"," ", $0)
-                print q $0 q;
-            }
-            END{}
+                if [ ${dir_base} = "/vol/cegs/mapped/" ] || [ ${dir_base} = "/vol/mauranolab/mapped/" ] ; then
+                    BASE=${target%/readcounts.summary.txt}       # Kill trailing /readcounts.summary.txt
+                    BASE2=${BASE##*/}  # Get subdir name
+                    BASE3=${BASE2,,}   # Convert to all lower case
+                    tmp_flowcell="${tmp_flowcell}_${BASE3}"   
+                fi
+                # tmp_flowcell will be used after the HEREDOC sections below.
+    
+    
+                # Initialize the output files with header lines.
+                   # Also replace header underscores with a space. But R's read.table function bashes the space with a . !!!
+                   # We use this later, to replace the .'s with a space, but not touch the underscores in the html table tags.
+                   # See the move_html function below, where this is done.
+                   #
+                   # This HEREDOC also surrounds field values with quotes, to retain the spaces we are making.
+                awk -f <(cat << "AWK_HEREDOC_01"
+                BEGIN { FS = "\t" ; q="\"";  OFS = q FS q }
+                {
+                    if(NR == 2) exit;
+    
+                    $1 = $1;  # Causes awk to remove excess white space from all the fields. Necessary!
+                    gsub("_"," ", $0)
+                    print q $0 q;
+                }
+                END{}
 AWK_HEREDOC_01
 ) < ${target} > "${TMPDIR}/tmp_header"
-
-            # Use the header we just made to initialize the genome specific output files.
-            # Break up the readcounts files into their genomic subsections.
-            for i in "${genome_array[@]}"; do
-                declare "${i}"="${TMPDIR}${tmp_flowcell}_${i}"
-                ref="${i}"
-                cat "${TMPDIR}/tmp_header" > ${!ref}
-                grep ${i} ${target} >> ${!ref}
-            done
-
-            for i in "${genome_array[@]}"; do
-                ref="${i}"
-                make_html ${!ref}
-            done
-        else
-            # No readcounts file exists. UCSC browser description area is just
-            # blank if there is no file, or a bad url. No error msg pops up.
-            echo ${target} does not exist
-        fi
+    
+                # Use the header we just made to initialize the genome specific output files.
+                # Break up the readcounts files into their genomic subsections.
+                for i in "${genome_array[@]}"; do
+                    declare "${i}"="${TMPDIR}${tmp_flowcell}_${i}"
+                    ref="${i}"
+                    cat "${TMPDIR}/tmp_header" > ${!ref}
+                    grep ${i} ${target} >> ${!ref}
+                done
+    
+                for i in "${genome_array[@]}"; do
+                    ref="${i}"
+                    make_html ${!ref}
+                done
+            else
+                # No readcounts file exists. UCSC browser description area is just
+                # blank if there is no file, or a bad url. No error msg pops up.
+                echo ${target} does not exist
+            fi
+        done
     done
 }
 ##############################################################################
@@ -137,7 +190,8 @@ if [ "${hub_type}" = "CEGS" ]; then
     dir_base="/vol/cegs/mapped/"
     cd ${dir_base}
     dir_names=($(ls -d */))    # These have trailing slashes.
-    suffix="Project_CEGS/readcounts.summary.txt"
+    # suffix="Project_CEGS/readcounts.summary.txt" # Test - this is no longer used for flowcells
+    suffix="NA"
     find_readcounts ${dir_base} ${suffix} "${dir_names[@]}"
     
     # CEGS aggregations
@@ -158,8 +212,8 @@ else
     dir_base="/vol/mauranolab/mapped/"
     cd ${dir_base}
     dir_names=($(ls -d */))     # These have trailing slashes.
-    # suffix="Project_Maurano/readcounts.summary.txt"
-    suffix="dnase/readcounts.summary.txt"
+    # suffix="Project_Maurano/readcounts.summary.txt" # Test - this is no longer used for flowcells
+    suffix="NA"
     find_readcounts ${dir_base} ${suffix} "${dir_names[@]}"
     
     # Maurano aggregations
@@ -176,6 +230,7 @@ else
     suffix="readcounts.summary.txt"
     find_readcounts ${dir_base} ${suffix} "${dir_names[@]}"
 fi
+
 ###########################################################################
 # Move the html files to trackhub_dev, and rename them.
 # Ultimate file names are in the form:  <date>_<flowcell>.html

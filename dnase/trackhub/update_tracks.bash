@@ -131,7 +131,6 @@ fi
 # Make sure the target directory is empty.
 if [ "$(ls -A ${hub_target})" ]; then
     echo The target directory is not empty.  Exiting...
-    exit 4
 fi
 
 echo Building new ${hub_type} track hub in ${hub_target}
@@ -221,7 +220,6 @@ echo Making description files
 cd ${path_to_main_driver_script}
 ./makeDescFiles.bash ${path_to_main_driver_script} ${hub_type} ${hub_target} \
                      ${TMPDIR} "${genome_array[@]}"
-
 ######################################################################################
 # Make the hub.txt and genomes.txt files, and populate the structure with 
 # other fixed, hand made assets.

@@ -219,7 +219,10 @@ for assay_type in assays:
         composite.add_subgroups(subGroupDefs)
         
         if args.generateHTMLdescription:
-            composite.add_params(html='descriptions/' + curGroup + '.html')
+            if args.supertrack == "Flowcells":
+                composite.add_params(html='descriptions/' + curGroup + '_' + assay_suffix.lower() + '.html')
+            else:
+                composite.add_params(html='descriptions/' + curGroup + '.html')
         
         params_dimensions = ""
         if assay_type in ["DNase-seq", "DNA", "Capture"]:
@@ -385,7 +388,6 @@ for assay_type in assays:
                 sampleDescription += curSample['Assay']
             sampleDescription += curSample['DS'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, '
             if assay_type in ["DNA", "Capture"]:
-                #sampleDescription +=  + curSample['Genomic_coverage'] + 'x genomic coverage)'
                 sampleDescription += curSample['Genomic_coverage'] + 'x genomic coverage)'
             else:
                 if curSample['Num_hotspots'] == "NA":
