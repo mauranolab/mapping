@@ -50,6 +50,14 @@ for(d in c(list.dirs(path=dir, recursive=F, full.names=T))) {
 	}
 }
 
+if(is.null(results)) {
+	cat("There were no paired end reads.\n")
+	cat("insertlengths.RData is not being produced.\n")
+	print(date())
+	cat("\ndone\n")
+	quit(save = "no")
+}
+
 results$mappedgenome <- factor(gsub("^.+\\.(hg19|hg38|mm10|rn6)(_full|_noalt|_sacCer3)?$", "\\1\\2", results$name, perl=T))
 results$sample <- factor(gsub(".(hg19|hg38|mm10|rn6)(_full|_noalt|_sacCer3)?$", "", results$name))
 results$BS <- sapply(as.character(results$sample), function(x) {unlist(strsplit(x, "-"))[2]})
