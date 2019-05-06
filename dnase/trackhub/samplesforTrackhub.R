@@ -103,6 +103,9 @@ mappeddirs <- mappeddirs[grep('/new', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('bak', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('trash', mappeddirs, invert=TRUE)]
 
+# TEST 
+mappeddirs <- mappeddirs[grep('Project_CEGS', mappeddirs, invert=TRUE)]
+
 #NB These show up in old pipeline
 mappeddirs <- mappeddirs[grep('hotspots', mappeddirs, invert=TRUE)]
 mappeddirs <- mappeddirs[grep('fastqc', mappeddirs, invert=TRUE)]
