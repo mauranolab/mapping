@@ -85,25 +85,6 @@ def getBasedir(lab, sampleType, fc):
     return basedir
 
 
-#Pull the LIMS sheet from google using the service account secrets file and spreadsheet ID.
-def getLIMSsheet(sheet):
-    try:
-        lims_gsheets_ID_file = open('/vol/mauranolab/flowcells/LIMS.gsheets_ID.txt', 'r')
-        lims_gsheets_ID = lims_gsheets_ID_file.readlines()[0].rstrip("\n")
-        lims_gsheets_ID_file.close()
-        gc = pygsheets.authorize(service_file='/vol/mauranolab/flowcells/mauranolab.json')
-        sh = gc.open_by_key(lims_gsheets_ID)
-        wks = sh.worksheet_by_title(sheet)
-        df = wks.get_as_df()
-        #Remove per-FC headers and space between FCs (any row that is only empty lines)
-        mask = ~df['Sample Name'].str.startswith('#') & (df!="").any(1)
-    except Exception as e:
-        print("WARNING could not load sheet " + sheet + " from google sheets: ", e.message, '\n', e.argument)
-        wks = None
-        df = None
-    return wks, df, mask
-
-
 ###Handlers for individual data types
 #Each function takes dict representing a single row from the FC file iterator and returns the processing command line
 #Transposon pipeline
@@ -347,6 +328,8 @@ if args.aggregate or args.aggregate_sublibraries:
 
 ###Dispatch appropriate function handler per sample line
 #Get LIMS info
+sys.path.append("/vol/mauranolab/mapped/src/flowcells")
+from lims import getLIMSsheet
 limsWks, lims, limsMask = getLIMSsheet("LIMS")
 
 #Will map to these custom genomes when specified, stored as they appear in LIMS (without cegsvectors_ prefix)
