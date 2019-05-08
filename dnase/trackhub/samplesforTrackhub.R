@@ -14,17 +14,21 @@ option_list = list(
 	make_option(c("--workingDir"), type="character", default=NULL, 
 		help="full path working directory name", metavar="character"),
 	make_option(c("--project"), type="character", default="",
-		help="Enable custom directory search and group behavior: [CEGS_byFC, CEGS_byLocus, humanENCODEdnase, mouseENCODEdnase, humanENCODEchipseq, mouseENCODEchipseq]", metavar="character"),
+		help="Enable custom directory search and group behavior: [byFC, CEGS_byLocus, humanENCODEdnase, mouseENCODEdnase, humanENCODEchipseq, mouseENCODEchipseq]", metavar="character"),
 	make_option(c("--descend"), action="store_true", type="logical",
 		help="Assume that sample folders are organized under two levels of subdirectories, e.g. FCxxx/dna")
 )
 
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
-project <- opt$project
 
-if(project %in% c("CEGS_byFC", "CEGS_byLocus") & ! "descend" %in% names(opt)) {
-	stop("ERROR CEGS requires --descend for now")
+if(opt$project != "" && !opt$project %in% c("byFC", "CEGS_byLocus", "humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipseq", "mouseENCODEchipseq")) {
+    message("[samplesforTrackhub] invalid option for --project ", opt$project)
+    quit(save="no", status=1)
+}
+
+if(opt$project %in% c("byFC", "CEGS_byLocus") & ! "descend" %in% names(opt)) {
+	stop("ERROR --project byFC or --project CEGS_byLocus require --descend for now")
 }
 
 if(!is.null(opt$out)) {
@@ -40,8 +44,7 @@ if(!is.null(opt$workingDir)) {
 	pwd <- getwd()
 }
 
-message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", project)
-
+message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", opt$project)
 
 ##############################################################
 #for debug
@@ -58,7 +61,6 @@ if(!is.null(opt$inputfile)) {
 	}
 	message("[samplesforTrackhub] ", 'Dimensions of Input file: ', nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
 } else {
-	# This is the case for project==CEGS
 	inputSampleIDs <- NULL
 }
 
@@ -72,19 +74,19 @@ if("descend" %in% names(opt)) {
 	for(flowcell in list.dirs(path=pwd, full.names=F, recursive = F)) {
 		if(flowcell=='src') next;
 		if(flowcell=='trackhub') next;
-
+		
 		# To temporarily skip flowcell directories which are incomplete.
 		# if(flowcell=='FCH2NNMBBXY') next;
 		
 		projectdirs <- append(projectdirs, paste0(flowcell, "/", list.dirs(path=paste0(pwd, "/", flowcell, "/"), full.names=F, recursive = F)))
 		
-		if(project=="CEGS_byFC") {
+		if(opt$project=="byFC") {
 			# Get flowcell date
 			infofile <- paste('/vol/mauranolab/flowcells/data/', flowcell, '/info.txt', sep="")
 			if(file.exists(infofile)) {
 				infofile_lines <- readLines(infofile)
 				flowcell_dates[[flowcell]] <- gsub(unlist(strsplit(infofile_lines[grep("#Load date", infofile_lines)], '\t'))[2], pattern='-', replacement='')
-			} else { 
+			} else {
 				message("[samplesforTrackhub] ", "WARNING No info.txt file found for ", infofile)
 				flowcell_dates[[flowcell]] <- NA
 			}
@@ -195,6 +197,8 @@ for(curdir in mappeddirs) {
 				data$Assay[i] <- "DNase-seq"
 			} else if(sampleType=="atac") {
 				data$Assay[i] <- "ATAC-seq"
+			} else if(sampleType=="none") {
+				data$Assay[i] <- "None"
 			} else if(sampleType=="dna" || sampleType=="callsnps") {
 				data$Assay[i] <- "DNA"
 			} else if(sampleType=="capture" || sampleType=="callsnpsCapture") {
@@ -277,34 +281,34 @@ for(curdir in mappeddirs) {
 			
 			if("Institution" %in% colnames(inputSampleIDs)) {
 				data$Institution[i] <- inputSampleIDs[inputSampleIDrow, "Institution"]
-				if(project=="humanENCODEdnase") {
+				if(opt$project=="humanENCODEdnase") {
 					if(data$Institution[i] == 'UMass') {data$Institution[i] <- 'UW'}
 				}
 			} else {
 				data$Institution[i] <- NA
 			}
 			
-			if(project %in% c("CEGS_byFC", "CEGS_byLocus")) {
-				data$Institution[i] <- "NYU" # Since we will stop using input file for project==CEGS
+			if(opt$project %in% c("byFC", "CEGS_byLocus")) {
+				data$Institution[i] <- "NYU"
 				
-				if(project=="CEGS_byFC") {
-					curFC <- unlist(strsplit(curdir, "/"))[1] 
+				if(opt$project=="byFC") {
+					curFC <- unlist(strsplit(curdir, "/"))[1]
 					data$Group[i] <- curFC
 					if(curFC %in% names(flowcell_dates)) {
 						#Group values will be in the form of YYYMMDD_<flowcell>
 						data$Group[i] <- paste0(flowcell_dates[[curFC]] , "_" , data$Group[i])
 					}
-				} else if(project=="CEGS_byLocus") {
+				} else if(opt$project=="CEGS_byLocus") {
 					#Group values will be in the form of Study ID
 					SampleNameSplit <- unlist(strsplit(SampleIDsplit[1], "_"))
-					CEGSsampleType <- SampleNameSplit[length(SampleNameSplit)] 
+					CEGSsampleType <- SampleNameSplit[length(SampleNameSplit)]
 					if(CEGSsampleType %in% c("Yeast", "DNA", "BAC", "RepoBAC", "Ecoli", "Amplicon")) {
 						data$Group[i] <- paste(SampleNameSplit[1], sep="_")
 					}
 				} else {
 					stop("ERROR Impossible!")
 				}
-			} else if(project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipseq", "mouseENCODEchipseq")) {
+			} else if(opt$project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipseq", "mouseENCODEchipseq")) {
 				if(grepl('^f[A-Z]|^mfLiver_', data$Name[i])) {
 					data$Group[i] <- "Fetal tissues"
 				} else if(grepl('^(adipo|aggregated_lymphoid_nodule|adrenal|ammon|aorta|artery|astrocyte|bladder|body|bone|bowel|brain|breast|bronchial_epithelial_cell|cardia|cardiocyte|cerebellum|colon|coronary_artery|cortex|cortical_plate|dendritic_cell|derm|endothelial_cell_of_|epithelial_cell_of_choroid_plexus|erythroblast|esopha|eye|fetal_umbilical_cord|fibroblast|gast|gastro|globus|glom|gonad|gyrus|heart|hepatocyte|intest|keratinocyte|kidney|limb|liver|lung|mammary_epithelial_cell|medial_popliteal_nerve|medull|medulla|mesenchymal_stem_cell|mid_neurogenesis_radial_glial_cells|muscle|myotube|neural_cell|neural_progenitor_cell|neural_stem_progenitor_cell|neuroepithelial_stem_cell|neuron|nucleus|oesteoblast|olfact|fat_pad|osteo|ovary|pancrea|placenta|pons|prostate|psoas|putamen|radial_glial_cell|renal|retina|retinal_pigment_epithelial_cell|right_atrium_auricular_region|right_lobe_of_liver|skin|spinal|spleen|stomach|test[ei]s|thymus|thyroid|tibial_artery|tibial_nerve|tongue|trophoblast_cell|urothelia|uteru|vagina|ventriculus|amniotic_stem_cell|bipolar_spindle_neuron|caput_mediale_musculus_gastrocnemius|inferior_parietal_cortex|islet_precursor_cell|midbrain|middle_frontal_gyrus|pentadactyl_limb|ascending_aorta|bipolar_neuron|epithelial_cell_of_esophagus|epithelial_cell_of_prostate|foreskin_keratinocyte|lower_leg_skin|Peyers_patch|right_cardiac_atrium|sigmoid_colon|skeletal_muscle|small_intestine|smooth_muscle_cell|suprapubic_skin|thoracic_aorta|transverse_colon|upper_lobe_of_left_lung|urinary_bladder|brown_adipose_tissue|forebrain|hindbrain|myocyte|Muller_cell|telencephalon)', data$Name[i], ignore.case=T)) {
@@ -312,14 +316,14 @@ for(curdir in mappeddirs) {
 				}
 				if(grepl('^CD|^[him]?A?T[HhNnRr][0-9]*$|^GM[012][0-9][0-9][0-9][0-9]|m?B_?cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|^MEL_GATA1_ER$|macrophage|CH12LX|G1E|mononuclear|dendritic|leukemia_stem_cell', data$Name[i])) { data$Group[i] <- 'Hematopoietic cells' }
 				if(grepl('ES|^H[0-9]|^iPS|E14TG2a4|^trophoblastic_cell$|^mesendoderm$|^endodermal_cell$|^ectodermal_cell$|^mesodermal_cell$|^WW6$|^ZHBTc4$', data$Name[i])) { data$Group[i] <- 'Pluripotent' }
-				if(project=="humanENCODEdnase") {
+				if(opt$project=="humanENCODEdnase") {
 					if(is.na(data$Group[i]) || data$Institution[i] == "Duke") {
 						data$Group[i] <- data$Institution[i]
 					}
-				} else if(project %in% c("mouseENCODEdnase", "mouseENCODEchipseq", "humanENCODEchipseq")) {
+				} else if(opt$project %in% c("mouseENCODEdnase", "mouseENCODEchipseq", "humanENCODEchipseq")) {
 					if(is.na(data$Group[i])) { data$Group[i] <- "Cell lines" }
 					if(data$Group[i]=="GM12878") { data$Group[i] <- "Cell lines" }
-					if(project %in% c("mouseENCODEchipseq", "humanENCODEchipseq")) {
+					if(opt$project %in% c("mouseENCODEchipseq", "humanENCODEchipseq")) {
 						if(grepl("[Tt]issues$", data$Group[i])) {
 							if(grepl('^H[234][ABFK]', data$Assay[i])) {
 								data$Group[i] <- paste0(data$Group[i], "-Histone marks")
@@ -342,7 +346,7 @@ for(curdir in mappeddirs) {
 }
 
 
-if(project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipseq", "mouseENCODEchipseq")) {
+if(opt$project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipseq", "mouseENCODEchipseq")) {
 	#Fix sample age. 
 	#Only keep first entry e.g. male (week 7) male (week8)
 	data$Age <- gsub(').*', '', data$Age)

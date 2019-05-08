@@ -188,6 +188,16 @@ for genome in "${genome_dirs[@]}"; do
 done
 # At the end of the above for loops, we're now in ${TMPDIR}/assembly_tracks
 
+# Divert here to make the cytoband file:
+cat /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes | LC_COLLATE=C sort -k1,1 -k2,2n | awk '{print $1,0,$2,$1,"gneg"}' > cytoBandIdeo.bed
+bedToBigBed -type=bed4 cytoBandIdeo.bed -as="${path_to_main_driver_script}/cytoband.as" /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes cytoBandIdeo.bigBed
+
+
+# Divert again to make the GC percentage file:
+hgGcPercent -wigOut -doGaps -file=stdout -win=5 -verbose=0 cegsvectors /vol/cegs/sequences/cegsvectors > cegsvectors.wig
+wigToBigWig cegsvectors.wig /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes cegsvectors.gc.bw
+
+
 # Sort OUTFILE (made in the above for loops), so that the lines are all grouped by:
 #      First:  genome
 #      Second: assmbly
@@ -235,10 +245,21 @@ while read -r line_in ; do
         # We need this to avoid having the cegsvectors Assemblies being shown in the "Other" control group.
         if [[ "${genome}" == "cegsvectors" ]]; then
             echo "group cegsvectors" >> ${out_file}
-        fi
+            echo superTrack on show >> ${out_file}
+            echo " " >> ${out_file}
 
-        echo superTrack on show >> ${out_file}
-        echo " " >> ${out_file}
+            # Also add the cytoband track:
+            echo "    track cytoBandIdeo" >> ${out_file}
+            echo "    type bigBed" >> ${out_file}
+            echo "    shortLabel cytoBandIdeo" >> ${out_file}
+            echo "    longLabel Chromosome ideogram with cytogenetic bands" >> ${out_file}
+            echo "    bigDataUrl cytoBandIdeo.bigBed" >> ${out_file}
+            echo "    parent cegsvectors_Assemblies on" >> ${out_file}
+            echo " " >> ${out_file}
+        else
+            echo superTrack on show >> ${out_file}
+            echo " " >> ${out_file}
+        fi
 
         # Since we have a new genome, we also need to give it new composite tracks.
         # The line below forces execution of the next if block, which makes composite tracks.
