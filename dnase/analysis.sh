@@ -229,7 +229,7 @@ fi
 #BUGBUG making 4 passes through full bam below
 #samtools view -c is faster than counting wc -l/awk; have a cleanup awk sum the lines in case xargs breaks it into multiple commands
 dupReads=`samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="*" {print $1}' | xargs samtools view -F 512 -f 1024 -c ${sampleOutdir}/${name}.${mappedgenome}.bam | awk 'BEGIN {sum=0} {sum+=$0} END {print sum}'`
-analyzedReads=`unstarch --list ${sampleOutdir}/${name}.${mappedgenome}.reads.starch | perl -pe 's/ +\|/\t/g;' | awk -F "\t" 'BEGIN {OFS="\t"; sum=0} NR==1 {for(i=1; i<=NF; i++) {if($i=="chr") {chromCol=i} else if($i=="uncompressedLineCount") {uncompressedLineCountCol=i} } } NR>1 && $chromCol!="chrM" {sum+=$uncompressedLineCountCol} END {print sum}'`
+analyzedReads=`unstarch --list ${sampleOutdir}/${name}.${mappedgenome}.reads.starch | perl -pe 's/ *\|/\t/g;' | awk -F "\t" 'BEGIN {OFS="\t"; sum=0} NR==1 {for(i=1; i<=NF; i++) {if($i=="chr") {chromCol=i} else if($i=="uncompressedLineCount") {uncompressedLineCountCol=i} } } NR>1 && $chromCol!="chrM" {sum+=$uncompressedLineCountCol} END {print sum}'`
 
 
 if [[ "${analyzedReads}" == 0 ]]; then
@@ -462,6 +462,7 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
         if grep -q -i -E "(error)" ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.log; then
             echo "Hotspot logfile:"
             cat ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.log | grep -i -E "(error|warning)"
+            echo
         fi
         
         cd ${outbase}
@@ -702,7 +703,7 @@ if [[ "${PEreads}" -gt 0 ]] && [[ ! "${mappedgenome}" =~ ^cegsvectors ]]; then
     echo
     echo "Template lengths"
     samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrM"' | awk -F "\t" 'BEGIN {OFS="\t"} $9>0 {print $9}' | sort -k2,2n | tee ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt |
-    awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {print "Minimum: " $0} {cum+=$0; lengths[NR]=$0; if($0<125) {lastLineUnder125=NR}} END {print "Number of reads: " NR; print "25th percentile: " lengths[int(NR*0.25)]; print "50th percentile: " lengths[int(NR*0.5)]; print "75th percentile: " lengths[int(NR*0.75)]; print "95th percentile: " lengths[int(NR*0.95)]; print "99th percentile: " lengths[int(NR*0.99)]; print "Maximum: " $0; print "Mean: " cum/NR; print "Prop. reads under 125 bp: " lastLineUnder125/NR}'
+    awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {print "Minimum: " $0} {cum+=$0; lengths[NR]=$0; if($0<125) {lastLineUnder125=NR}} END {print "Number of reads: " NR; if(NR>0) {print "25th percentile: " lengths[int(NR*0.25)]; print "50th percentile: " lengths[int(NR*0.5)]; print "75th percentile: " lengths[int(NR*0.75)]; print "95th percentile: " lengths[int(NR*0.95)]; print "99th percentile: " lengths[int(NR*0.99)]; print "Maximum: " $0; print "Mean: " cum/NR; print "Prop. reads under 125 bp: " lastLineUnder125/NR}}'
     pigz -9 -p ${NSLOTS} -f ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt
 
     echo
