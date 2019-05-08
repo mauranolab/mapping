@@ -330,7 +330,7 @@ filename <- "$OUTDIR/DistToTSS.txt"
 cat("Reading", filename, "\n")
 data <- read(filename)
 if(is.null(data)) {
-    quit(0, save = "no", status = 0)
+    quit(save="no", status=0)
 }
 
 colnames(data) <- c("DistToTSS")
@@ -362,7 +362,7 @@ filename <- "$OUTDIR/DistDpn.bed"
 cat("Reading", filename, "\n")
 data <- read(filename)
 if(is.null(data)) {
-    quit(0, save = "no", status = 0)
+    quit(save="no", status=0)
 }
 colnames(data)[5] <- c("DinsToDpn")
 
@@ -391,7 +391,7 @@ filename <- "$OUTDIR/DistDpn.bed"
 cat("Reading", filename, "\n")
 data <- read(filename)
 if(is.null(data)) {
-    quit(0, save = "no", status = 0)
+    quit(save="no", status=0)
 }
 colnames(data)[5] <- c("DinsToDpn")
 
@@ -419,7 +419,7 @@ filename <- "$OUTDIR/DistToDNase.bed"
 cat("Reading", filename, "\n")
 data <- read(filename)
 if(is.null(data)) {
-    quit(0, save = "no", status = 0)
+    quit(save="no", status=0)
 }
 colnames(data)[4] <- c("DinsToDpn")
 
