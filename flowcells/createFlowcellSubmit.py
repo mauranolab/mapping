@@ -156,8 +156,8 @@ def chromConfCapture(line):
 
 
 #BWA pipeline for DNA / DNase / ChIP-seq
-bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ChIP-seq": "chipseq", "DNA": "dna", "DNA Capture": "capture" }
-bwaPipelineFragmentLengthsMap = { 'DNase-seq': 300, 'Nano-DNase': 300, 'ChIP-seq': 500, 'DNA': 750 , 'DNA Capture': 750 }
+bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ATAC-seq":"atac", "ChIP-seq": "chipseq", "DNA": "dna", "DNA Capture": "capture" }
+bwaPipelineFragmentLengthsMap = { 'DNase-seq': 300, 'Nano-DNase': 300, 'ATAC-seq': 300, 'ChIP-seq': 500, 'DNA': 750 , 'DNA Capture': 750 }
 
 
 def getBwaPipelineOutdir(sampleType):

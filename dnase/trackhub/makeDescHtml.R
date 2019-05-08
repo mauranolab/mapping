@@ -8,7 +8,6 @@ fname_in <- args[1]
 fname_out <- args[2]
 
 # Get the text version of the table
-# This is where the periods show up in the header lines.  Look into that.
 desc_text <- read.table(fname_in, sep="\t", header=TRUE, stringsAsFactors=FALSE)
 
 delete_cols <- c("Genome", "Num.hotspots2", "SPOT2")
@@ -28,6 +27,9 @@ for (i in big_numeric_cols) {
 		desc_text[,i] <- format(desc_text[,i], big.mark=",", trim=TRUE)
 	}
 }
+
+# Get rid of underscores in header lines.
+colnames(desc_text) <- chartr(old="_", new=" ", colnames(desc_text))
 
 # Make the html version
 desc_HTML <- tableHTML(desc_text, rownames=FALSE) %>% add_css_row(css = list('background-color', 'lightblue'), rows = odd(1:(1+nrow(desc_text)))) %>%

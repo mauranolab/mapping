@@ -55,7 +55,7 @@ if(is.null(results)) {
 	cat("insertlengths.RData is not being produced.\n")
 	print(date())
 	cat("\ndone\n")
-	quit(save = "no")
+	quit(save="no", status=0)
 }
 
 results$mappedgenome <- factor(gsub("^.+\\.(hg19|hg38|mm10|rn6)(_full|_noalt|_sacCer3)?$", "\\1\\2", results$name, perl=T))

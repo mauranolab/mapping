@@ -100,13 +100,12 @@ for line in inputfile_reader:
 # in the following for loop, as well as in the various track construction blocks below.
 assays = set([])
 for assay_type in set([line.get('Assay') for line in input_data_all]):
-    if assay_type == "DNase-seq" or assay_type == "DNA" or assay_type == "Capture":
+    if assay_type in["DNase-seq", "DNA", "Capture", "None", "ATAC-seq"]:
         assays.add(assay_type)
     else:
         #ChIP-seq tracks have the epitope as the assay type
         #NB this will pick up any samples whose type doesn't match the above
         assays.add("ChIP-seq")
-
 
 if args.checksamples:
     DensCovTracksDefaultDisplayMode="on"
@@ -140,8 +139,9 @@ if args.supertrack is not None:
 
 # Now build the composites, and add them all to the supertrack.
 for assay_type in assays:
-    # Note: This just take the "ChIP" from "ChIP-seq".
-    assay_suffix = assay_type.split("-")[0]
+    #Matches the options allowed in submit.sh and createFlowcellSubmit.py
+    bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ATAC-seq":"atac", "ChIP-seq": "chipseq", "DNA": "dna", "DNA Capture": "capture" }
+    assay_suffix = bwaPipelineAnalysisCommandMap[assay_type] if assay_type in bwaPipelineAnalysisCommandMap else "none"
     
     input_data = []
     for line in input_data_all:
@@ -220,7 +220,10 @@ for assay_type in assays:
         composite.add_subgroups(subGroupDefs)
         
         if args.generateHTMLdescription:
-            composite.add_params(html='descriptions/' + curGroup + '.html')
+            if args.supertrack == "Flowcells":
+                composite.add_params(html='descriptions/' + curGroup + '_' + assay_suffix + '.html')
+            else:
+                composite.add_params(html='descriptions/' + curGroup + '.html')
         
         params_dimensions = ""
         if assay_type in ["DNase-seq", "DNA", "Capture"]:
@@ -235,6 +238,7 @@ for assay_type in assays:
                 params_dimensions="dimX=assay dimY=sampleName"
             else:
                 params_dimensions="dimY=assay dimX=sampleName"
+
         if 'replicate' in subGroupNames:
             params_dimensions = params_dimensions + " dimA=replicate"
             #NB requires mauranolab fork of daler/trackhub
