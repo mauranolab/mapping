@@ -39,6 +39,7 @@ project=CEGS  # project=CEGS for both values of hub_type. It's used by samplesfo
 Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
         --out ${outfile} \
         --workingDir ${workingDir} \
+        --descend \
         --project ${project}
 
 # Split up the samplesforTrackhub.R output into separate files for each genome.

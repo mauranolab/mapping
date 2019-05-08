@@ -47,8 +47,7 @@ find_targets () {
         BASE2=${i%/}       # Kill trailing slash
         BASE=${BASE2##*/}  # Get subdir name
  
-        # Test - kill Project_CEGS later
-        if [ "${BASE}" = "trash" ] || [ "${BASE}" = "bak" ] || [ "${BASE}" = "Project_CEGS" ]; then
+        if [ "${BASE}" = "trash" ] || [ "${BASE}" = "bak" ] ; then
              continue
         fi
 
@@ -135,32 +134,18 @@ find_readcounts () {
                 fi
 
                 if [ ${dir_base} = "/vol/cegs/mapped/" ] || [ ${dir_base} = "/vol/mauranolab/mapped/" ] ; then
+                    # The name of the flowcell subdirectory that the readcounts.summary.txt file lives in is also the name of the relevant assay type.
+                    # Use that assay type to help make a unique html name. 
+                    # For now, convert the name to all lower case to avoid maintaining a dictionary in the python code. But add that in later.
                     BASE=${target%/readcounts.summary.txt}       # Kill trailing /readcounts.summary.txt
                     BASE2=${BASE##*/}  # Get subdir name
                     BASE3=${BASE2,,}   # Convert to all lower case
                     tmp_flowcell="${tmp_flowcell}_${BASE3}"   
                 fi
-                # tmp_flowcell will be used after the HEREDOC sections below.
-    
+                # tmp_flowcell will be used in the for loop below.
     
                 # Initialize the output files with header lines.
-                   # Also replace header underscores with a space. But R's read.table function bashes the space with a . !!!
-                   # We use this later, to replace the .'s with a space, but not touch the underscores in the html table tags.
-                   # See the move_html function below, where this is done.
-                   #
-                   # This HEREDOC also surrounds field values with quotes, to retain the spaces we are making.
-                awk -f <(cat << "AWK_HEREDOC_01"
-                BEGIN { FS = "\t" ; q="\"";  OFS = q FS q }
-                {
-                    if(NR == 2) exit;
-    
-                    $1 = $1;  # Causes awk to remove excess white space from all the fields. Necessary!
-                    gsub("_"," ", $0)
-                    print q $0 q;
-                }
-                END{}
-AWK_HEREDOC_01
-) < ${target} > "${TMPDIR}/tmp_header"
+                head -n1 ${target} > "${TMPDIR}/tmp_header"
     
                 # Use the header we just made to initialize the genome specific output files.
                 # Break up the readcounts files into their genomic subsections.

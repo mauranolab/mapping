@@ -28,6 +28,7 @@ parser.add_argument('--includeSampleIDinSampleCol', action = 'store_true', defau
 parser.add_argument('--checksamples', action = 'store_true', default = False, help = 'Mark Density and Coverage tracks for display by turning on composite track without going to configuration page')
 parser.add_argument('--supertrack', action = 'store', required = False, help = 'Encompass all composite tracks generated within supertrack. Supertrack name specified as parameter.')
 parser.add_argument('--generateHTMLdescription', action = 'store_true', default = False, help = 'Link to HTML descriptions for composite tracks, assumed to be present at [genome]/descriptions/[group name].html')
+parser.add_argument('--tracknameprefix', action = 'store', required = False, default="", help = 'Add prefix within track names (e.g. to permit unique names).')
 
 try:
     args = parser.parse_args()
@@ -99,13 +100,13 @@ for line in inputfile_reader:
 # in the following for loop, as well as in the various track construction blocks below.
 assays = set([])
 for assay_type in set([line.get('Assay') for line in input_data_all]):
-    if assay_type == "DNase-seq" or assay_type == "DNA" or assay_type == "Capture":
+    if assay_type == "DNase-seq" or assay_type == "DNA" or assay_type == "Capture" or assay_type == "None":
         assays.add(assay_type)
     else:
         #ChIP-seq tracks have the epitope as the assay type
         #NB this will pick up any samples whose type doesn't match the above
         assays.add("ChIP-seq")
-
+# In the above, what to do about assay_type=="ATAC-seq" ?  Is assays.add("ChIP-seq") an OK result?
 
 if args.checksamples:
     DensCovTracksDefaultDisplayMode="on"
@@ -189,7 +190,7 @@ for assay_type in assays:
         SortOrder = SortOrder + " view=+"
         
         # Adding suffix
-        curGroup_trackname = cleanTrackName(args.genome + "_" + curGroup + "_" + assay_suffix)
+        curGroup_trackname = cleanTrackName(args.genome + args.tracknameprefix + "_" + curGroup + "_" + assay_suffix)
         
         # Do something like this later.
         # mydate = re.split(r'_', curGroup)[0]
@@ -237,6 +238,7 @@ for assay_type in assays:
                 params_dimensions="dimX=assay dimY=sampleName"
             else:
                 params_dimensions="dimY=assay dimX=sampleName"
+
         if 'replicate' in subGroupNames:
             params_dimensions = params_dimensions + " dimA=replicate"
             #NB requires mauranolab fork of daler/trackhub

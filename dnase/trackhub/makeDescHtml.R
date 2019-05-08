@@ -28,8 +28,8 @@ for (i in big_numeric_cols) {
 	}
 }
 
-# Get rid of periods which were inserted in the header lines
-colnames(desc_text) <- chartr(old=".", new=" ", colnames(desc_text))
+# Get rid of underscores in header lines.
+colnames(desc_text) <- chartr(old="_", new=" ", colnames(desc_text))
 
 # Make the html version
 desc_HTML <- tableHTML(desc_text, rownames=FALSE) %>% add_css_row(css = list('background-color', 'lightblue'), rows = odd(1:(1+nrow(desc_text)))) %>%

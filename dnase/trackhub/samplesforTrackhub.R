@@ -7,19 +7,30 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(optparse))
 
 option_list = list(
-	make_option(c("--inputfile"), type="character", default=NULL, 
+	make_option(c("--inputfile"), type="character", default=NULL,
 		help="input file name. Optional tab-delimited file. Entries will be matched on DS column, and Age and Institution columns will be propagated to trackhub", metavar="character"),
-	make_option(c("--out"), type="character", default=NULL, 
+	make_option(c("--out"), type="character", default=NULL,
 		help="output file name", metavar="character"),
 	make_option(c("--workingDir"), type="character", default=NULL, 
 		help="full path working directory name", metavar="character"),
-	make_option(c("--project"), type="character", default="", 
-		help="Enable custom directory search and group behavior: [CEGS, humanENCODEdnase, mouseENCODEdnase, humanENCODEchipseq, mouseENCODEchipseq]", metavar="character")
+	make_option(c("--project"), type="character", default="",
+        help="Enable custom directory search and group behavior: [CEGS_byFC, CEGS_byLocus, humanENCODEdnase, mouseENCODEdnase, humanENCODEchipseq, mouseENCODEchipseq]", metavar="character"),
+    make_option(c("--descend"), action="store_true", type="logical",
+		help="Assume that sample folders are organized under two levels of subdirectories, e.g. FCxxx/dna")
 )
 
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
+project <- opt$project
 
+# test
+if(project == "CEGS") {
+    project = "CEGS_byFC"
+}
+
+if(project %in% c("CEGS_byFC", "CEGS_byLocus") & ! "descend" %in% names(opt)) {
+	stop("ERROR CEGS requires --descend for now")
+}
 
 if(!is.null(opt$out)) {
 	message("[samplesforTrackhub] ", 'Output file: ', opt$out)
@@ -34,9 +45,7 @@ if(!is.null(opt$workingDir)) {
 	pwd <- getwd()
 }
 
-project <- opt$project
 message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", project)
-
 
 ##############################################################
 #for debug
@@ -53,13 +62,13 @@ if(!is.null(opt$inputfile)) {
 	}
 	message("[samplesforTrackhub] ", 'Dimensions of Input file: ', nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
 } else {
-	# This is the case for project==CEGS
+	# This is the case for project==CEGS_byFC
 	inputSampleIDs <- NULL
 }
 
 
 # Get paths of directories to search for sample directories relative to pwd
-if(project=="CEGS") {
+if("descend" %in% names(opt)) {
 	projectdirs <- NULL
 	
 	# Loop over all the flowcells to find sample directories.
@@ -73,14 +82,16 @@ if(project=="CEGS") {
 		
 		projectdirs <- append(projectdirs, paste0(flowcell, "/", list.dirs(path=paste0(pwd, "/", flowcell, "/"), full.names=F, recursive = F)))
 		
-		# Get flowcell date
-		infofile <- paste('/vol/mauranolab/flowcells/data/', flowcell, '/info.txt', sep="")
-		if(file.exists(infofile)) {
-			infofile_lines <- readLines(infofile)
-			flowcell_dates[[flowcell]] <- gsub(unlist(strsplit(infofile_lines[grep("#Load date", infofile_lines)], '\t'))[2], pattern='-', replacement='')
-		} else { 
-			message("[samplesforTrackhub] ", "WARNING No info.txt file found for ", infofile)
-			flowcell_dates[[flowcell]] <- NA
+		if(project=="CEGS_byFC") {
+			# Get flowcell date
+			infofile <- paste('/vol/mauranolab/flowcells/data/', flowcell, '/info.txt', sep="")
+			if(file.exists(infofile)) {
+				infofile_lines <- readLines(infofile)
+				flowcell_dates[[flowcell]] <- gsub(unlist(strsplit(infofile_lines[grep("#Load date", infofile_lines)], '\t'))[2], pattern='-', replacement='')
+			} else { 
+				message("[samplesforTrackhub] ", "WARNING No info.txt file found for ", infofile)
+				flowcell_dates[[flowcell]] <- NA
+			}
 		}
 	}
 } else {
@@ -100,11 +111,8 @@ for(curdir in projectdirs) {
 
 # Prune unwanted directories
 mappeddirs <- mappeddirs[grep('/new', mappeddirs, invert=TRUE)]
-mappeddirs <- mappeddirs[grep('bak', mappeddirs, invert=TRUE)]
-mappeddirs <- mappeddirs[grep('trash', mappeddirs, invert=TRUE)]
-
-# TEST 
-mappeddirs <- mappeddirs[grep('Project_CEGS', mappeddirs, invert=TRUE)]
+mappeddirs <- mappeddirs[grep('/bak', mappeddirs, invert=TRUE)]
+mappeddirs <- mappeddirs[grep('/trash', mappeddirs, invert=TRUE)]
 
 #NB These show up in old pipeline
 mappeddirs <- mappeddirs[grep('hotspots', mappeddirs, invert=TRUE)]
@@ -191,6 +199,8 @@ for(curdir in mappeddirs) {
 				data$Assay[i] <- "DNase-seq"
 			} else if(sampleType=="atac") {
 				data$Assay[i] <- "ATAC-seq"
+			} else if(sampleType=="none") {
+				data$Assay[i] <- "None"
 			} else if(sampleType=="dna" || sampleType=="callsnps") {
 				data$Assay[i] <- "DNA"
 			} else if(sampleType=="capture" || sampleType=="callsnpsCapture") {
@@ -280,13 +290,25 @@ for(curdir in mappeddirs) {
 				data$Institution[i] <- NA
 			}
 			
-			if(project=="CEGS") {
+			if(project %in% c("CEGS_byFC", "CEGS_byLocus")) {
 				data$Institution[i] <- "NYU" # Since we will stop using input file for project==CEGS
 				
-				curFC <- unlist(strsplit(curdir, "/"))[1] 
-				data$Group[i] <- curFC
-				if(curFC %in% names(flowcell_dates)) {
-					data$Group[i] <- paste0(flowcell_dates[[curFC]] , "_" , data$Group[i]) #Group values will now be in the form of YYYMMDD_<flowcell>
+				if(project=="CEGS_byFC") {
+					curFC <- unlist(strsplit(curdir, "/"))[1] 
+					data$Group[i] <- curFC
+					if(curFC %in% names(flowcell_dates)) {
+						#Group values will be in the form of YYYMMDD_<flowcell>
+						data$Group[i] <- paste0(flowcell_dates[[curFC]] , "_" , data$Group[i])
+					}
+				} else if(project=="CEGS_byLocus") {
+					#Group values will be in the form of Study ID
+					SampleNameSplit <- unlist(strsplit(SampleIDsplit[1], "_"))
+					CEGSsampleType <- SampleNameSplit[length(SampleNameSplit)] 
+					if(CEGSsampleType %in% c("Yeast", "DNA", "BAC", "RepoBAC", "Ecoli", "Amplicon")) {
+						data$Group[i] <- paste(SampleNameSplit[1], sep="_")
+					}
+				} else {
+					stop("ERROR Impossible!")
 				}
 			} else if(project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipseq", "mouseENCODEchipseq")) {
 				if(grepl('^f[A-Z]|^mfLiver_', data$Name[i])) {
