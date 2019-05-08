@@ -31,6 +31,7 @@ def getLIMSsheet(sheet):
     return wks, df, mask
 
 
+#Verify consistency in common entries between Sample Sheet and LIMS sheets
 def validateSampleSheetAgainstLIMS(lims, seq):
     #TODO sort order
     print("Check sequencing sheet for consistency with LIMS")
