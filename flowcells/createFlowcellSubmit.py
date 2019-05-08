@@ -388,10 +388,16 @@ for index, line in flowcellFile.iterrows():
 ###Cleanup calls
 if doBwaCleanup:
     for sampleType in flowcellFile['Sample Type'][flowcellFile['Sample Type'].isin(bwaPipelineAnalysisCommandMap.keys())].unique():
+        basedir = getBwaPipelineOutdir(sampleType)
+        if args.aggregate or args.aggregate_sublibraries:
+            sgeoutput = ""
+        else:
+            sgeoutput = " -o " + basedir
+        
         print()
         print("#" + sampleType)
-        print("qsub -b y -j y -N analyzeInserts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir(sampleType) + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(bwaPipelineFragmentLengthsMap[sampleType]) + " " + getBwaPipelineOutdir(sampleType) + "\"")
-        print("qsub -S /bin/bash -j y -N mapped_readcounts -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir(sampleType) + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/mapped_readcounts.sh " + getBwaPipelineOutdir(sampleType) + "\"")
+        print("qsub -b y -j y -N analyzeInserts" + sgeoutput + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(bwaPipelineFragmentLengthsMap[sampleType]) + " " + basedir + "\"")
+        print("qsub -S /bin/bash -j y -N mapped_readcounts" + sgeoutput + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/mapped_readcounts.sh " + basedir + "\"")
     #Leave this around so the hold_jid args don't fail
     #    print("rm -f sgeid.analysis")
 
