@@ -1,3 +1,13 @@
+track GC_percent
+shortLabel GC Percent
+longLabel GC Percent
+group cegsvectors
+visibility full
+maxHeightPixels 36
+type bigWig
+bigDataUrl cegsvectors.gc.bw
+
+
 track cegsvectors_Analyses
 compositeTrack on
 type bigBed

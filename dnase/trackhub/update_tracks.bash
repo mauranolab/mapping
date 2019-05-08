@@ -131,6 +131,7 @@ fi
 # Make sure the target directory is empty.
 if [ "$(ls -A ${hub_target})" ]; then
     echo The target directory is not empty.  Exiting...
+    exit 4
 fi
 
 echo Building new ${hub_type} track hub in ${hub_target}
@@ -140,14 +141,14 @@ echo Working...
 # We need a tmp directory to store intermediate files.
 
 echo Creating a temporary directory
-TMPDIR=`mktemp -d`   # TMPDIR has no trailing slash
-echo TMPDIR is: ${TMPDIR}
+# TMPDIR=`mktemp -d`   # TMPDIR has no trailing slash
+# echo TMPDIR is: ${TMPDIR}
 
 # For testing (remember to comment out the rm at the bottom of this script)
-# TMPDIR=/vol/cegs/src/trackhub/src_dev/myTMP
-# rm -rf ${TMPDIR}
-# mkdir ${TMPDIR}
-# echo TMPDIR is: ${TMPDIR}
+TMPDIR=/vol/cegs/src/trackhub/src_dev/myTMP
+rm -rf ${TMPDIR}
+mkdir ${TMPDIR}
+echo TMPDIR is: ${TMPDIR}
 
 ############################################################################
 
@@ -190,6 +191,7 @@ update_genome () {
     if [ ${hub_type} = "CEGS" ]; then
         # Only CEGS has assembly tracks.
         cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" trackDb_001.txt
+        cp "${TMPDIR}/assembly_tracks/cytoBandIdeo.bigBed" .
     fi
 
     # Process the "flowcell" tracks.
@@ -213,6 +215,10 @@ update_genome () {
 for i in "${genome_array[@]}"; do
     update_genome $i 
 done
+
+# Move the GC percentage file:
+cp "${TMPDIR}/assembly_tracks/cegsvectors.gc.bw" "${hub_target}/cegsvectors"
+
 
 ######################################################################################
 
@@ -273,8 +279,8 @@ ierr=$?
 echo hubCheck error is: ${ierr}
 
 if [ ${ierr} -eq 0 ]; then
-   echo Removing TMP directory.
-   rm -rf ${TMPDIR}
+#    echo Removing TMP directory.
+#    rm -rf ${TMPDIR}
    echo Hub construction complete.
 else
    echo Retaining TMPDIR.
