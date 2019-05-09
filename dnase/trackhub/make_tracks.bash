@@ -239,23 +239,18 @@ make_tracks () {
     local mappedgenome_consol=${mappedgenome}${consol_suffix}
     local infile=${TMP_OUT}"/samplesforTrackhub_"${mappedgenome_consol}".tsv"
     local outfile=${TMP_OUT}"/MakeTrackhub_"${mappedgenome_consol}".out"
-
-    if [ ${supertrack} = "Aggregations" ] || [ ${supertrack} = "Public_Data" ]; then
-        python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
-               --generateHTMLdescription \
-               --supertrack ${supertrack} \
-               --genome ${mappedgenome} \
-               --checksamples \
-               --URLbase ${urlbase} > ${outfile}
-    else
-        python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
-               --generateHTMLdescription \
-               --includeSampleIDinSampleCol \
-               --supertrack ${supertrack} \
-               --genome ${mappedgenome} \
-               --checksamples \
-               --URLbase ${urlbase} > ${outfile}
+    
+    local includeSampleIDinSampleCol=""
+    if [ ${supertrack} != "Aggregations" ] && [ ${supertrack} != "Public_Data" ]; then
+        includeSampleIDinSampleCol="--includeSampleIDinSampleCol"
     fi
+    python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
+           --generateHTMLdescription \
+           ${includeSampleIDinSampleCol} \
+           --supertrack ${supertrack} \
+           --genome ${mappedgenome} \
+           --checksamples \
+           --URLbase ${urlbase} > ${outfile}
 }
 ###############################
 consol_suffix_in="_consolidated"
