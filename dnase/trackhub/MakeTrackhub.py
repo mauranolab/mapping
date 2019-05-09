@@ -317,7 +317,7 @@ for assay_type in assays:
                 long_label="Peaks")
             composite.add_view(Peaks_view)
         
-        if assay_type == "DNase-seq":
+        if assay_type in ["DNase-seq", "ATAC-seq"]:
             Cuts_view = ViewTrack(
                 name="Cuts_view_" + curGroup_trackname,
                 view="Cuts",

@@ -240,13 +240,22 @@ make_tracks () {
     local infile=${TMP_OUT}"/samplesforTrackhub_"${mappedgenome_consol}".tsv"
     local outfile=${TMP_OUT}"/MakeTrackhub_"${mappedgenome_consol}".out"
 
-    python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
-           --generateHTMLdescription \
-           --includeSampleIDinSampleCol \
-           --supertrack ${supertrack} \
-           --genome ${mappedgenome} \
-           --checksamples \
-           --URLbase ${urlbase} > ${outfile}
+    if [ ${supertrack} = "Aggregations" ] || [ ${supertrack} = "Public_Data" ]; then
+        python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
+               --generateHTMLdescription \
+               --supertrack ${supertrack} \
+               --genome ${mappedgenome} \
+               --checksamples \
+               --URLbase ${urlbase} > ${outfile}
+    else
+        python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
+               --generateHTMLdescription \
+               --includeSampleIDinSampleCol \
+               --supertrack ${supertrack} \
+               --genome ${mappedgenome} \
+               --checksamples \
+               --URLbase ${urlbase} > ${outfile}
+    fi
 }
 ###############################
 consol_suffix_in="_consolidated"
