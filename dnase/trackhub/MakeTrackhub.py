@@ -100,7 +100,7 @@ for line in inputfile_reader:
 # in the following for loop, as well as in the various track construction blocks below.
 assays = set([])
 for assay_type in set([line.get('Assay') for line in input_data_all]):
-    if assay_type in["DNase-seq", "DNA", "Capture", "None", "ATAC-seq"]:
+    if assay_type in["DNase-seq", "DNA", "DNA Capture", "None", "ATAC-seq"]:
         assays.add(assay_type)
     else:
         #ChIP-seq tracks have the epitope as the assay type
@@ -226,7 +226,7 @@ for assay_type in assays:
                 composite.add_params(html='descriptions/' + curGroup + '.html')
         
         params_dimensions = ""
-        if assay_type in ["DNase-seq", "DNA", "Capture"]:
+        if assay_type in ["DNase-seq", "DNA", "DNA Capture"]:
             params_dimensions="dimY=sampleName"
             if args.genome == "cegsvectors":
                 params_dimensions = params_dimensions + " dimX=mappedgenome"
@@ -266,7 +266,7 @@ for assay_type in assays:
             long_label="Reads")
         composite.add_view(Reads_view)
         
-        if assay_type in ["DNA", "Capture"]:
+        if assay_type in ["DNA", "DNA Capture"]:
             Coverage_view = ViewTrack(
                 name="Coverage_view_" + curGroup_trackname,
                 view="Coverage",
@@ -331,7 +331,7 @@ for assay_type in assays:
                 long_label="Cut Counts")
             composite.add_view(Cuts_view)
         
-        if assay_type in ["DNA", "Capture"]:
+        if assay_type in ["DNA", "DNA Capture"]:
             Variants_view = ViewTrack(
                 name="Variants_view_" + curGroup_trackname,
                 view="Variants",
@@ -345,7 +345,7 @@ for assay_type in assays:
                 long_label="Variants")
             composite.add_view(Variants_view)
         
-        if assay_type in ["DNA", "Capture"]:
+        if assay_type in ["DNA", "DNA Capture"]:
             Genotypes_view = ViewTrack(
                 name="Genotypes_view_" + curGroup_trackname,
                 view="Genotypes",
@@ -389,7 +389,7 @@ for assay_type in assays:
             if assay_type == "ChIP-seq":
                 sampleDescription += curSample['Assay']
             sampleDescription += curSample['DS'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, '
-            if assay_type in ["DNA", "Capture"]:
+            if assay_type in ["DNA", "DNA Capture"]:
                 sampleDescription += curSample['Genomic_coverage'] + 'x genomic coverage)'
             else:
                 if curSample['Num_hotspots'] == "NA":
@@ -431,7 +431,7 @@ for assay_type in assays:
             Reads_view.add_tracks(track)
             
             #Coverage_view
-            if assay_type in ["DNA", "Capture"]:
+            if assay_type in ["DNA", "DNA Capture"]:
                 track = Track(
                     name=sampleName_trackname + '_cov',
                     short_label=sampleShortLabel,
@@ -504,7 +504,7 @@ for assay_type in assays:
                 Cuts_view.add_tracks(track)
             
             #Variants_view
-            if assay_type in ["DNA", "Capture"]:
+            if assay_type in ["DNA", "DNA Capture"]:
                 track = Track(
                     name=sampleName_trackname + '_vcf',
                     short_label=sampleShortLabel,
@@ -517,7 +517,7 @@ for assay_type in assays:
                 Variants_view.add_tracks(track)
             
             #Genotypes_view
-            if assay_type in ["DNA", "Capture"]:
+            if assay_type in ["DNA", "DNA Capture"]:
                 track = Track(
                     name=sampleName_trackname + '_gts',
                     short_label=sampleShortLabel,
