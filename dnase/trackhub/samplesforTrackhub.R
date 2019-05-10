@@ -140,7 +140,11 @@ pipelineParametersParser <- function(pipelineParameters, fieldName) {
 }
 
 # Initialize "data" with just column names.  We'll be adding rows to this later on in the code.
-outputCols <- c("Name", "DS", "Replicate", "Color", "Assay", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Group", "Age", "Institution", "filebase", "Mapped_Genome", "Annotation_Genome", "Bait_set")
+outputCols <- c("Name", "SampleID", "Assay", "Group", "filebase", "Mapped_Genome", "Annotation_Genome", "Color", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Age", "Institution", "Replicate", "Bait_set")
+if(opt$project == "CEGS_byLocus") {
+    outputCols <- c(outputCols, "Study", "Project", "Assembly", "Type")
+}
+
 data <- data.frame(matrix(ncol=length(outputCols), nrow=1))
 colnames(data) <- outputCols
 i <- 0 # This will be our "data" output variable index.
@@ -164,7 +168,7 @@ for(curdir in mappeddirs) {
 			message("[samplesforTrackhub] ", "WARNING ", analysisFile, " appears not to have completed successfully")
 		} else {
 			i <- i+1
-			# We need to add a new row to "data".  The values will be set within this for loop.
+			# We need to add a new row to "data". The values will be set within this for loop.
 			data[i,] <- NA
 			
 			pipelineParameters <- analysisFileContents[grep('^Running [^,]+,[^,]+ analysis', analysisFileContents, perl=T)]
@@ -212,7 +216,7 @@ for(curdir in mappeddirs) {
 			
 			data$Name[i] <- SampleIDsplit[1]
 			
-			data$DS[i] <- SampleIDsplit[length(SampleIDsplit)]
+			data[i, "SampleID"] <- SampleIDsplit[length(SampleIDsplit)]
 			
 			data$Replicate[i] <- NA
 			
@@ -270,9 +274,10 @@ for(curdir in mappeddirs) {
 			
 			if(!is.null(inputSampleIDs)) {
 				#Matching the DS number from the analysis file to inputSampleIDs can give multiple results, so just pick the first
-				inputSampleIDrow <- which(inputSampleIDs[,"DS"] == data$DS[i])[1]
+				inputSampleIDrow <- which(inputSampleIDs[,"DS"] == data[i, "SampleID"])[1]
 			}
 			
+			#TODO allow other columns to be taken from inputSampleIDs
 			if("Age" %in% colnames(inputSampleIDs)) {
 				data$Age[i] <- inputSampleIDs[inputSampleIDrow, "Age"]
 			} else {
@@ -303,8 +308,13 @@ for(curdir in mappeddirs) {
 					SampleNameSplit <- unlist(strsplit(SampleIDsplit[1], "_"))
 					CEGSsampleType <- SampleNameSplit[length(SampleNameSplit)]
 					if(CEGSsampleType %in% c("Yeast", "DNA", "BAC", "RepoBAC", "Ecoli", "Amplicon")) {
-						data$Group[i] <- paste(SampleNameSplit[1], sep="_")
+						data$Study[i] <- SampleNameSplit[1]
+						data$Project[i] <- SampleNameSplit[2]
+						data$Assembly[i] <- SampleNameSplit[3]
+						data$Type[i] <- SampleNameSplit[4]
+						data$Group[i] <- data$Study[i]
 					}
+					#TODO Find capture samples based on bait?
 				} else {
 					stop("ERROR Impossible!")
 				}
