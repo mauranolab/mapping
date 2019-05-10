@@ -207,28 +207,18 @@ for assay_type in assays:
             if internalSubgroupName(subGroupName) in subGroupNames:
                 SortOrder += internalSubgroupName(subGroupName) + "=+ "
         
-        if args.supertrack == "ByLocus":
-            curGroup_trackname = cleanTrackName(args.genome + args.tracknameprefix + "_" + curGroup)
-            shrt_label = curGroup
-            lng_label = curGroup
-        else:
-            curGroup_trackname = cleanTrackName(args.genome + args.tracknameprefix + "_" + curGroup + "_" + assay_suffix)
-            # short labels are supposed to be 17 chars max. However, the browser does not seem to care.
-            shrt_label = curGroup + '_' + assay_type
-            # long labels are supposed to be 76 chars max. However, the browser does not seem to care.
-            lng_label = curGroup + '_' +  assay_type
-        
-        # Do something like this later.
-        # mydate = re.split(r'_', curGroup)[0]
-        # priority=bignumber - mydate
-        # Why is priority="2" not showing up in the output?
-        # Should be a number anyway.
+        curGroup_trackname = cleanTrackName(args.genome + args.tracknameprefix + "_" + curGroup + "_" + assay_suffix)
+        # short labels are supposed to be 17 chars max. However, the browser does not seem to care.
+        shrt_label = curGroup + '_' + assay_type
+        # long labels are supposed to be 76 chars max. However, the browser does not seem to care.
+        lng_label = curGroup + '_' +  assay_type
         
         composite = CompositeTrack(
             name=curGroup_trackname,
             short_label=shrt_label,
             long_label=lng_label,
             tracktype="bigBed",
+        # Why is priority="2" not showing up in the output?
             priority="2",
             visibility="hide",
             parentonoff="off",
@@ -401,14 +391,16 @@ for assay_type in assays:
             #There is a length limit of 128 characters, but in practice some are used for an internal prefix/suffix
             #Probably could omit sampleName here to save space
             sampleName_trackname = cleanTrackName(sampleNameGenome + "_" + curGroup + "_" + sampleName + "_" + curSample['SampleID'])
-            
             # Make sure there are no duplicate track names.
-            while sampleName_trackname in sampleName_dict:
-                sampleName_trackname = sampleName_trackname + "_"
-
+            if sampleName_trackname in sampleName_dict:
+                print("[MakeTrackhub.py] WARNING ", sampleName_trackname, "duplicates an existing trackname", sep="", file=sys.stderr)
+                sampleName_trackname += "_"
+                i = 2
+                while sampleName_trackname + str(i) in sampleName_dict:
+                    i += 1
             sampleName_dict[sampleName_trackname] = sampleName_trackname
-
-
+            
+            
             ###Set up description - longLabel must be <= 76 printable characters
             sampleDescription = sampleName + "-"
             if assay_type == "ChIP-seq":
