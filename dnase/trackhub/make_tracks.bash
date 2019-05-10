@@ -54,13 +54,32 @@ head -n 1 ${outfile} > "${TMP_OUT}/header"
 # This is the end of the samplesforTrackhub.R section for "flowcell" samples.
 #
 ###########################################################################
+# CEGS_byLocus section:
+
+Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
+        --out ${outfile} \
+        --workingDir ${workingDir} \
+        --descend \
+        --project CEGS_byLocus
+
+# Split up the samplesforTrackhub.R output into separate files for each genome.
+for i in "${genome_array[@]}"; do
+    declare "outfile_${i}"="${outfile_base}_${i}_consolidated_locus.tsv"
+    ref="outfile_${i}"
+    head -n 1 ${outfile} > ${!ref}
+    grep ${i} ${outfile} >> ${!ref}
+done
+
+# This is the end of the samplesforTrackhub.R section for making the CEGS_byLocus files.
+#
+###########################################################################
 ###########################################################################
 # This begins the samplesforTrackhub.R section for aggregation & publicdata
 # samples. It finds the samples within each directory, and dumps relevant
 # sample information into an output file.
 
 # First, obtain two parameters: "filebase_col" and "Group_col".
-# They are needed in aggregation_loop & publicdata_loop functions below.
+# They are needed in agg_pub_loop function below.
 
 # Get number of the header column containing "filebase"
 filebase_col=$(awk -f <(cat << "AWK_HEREDOC_01"
@@ -244,9 +263,18 @@ make_tracks () {
     if [ ${supertrack} != "Aggregations" ] && [ ${supertrack} != "Public_Data" ]; then
         includeSampleIDinSampleCol="--includeSampleIDinSampleCol"
     fi
+
+    local tracknameprefix=""
+    local generateHTMLdescription="--generateHTMLdescription"
+    if [ ${supertrack} = "ByLocus" ]; then
+        tracknameprefix="--tracknameprefix locus"
+        generateHTMLdescription=""
+    fi
+
     python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
-           --generateHTMLdescription \
+           ${generateHTMLdescription} \
            ${includeSampleIDinSampleCol} \
+           ${tracknameprefix} \
            --supertrack ${supertrack} \
            --genome ${mappedgenome} \
            --checksamples \
@@ -297,5 +325,21 @@ for i in "${genome_array[@]}"; do
     make_tracks ${i} ${consol_suffix_in} ${urlbase_in} ${supertrack_in}
 done
 
+###############################
+consol_suffix_in="_consolidated_locus"
+
+if [ ${hub_type} = "CEGS" ]; then
+    urlbase_in="https://***REMOVED***@cascade.isg.med.nyu.edu/cegs/publicdata/"
+else
+    urlbase_in="https://***REMOVED***@cascade.isg.med.nyu.edu/~cadlej01/publicdata/"
+fi
+
+supertrack_in="ByLocus"
+
+for i in "${genome_array[@]}"; do
+    make_tracks ${i} ${consol_suffix_in} ${urlbase_in} ${supertrack_in}
+done
+
+###############################
 echo Done with Daler python code.
 
