@@ -202,7 +202,7 @@ for(curdir in mappeddirs) {
 			} else if(sampleType=="dna" || sampleType=="callsnps") {
 				data$Assay[i] <- "DNA"
 			} else if(sampleType=="capture" || sampleType=="callsnpsCapture") {
-				data$Assay[i] <- "Capture"
+				data$Assay[i] <- "DNA Capture"
 			} else if(sampleType=="chipseq") {
 				data$Assay[i] <- SampleIDsplit[2]
 			} else {
