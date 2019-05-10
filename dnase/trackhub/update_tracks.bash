@@ -213,6 +213,13 @@ update_genome () {
        # If num_line == 1, then there are no publicdata tracks for this genome.
        cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated_pub.out" >> trackDb_001.txt
     fi
+
+    # Process the "CEGS_byLocus" tracks.
+    num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated_locus.tsv")`
+    if [ ${num_line} -gt 1 ]; then
+       # If num_line == 1, then there are no CEGS_byLocus tracks for this genome.
+       cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated_locus.out" >> trackDb_001.txt
+    fi
 }
 
 for i in "${genome_array[@]}"; do
