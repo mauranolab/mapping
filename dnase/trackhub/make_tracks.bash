@@ -273,8 +273,6 @@ make_tracks () {
         tracknameprefix="--tracknameprefix byLocus"
         subgroupprefix="${subgroupprefix},Project,Assembly,Type"
         generateHTMLdescription=""
-    else
-        subgroupprefix="${subgroupprefix},SampleID,Project,Assembly,Type"
     fi
 
     python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
