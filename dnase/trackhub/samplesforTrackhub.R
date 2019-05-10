@@ -202,7 +202,7 @@ for(curdir in mappeddirs) {
 			} else if(sampleType=="dna" || sampleType=="callsnps") {
 				data$Assay[i] <- "DNA"
 			} else if(sampleType=="capture" || sampleType=="callsnpsCapture") {
-				data$Assay[i] <- "DNA Capture"
+				data$Assay[i] <- "Capture"
 			} else if(sampleType=="chipseq") {
 				data$Assay[i] <- SampleIDsplit[2]
 			} else {
@@ -385,6 +385,10 @@ if(opt$project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipse
 	data$Replicate <- paste0('rep', data$Replicate)
 }
 
+if(opt$project=="CEGS_byLocus") {
+	# Delete line items not associated with one of the enumerated "CEGSsampleType" sample types.
+	data <- data[!is.na(data$Group),]
+}
 
 #Output file:
 write.table(data, file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)

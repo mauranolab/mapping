@@ -73,7 +73,7 @@ find_readcounts () {
     local BASE2
     local BASE3
     local target
-    
+
     # Each flowcell directory may be associated with a readcounts file.
     # Get the data from the readcounts file if it is there, and make a table from the data.
     for flowcell in "${dir_names[@]}"; do

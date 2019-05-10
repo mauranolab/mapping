@@ -36,6 +36,8 @@ except argparse.ArgumentError as exc:
     print(exc.message, '\n', exc.argument, file=sys.stderr)
     sys.exit(2)
 
+# Used to keep track of what track names have been assigned to samples, in case they appear in multiple flow cells.
+sampleName_dict = dict()
 
 #track name must contain only the following chars: [a-zA-Z0-9_]
 def cleanTrackName(x):
@@ -100,7 +102,7 @@ for line in inputfile_reader:
 # in the following for loop, as well as in the various track construction blocks below.
 assays = set([])
 for assay_type in set([line.get('Assay') for line in input_data_all]):
-    if assay_type in["DNase-seq", "DNA", "DNA Capture", "None", "ATAC-seq"]:
+    if assay_type in["DNase-seq", "DNA", "Capture", "None", "ATAC-seq"]:
         assays.add(assay_type)
     else:
         #ChIP-seq tracks have the epitope as the assay type
@@ -140,7 +142,8 @@ if args.supertrack is not None:
 # Now build the composites, and add them all to the supertrack.
 for assay_type in assays:
     #Matches the options allowed in submit.sh and createFlowcellSubmit.py
-    bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ATAC-seq":"atac", "ChIP-seq": "chipseq", "DNA": "dna", "DNA Capture": "capture" }
+    # bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ATAC-seq":"atac", "ChIP-seq": "chipseq", "DNA": "dna", "DNA Capture": "capture" }
+    bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ATAC-seq":"atac", "ChIP-seq": "chipseq", "DNA": "dna", "Capture": "capture" }
     assay_suffix = bwaPipelineAnalysisCommandMap[assay_type] if assay_type in bwaPipelineAnalysisCommandMap else "none"
     
     input_data = []
@@ -189,21 +192,22 @@ for assay_type in assays:
             SortOrder = SortOrder + " age=+ "
         SortOrder = SortOrder + " view=+"
         
-        # Adding suffix
-        curGroup_trackname = cleanTrackName(args.genome + args.tracknameprefix + "_" + curGroup + "_" + assay_suffix)
+        if args.supertrack == "ByLocus":
+            curGroup_trackname = cleanTrackName(args.genome + args.tracknameprefix + "_" + curGroup)
+            shrt_label = curGroup
+            lng_label = curGroup
+        else:
+            curGroup_trackname = cleanTrackName(args.genome + args.tracknameprefix + "_" + curGroup + "_" + assay_suffix)
+            # short labels are supposed to be 17 chars max. However, the browser does not seem to care.
+            shrt_label = curGroup + '_' + assay_type
+            # long labels are supposed to be 76 chars max. However, the browser does not seem to care.
+            lng_label = curGroup + '_' +  assay_type
         
         # Do something like this later.
         # mydate = re.split(r'_', curGroup)[0]
         # priority=bignumber - mydate
         # Why is priority="2" not showing up in the output?
         # Should be a number anyway.
-        
-        # short labels are supposed to be 17 chars max. However, the browser does not seem to care.
-        shrt_label = curGroup + '_' + assay_type
-        # shrt_label = shrt_label[0:17]
-        # long labels are supposed to be 76 chars max. However, the browser does not seem to care.
-        lng_label = curGroup + '_' +  assay_type
-        # lng_label = lng_label[0:76]
         
         composite = CompositeTrack(
             name=curGroup_trackname,
@@ -226,7 +230,7 @@ for assay_type in assays:
                 composite.add_params(html='descriptions/' + curGroup + '.html')
         
         params_dimensions = ""
-        if assay_type in ["DNase-seq", "DNA", "DNA Capture"]:
+        if assay_type in ["DNase-seq", "DNA", "Capture"]:
             params_dimensions="dimY=sampleName"
             if args.genome == "cegsvectors":
                 params_dimensions = params_dimensions + " dimX=mappedgenome"
@@ -266,7 +270,7 @@ for assay_type in assays:
             long_label="Reads")
         composite.add_view(Reads_view)
         
-        if assay_type in ["DNA", "DNA Capture"]:
+        if assay_type in ["DNA", "Capture"]:
             Coverage_view = ViewTrack(
                 name="Coverage_view_" + curGroup_trackname,
                 view="Coverage",
@@ -331,7 +335,7 @@ for assay_type in assays:
                 long_label="Cut Counts")
             composite.add_view(Cuts_view)
         
-        if assay_type in ["DNA", "DNA Capture"]:
+        if assay_type in ["DNA", "Capture"]:
             Variants_view = ViewTrack(
                 name="Variants_view_" + curGroup_trackname,
                 view="Variants",
@@ -345,7 +349,7 @@ for assay_type in assays:
                 long_label="Variants")
             composite.add_view(Variants_view)
         
-        if assay_type in ["DNA", "DNA Capture"]:
+        if assay_type in ["DNA", "Capture"]:
             Genotypes_view = ViewTrack(
                 name="Genotypes_view_" + curGroup_trackname,
                 view="Genotypes",
@@ -383,13 +387,19 @@ for assay_type in assays:
             #Probably could omit sampleName here to save space
             sampleName_trackname = cleanTrackName(sampleNameGenome + "_" + curGroup + "_" + sampleName + "_" + curSample['DS'])
             
-            
+            # Make sure there are no duplicate track names.
+            while sampleName_trackname in sampleName_dict:
+                sampleName_trackname = sampleName_trackname + "_"
+
+            sampleName_dict[sampleName_trackname] = sampleName_trackname
+
+
             ###Set up description - longLabel must be <= 76 printable characters
             sampleDescription = sampleName + "-"
             if assay_type == "ChIP-seq":
                 sampleDescription += curSample['Assay']
             sampleDescription += curSample['DS'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, '
-            if assay_type in ["DNA", "DNA Capture"]:
+            if assay_type in ["DNA", "Capture"]:
                 sampleDescription += curSample['Genomic_coverage'] + 'x genomic coverage)'
             else:
                 if curSample['Num_hotspots'] == "NA":
@@ -431,7 +441,7 @@ for assay_type in assays:
             Reads_view.add_tracks(track)
             
             #Coverage_view
-            if assay_type in ["DNA", "DNA Capture"]:
+            if assay_type in ["DNA", "Capture"]:
                 track = Track(
                     name=sampleName_trackname + '_cov',
                     short_label=sampleShortLabel,
@@ -504,7 +514,7 @@ for assay_type in assays:
                 Cuts_view.add_tracks(track)
             
             #Variants_view
-            if assay_type in ["DNA", "DNA Capture"]:
+            if assay_type in ["DNA", "Capture"]:
                 track = Track(
                     name=sampleName_trackname + '_vcf',
                     short_label=sampleShortLabel,
@@ -517,7 +527,7 @@ for assay_type in assays:
                 Variants_view.add_tracks(track)
             
             #Genotypes_view
-            if assay_type in ["DNA", "DNA Capture"]:
+            if assay_type in ["DNA", "Capture"]:
                 track = Track(
                     name=sampleName_trackname + '_gts',
                     short_label=sampleShortLabel,
