@@ -260,7 +260,7 @@ make_tracks () {
     local outfile=${TMP_OUT}"/MakeTrackhub_"${mappedgenome_consol}".out"
     
     local includeSampleIDinSampleCol=""
-    if [ ${supertrack} != "Aggregations" ] && [ ${supertrack} != "Public_Data" && [ ${supertrack} != "By_Locus" ]; then
+    if [ ${supertrack} != "Aggregations" ] && [ ${supertrack} != "Public_Data" ] && [ ${supertrack} != "By_Locus" ]; then
         includeSampleIDinSampleCol="--includeSampleIDinSampleCol"
         subgroupprefix="--subgroupnames "
     else
