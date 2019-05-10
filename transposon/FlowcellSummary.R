@@ -120,5 +120,5 @@ for (i in 1:ncol(data)) {
 }
 
 
-SumHTMLtable <- tableHTML(data, rownames=F, footer='N.B.: Unique BC and integration site counts require requires 10+ reads for DNA/RNA, and 2+ reads for iPCR') %>% add_css_row(css = list('background-color', 'lightblue'), rows=odd(1:nrow(data)))
+SumHTMLtable <- tableHTML(data, rownames=F, footer='N.B.: Unique BC and integration site counts require 10+ reads for DNA/RNA, and 2+ reads for iPCR') %>% add_css_row(css = list('background-color', 'lightblue'), rows=odd(1:nrow(data)))
 write_tableHTML(SumHTMLtable, file = paste0(outdir, "/FlowcellSummary/index.html"))
