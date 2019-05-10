@@ -76,7 +76,7 @@ def createSubGroup(subGroups, subGroupNames, keys, label):
             mapping=OrderedDict(sorted(subGroupDict.items(), key=lambda x: x[1]))
         )
         subGroups.append(subGroupDef)
-        subGroupNames[name] = len(uniqkeys)
+        subGroupNames[label] = len(uniqkeys)
 
 
 #For an array, return a dict mapping the elements of the array to their shortest unique prefix
@@ -184,13 +184,13 @@ for assay_type in assays:
         matchingSamples = [line for line in input_data if curGroup == line['Group']]
         
         subGroupDefs = []
-        #Dict containing the active subgroup internal names and the number of unique levels
+        #Dict containing the active subgroup labels and the number of unique levels
         subGroupNames = dict()
         
         createSubGroup(subGroupDefs, subGroupNames, [re.sub(r'_L$|_R$', '', line['Name']) + ('-' + line['SampleID'] if args.includeSampleIDinSampleCol else '') for line in matchingSamples], "Sample")
         
         if assay_type == "ChIP-seq":
-            customSubGroupNames = ['Assay'] + customSubGroupNames
+            createSubGroup(subGroupDefs, subGroupNames, [line['Assay'] for line in matchingSamples], 'Assay')
         
         for subGroupName in customSubGroupNames:
             createSubGroup(subGroupDefs, subGroupNames, [line[subGroupName] for line in matchingSamples], subGroupName)
@@ -204,9 +204,8 @@ for assay_type in assays:
         
         # SortOrder controls what is displayed, even if we retain all the subgroup definitions.
         SortOrder = ""
-        for subGroupName in ['Sample'] + customSubGroupNames + ['View']:
-            if internalSubgroupName(subGroupName) in subGroupNames:
-                SortOrder += internalSubgroupName(subGroupName) + "=+ "
+        for subGroupLabel in subGroupNames.keys():
+            SortOrder += internalSubgroupName(subGroupLabel) + "=+ "
         
         
         curGroup_trackname = cleanTrackName(args.genome + args.tracknameprefix + "_" + curGroup + "_" + assay_suffix)
@@ -238,7 +237,7 @@ for assay_type in assays:
         
         params_dimensions = ""
         if assay_type == "ChIP-seq":
-            if subGroupNames['assay'] < subGroupNames['sample']:
+            if subGroupNames['Assay'] < subGroupNames['Sample']:
                 params_dimensions="dimX=assay dimY=sample"
             else:
                 params_dimensions="dimY=assay dimX=sample"
@@ -246,14 +245,14 @@ for assay_type in assays:
             params_dimensions="dimY=sample"
             if args.genome == "cegsvectors":
                 params_dimensions = params_dimensions + " dimX=mapped_genome"
-            elif 'age' in subGroupNames:
+            elif 'Age' in subGroupNames:
                 params_dimensions = params_dimensions + " dimX=age"
         
         #hardcoded for CEGS
         if 'Type' in subGroupNames:
             params_dimensions = params_dimensions + " dimA=type"
             
-        if 'replicate' in subGroupNames:
+        if 'Replicate' in subGroupNames:
             params_dimensions = params_dimensions + " dimA=replicate"
             #NB requires mauranolab fork of daler/trackhub
             #Likely also compatible with pull request to revamp daler parameter support: https://github.com/daler/trackhub/pull/33
@@ -425,7 +424,7 @@ for assay_type in assays:
                     sampleDescriptionSPOT = str(round(float(curSample['SPOT']), 2))
                 sampleDescription += sampleDescriptionSPOT + ' SPOT, ' + sampleDescriptionNumHotspots + ' Hotspots)'
             
-            if 'age' in subGroupNames:
+            if 'Age' in subGroupNames:
                 sampleDescription = sampleDescription + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
             
             if 'Bait_set' in curSample and curSample['Bait_set'] != 'NA':
@@ -433,10 +432,10 @@ for assay_type in assays:
             
             ####Set up subgroups
             sampleSubgroups = dict(sample=sampleName + ('-' + curSample['SampleID'] if args.includeSampleIDinSampleCol else ''))
-            for subGroupName in customSubGroupNames:
-                if internalSubgroupName(subGroupName) in subGroupNames:
-                    sampleSubgroups[internalSubgroupName(subGroupName)] = cleanFactorForSubGroup(curSample[subGroupName])
-            if 'mapped_genome' in subGroupNames:
+            for subGroupLabel in ['Assay'] + customSubGroupNames:
+                if subGroupLabel in subGroupNames:
+                    sampleSubgroups[internalSubgroupName(subGroupLabel)] = cleanFactorForSubGroup(curSample[subGroupLabel])
+            if 'Mapped_Genome' in subGroupNames:
                 sampleSubgroups['mapped_genome'] = re.sub(r'^cegsvectors_', '', curSample['Mapped_Genome'])
             
             
