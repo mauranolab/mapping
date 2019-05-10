@@ -29,6 +29,8 @@ parser.add_argument('--checksamples', action = 'store_true', default = False, he
 parser.add_argument('--supertrack', action = 'store', required = False, help = 'Encompass all composite tracks generated within supertrack. Supertrack name specified as parameter.')
 parser.add_argument('--generateHTMLdescription', action = 'store_true', default = False, help = 'Link to HTML descriptions for composite tracks, assumed to be present at [genome]/descriptions/[group name].html')
 parser.add_argument('--tracknameprefix', action = 'store', required = False, default="", help = 'Add prefix within track names (e.g. to permit unique names).')
+parser.add_argument('--subgroupnames', action = 'store', required = False, help = 'Comma-separated list of columns in input to add as subgroups; will be sorted in order specified')
+
 
 try:
     args = parser.parse_args()
@@ -49,8 +51,17 @@ def cleanTrackName(x):
 def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
-def createSubGroup(subGroups, subGroupNames, keys, name, label):
-    uniqkeys = set(keys)
+def internalSubgroupName(label):
+    return label.lower().replace(' ', '_')
+
+def cleanFactorForSubGroup(label):
+    return label.replace(' ', '_')
+
+def createSubGroup(subGroups, subGroupNames, keys, label):
+    name = internalSubgroupName(label)
+    
+    #What does natural_key do?
+    uniqkeys = set(sorted([cleanFactorForSubGroup(key) for key in keys], key=natural_key))
     if uniqkeys and not all(x == 'NA' for x in uniqkeys):
         subGroupDict = dict(zip(uniqkeys, uniqkeys))
         subGroupDef = SubGroupDefinition(
@@ -112,6 +123,12 @@ if args.checksamples:
 else:
     DensCovTracksDefaultDisplayMode="off"
 
+if args.subgroupnames is not None:
+    customSubGroupNames = args.subgroupnames.split(',')
+else:
+    customSubGroupNames = []
+
+
 ########
 #Create hub file
 ########
@@ -167,27 +184,26 @@ for assay_type in assays:
         subGroupDefs = []
         #Dict containing the active subgroup internal names and the number of unique levels
         subGroupNames = dict()
-        createSubGroup(subGroupDefs, subGroupNames, sorted([re.sub(r'_L$|_R$', '', line['Name']) + ('-' + line['DS'] if args.includeSampleIDinSampleCol else '') for line in matchingSamples]), "sampleName", "Sample")
+        createSubGroup(subGroupDefs, subGroupNames, [re.sub(r'_L$|_R$', '', line['Name']) + ('-' + line['SampleID'] if args.includeSampleIDinSampleCol else '') for line in matchingSamples], "Sample")
         if not args.includeSampleIDinSampleCol:
-            createSubGroup(subGroupDefs, subGroupNames, sorted([line['DS'] for line in matchingSamples]), "DS", "Sample_ID")
-        createSubGroup(subGroupDefs, subGroupNames, sorted([line['Replicate'] for line in matchingSamples]), "replicate", "Replicate")
-        createSubGroup(subGroupDefs, subGroupNames, sorted([line['Assay'] for line in matchingSamples]), "assay", "Assay")
-        createSubGroup(subGroupDefs, subGroupNames, sorted([re.sub(' ', '_', line['Age']) for line in matchingSamples], key=natural_key), "age", "Age")
+            createSubGroup(subGroupDefs, subGroupNames, [line['SampleID'] for line in matchingSamples], "SampleID")
+        if assay_type == "ChIP-seq":
+            createSubGroup(subGroupDefs, subGroupNames, [line['Assay'] for line in matchingSamples], "Assay")
+        
+        for subGroupName in customSubGroupNames:
+            createSubGroup(subGroupDefs, subGroupNames, [line[subGroupName] for line in matchingSamples], subGroupName)
+        
         if args.genome == "cegsvectors":
             #Add cegsvectors to make sure a minimum label is printed if there is only a single Mapped_Genome
             cegsvectorsAbbreviatedNames = shortest_unique_strings(set(["cegsvectors"] + [line['Mapped_Genome'] for line in matchingSamples]))
             #cegsvectorsAbbreviatedNames = {k: re.sub(r'^cegsvectors_', '', v) for k, v in cegsvectorsAbbreviatedNames.items()}
-            createSubGroup(subGroupDefs, subGroupNames, sorted([re.sub(r'^cegsvectors_', '', line['Mapped_Genome']) for line in matchingSamples]), "mappedgenome", "Mapped_Genome")
+            createSubGroup(subGroupDefs, subGroupNames, [re.sub(r'^cegsvectors_', '', line['Mapped_Genome']) for line in matchingSamples], "Mapped_Genome")
         
         # SortOrder controls what is displayed, even if we retain all the subgroup definitions.
-        SortOrder = "sampleName=+"
-        if 'DS' in subGroupNames:
-            SortOrder = SortOrder + " DS=+"
-        if 'replicate' in subGroupNames:
-            SortOrder = SortOrder + " replicate=+ "
-        if 'age' in subGroupNames:
-            SortOrder = SortOrder + " age=+ "
-        SortOrder = SortOrder + " view=+"
+        SortOrder = ""
+        for subGroupName in ['Sample', 'SampleID'] + customSubGroupNames + ['View']:
+            if internalSubgroupName(subGroupName) in subGroupNames:
+                SortOrder += internalSubgroupName(subGroupName) + "=+ "
         
         # Adding suffix
         curGroup_trackname = cleanTrackName(args.genome + args.tracknameprefix + "_" + curGroup + "_" + assay_suffix)
@@ -227,17 +243,17 @@ for assay_type in assays:
         
         params_dimensions = ""
         if assay_type in ["DNase-seq", "DNA", "DNA Capture"]:
-            params_dimensions="dimY=sampleName"
+            params_dimensions="dimY=sample"
             if args.genome == "cegsvectors":
-                params_dimensions = params_dimensions + " dimX=mappedgenome"
+                params_dimensions = params_dimensions + " dimX=mapped_genome"
             elif 'age' in subGroupNames:
                 params_dimensions = params_dimensions + " dimX=age"
         else:
             # ChIP-seq
-            if subGroupNames['assay'] < subGroupNames['sampleName']:
-                params_dimensions="dimX=assay dimY=sampleName"
+            if subGroupNames['assay'] < subGroupNames['sample']:
+                params_dimensions="dimX=assay dimY=sample"
             else:
-                params_dimensions="dimY=assay dimX=sampleName"
+                params_dimensions="dimY=assay dimX=sample"
 
         if 'replicate' in subGroupNames:
             params_dimensions = params_dimensions + " dimA=replicate"
@@ -375,28 +391,32 @@ for assay_type in assays:
             if args.genome == "cegsvectors":
                 sampleNameGenome = cegsvectorsAbbreviatedNames[curSample['Mapped_Genome']]
             else:
-                if 'Annotation_Genome' in curSample:
+                if 'Annotation_Genome' in curSample and curSample['Annotation_Genome'] != "NA":
                     sampleNameGenome = curSample['Annotation_Genome']
                 else:
                     sampleNameGenome = args.genome
             #There is a length limit of 128 characters, but in practice some are used for an internal prefix/suffix
             #Probably could omit sampleName here to save space
-            sampleName_trackname = cleanTrackName(sampleNameGenome + "_" + curGroup + "_" + sampleName + "_" + curSample['DS'])
+            sampleName_trackname = cleanTrackName(sampleNameGenome + "_" + curGroup + "_" + sampleName + "_" + curSample['SampleID'])
             
             
             ###Set up description - longLabel must be <= 76 printable characters
             sampleDescription = sampleName + "-"
             if assay_type == "ChIP-seq":
                 sampleDescription += curSample['Assay']
-            sampleDescription += curSample['DS'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, '
+            sampleDescription += curSample['SampleID'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, '
             if assay_type in ["DNA", "DNA Capture"]:
                 sampleDescription += curSample['Genomic_coverage'] + 'x genomic coverage)'
             else:
                 if curSample['Num_hotspots'] == "NA":
                     sampleDescriptionNumHotspots = "no"
                 else:
-                    sampleDescriptionNumHotspots = locale.format("%d", int(curSample['Num_hotspots']), grouping=True) 
-                sampleDescription += curSample['SPOT'] + ' SPOT, ' + sampleDescriptionNumHotspots + ' Hotspots)'
+                    sampleDescriptionNumHotspots = locale.format("%d", int(curSample['Num_hotspots']), grouping=True)
+                if curSample['SPOT'] == "NA":
+                    sampleDescriptionSPOT = "NA"
+                else:
+                    sampleDescriptionSPOT = str(round(float(curSample['SPOT']), 2))
+                sampleDescription += sampleDescriptionSPOT + ' SPOT, ' + sampleDescriptionNumHotspots + ' Hotspots)'
             
             if 'age' in subGroupNames:
                 sampleDescription = sampleDescription + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
@@ -405,17 +425,16 @@ for assay_type in assays:
                 sampleDescription = sampleDescription + ', Bait = ' + curSample['Bait_set']
             
             ####Set up subgroups
-            sampleSubgroups = dict(sampleName=sampleName + ('-' + curSample['DS'] if args.includeSampleIDinSampleCol else ''), assay=curSample['Assay'], DS=curSample['DS'])
-            if 'replicate' in subGroupNames:
-                sampleSubgroups['replicate'] = curSample['Replicate']
-            if 'age' in subGroupNames:
-                sampleSubgroups['age'] = re.sub(' ', '_', curSample['Age'])
-            if 'mappedgenome' in subGroupNames:
-                sampleSubgroups['mappedgenome'] = re.sub(r'^cegsvectors_', '', curSample['Mapped_Genome'])
+            sampleSubgroups = dict(sample=sampleName + ('-' + curSample['SampleID'] if args.includeSampleIDinSampleCol else ''))
+            for subGroupName in ['SampleID', 'Assay'] + customSubGroupNames:
+                if internalSubgroupName(subGroupName) in subGroupNames:
+                    sampleSubgroups[internalSubgroupName(subGroupName)] = cleanFactorForSubGroup(curSample[subGroupName])
+            if 'mapped_genome' in subGroupNames:
+                sampleSubgroups['mapped_genome'] = re.sub(r'^cegsvectors_', '', curSample['Mapped_Genome'])
             
             
             ###shortLabel must be <= 17 printable characters (sampleName + DS)
-            sampleShortLabel = sampleName + "-" + curSample['DS']
+            sampleShortLabel = sampleName + "-" + curSample['SampleID']
             
             
             ###

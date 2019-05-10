@@ -98,6 +98,7 @@ def getDS(sample_line):
         except:
             sampleAge = 'NA'
         sampleAge = re.sub('(\d+\.\d*[1-9])0+', r'\1', sampleAge)
+        #TODO change spaces to underscores, and replace "year" with "years"
     
     libraryAccession = sample_json['replicate']['library']['accession']
     
