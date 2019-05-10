@@ -409,7 +409,7 @@ for assay_type in assays:
             ###Set up description - longLabel must be <= 76 printable characters
             sampleDescription = sampleName + "-"
             if assay_type == "ChIP-seq":
-                sampleDescription += curSample['Assay']
+                sampleDescription += curSample['Assay'] + "-"
             sampleDescription += curSample['SampleID'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, '
             if assay_type in ["DNA", "DNA Capture"]:
                 sampleDescription += curSample['Genomic_coverage'] + 'x genomic coverage)'
