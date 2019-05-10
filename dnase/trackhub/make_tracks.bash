@@ -267,7 +267,7 @@ make_tracks () {
     local tracknameprefix=""
     local generateHTMLdescription="--generateHTMLdescription"
     if [ ${supertrack} = "ByLocus" ]; then
-        tracknameprefix="--tracknameprefix locus"
+        tracknameprefix="--tracknameprefix byLocus --subgroupnames Study,Project,Assembly,Type"
         generateHTMLdescription=""
     fi
 
