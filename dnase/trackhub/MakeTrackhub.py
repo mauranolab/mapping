@@ -235,19 +235,18 @@ for assay_type in assays:
                 composite.add_params(html='descriptions/' + curGroup + '.html')
         
         params_dimensions = ""
-        if assay_type in ["DNase-seq", "DNA", "DNA Capture"]:
+        if assay_type == "ChIP-seq":
+            if subGroupNames['assay'] < subGroupNames['sample']:
+                params_dimensions="dimX=assay dimY=sample"
+            else:
+                params_dimensions="dimY=assay dimX=sample"
+        else:
             params_dimensions="dimY=sample"
             if args.genome == "cegsvectors":
                 params_dimensions = params_dimensions + " dimX=mapped_genome"
             elif 'age' in subGroupNames:
                 params_dimensions = params_dimensions + " dimX=age"
-        else:
-            # ChIP-seq
-            if subGroupNames['assay'] < subGroupNames['sample']:
-                params_dimensions="dimX=assay dimY=sample"
-            else:
-                params_dimensions="dimY=assay dimX=sample"
-
+        
         if 'replicate' in subGroupNames:
             params_dimensions = params_dimensions + " dimA=replicate"
             #NB requires mauranolab fork of daler/trackhub
@@ -398,6 +397,7 @@ for assay_type in assays:
                 i = 2
                 while sampleName_trackname + str(i) in sampleName_dict:
                     i += 1
+                sampleName_trackname += str(i)
             sampleName_dict[sampleName_trackname] = sampleName_trackname
             
             
