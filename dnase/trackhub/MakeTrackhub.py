@@ -29,7 +29,7 @@ parser.add_argument('--checksamples', action = 'store_true', default = False, he
 parser.add_argument('--supertrack', action = 'store', required = False, help = 'Encompass all composite tracks generated within supertrack. Supertrack name specified as parameter.')
 parser.add_argument('--generateHTMLdescription', action = 'store_true', default = False, help = 'Link to HTML descriptions for composite tracks, assumed to be present at [genome]/descriptions/[group name].html')
 parser.add_argument('--tracknameprefix', action = 'store', required = False, default="", help = 'Add prefix within track names (e.g. to permit unique names).')
-parser.add_argument('--subgroupnames', action = 'store', required = False, help = 'Comma-separated list of columns in input to add as subgroups; will be sorted in order specified')
+parser.add_argument('--subgroupnames', action = 'store', required = False, default="SampleID", help = 'Comma-separated list of columns in input to add as subgroups; will be sorted in order specified')
 
 
 try:
@@ -186,11 +186,11 @@ for assay_type in assays:
         subGroupDefs = []
         #Dict containing the active subgroup internal names and the number of unique levels
         subGroupNames = dict()
+        
         createSubGroup(subGroupDefs, subGroupNames, [re.sub(r'_L$|_R$', '', line['Name']) + ('-' + line['SampleID'] if args.includeSampleIDinSampleCol else '') for line in matchingSamples], "Sample")
-        if not args.includeSampleIDinSampleCol:
-            createSubGroup(subGroupDefs, subGroupNames, [line['SampleID'] for line in matchingSamples], "SampleID")
+        
         if assay_type == "ChIP-seq":
-            createSubGroup(subGroupDefs, subGroupNames, [line['Assay'] for line in matchingSamples], "Assay")
+            customSubGroupNames = ['Assay'] + customSubGroupNames
         
         for subGroupName in customSubGroupNames:
             createSubGroup(subGroupDefs, subGroupNames, [line[subGroupName] for line in matchingSamples], subGroupName)
@@ -201,11 +201,13 @@ for assay_type in assays:
             #cegsvectorsAbbreviatedNames = {k: re.sub(r'^cegsvectors_', '', v) for k, v in cegsvectorsAbbreviatedNames.items()}
             createSubGroup(subGroupDefs, subGroupNames, [re.sub(r'^cegsvectors_', '', line['Mapped_Genome']) for line in matchingSamples], "Mapped_Genome")
         
+        
         # SortOrder controls what is displayed, even if we retain all the subgroup definitions.
         SortOrder = ""
-        for subGroupName in ['Sample', 'SampleID'] + customSubGroupNames + ['View']:
+        for subGroupName in ['Sample'] + customSubGroupNames + ['View']:
             if internalSubgroupName(subGroupName) in subGroupNames:
                 SortOrder += internalSubgroupName(subGroupName) + "=+ "
+        
         
         curGroup_trackname = cleanTrackName(args.genome + args.tracknameprefix + "_" + curGroup + "_" + assay_suffix)
         # short labels are supposed to be 17 chars max. However, the browser does not seem to care.
@@ -247,6 +249,10 @@ for assay_type in assays:
             elif 'age' in subGroupNames:
                 params_dimensions = params_dimensions + " dimX=age"
         
+        #hardcoded for CEGS
+        if 'Type' in subGroupNames:
+            params_dimensions = params_dimensions + " dimA=type"
+            
         if 'replicate' in subGroupNames:
             params_dimensions = params_dimensions + " dimA=replicate"
             #NB requires mauranolab fork of daler/trackhub
@@ -427,7 +433,7 @@ for assay_type in assays:
             
             ####Set up subgroups
             sampleSubgroups = dict(sample=sampleName + ('-' + curSample['SampleID'] if args.includeSampleIDinSampleCol else ''))
-            for subGroupName in ['SampleID', 'Assay'] + customSubGroupNames:
+            for subGroupName in customSubGroupNames:
                 if internalSubgroupName(subGroupName) in subGroupNames:
                     sampleSubgroups[internalSubgroupName(subGroupName)] = cleanFactorForSubGroup(curSample[subGroupName])
             if 'mapped_genome' in subGroupNames:

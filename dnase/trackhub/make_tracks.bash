@@ -260,21 +260,28 @@ make_tracks () {
     local outfile=${TMP_OUT}"/MakeTrackhub_"${mappedgenome_consol}".out"
     
     local includeSampleIDinSampleCol=""
-    if [ ${supertrack} != "Aggregations" ] && [ ${supertrack} != "Public_Data" ]; then
+    if [ ${supertrack} != "Aggregations" ] && [ ${supertrack} != "Public_Data" && [ ${supertrack} != "By_Locus" ]; then
         includeSampleIDinSampleCol="--includeSampleIDinSampleCol"
+        subgroupprefix="--subgroupnames "
+    else
+        subgroupprefix="--subgroupnames SampleID"
     fi
 
     local tracknameprefix=""
     local generateHTMLdescription="--generateHTMLdescription"
-    if [ ${supertrack} = "ByLocus" ]; then
-        tracknameprefix="--tracknameprefix byLocus --subgroupnames Project,Assembly,Type"
+    if [ ${supertrack} = "By_Locus" ]; then
+        tracknameprefix="--tracknameprefix byLocus"
+        subgroupprefix="${subgroupprefix},Project,Assembly,Type"
         generateHTMLdescription=""
+    else
+        subgroupprefix="${subgroupprefix},SampleID,Project,Assembly,Type"
     fi
 
     python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
            ${generateHTMLdescription} \
            ${includeSampleIDinSampleCol} \
            ${tracknameprefix} \
+           ${subgroupprefix} \
            --supertrack ${supertrack} \
            --genome ${mappedgenome} \
            --checksamples \
@@ -334,7 +341,7 @@ else
     urlbase_in="https://mauranolab:chromatin@cascade.isg.med.nyu.edu/~cadlej01/publicdata/"
 fi
 
-supertrack_in="ByLocus"
+supertrack_in="By_Locus"
 
 for i in "${genome_array[@]}"; do
     make_tracks ${i} ${consol_suffix_in} ${urlbase_in} ${supertrack_in}

@@ -309,9 +309,12 @@ for(curdir in mappeddirs) {
 					CEGSsampleType <- SampleNameSplit[length(SampleNameSplit)]
 					if(CEGSsampleType %in% c("Yeast", "DNA", "BAC", "RepoBAC", "Ecoli", "Amplicon")) {
 						data$Study[i] <- SampleNameSplit[1]
-						data$Project[i] <- SampleNameSplit[2]
-						data$Assembly[i] <- SampleNameSplit[3]
-						data$Type[i] <- SampleNameSplit[4]
+						if(CEGSsampleType != "RepoBAC") {
+							data$Project[i] <- SampleNameSplit[2]
+							data$Assembly[i] <- SampleNameSplit[3]
+							data$Info[i] <- SampleNameSplit[4]
+						}
+						data$Type[i] <- CEGSsampleType
 						data$Group[i] <- data$Study[i]
 					}
 					#TODO Find capture samples based on bait?
