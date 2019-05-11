@@ -37,7 +37,8 @@ Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
         --out ${outfile} \
         --workingDir ${workingDir} \
         --descend \
-        --project byFC
+        --project byFC \
+        --quiet
 
 # Split up the samplesforTrackhub.R output into separate files for each genome.
 for i in "${genome_array[@]}"; do
@@ -60,7 +61,8 @@ Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
         --out ${outfile} \
         --workingDir ${workingDir} \
         --descend \
-        --project CEGS_byLocus
+        --project CEGS_byLocus \
+        --quiet
 
 # Split up the samplesforTrackhub.R output into separate files for each genome.
 for i in "${genome_array[@]}"; do
@@ -132,7 +134,8 @@ agg_pub_loop () {
 
     Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
             --out ${outfile} \
-            --workingDir ${workingDir}
+            --workingDir ${workingDir} \
+            --quiet
 
 ###
 # Make some adjustments to the "outfile" columns, as the aggregations are
@@ -262,19 +265,18 @@ make_tracks () {
     local includeSampleIDinSampleCol=""
     if [ ${supertrack} != "Aggregations" ] && [ ${supertrack} != "Public_Data" ] && [ ${supertrack} != "By_Locus" ]; then
         includeSampleIDinSampleCol="--includeSampleIDinSampleCol"
-        subgroupprefix="--subgroupnames "
-    else
-        subgroupprefix="--subgroupnames SampleID"
     fi
-
+    
     local tracknameprefix=""
     local generateHTMLdescription="--generateHTMLdescription"
     if [ ${supertrack} = "By_Locus" ]; then
         tracknameprefix="--tracknameprefix byLocus"
-        subgroupprefix="${subgroupprefix},Project,Assembly,Type"
+        subgroupprefix="--subgroupnames Project,Assembly,Type"
         generateHTMLdescription=""
+    else
+        subgroupprefix=""
     fi
-
+    
     python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
            ${generateHTMLdescription} \
            ${includeSampleIDinSampleCol} \
