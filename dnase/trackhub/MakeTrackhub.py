@@ -401,7 +401,7 @@ for assay_type in assays:
             sampleName_trackname = cleanTrackName(sampleNameGenome + "_" + curGroup + "_" + sampleName + "_" + curSample['SampleID'])
             # Make sure there are no duplicate track names.
             if sampleName_trackname in sampleName_dict:
-                print("[MakeTrackhub.py] WARNING ", sampleName_trackname, "duplicates an existing trackname", sep="", file=sys.stderr)
+                print("[MakeTrackhub.py] WARNING ", sampleName_trackname, " duplicates an existing trackname", sep="", file=sys.stderr)
                 sampleName_trackname += "_"
                 i = 2
                 while sampleName_trackname + str(i) in sampleName_dict:
