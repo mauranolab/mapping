@@ -189,6 +189,10 @@ for assay_type in assays:
         
         createSubGroup(subGroupDefs, subGroupNames, [re.sub(r'_L$|_R$', '', line['Name']) + ('-' + line['SampleID'] if args.includeSampleIDinSampleCol else '') for line in matchingSamples], "Sample")
         
+        if not args.includeSampleIDinSampleCol:
+            createSubGroup(subGroupDefs, subGroupNames, [line['SampleID'] for line in matchingSamples], 'SampleID')
+        
+        
         if assay_type == "ChIP-seq":
             createSubGroup(subGroupDefs, subGroupNames, [line['Assay'] for line in matchingSamples], 'Assay')
         
@@ -432,6 +436,8 @@ for assay_type in assays:
             
             ####Set up subgroups
             sampleSubgroups = dict(sample=sampleName + ('-' + curSample['SampleID'] if args.includeSampleIDinSampleCol else ''))
+            if not args.includeSampleIDinSampleCol:
+                sampleSubgroups["sampleid"] = cleanFactorForSubGroup(curSample['SampleID'])
             for subGroupLabel in ['Assay'] + customSubGroupNames:
                 if subGroupLabel in subGroupNames:
                     sampleSubgroups[internalSubgroupName(subGroupLabel)] = cleanFactorForSubGroup(curSample[subGroupLabel])

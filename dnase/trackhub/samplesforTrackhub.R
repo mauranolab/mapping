@@ -16,7 +16,9 @@ option_list = list(
 	make_option(c("--project"), type="character", default="",
 		help="Enable custom directory search and group behavior: [byFC, CEGS_byLocus, humanENCODEdnase, mouseENCODEdnase, humanENCODEchipseq, mouseENCODEchipseq]", metavar="character"),
 	make_option(c("--descend"), action="store_true", type="logical",
-		help="Assume that sample folders are organized under two levels of subdirectories, e.g. FCxxx/dna")
+		help="Assume that sample folders are organized under two levels of subdirectories, e.g. FCxxx/dna"),
+	make_option(c("--quiet"), action="store_true", type="logical",
+		help="Reduce reporting verbiage")
 )
 
 opt_parser = OptionParser(option_list=option_list);
@@ -149,7 +151,9 @@ data <- data.frame(matrix(ncol=length(outputCols), nrow=1))
 colnames(data) <- outputCols
 i <- 0 # This will be our "data" output variable index.
 for(curdir in mappeddirs) {
-	message("[samplesforTrackhub] ", curdir)
+	if(!"quiet" %in% names(opt)) {
+		message("[samplesforTrackhub] ", curdir)
+	}
 	SampleID <- basename(curdir)
 	SampleIDsplit <- unlist(strsplit(SampleID, "-"))
 	
