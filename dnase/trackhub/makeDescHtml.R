@@ -10,7 +10,12 @@ fname_out <- args[2]
 # Get the text version of the table
 desc_text <- read.table(fname_in, sep="\t", header=TRUE, stringsAsFactors=FALSE)
 
-delete_cols <- c("Genome", "Num.hotspots2", "SPOT2")
+delete_cols <- c("Num.hotspots2", "SPOT2")
+if("Genome" %in% colnames(desc_text) && !any(grepl("^cegsvectors_", desc_text$Genome))) {
+	delete_cols <- c(delete_cols, "Genome")
+} else if("Genome" %in% colnames(desc_text)) {
+	desc_text$Genome <- sub('cegsvectors_', '', desc_text$Genome, fixed=TRUE)
+}
 desc_text <- desc_text[,!colnames(desc_text) %in% delete_cols]
 
 # Add commas to numeric fields.
