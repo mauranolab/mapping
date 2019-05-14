@@ -336,9 +336,9 @@ done
 consol_suffix_in="_consolidated_locus"
 
 if [ ${hub_type} = "CEGS" ]; then
-    urlbase_in="https://cegs:bigdna@cascade.isg.med.nyu.edu/cegs/publicdata/"
+    urlbase_in="https://cegs:bigdna@cascade.isg.med.nyu.edu/cegs/mapped/"
 else
-    urlbase_in="https://mauranolab:chromatin@cascade.isg.med.nyu.edu/~cadlej01/publicdata/"
+    urlbase_in="https://mauranolab:chromatin@cascade.isg.med.nyu.edu/~cadlej01/mapped/"
 fi
 
 supertrack_in="By_Locus"
