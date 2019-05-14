@@ -21,7 +21,7 @@ jobid=$SGE_TASK_ID
 #jobid=10
 
 name=`basename ${sampleOutdir}`
-chrom=`cat ${sampleOutdir}/inputs.dna.${mappedgenome}.txt | awk -v jobid=$jobid 'NR==jobid'`
+chrom=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | awk -v jobid=$jobid 'NR==jobid'`
 echo "Running ${analysisType} analysis for ${chrom} of sample ${name} against genome ${mappedgenome}"
 echo -e "SampleAnnotation\t${sampleAnnotation}"
 date
