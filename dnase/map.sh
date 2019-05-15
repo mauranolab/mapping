@@ -113,22 +113,29 @@ trimmomaticSteps="TOPHRED33 ILLUMINACLIP:$illuminaAdapters:$seedmis:$PEthresh:$S
 #MAXINFO:27:0.95 TRAILING:20
 
 
-#For old Duke data
+#For old Duke data but too slow to enable by default
+readsLongEnough=1
 #Check if samples contain DUKE adapter (TCGTATGCCGTCTTC) and trim to 20bp if more than 25% of reads do
-#sequencedTags=$(zcat ${readsFq} | awk 'NR%4==2' | wc -l)
-#BUGBUG - I think Jesper just took what looks like a readthrough sequence (TCGTATGCCGTCTTC). Not sure why the trimmer isn't dealing with this properly
-#if [ `zcat ${readsFq} | awk -v thresh=0.25 -v sequencedTags=$sequencedTags 'NR%4==2 && $1~/TCGTATGCCGTCTTC/ {readsWithDukeSequence+=1} END {if (readsWithDukeSequence/sequencedTags>thresh) {print 1} else {print 0}}'` ]; then
-#    echo "More than 25% of reads have DUKE sequence (TCGTATGCCGTCTTC) - Hard clip to 20bp reads"
-#    trimmomaticSteps="CROP:20 ${trimmomaticSteps}"
-#    readsLongEnough=0
-#else
-#    echo "No DUKE sequence present"
-
+if [[ 0 == 1 ]]; then
+    sequencedReads=$(zcat ${readsFq} | awk 'NR%4==2' | wc -l)
+    #The proper adapter files are in /cm/shared/apps/trimmomatic/0.38/adapters/TruSeq2-SE.fa, but the Duke reads also have 8-9 As at the end after it reads through the adapter so it's probably better just to CROP:20
+    if [ `zcat ${readsFq} | awk -v thresh=0.25 -v sequencedReads=$sequencedReads 'NR%4==2 && $1~/TCGTATGCCGTCTTC/ {readsWithDukeSequence+=1} END {if (readsWithDukeSequence/sequencedReads>thresh) {print 1} else {print 0}}'` ]; then
+        echo "More than 25% of reads have DUKE sequence (TCGTATGCCGTCTTC) - Hard clip to 20bp reads"
+        trimmomaticSteps="CROP:20 ${trimmomaticSteps}"
+        readsLongEnough=0
+    else
+        echo "No DUKE sequence present"
+        readsLongEnough=1
+    fi
+fi
 
 if [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "${sampleType}" == "chipseq" ]]; then
     trimmomaticSteps="${trimmomaticSteps} CROP:36"
 fi
 
+if [ "${readsLongEnough}" -eq 1 ]; then
+    trimmomaticSteps="${trimmomaticSteps} MINLEN:27"
+fi
 
 #BUGBUG a bit fragile
 fc=`readlink -f ${readsFq} | xargs dirname | xargs dirname | xargs dirname | xargs basename`
@@ -183,16 +190,6 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     curfile="${fc}${curfile}"
     
     
-    #This is for older ENCODE data
-    #technically this is less stringent than testing R1 and R2 independently but I doubt it matters
-    readsLongEnough=`pigz -dc -f ${readsFq} ${reads2fq} | awk -v thresh=0.25 -v minReadLength=27 'BEGIN {count=0; readsLongEnough=0} NR % 4 == 2 {count+=1; if(length($0) >= minReadLength) {readsLongEnough+=1}} END {if(readsLongEnough/count>thresh) {print 1} else {print 0}}'`
-    if [ "${readsLongEnough}" -eq 1 ]; then
-        trimmomaticSteps="${trimmomaticSteps} MINLEN:27"
-    else
-        echo "WARNING: <25% reads longer than 27 bp, will reduce MAPQ cutoff"
-    fi
-    
-    
     echo "Filtering out reads with >75% G content"
     #TODO could potentially save R1 where only R2 is dark once it can handle single read. Could patch trimmomatic instead?
     #TODO super slow - replace with cutadapt --nextseq-trim?
@@ -245,17 +242,6 @@ else
     curfile="${fc}${sample1}"
     
     #BUGBUG missing filterNextSeqReadsForPolyG.py for SE data
-    
-    
-    #This is for older ENCODE data
-    readsLongEnough=`pigz -dc -f ${readsFq} | awk -v thresh=0.25 -v minReadLength=27 'BEGIN {count=0; readsLongEnough=0} NR % 4 == 2 {count+=1; if(length($0) >= minReadLength) {readsLongEnough+=1}} END {if(readsLongEnough/count>thresh) {print 1} else {print 0}}'`
-    if [ "${readsLongEnough}" -eq 1 ]; then
-        trimmomaticSteps="${trimmomaticSteps} MINLEN:27"
-    else
-        echo "WARNING: <25% reads longer than 27 bp, will reduce MAPQ cutoff"
-    fi
-    
-    
     #BUGBUG wrong adapter files
     java org.usadellab.trimmomatic.TrimmomaticSE ${trimmomaticBaseOpts} ${readsFq} $TMPDIR/${sample1}.fastq ${trimmomaticSteps}
     #BUGBUG java doesn't set nonzero exit code on trimmomatic exception
@@ -403,8 +389,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         fi
     fi
     
-    #TODO -SPECIES=Human
-    
+    #Not populating -SPECIES=Human
     java -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CreateSequenceDictionary -O=$TMPDIR/${curfile}.${curGenome}.dict -R=${referencefasta} -GENOME_ASSEMBLY=${annotationgenome}
     
     samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${curfile}.sortbyname -l 1 -n $TMPDIR/${curfile}.${curGenome}.bwaout.bam |
