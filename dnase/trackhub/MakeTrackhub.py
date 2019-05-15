@@ -416,7 +416,7 @@ for assay_type in assays:
                 sampleDescription += curSample['Assay'] + "-"
             sampleDescription += curSample['SampleID'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, '
             if assay_type in ["DNA", "DNA Capture"]:
-                sampleDescription += curSample['Genomic_coverage'] + 'x genomic coverage)'
+                sampleDescription += curSample['Genomic_coverage'] + 'x coverage)'
             else:
                 if curSample['Num_hotspots'] == "NA":
                     sampleDescriptionNumHotspots = "no"
@@ -429,10 +429,13 @@ for assay_type in assays:
                 sampleDescription += sampleDescriptionSPOT + ' SPOT, ' + sampleDescriptionNumHotspots + ' Hotspots)'
             
             if 'Age' in subGroupNames:
-                sampleDescription = sampleDescription + (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
+                sampleDescription += (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
             
             if 'Bait_set' in curSample and curSample['Bait_set'] != 'NA':
-                sampleDescription = sampleDescription + ', Bait = ' + curSample['Bait_set']
+                sampleDescription += ', Bait=' + curSample['Bait_set']
+            
+            if args.genome == "cegsvectors" and 'Mapped_Genome' in curSample and curSample['Mapped_Genome'] != 'NA':
+                sampleDescription += ", Mapped to " + re.sub(r'^cegsvectors_', '', curSample['Mapped_Genome'])
             
             ####Set up subgroups
             sampleSubgroups = dict(sample=sampleName + ('-' + curSample['SampleID'] if args.includeSampleIDinSampleCol else ''))

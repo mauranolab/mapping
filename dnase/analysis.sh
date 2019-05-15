@@ -334,7 +334,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
         #Print track links here for convenience even if the files are not created yet
         echo
         echo "Making coverage track"
-        echo "track name=${name}-cov description=\"${ucscTrackDescriptionDataType} Coverage (${analyzedReadsM}M analyzed reads), ${genomecov}x genomic coverage\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:500 autoScale=on visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.coverage.bw"
+        echo "track name=${name}-cov description=\"${ucscTrackDescriptionDataType} Coverage (${analyzedReadsM}M analyzed reads), ${genomecov}x coverage\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:500 autoScale=on visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.coverage.bw"
         
         echo
         echo "Making VCF track"
@@ -423,7 +423,7 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
     #NB this will call hotspots only on the mammalian genome for the *_sacCer3 hybrid indices
     #BUGBUG sacCer3 genomes?
     #For shorter old Duke data
-    #      mappableFile="/vol/isg/annotation/bed/${mappedgenome}/mappability/${mappedgenome}.K20.mappable_only.starch"
+    #mappableFile="/vol/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K20.mappable_only.starch"
     
     #Neither hotspot filters out reads for -F 512
     hotspotBAM=$TMPDIR/${name}.${mappedgenome}.bam
