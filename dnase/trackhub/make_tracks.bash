@@ -10,7 +10,9 @@ hub_type=$2
 
 path_to_main_driver_script=$3
 
-shift 3
+URL_path=$4
+
+shift 4
 genome_array=("$@")
 
 ##############################################################################
@@ -33,6 +35,7 @@ else
     workingDir=/vol/mauranolab/mapped
 fi
 
+echo
 Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
         --out ${outfile} \
         --workingDir ${workingDir} \
@@ -57,6 +60,7 @@ head -n 1 ${outfile} > "${TMP_OUT}/header"
 ###########################################################################
 # CEGS_byLocus section:
 
+echo
 Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
         --out ${outfile} \
         --workingDir ${workingDir} \
@@ -80,6 +84,7 @@ done
 # samples. It finds the samples within each directory, and dumps relevant
 # sample information into an output file.
 
+
 # First, obtain two parameters: "filebase_col" and "Group_col".
 # They are needed in agg_pub_loop function below.
 
@@ -95,7 +100,8 @@ BEGIN{FS="\t"}
 AWK_HEREDOC_01
 ) < ${TMP_OUT}"/header")
 
-echo filebase_col is ${filebase_col}
+echo
+echo "filebase_col is ${filebase_col}"
 
 
 # Get number of the header column containing "Group"
@@ -110,7 +116,8 @@ BEGIN{FS="\t"}
 AWK_HEREDOC_02
 ) < ${TMP_OUT}"/header")
 
-echo Group_col is ${Group_col}
+echo "Group_col is ${Group_col}"
+echo
 
 ###########################################################################
 # Before moving on, below we define a few functions. There will be a comment
@@ -172,6 +179,7 @@ AWK_HEREDOC_03
         ref="outfile_${i}"
         grep ${i} ${outfile} >> ${!ref}
     done
+    echo
 }
 # End of the agg_pub_loop function section.
 
@@ -289,64 +297,36 @@ make_tracks () {
 }
 ###############################
 consol_suffix_in="_consolidated"
-
-if [ ${hub_type} = "CEGS" ]; then
-    urlbase_in="https://***REMOVED***@cascade.isg.med.nyu.edu/cegs/mapped/"
-else
-    urlbase_in="https://***REMOVED***@cascade.isg.med.nyu.edu/~cadlej01/mapped/"
-fi
-
 supertrack_in="Flowcells"
 
 for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ${urlbase_in} ${supertrack_in}
+    make_tracks ${i} ${consol_suffix_in} ${URL_path}/mapped/ ${supertrack_in}
 done
 
 ###############################
 consol_suffix_in="_consolidated_agg"
-
-if [ ${hub_type} = "CEGS" ]; then
-    urlbase_in="https://***REMOVED***@cascade.isg.med.nyu.edu/cegs/aggregations/"
-else
-    urlbase_in="https://***REMOVED***@cascade.isg.med.nyu.edu/~cadlej01/aggregations/"
-fi
-
 supertrack_in="Aggregations"
 
 for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ${urlbase_in} ${supertrack_in}
+    make_tracks ${i} ${consol_suffix_in} ${URL_path}/aggregations/ ${supertrack_in}
 done
 
 ###############################
 consol_suffix_in="_consolidated_pub"
-
-if [ ${hub_type} = "CEGS" ]; then
-    urlbase_in="https://***REMOVED***@cascade.isg.med.nyu.edu/cegs/publicdata/"
-else
-    urlbase_in="https://***REMOVED***@cascade.isg.med.nyu.edu/~cadlej01/publicdata/"
-fi
-
 supertrack_in="Public_Data"
 
 for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ${urlbase_in} ${supertrack_in}
+    make_tracks ${i} ${consol_suffix_in} ${URL_path}/publicdata/ ${supertrack_in}
 done
 
 ###############################
 consol_suffix_in="_consolidated_locus"
-
-if [ ${hub_type} = "CEGS" ]; then
-    urlbase_in="https://***REMOVED***@cascade.isg.med.nyu.edu/cegs/mapped/"
-else
-    urlbase_in="https://***REMOVED***@cascade.isg.med.nyu.edu/~cadlej01/mapped/"
-fi
-
 supertrack_in="By_Locus"
 
 for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ${urlbase_in} ${supertrack_in}
+    make_tracks ${i} ${consol_suffix_in} ${URL_path}/mapped/ ${supertrack_in}
 done
 
 ###############################
-echo Done with Daler python code.
+echo "Done with Daler python code."
 

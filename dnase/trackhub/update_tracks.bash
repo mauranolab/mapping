@@ -33,7 +33,7 @@
 #     ==========================  =====  ==================================  =========   ======================
 #       Call the main script      Arg 1               Arg 2                    Arg 3             Arg 4
 #
-#                                 https://***REMOVED***@cascade.isg.med.nyu.edu/cegs/trackhub_dev
+#                                 https://cascade.isg.med.nyu.edu/cegs
 #                                 =============================================================
 #                                                     Arg 5
 #
@@ -44,7 +44,7 @@
 # Args 3 & 4:  The short and long labels that appear on the UCSC browser Track Data Hubs page.
 #              If you have multiple hubs you should make sure these are unique, so you know what you are clicking on.
 #
-# Args 5:      The complete url to the new hub location
+# Args 5:      The complete url to the new hub location; assumes that mapped, aggregations, and publicdata are present as subdirectories
 #
 ############################################################################
 # Standard execution of this script (for CEGS dev and MAURANOLAB):
@@ -52,12 +52,10 @@
 # First, make sure the target directory exists and is empty.
 # Then:
 #
-# /vol/cegs/src/trackhub/src_dev/update_tracks.bash CEGS /vol/cegs/public_html/trackhub_dev "CEGS Dev" "CEGS Development Hub" \
-#                                                https://***REMOVED***@cascade.isg.med.nyu.edu/cegs/trackhub_dev
+# /vol/cegs/src/trackhub/src_dev/update_tracks.bash CEGS /vol/cegs/public_html/trackhub_dev "CEGS Dev" "CEGS Development Hub" https://cascade.isg.med.nyu.edu/cegs
 #
 #
-# /vol/cegs/src/trackhub/src_prod/update_tracks.bash MAURANOLAB /home/cadlej01/public_html/trackhub "Maurano Lab" "Maurano Lab Hub" \
-#                                   https://***REMOVED***@cascade.isg.med.nyu.edu/~cadlej01/trackhub
+# /vol/cegs/src/trackhub/src_prod/update_tracks.bash MAURANOLAB /home/cadlej01/public_html/trackhub "Maurano Lab" "Maurano Lab Hub" https://cascade.isg.med.nyu.edu/~cadlej01
 #
 ############################################################################
 # Standard execution of this script (for CEGS prod):
@@ -172,17 +170,18 @@ echo " "
 
 # For a CEGS hub, we also need to make tracks for the various assemblies. Do it here:
 if [ ${hub_type} = "CEGS" ]; then
-    echo Starting makeAssemblyTracks.bash
+    echo "Starting makeAssemblyTracks.bash"
     ./makeAssemblyTracks.bash ${path_to_main_driver_script} ${hub_target} ${TMPDIR} "${genome_array[@]}"
 fi
 
 # Now construct the "flowcell" and "aggregation" tracks in TMPDIR.
-echo Starting make_tracks.bash
-./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} "${genome_array[@]}"
+echo "Starting make_tracks.bash"
+./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} ${URL_path} "${genome_array[@]}"
 
 ######################################################################################
 # Now copy the track information to the hub location.
-echo Updating track files
+echo
+echo "Updating track files"
 
 update_genome () {
     genome=$1
@@ -232,7 +231,8 @@ cp "${TMPDIR}/assembly_tracks/cegsvectors.gc.bw" "${hub_target}/cegsvectors/data
 
 ######################################################################################
 
-echo Making description files
+echo
+echo "Making description files"
 cd ${path_to_main_driver_script}
 ./makeDescFiles.bash ${path_to_main_driver_script} ${hub_type} ${hub_target} \
                      ${TMPDIR} "${genome_array[@]}"
@@ -275,26 +275,30 @@ echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> "${hub_target}/hub_d
 
 ######################################################################################
 # Provide a README with the hub link.
+echo
 echo "The UCSC browser url to this hub is:" | tee "${hub_target}/README"
 
+hub_dir=`basename ${hub_target}`
+
 # Construct url for the new hub.
-echo "${URL_path}/hub.txt" | tee -a "${hub_target}/README"
+echo "${URL_path}/${hub_dir}/hub.txt" | tee -a "${hub_target}/README"
 
 ######################################################################################
 # Check for hub errors.
 # Make sure some version of the ucsckentutils module has already been loaded.
 
-hubCheck -noTracks -udcDir=${TMPDIR} "${URL_path}/hub.txt"
+hubCheck -noTracks -udcDir=${TMPDIR} "${URL_path}/${hub_dir}/hub.txt"
 ierr=$?
 echo hubCheck error is: ${ierr}
 
+echo
 if [ ${ierr} -eq 0 ]; then
-   echo Removing TMP directory.
+   echo "Removing TMP directory."
    rm -rf ${TMPDIR}
-   echo Hub construction complete.
+    echo "Done!"
 else
-   echo Retaining TMPDIR.
-   echo It is: ${TMPDIR}
+   echo "Retaining TMPDIR."
+   echo "It is: ${TMPDIR}"
 fi
 ######################################################################################
 
