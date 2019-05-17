@@ -21,15 +21,30 @@ module load R/3.5.0
 
 make_html () {
     local infile=$1
-
+    local desc_file=$2
+    
     # If only the header is there now, that means we have no data for that genome.
     local n_lines=$(wc -l < ${infile})
-
+    
     if (( n_lines == 1)); then
         rm ${infile}
     else
         # Make the html version of the genome's readcounts data.
         Rscript ${path_to_main_driver_script}/makeDescHtml.R ${infile} "${infile}.html"
+    fi
+    
+    if [ -f ${desc_file} ]; then
+        local tmpdir=$(dirname "${desc_file}")
+        echo "<pre>" > "${tmpdir}/make_html_tmp"
+        cat "${desc_file}" >> "${tmpdir}/make_html_tmp"
+        echo "</pre>" >> "${tmpdir}/make_html_tmp"
+        echo "<hr>" >> "${tmpdir}/make_html_tmp"
+        
+        if (( n_lines != 1)); then
+            cat "${infile}.html" >> "${tmpdir}/make_html_tmp"
+        fi
+        
+        mv "${tmpdir}/make_html_tmp" "${infile}.html"
     fi
 }
 ##############################################################################
@@ -47,17 +62,13 @@ find_targets () {
         BASE2=${i%/}       # Kill trailing slash
         BASE=${BASE2##*/}  # Get subdir name
         
-        if [ "${BASE}" = "trash" ] || [ "${BASE}" = "bak" ] ; then
+        if [ "${BASE}" = "trash" ] || [ "${BASE}" = "bak" ] || \
+           [ "${BASE}" = "trash2" ] || [ "${BASE}" = "trash.oops" ] ; then
              continue
         fi
         
         target="${i}readcounts.summary.txt"
-        if [ -f ${target} ]; then
-            echo ${target}
-            target_vec+=( ${target} )
-        else
-            echo ${target} does not exist
-        fi
+        target_vec+=( ${target} )
     done
 }
 
@@ -71,8 +82,15 @@ find_readcounts () {
     local ymd
     local BASE
     local BASE2
-    local BASE3
     local target
+    local desc_file
+    local tmp_flowcell
+    local d_out
+    local yyyy
+    local mm
+    local dd
+    local info_file
+    local infile
 
     # Each flowcell directory may be associated with a readcounts file.
     # Get the data from the readcounts file if it is there, and make a table from the data.
@@ -90,57 +108,52 @@ find_readcounts () {
         else
             # For non-flowcell directories, there is only one place for the readcounts file to be:
             target=${dir_base}${flowcell}${suffix}
-            if [ -f ${target} ]; then
-                # Need to do this here to get the progress notices in correct order.
-                echo ${target}
-            fi
-            
             target_vec=()
             target_vec+=( ${target} )
         fi
         
         for target in ${target_vec[@]}; do
+            # Find a date to associate with the flowcell from the info.txt file
+            info_file="/vol/mauranolab/flowcells/data/"${flowcell}"info.txt"
+            
+            # Make sure the file is there:
+            if [ ! -f ${info_file} ]; then
+                # It is not.
+                ierr=0
+            else
+                # It is, but is the date there?
+                ierr=$(grep -c '#Load date' ${info_file})
+            fi
+            
+            if (( ierr == 0)); then
+                ymd="00000000"
+            else
+                d_out=$(grep '#Load date' ${info_file})
+                yyyy=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f1)
+                mm=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f2)
+                dd=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f3)
+                ymd=${yyyy}${mm}${dd}
+            fi
+            
+            # We now have a date. Next, construct a genome related filename for the output.
+            if [ "${ymd}" = "00000000" ]; then
+                tmp_flowcell="/"${flowcell%/}
+            else
+                tmp_flowcell="/"${ymd}"_"${flowcell%/}
+            fi
+            
+            if [ ${dir_base} = "/vol/cegs/mapped/" ] || [ ${dir_base} = "/vol/mauranolab/mapped/" ] ; then
+                # The name of the flowcell subdirectory that the readcounts.summary.txt file lives in is also the name of the relevant assay type.
+                # Use that assay type to help make a unique html name.
+                BASE=${target%/readcounts.summary.txt}       # Kill trailing /readcounts.summary.txt
+                BASE2=${BASE##*/}  # Get subdir name
+                tmp_flowcell="${tmp_flowcell}_${BASE2}"
+            fi
+            # tmp_flowcell will be used in the for loop below.
+            
             if [ -f ${target} ]; then
                 # There is a readcounts file in the flowcell directory.
-                
-                # Find a date to associate with the flowcell from the info.txt file
-                local info_file="/vol/mauranolab/flowcells/data/"${flowcell}"info.txt"
-                
-                # Make sure the file is there:
-                if [ ! -f ${info_file} ]; then
-                    # It is not.
-                    ierr=0
-                else
-                    # It is, but is the date there?
-                    ierr=$(grep -c '#Load date' ${info_file})
-                fi
-                
-                if (( ierr == 0)); then
-                    ymd="00000000"
-                else
-                    local d_out=$(grep '#Load date' ${info_file})
-                    local yyyy=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f1)
-                    local mm=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f2)
-                    local dd=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f3)
-                    ymd=${yyyy}${mm}${dd}
-                fi
-                
-                # We now have a date. Next, construct a genome related filename for the output.
-                local tmp_flowcell
-                if [ "${ymd}" = "00000000" ]; then
-                    tmp_flowcell="/"${flowcell%/}
-                else
-                    tmp_flowcell="/"${ymd}"_"${flowcell%/}
-                fi
-                
-                if [ ${dir_base} = "/vol/cegs/mapped/" ] || [ ${dir_base} = "/vol/mauranolab/mapped/" ] ; then
-                    # The name of the flowcell subdirectory that the readcounts.summary.txt file lives in is also the name of the relevant assay type.
-                    # Use that assay type to help make a unique html name.
-                    BASE=${target%/readcounts.summary.txt}       # Kill trailing /readcounts.summary.txt
-                    BASE2=${BASE##*/}  # Get subdir name
-                    tmp_flowcell="${tmp_flowcell}_${BASE2}"
-                fi
-                # tmp_flowcell will be used in the for loop below.
+                echo ${target}
                 
                 # Initialize the output files with header lines.
                 head -n1 ${target} > "${TMPDIR}/tmp_header"
@@ -152,16 +165,43 @@ find_readcounts () {
                     ref="${i}"
                     cat "${TMPDIR}/tmp_header" > ${!ref}
                     grep ${i} ${target} >> ${!ref}
+                    
+                    BASE=${target%readcounts.summary.txt}       # Kill trailing readcounts.summary.txt
+                    desc_file="${BASE}description.html"
+                    
+                    declare "${i}_desc"="${TMPDIR}${tmp_flowcell}_${i}_desc"
+                    ref2="${i}_desc"
+                    
+                    if [ -f ${desc_file} ]; then
+                        cat ${desc_file} >  ${!ref2}
+                    else
+                        # Make sure ref2 does not exist. Maybe unnecessary ?
+                        rm -f ${!ref2}
+                    fi
                 done
                 
                 for i in "${genome_array[@]}"; do
                     ref="${i}"
-                    make_html ${!ref}
+                    ref2="${i}_desc"
+                    make_html ${!ref} ${!ref2}
                 done
             else
                 # No readcounts file exists. UCSC browser description area is just
                 # blank if there is no file, or a bad url. No error msg pops up.
                 echo ${target} does not exist
+                
+                BASE=${target%readcounts.summary.txt}       # Kill trailing readcounts.summary.txt
+                desc_file="${BASE}description.html"
+                
+                if [ -f ${desc_file} ]; then
+                    for i in "${genome_array[@]}"; do
+                        infile="${TMPDIR}${tmp_flowcell}_${i}"
+                        echo "<pre>" > "${infile}.html"
+                        cat "${desc_file}" >> "${infile}.html"
+                        echo "</pre>" >> "${infile}.html"
+                        echo "<hr>" >> "${infile}.html"
+                    done
+                fi
             fi
         done
     done
