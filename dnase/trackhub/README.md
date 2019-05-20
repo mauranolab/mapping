@@ -99,16 +99,16 @@ samplesforTrackhub.R combines metadata from SamplesForTrackhub.tsv with the pipe
 ```
 #Prep annotation
 cd /vol/isg/encode/dnase/mapped/
-${src}/trackhub/samplesforTrackhub.R --inputfile ../SampleIDs.tsv --project humanENCODEdnase --out ../SamplesForTrackhub.tsv 2>&1 | grep -E -i "(warning|error)"
+${src}/trackhub/samplesforTrackhub.R --quiet --inputfile ../SampleIDs.tsv --project humanENCODEdnase --out ../SamplesForTrackhub.tsv
 
 cd /vol/isg/encode/chipseq/mapped/
-${src}/trackhub/samplesforTrackhub.R --inputfile ../SampleIDs.tsv --project humanENCODEchipseq --out ../SamplesForTrackhub.tsv 2>&1 | grep -E -i "(warning|error)"
+${src}/trackhub/samplesforTrackhub.R --quiet --inputfile ../SampleIDs.tsv --project humanENCODEchipseq --out ../SamplesForTrackhub.tsv
 
 cd /vol/isg/encode/mouseencode/mapped/
-${src}/trackhub/samplesforTrackhub.R --inputfile ../SampleIDs.tsv --project mouseENCODEdnase --out ../SamplesForTrackhub.tsv 2>&1 | grep -E -i "(warning|error)"
+${src}/trackhub/samplesforTrackhub.R --quiet --inputfile ../SampleIDs.tsv --project mouseENCODEdnase --out ../SamplesForTrackhub.tsv
 
 cd /vol/isg/encode/mouseencode_chipseq/mapped/
-${src}/trackhub/samplesforTrackhub.R --inputfile ../SampleIDs.tsv --project mouseENCODEchipseq --out ../SamplesForTrackhub.tsv 2>&1 | grep -E -i "(warning|error)"
+${src}/trackhub/samplesforTrackhub.R --quiet --inputfile ../SampleIDs.tsv --project mouseENCODEchipseq --out ../SamplesForTrackhub.tsv
 ```
 MakeTrackhub.py creates the trackdb file. You will need to create the trackhub/hub.txt and trackhub/genomes.txt landing page.
 ```
