@@ -110,13 +110,13 @@ for(curdir in projectdirs) {
 }
 
 # Prune unwanted directories
-mappeddirs <- mappeddirs[grep('/new', mappeddirs, invert=TRUE)]
-mappeddirs <- mappeddirs[grep('/bak', mappeddirs, invert=TRUE)]
-mappeddirs <- mappeddirs[grep('/trash', mappeddirs, invert=TRUE)]
+mappeddirs <- mappeddirs[grep('^new', sapply(mappeddirs, basename), invert=TRUE)]
+mappeddirs <- mappeddirs[grep('^bak', sapply(mappeddirs, basename), invert=TRUE)]
+mappeddirs <- mappeddirs[grep('^trash', sapply(mappeddirs, basename), invert=TRUE)]
 
 #NB These show up in old pipeline
-mappeddirs <- mappeddirs[grep('hotspots', mappeddirs, invert=TRUE)]
-mappeddirs <- mappeddirs[grep('fastqc', mappeddirs, invert=TRUE)]
+mappeddirs <- mappeddirs[grep('^hotspots$', sapply(mappeddirs, basename), invert=TRUE)]
+mappeddirs <- mappeddirs[grep('^fastqc$', sapply(mappeddirs, basename), invert=TRUE)]
 
 message("[samplesforTrackhub] ", 'Mapped directories to process: ', length(mappeddirs))
 
