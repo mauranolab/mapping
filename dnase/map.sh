@@ -96,10 +96,10 @@ echo
 echo "Configuring trimming parameters"
 #Trimmomatic options
 if [[ "${sampleType}" == "atac" ]]; then 
-    illuminaAdapters="/cm/shared/apps/trimmomatic/0.38/adapters/NexteraPE-PE.fa"
+    illuminaAdapters="/cm/shared/apps/trimmomatic/0.39/adapters/NexteraPE-PE.fa"
 else 
     #TODO Probably need different sequences per barcode. Note this fa file has 2 ident copies of left adapter and none of right adapter (with barcode).
-    illuminaAdapters="/cm/shared/apps/trimmomatic/0.38/adapters/TruSeq3-PE-2.fa"
+    illuminaAdapters="/cm/shared/apps/trimmomatic/0.39/adapters/TruSeq3-PE-2.fa"
 fi
 
 seedmis=2
@@ -118,7 +118,7 @@ readsLongEnough=1
 #Check if samples contain DUKE adapter (TCGTATGCCGTCTTC) and trim to 20bp if more than 25% of reads do
 if [[ 0 == 1 ]]; then
     sequencedReads=$(zcat ${readsFq} | awk 'NR%4==2' | wc -l)
-    #The proper adapter files are in /cm/shared/apps/trimmomatic/0.38/adapters/TruSeq2-SE.fa, but the Duke reads also have 8-9 As at the end after it reads through the adapter so it's probably better just to CROP:20
+    #The proper adapter files are in /cm/shared/apps/trimmomatic/0.39/adapters/TruSeq2-SE.fa, but the Duke reads also have 8-9 As at the end after it reads through the adapter so it's probably better just to CROP:20
     if [ `zcat ${readsFq} | awk -v thresh=0.25 -v sequencedReads=$sequencedReads 'NR%4==2 && $1~/TCGTATGCCGTCTTC/ {readsWithDukeSequence+=1} END {if (readsWithDukeSequence/sequencedReads>thresh) {print 1} else {print 0}}'` ]; then
         echo "More than 25% of reads have DUKE sequence (TCGTATGCCGTCTTC) - Hard clip to 20bp reads"
         trimmomaticSteps="CROP:20 ${trimmomaticSteps}"
