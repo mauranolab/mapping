@@ -51,7 +51,8 @@ write.table(melt.data.frame(iPCR.overlaps.byReadDecile), row.names=F, col.names=
 
 
 cat("\n\nAnalysis of mapped integration site\n")
-sampleData <- read(paste0(outbase, ".txt"), header=T)
+sampleData <- read(paste0(outbase, ".mapped.txt"), header=T)
+colnames(sampleData)[colnames(sampleData)=="X.chrom"] <- "chrom"
 
 ###Basic filtering
 sampleData <- sampleData[!is.na(sampleData[,"DNA"]),]
@@ -82,10 +83,11 @@ sampleData$zscore <- scale(log(sampleData[,"expression"], base=2))
 
 
 cat("\nCompare nearby insertions\n")
-ins.proximity <- data.frame(subset(sampleData, select=c(chrom, chromStart, expression))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, expression))[-1,], check.names=T)
+ins.proximity <- data.frame(subset(sampleData, select=c(chrom, chromStart, zscore))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, zscore))[-1,], check.names=T)
 ins.proximity <- subset(ins.proximity, chrom==chrom.1)
 ins.proximity$dist <- ins.proximity$chromStart.1 - ins.proximity$chromStart
-ins.proximity$dist.bin <- cut(ins.proximity$dist, breaks=c(0, 2.5e4, 5e4, 7.5e4, 10^5, Inf), right=F, include.lowest=T) #labels=c("50 bp", "100 bp", "250 bp", "500 bp", "1 kb", "10 kb", "100 kb", "1 Mb")
+#ins.proximity$dist.bin <- cut(ins.proximity$dist, breaks=c(0, 1e4, 2e4, 3e4, 4e4, 5e4, 6e4, 7e4, 8e4, 9e4, 10^5, Inf), right=F, include.lowest=T) #labels=c("50 bp", "100 bp", "250 bp", "500 bp", "1 kb", "10 kb", "100 kb", "1 Mb")
+ins.proximity$dist.bin <- cut(ins.proximity$dist, breaks=c(0, 2e4, 4e4, 6e4, 8e4, 10^5, Inf), right=F, include.lowest=T) #labels=c("50 bp", "100 bp", "250 bp", "500 bp", "1 kb", "10 kb", "100 kb", "1 Mb")
 
 #png(file="snps.distances.png", width=750, height=750)
 #hist(log(ins.proximity$dist, base=10), main="Distances between SNVs (union of all strains)")
@@ -95,7 +97,7 @@ results.proxcor <- NULL
 for(curDist in levels(ins.proximity$dist.bin)) {
 	curdata <- subset(ins.proximity, dist.bin==curDist)
 	if(nrow(curdata)>2) {
-		curcor <- with(curdata, cor(expression, expression.1, use="na.or.complete", method="pearson"))
+		curcor <- with(curdata, cor(zscore, zscore.1, use="na.or.complete", method="pearson"))
 		#cat(curRsquared, ":", curcor, "\n")
 		results.proxcor <- rbind(results.proxcor, data.frame(sample=prefix, dist.bin=curDist, meandist=mean.na(curdata$dist), cor=curcor, n=nrow(curdata)))
 	}
