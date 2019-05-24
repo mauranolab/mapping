@@ -28,7 +28,7 @@ samflags="-F 512"
 
 OUTDIR=${sample}
 
-hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38-final/K562-DS9764.hg38.fdr0.01.pks.bed
+hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch
 chromsizes=/vol/isg/annotation/fasta/hg38_noalt/hg38_noalt.chrom.sizes
 
 
