@@ -255,7 +255,8 @@ fi
 
 
 ######
-##Weblogos
+echo
+echo "Weblogos"
 #######
 ##For raw sequence
 if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
@@ -295,8 +296,10 @@ mkdir -p $OUTDIR/Weblogos_Barcode
 find ${dirs} -maxdepth 1 -name "*barcodes.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_Barcode
 for i in `ls $OUTDIR/Weblogos_Barcode/*barcodes.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_Barcode/index.html
 
+
 #####
-#Summarize flowcell info
+echo
+echo "Summarize flowcell info"
 #####
 mkdir -p $OUTDIR/FlowcellSummary
 ${src}/FlowcellSummary.R $OUTDIR

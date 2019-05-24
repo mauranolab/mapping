@@ -69,6 +69,7 @@ for (i in 1:length(analysisFiles)) {
 	if(tail(Sample, 2)[1]=="Done!!!") {
 		data[i, "Total read pairs"] <- as.numeric(splitLines('Number of total reads', '\t')$X3)
 		data[i, "Total barcodes"] <- as.numeric(splitLines('Number of total read barcodes', '\t')$X3)
+		#Note tail() takes "Number of unique barcodes passing minimum read cutoff" when present; "Number of unique barcodes" if not
 		data[i, "Unique BC"] <- as.numeric(tail(splitLines('Number of unique barcodes', '\t'),1)$X3)
 #BUGBUG I think Jesper was accounting for merged i from samples with multiple BC lengths here, but the first clause looks broken either way
 #		if(getLength('Barcode lengths')$X1!=data[i, "Unique BC"]) {
@@ -91,7 +92,7 @@ for (i in 1:length(analysisFiles)) {
 				data[i, "UMI length"] <- getLength('UMI lengths')$X2
 			}
 			data[i, "UMI length"] <- as.numeric(data[i, "UMI length"])
-			data[i, "Complexity"] <- signif(data[i, "Unique BC"] / data[i, "BC+UMI"], 2)
+			data[i, "Complexity"] <- signif(data[i, "BC+UMI"] / data[i, "Total barcodes"], 2)
 		}
 		
 		if(any(grepl('Total PF reads', Sample))) {
