@@ -1,6 +1,5 @@
 #!/bin/env Rscript
 
-#TODO change ABC in column headers to DNA, RNA, iPCR and make separate sample column more like https://cascade.isg.med.nyu.edu/~mauram01/blog/tag_transposon.shtml#1535134189
 #BUGBUG why does it replace hyphens in sample names with underscores?
 
 suppressWarnings(suppressMessages(library(optparse)))
@@ -124,7 +123,7 @@ loadBCfile <- function(filename, type, thresh) {
 thresholdRNADNA <- 10
 thresholdiPCR = 2
 
-getThreshold <- function(type, applyThreshold) {
+getThreshold <- function(type, applyThreshold=TRUE) {
 	if(applyThreshold) {
 		if(type=="iPCR") {
 			thresh=thresholdiPCR
