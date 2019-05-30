@@ -226,8 +226,10 @@ for i in "${genome_array[@]}"; do
 done
 
 # Move the GC percentage file:
-cp "${TMPDIR}/assembly_tracks/cegsvectors.gc.bw" "${hub_target}/cegsvectors/data"
-
+if [ ${hub_type} = "CEGS" ]; then
+    # Only CEGS has assembly tracks.
+    cp "${TMPDIR}/assembly_tracks/cegsvectors.gc.bw" "${hub_target}/cegsvectors/data"
+fi
 
 ######################################################################################
 
