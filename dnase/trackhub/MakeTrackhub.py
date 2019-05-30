@@ -202,7 +202,7 @@ for assay_type in assays:
         if args.genome == "cegsvectors":
             #Add cegsvectors to make sure a minimum label is printed if there is only a single Mapped_Genome
             cegsvectorsAbbreviatedNames = shortest_unique_strings(set(["cegsvectors"] + [line['Mapped_Genome'] for line in matchingSamples]))
-            #cegsvectorsAbbreviatedNames = {k: re.sub(r'^cegsvectors_', '', v) for k, v in cegsvectorsAbbreviatedNames.items()}
+            cegsvectorsAbbreviatedNames = {k: re.sub(r'^cegsvectors_', '', v) for k, v in cegsvectorsAbbreviatedNames.items()}
             createSubGroup(subGroupDefs, subGroupNames, [re.sub(r'^cegsvectors_', '', line['Mapped_Genome']) for line in matchingSamples], "Mapped_Genome")
         
         
@@ -396,9 +396,16 @@ for assay_type in assays:
                     sampleNameGenome = curSample['Annotation_Genome']
                 else:
                     sampleNameGenome = args.genome
+
             #There is a length limit of 128 characters, but in practice some are used for an internal prefix/suffix
-            #Probably could omit sampleName here to save space
+            # We add 4 characters to sampleName_trackname later in the code ('_bam', '_cov', etc.)
+            # The browser prepends 'hub_161_', and appends '.priority'
+            # So sampleName_trackname is increased by 4+8+9=21 characters.
+            # If sampleName_trackname starts with 107 charcters, then 128 characters get sent to the server.  This causes an error.
+            # So sampleName_trackname needs to be 106 characters or less. 
             sampleName_trackname = cleanTrackName(sampleNameGenome + "_" + curGroup + "_" + sampleName + "_" + curSample['SampleID'])
+
+
             # Make sure there are no duplicate track names.
             if sampleName_trackname in sampleName_dict:
                 print("[MakeTrackhub.py] WARNING ", sampleName_trackname, " duplicates an existing trackname", sep="", file=sys.stderr)
