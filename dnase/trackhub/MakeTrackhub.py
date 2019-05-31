@@ -25,7 +25,7 @@ parser.add_argument('Input', action = 'store', help = 'Input tsv file with sampl
 parser.add_argument('--genome', action = 'store', required = True, help = 'genome assembly name')
 parser.add_argument('--URLbase', action = 'store', required = True, help = 'URL base at which track files are hosted')
 parser.add_argument('--includeSampleIDinSampleCol', action = 'store_true', default = False, help = 'Append the Sample ID in the Sample column')
-parser.add_argument('--checksamples', action = 'store_true', default = False, help = 'Mark Density and Coverage tracks for display by turning on composite track without going to configuration page')
+parser.add_argument('--checksamples', action = 'store_true', default = False, help = 'Mark Density and Coverage tracks for display by turning on composite track without going to configuration page (NB ChIP-seq input samples are never displayed by default)')
 parser.add_argument('--supertrack', action = 'store', required = False, help = 'Encompass all composite tracks generated within supertrack. Supertrack name specified as parameter.')
 parser.add_argument('--generateHTMLdescription', action = 'store_true', default = False, help = 'Link to HTML descriptions for composite tracks, assumed to be present at [genome]/descriptions/[group name].html')
 parser.add_argument('--tracknameprefix', action = 'store', required = False, default="", help = 'Add prefix within track names (e.g. to permit unique names).')
@@ -396,7 +396,7 @@ for assay_type in assays:
                     sampleNameGenome = curSample['Annotation_Genome']
                 else:
                     sampleNameGenome = args.genome
-
+            
             #There is a length limit of 128 characters, but in practice some are used for an internal prefix/suffix
             # We add 4 characters to sampleName_trackname later in the code ('_bam', '_cov', etc.)
             # The browser prepends 'hub_161_', and appends '.priority'
@@ -404,8 +404,8 @@ for assay_type in assays:
             # If sampleName_trackname starts with 107 charcters, then 128 characters get sent to the server.  This causes an error.
             # So sampleName_trackname needs to be 106 characters or less. 
             sampleName_trackname = cleanTrackName(sampleNameGenome + "_" + curGroup + "_" + sampleName + "_" + curSample['SampleID'])
-
-
+            
+            
             # Make sure there are no duplicate track names.
             if sampleName_trackname in sampleName_dict:
                 print("[MakeTrackhub.py] WARNING ", sampleName_trackname, " duplicates an existing trackname", sep="", file=sys.stderr)
@@ -495,7 +495,7 @@ for assay_type in assays:
                     subgroups=sampleSubgroups, 
                     tracktype='bigWig',
                     color=curSample['Color'],
-                    parentonoff=DensCovTracksDefaultDisplayMode
+                    parentonoff="off" if assay_type=='ChIP-seq' and curSample['Assay']=='input' else DensCovTracksDefaultDisplayMode
                 )
                 Dens_view.add_tracks(track)
             
