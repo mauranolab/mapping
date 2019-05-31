@@ -11,12 +11,12 @@ option_list = list(
 		help="input file name. Optional tab-delimited file. Entries will be matched on DS column, and Age and Institution columns will be propagated to trackhub", metavar="character"),
 	make_option(c("--out"), type="character", default=NULL,
 		help="output file name", metavar="character"),
-	make_option(c("--workingDir"), type="character", default=NULL, 
+	make_option(c("--workingDir"), type="character", default=".", 
 		help="full path working directory name", metavar="character"),
 	make_option(c("--project"), type="character", default="",
 		help="Enable custom directory search and group behavior: [byFC, CEGS_byLocus, humanENCODEdnase, mouseENCODEdnase, humanENCODEchipseq, mouseENCODEchipseq]", metavar="character"),
 	make_option(c("--descend"), action="store_true", type="logical",
-		help="Assume that sample folders are organized under two levels of subdirectories, e.g. FCxxx/dna"),
+		help="Assume that sample folders are organized under two levels of subdirectories, e.g. FCxxx/dna; otherwise workingDir will be searched for sample folders"),
 	make_option(c("--quiet"), action="store_true", type="logical",
 		help="Reduce reporting verbiage")
 )
@@ -39,12 +39,7 @@ if(!is.null(opt$out)) {
 	message("[samplesforTrackhub] ", 'Output file: ', 'stdout')
 }
 
-if(!is.null(opt$workingDir)) {
-	setwd(opt$workingDir)
-	pwd <- opt$workingDir
-} else {
-	pwd <- getwd()
-}
+pwd <- opt$workingDir
 
 message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", opt$project)
 
@@ -68,19 +63,35 @@ if(!is.null(opt$inputfile)) {
 
 
 # Get paths of directories to search for sample directories relative to pwd
+getFilteredDirs <- function(path) {
+	dirs <- list.dirs(path=path, full.names=F, recursive=F)
+	# Prune unwanted directories
+	dirs <- dirs[grep('^new', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^bak', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^trash', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^fastq$', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^sra$', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^src$', sapply(dirs, basename), invert=TRUE)]
+	#NB These show up in old pipeline
+	dirs <- dirs[grep('^hotspots$', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^fastqc$', sapply(dirs, basename), invert=TRUE)]
+	
+	return(dirs)
+}
+
 if("descend" %in% names(opt)) {
 	projectdirs <- NULL
 	
 	# Loop over all the flowcells to find sample directories.
 	flowcell_dates = list()
-	for(flowcell in list.dirs(path=pwd, full.names=F, recursive = F)) {
+	for(flowcell in getFilteredDirs(pwd)) {
 		if(flowcell=='src') next;
 		if(flowcell=='trackhub') next;
 		
 		# To temporarily skip flowcell directories which are incomplete.
 		# if(flowcell=='FCH2NNMBBXY') next;
 		
-		projectdirs <- append(projectdirs, paste0(flowcell, "/", list.dirs(path=paste0(pwd, "/", flowcell, "/"), full.names=F, recursive = F)))
+		projectdirs <- append(projectdirs, paste0(flowcell, "/", getFilteredDirs(paste0(pwd, "/", flowcell, "/"))))
 		
 		if(opt$project=="byFC") {
 			# Get flowcell date
@@ -102,21 +113,12 @@ if("descend" %in% names(opt)) {
 # Get paths of sample directories relative to pwd
 mappeddirs <- NULL
 for(curdir in projectdirs) {
-	thisProjectMappedDirs <- list.dirs(path=paste0(pwd, "/", curdir), full.names=F, recursive = F)
+	thisProjectMappedDirs <- getFilteredDirs(paste0(pwd, "/", curdir))
 	if(curdir!=".") {
 		thisProjectMappedDirs <- paste0(curdir, "/", thisProjectMappedDirs)
 	}
 	mappeddirs <- append(mappeddirs, thisProjectMappedDirs)
 }
-
-# Prune unwanted directories
-mappeddirs <- mappeddirs[grep('^new', sapply(mappeddirs, basename), invert=TRUE)]
-mappeddirs <- mappeddirs[grep('^bak', sapply(mappeddirs, basename), invert=TRUE)]
-mappeddirs <- mappeddirs[grep('^trash', sapply(mappeddirs, basename), invert=TRUE)]
-
-#NB These show up in old pipeline
-mappeddirs <- mappeddirs[grep('^hotspots$', sapply(mappeddirs, basename), invert=TRUE)]
-mappeddirs <- mappeddirs[grep('^fastqc$', sapply(mappeddirs, basename), invert=TRUE)]
 
 message("[samplesforTrackhub] ", 'Mapped directories to process: ', length(mappeddirs))
 
