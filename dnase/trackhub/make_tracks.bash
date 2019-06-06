@@ -289,7 +289,7 @@ make_tracks () {
         subgroupprefix="--subgroupnames Project,Assembly,Type"
         generateHTMLdescription=""
     else
-        subgroupprefix=""
+        subgroupprefix="--subgroupnames Replicate"
     fi
     
     python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
