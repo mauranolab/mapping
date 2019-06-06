@@ -30,6 +30,7 @@ parser.add_argument('--supertrack', action = 'store', required = False, help = '
 parser.add_argument('--generateHTMLdescription', action = 'store_true', default = False, help = 'Link to HTML descriptions for composite tracks, assumed to be present at [genome]/descriptions/[group name].html')
 parser.add_argument('--tracknameprefix', action = 'store', required = False, default="", help = 'Add prefix within track names (e.g. to permit unique names).')
 parser.add_argument('--subgroupnames', action = 'store', required = False, default="SampleID", help = 'Comma-separated list of columns in input to add as subgroups; will be sorted in order specified')
+parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
 
 
 try:
@@ -65,6 +66,9 @@ def createSubGroup(subGroups, subGroupNames, keys, label):
     #What does natural_key do?
     uniqkeys = set(sorted([cleanFactorForSubGroup(key) for key in keys], key=natural_key))
     if uniqkeys and not all(x == 'NA' for x in uniqkeys):
+        if len(uniqkeys) > 1000:
+            print("[MakeTrackhub.py] WARNING Subgroup ", label, " exceeds maximum 1000 members (has ", len(uniqkeys), ")", sep="", file=sys.stderr)
+        
         subGroupDict = dict(zip(uniqkeys, uniqkeys))
         subGroupDef = SubGroupDefinition(
             # The "label" below needs to have the underscore in it, else only the part up to the first
@@ -169,6 +173,8 @@ for assay_type in assays:
         else:
             continue
     
+    if args.verbose:
+        print("[MakeTrackhub.py] Processing assay", assay_type, file=sys.stderr)
     
     ########
     # Create composite track for major groups of samples (e.g. Duke, UW, etc.)
@@ -183,6 +189,9 @@ for assay_type in assays:
         ########
         matchingSamples = [line for line in input_data if curGroup == line['Group']]
         
+        if args.verbose:
+            print("[MakeTrackhub.py] Processing", len(matchingSamples), "samples in group", curGroup, file=sys.stderr)
+        
         subGroupDefs = []
         #Dict containing the active subgroup labels and the number of unique levels
         subGroupNames = dict()
@@ -191,7 +200,6 @@ for assay_type in assays:
         
         if not args.includeSampleIDinSampleCol:
             createSubGroup(subGroupDefs, subGroupNames, [line['SampleID'] for line in matchingSamples], 'SampleID')
-        
         
         if assay_type == "ChIP-seq":
             createSubGroup(subGroupDefs, subGroupNames, [line['Assay'] for line in matchingSamples], 'Assay')
@@ -445,12 +453,13 @@ for assay_type in assays:
                 sampleDescription += ", Mapped to " + re.sub(r'^cegsvectors_', '', curSample['Mapped_Genome'])
             
             ####Set up subgroups
+            #BUGBUG get error "Subgroup SampleID exceeds maximum 1000 members" for some of the ENCODE tracks
             sampleSubgroups = dict(sample=sampleName + ('-' + curSample['SampleID'] if args.includeSampleIDinSampleCol else ''))
-            if not args.includeSampleIDinSampleCol:
-                sampleSubgroups["sampleid"] = cleanFactorForSubGroup(curSample['SampleID'])
-            for subGroupLabel in ['Assay'] + customSubGroupNames:
+            for subGroupLabel in ['SampleID', 'Assay'] + customSubGroupNames:
                 if subGroupLabel in subGroupNames:
                     sampleSubgroups[internalSubgroupName(subGroupLabel)] = cleanFactorForSubGroup(curSample[subGroupLabel])
+            
+            #Keep these as short as possible to avoid running over track name maxlength
             if 'Mapped_Genome' in subGroupNames:
                 sampleSubgroups['mapped_genome'] = re.sub(r'^cegsvectors_', '', curSample['Mapped_Genome'])
             

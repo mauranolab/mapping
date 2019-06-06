@@ -128,20 +128,27 @@ echo
 
 agg_pub_loop () {
     local dir_loop_name=$1
-
+    
     # aggregations or publicdata
     local loop_type=$2
-
+    
     local workingDir
     if [ ${hub_type} = "CEGS" ]; then
         workingDir="/vol/cegs/${loop_type}/${dir_loop_name}"
     else
         workingDir="/vol/mauranolab/${loop_type}/${dir_loop_name}"
     fi
-
+    
+    #Pull in annotation if available
+    local inputfile=""
+    if [ -s "${workingDir}/sampleannotation.txt" ]; then
+        inputfile="--inputfile ${workingDir}/sampleannotation.txt"
+    fi
+    
     Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
             --out ${outfile} \
             --workingDir ${workingDir} \
+            ${inputfile} \
             --quiet
 
 ###

@@ -197,8 +197,6 @@ for(curdir in mappeddirs) {
 			} else {
 				#assume dnase for old pipeline
 				sampleType <- "dnase"
-				data$Mapped_Genome[i] <- NA
-				data$Annotation_Genome[i] <- NA
 			}
 			
 			# Adding a new Assay type also requires changes to be made to MakeTrackhub.py
@@ -217,14 +215,11 @@ for(curdir in mappeddirs) {
 				data$Assay[i] <- SampleIDsplit[2]
 			} else {
 				message("[samplesforTrackhub] ", "WARNING don't recognize sampleType: ", sampleType)
-				data$Assay[i] <- NA
 			}
 			
 			data$Name[i] <- SampleIDsplit[1]
 			
 			data[i, "SampleID"] <- SampleIDsplit[length(SampleIDsplit)]
-			
-			data$Replicate[i] <- NA
 			
 			#TODO parameterize setting a different key for color lookup
 			if(is.null(colorAssignments) || !data$Name[i] %in% colorAssignments$group) {
@@ -254,49 +249,28 @@ for(curdir in mappeddirs) {
 			
 			if( !is.null(SampleAnnotation[["Bait_set"]]) ) {
 				data$Bait_set[i] <- SampleAnnotation[["Bait_set"]]
-			} else {
-				data$Bait_set[i] <- NA
 			}
 			
 			if(any(grepl('^Genomic_coverage\t', analysisFileContents))) {
 				data$Genomic_coverage[i] <- strsplit(analysisFileContents[grep('^Genomic_coverage\t', analysisFileContents)], '\t')[[1]][2]
-			} else {
-				data$Genomic_coverage[i] <- NA
 			}
 			
 			if(any(grepl('^Num_hotspots2\t', analysisFileContents))) {
 				data$Num_hotspots[i] <- strsplit(analysisFileContents[grep('^Num_hotspots2\t', analysisFileContents)], '\t')[[1]][2]
-			} else {
-				data$Num_hotspots[i] <- NA
 			}
 			
 			if(any(grepl('^SPOT\t', analysisFileContents))) {
 				data$SPOT[i] <- strsplit(analysisFileContents[grep('^SPOT\t', analysisFileContents)], '\t')[[1]][2]
-			} else {
-				data$SPOT[i] <- NA
 			}
-			
-			data$Exclude[i] <- NA
 			
 			if(!is.null(inputSampleIDs)) {
 				#Matching the DS number from the analysis file to inputSampleIDs can give multiple results, so just pick the first
 				inputSampleIDrow <- which(inputSampleIDs[,"DS"] == data[i, "SampleID"])[1]
 			}
 			
-			#TODO allow other columns to be taken from inputSampleIDs
-			if("Age" %in% colnames(inputSampleIDs)) {
-				data$Age[i] <- inputSampleIDs[inputSampleIDrow, "Age"]
-			} else {
-				data$Age[i] <- NA
-			}
-			
-			if("Institution" %in% colnames(inputSampleIDs)) {
-				data$Institution[i] <- inputSampleIDs[inputSampleIDrow, "Institution"]
-				if(opt$project=="humanENCODEdnase") {
-					if(data$Institution[i] == 'UMass') {data$Institution[i] <- 'UW'}
-				}
-			} else {
-				data$Institution[i] <- NA
+			#Take all columns to be taken from inputSampleIDs
+			for(curCol in intersect(outputCols, setdiff(colnames(inputSampleIDs), "DS"))) {
+				data[i, curCol] <- inputSampleIDs[inputSampleIDrow, curCol]
 			}
 			
 			if(opt$project %in% c("byFC", "CEGS_byLocus")) {
@@ -333,17 +307,20 @@ for(curdir in mappeddirs) {
 				} else if(grepl('^(adipo|aggregated_lymphoid_nodule|adrenal|ammon|aorta|artery|astrocyte|bladder|body|bone|bowel|brain|breast|bronchial_epithelial_cell|cardia|cardiocyte|cerebellum|colon|coronary_artery|cortex|cortical_plate|dendritic_cell|derm|endothelial_cell_of_|epithelial_cell_of_choroid_plexus|erythroblast|esopha|eye|fetal_umbilical_cord|fibroblast|gast|gastro|globus|glom|gonad|gyrus|heart|hepatocyte|intest|keratinocyte|kidney|limb|liver|lung|mammary_epithelial_cell|medial_popliteal_nerve|medull|medulla|mesenchymal_stem_cell|mid_neurogenesis_radial_glial_cells|muscle|myotube|neural_cell|neural_progenitor_cell|neural_stem_progenitor_cell|neuroepithelial_stem_cell|neuron|nucleus|oesteoblast|olfact|fat_pad|osteo|ovary|pancrea|placenta|pons|prostate|psoas|putamen|radial_glial_cell|renal|retina|retinal_pigment_epithelial_cell|right_atrium_auricular_region|right_lobe_of_liver|skin|spinal|spleen|stomach|test[ei]s|thymus|thyroid|tibial_artery|tibial_nerve|tongue|trophoblast_cell|urothelia|uteru|vagina|ventriculus|amniotic_stem_cell|bipolar_spindle_neuron|caput_mediale_musculus_gastrocnemius|inferior_parietal_cortex|islet_precursor_cell|midbrain|middle_frontal_gyrus|pentadactyl_limb|ascending_aorta|bipolar_neuron|epithelial_cell_of_esophagus|epithelial_cell_of_prostate|foreskin_keratinocyte|lower_leg_skin|Peyers_patch|right_cardiac_atrium|sigmoid_colon|skeletal_muscle|small_intestine|smooth_muscle_cell|suprapubic_skin|thoracic_aorta|transverse_colon|upper_lobe_of_left_lung|urinary_bladder|brown_adipose_tissue|forebrain|hindbrain|myocyte|Muller_cell|telencephalon|omental)', data$Name[i], ignore.case=T)) {
 					data$Group[i] <- "Tissues"
 				}
-				if(grepl('^CD|^[him]?A?T[HhNnRr][0-9]*$|^GM[012][0-9][0-9][0-9][0-9]|m?B_?cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|^MEL_GATA1_ER$|macrophage|CH12LX|G1E|mononuclear|dendritic|leukemia_stem_cell', data$Name[i])) { data$Group[i] <- 'Hematopoietic cells' }
-				if(grepl('ES|^H[0-9]|^iPS|E14TG2a4|^trophoblastic_cell$|^mesendoderm$|^endodermal_cell$|^ectodermal_cell$|^mesodermal_cell$|^WW6$|^ZHBTc4$', data$Name[i])) { data$Group[i] <- 'Pluripotent' }
+				if(grepl('^CD|^[him]?A?T[HhNnRr][0-9]*$|^GM[012][0-9][0-9][0-9][0-9]|m?B_?cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|^MEL_GATA1_ER$|macrophage|CH12LX|G1E|mononuclear|megakaryocyte|dendritic|leukemia_stem_cell|^Jurkat|T\\-cell|Raji|NB4|HL\\-60|Karpas\\-422|Loucy', data$Name[i])) { data$Group[i] <- 'Hematopoietic' }
+				if(grepl('ES|^H[0-9]|^iPS|^trophoblastic_cell$|^mesendoderm$|^endodermal_cell$|^ectodermal_cell$|^mesodermal_cell$|^WW6$|^ZHBTc4$|^E14TG2a.?4$', data$Name[i])) { data$Group[i] <- 'Pluripotent' }
 				if(opt$project=="humanENCODEdnase") {
-					if(is.na(data$Group[i]) || data$Institution[i] == "Duke") {
+					if(data$Institution[i] == 'UMass') {
+						data$Institution[i] <- 'UW'
+					} else if(is.na(data$Group[i]) || data$Institution[i] == "Duke") {
 						data$Group[i] <- data$Institution[i]
 					}
 				} else if(opt$project %in% c("mouseENCODEdnase", "mouseENCODEchipseq", "humanENCODEchipseq")) {
 					if(is.na(data$Group[i])) { data$Group[i] <- "Cell lines" }
-					if(data$Group[i]=="GM12878") { data$Group[i] <- "Cell lines" }
+					#TODO split out Tier 1 cell lines?
+					if(data$Name[i]=="GM12878") { data$Group[i] <- "Cell lines" }
 					if(opt$project %in% c("mouseENCODEchipseq", "humanENCODEchipseq")) {
-						if(grepl("[Tt]issues$", data$Group[i])) {
+						if(grepl("[Tt]issues$", data$Group[i]) || opt$project=="humanENCODEchipseq" && grepl("^Cell lines$", data$Group[i])) {
 							if(grepl('^H[234][ABFK]', data$Assay[i])) {
 								data$Group[i] <- paste0(data$Group[i], "-Histone marks")
 							} else {
