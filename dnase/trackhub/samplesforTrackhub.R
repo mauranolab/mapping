@@ -50,13 +50,13 @@ message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", opt$
 
 if(!is.null(opt$inputfile)) {
 	inputSampleIDs <- as.data.frame(fread(opt$inputfile))
+	message("[samplesforTrackhub] Merging annotation from inputfile ", opt$inputfile, ":", nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
 	if(is.null(inputSampleIDs$DS)) {
-		stop("DS column is required in provided inputfile", call.=FALSE)
+		stop("[samplesforTrackhub] DS column is required in provided inputfile", call.=FALSE)
 	} else {
 		inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$DS),]
-		message("[samplesforTrackhub] ", 'Number of unique DS numbers: ', length(unique(inputSampleIDs$DS)))
+		message("[samplesforTrackhub] Number of unique DS numbers: ", length(unique(inputSampleIDs$DS)))
 	}
-	message("[samplesforTrackhub] ", 'Dimensions of Input file: ', nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
 } else {
 	inputSampleIDs <- NULL
 }
