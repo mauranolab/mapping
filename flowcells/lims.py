@@ -12,6 +12,11 @@ import glob
 #Functions for accessing Maurano Lab LIMS through pygsheets
 
 
+#NB Need to get 
+#https://pygsheets.readthedocs.io/en/latest/authorization.html
+#create project, service account key, share sheet with service account manually from google drive UI
+
+
 #Pull the LIMS sheet from google using the service account secrets file and spreadsheet ID.
 def getLIMSsheet(sheet):
     try:
@@ -25,6 +30,7 @@ def getLIMSsheet(sheet):
         #Remove per-FC headers and space between FCs (any row that is only empty lines)
         mask = ~df['Sample Name'].str.startswith('#') & (df!="").any(1)
     except Exception as e:
+        #Doesn't print exception name right, e.g. if header is corrupted in google docs: "AttributeError: 'KeyError' object has no attribute 'argument'"
         print("WARNING could not load sheet " + sheet + " from google sheets: ", e.message, '\n', e.argument)
         wks = None
         df = None
