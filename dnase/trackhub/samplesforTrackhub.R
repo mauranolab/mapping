@@ -8,7 +8,7 @@ suppressPackageStartupMessages(library(optparse))
 
 option_list = list(
 	make_option(c("--inputfile"), type="character", default=NULL,
-		help="input file name. Optional tab-delimited file. Entries will be matched on DS column, and Age and Institution columns will be propagated to trackhub", metavar="character"),
+		help="input file name. Optional tab-delimited file. Entries will be matched on DS column, and any non-NA data in other columns will be propagated to trackhub", metavar="character"),
 	make_option(c("--out"), type="character", default=NULL,
 		help="output file name", metavar="character"),
 	make_option(c("--workingDir"), type="character", default=".", 
@@ -49,8 +49,13 @@ message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", opt$
 #opt=list(file="/vol/isg/encode/mouseencode_chipseq_2018/SampleIDs.tsv",out="/vol/isg/encode/mouseencode_chipseq_2018/SamplesForTrackhub.tsv")
 
 if(!is.null(opt$inputfile)) {
-	inputSampleIDs <- as.data.frame(fread(opt$inputfile))
-	message("[samplesforTrackhub] Merging annotation from inputfile ", opt$inputfile, ":", nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
+	if(opt$inputfile == "-") {
+		inputfile <- "file:///dev/stdin"
+	} else {
+		inputfile <- opt$inputfile
+	}
+	inputSampleIDs <- as.data.frame(fread(inputfile))
+	message("[samplesforTrackhub] Merging annotation from inputfile ", inputfile, ": ", nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
 	if(is.null(inputSampleIDs$DS)) {
 		stop("[samplesforTrackhub] DS column is required in provided inputfile", call.=FALSE)
 	} else {
@@ -264,13 +269,17 @@ for(curdir in mappeddirs) {
 			}
 			
 			if(!is.null(inputSampleIDs)) {
+				#Note that color has already been established and won't be redone if sample name changes
+				
 				#Matching the DS number from the analysis file to inputSampleIDs can give multiple results, so just pick the first
 				inputSampleIDrow <- which(inputSampleIDs[,"DS"] == data[i, "SampleID"])[1]
-			}
-			
-			#Take all columns to be taken from inputSampleIDs
-			for(curCol in intersect(outputCols, setdiff(colnames(inputSampleIDs), "DS"))) {
-				data[i, curCol] <- inputSampleIDs[inputSampleIDrow, curCol]
+				
+				#Take all columns to be taken from inputSampleIDs
+				for(curCol in intersect(outputCols, setdiff(colnames(inputSampleIDs), "DS"))) {
+					if(!is.na(inputSampleIDs[inputSampleIDrow, curCol])) {
+						data[i, curCol] <- inputSampleIDs[inputSampleIDrow, curCol]
+					}
+				}
 			}
 			
 			if(opt$project %in% c("byFC", "CEGS_byLocus")) {
@@ -285,7 +294,7 @@ for(curdir in mappeddirs) {
 					}
 				} else if(opt$project=="CEGS_byLocus") {
 					#Group values will be in the form of Study ID
-					SampleNameSplit <- unlist(strsplit(SampleIDsplit[1], "_"))
+					SampleNameSplit <- unlist(strsplit(data$Name[i], "_"))
 					CEGSsampleType <- SampleNameSplit[length(SampleNameSplit)]
 					if(CEGSsampleType %in% c("Yeast", "DNA", "BAC", "RepoBAC", "Ecoli", "Amplicon")) {
 						data$Study[i] <- SampleNameSplit[1]
@@ -387,6 +396,8 @@ if(opt$project=="CEGS_byLocus") {
 }
 
 #Output file:
+#Sort by sample ID to ease debugging
+data <- data[order(data$SampleID),]
 write.table(data, file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)
 
 # message("[samplesforTrackhub] ", warnings())
