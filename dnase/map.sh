@@ -336,7 +336,9 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
             extractcmd="samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample1}.fastq"
         fi
     elif [[ "${processingCommand}" == "mapBwaMem" ]]; then
-        #       -V            output the reference FASTA header in the XR tag
+        #ira hall consensus pipeline also includes: -Y -K 100000000
+        #By default, bwa-mem loads a batch of reads into RAM to process. The number of loaded bases is proportional to the number of threads. If you use a different number of threads, the mapping results may be slightly different. This hurts reproducibility. -K disables the behavior by loading a fixed number of bases into RAM. It should not affect ALT mapping.
+        
         bwaMemOptions=""
 #        if [[ "${curGenome}" =~ ^cegsvectors ]]; then
 #            Mainly seems to add spurious secondary alignments where one read in the pair maps to a different reference within cegsvectors
