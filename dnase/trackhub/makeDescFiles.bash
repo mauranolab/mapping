@@ -22,6 +22,7 @@ module load R/3.5.0
 make_html () {
     local infile=$1
     local desc_file=$2
+    local target=$3
     
     # If only the header is there now, that means we have no data for that genome.
     local n_lines=$(wc -l < ${infile})
@@ -33,19 +34,25 @@ make_html () {
         Rscript ${path_to_main_driver_script}/makeDescHtml.R ${infile} "${infile}.html"
     fi
     
+    local tmpdir=$(dirname "${desc_file}")
+    echo "<pre>" > "${tmpdir}/make_html_tmp"
+
     if [ -f ${desc_file} ]; then
-        local tmpdir=$(dirname "${desc_file}")
-        echo "<pre>" > "${tmpdir}/make_html_tmp"
         cat "${desc_file}" >> "${tmpdir}/make_html_tmp"
-        echo "</pre>" >> "${tmpdir}/make_html_tmp"
-        echo "<hr>" >> "${tmpdir}/make_html_tmp"
-        
-        if (( n_lines != 1)); then
-            cat "${infile}.html" >> "${tmpdir}/make_html_tmp"
-        fi
-        
-        mv "${tmpdir}/make_html_tmp" "${infile}.html"
+        echo " " >> "${tmpdir}/make_html_tmp"
     fi
+
+    echo "Source data located in: ${target%/readcounts.summary.txt}" >> "${tmpdir}/make_html_tmp"
+    echo " " >> "${tmpdir}/make_html_tmp"
+
+    echo "</pre>" >> "${tmpdir}/make_html_tmp"
+    echo "<hr>" >> "${tmpdir}/make_html_tmp"
+    
+    if (( n_lines != 1)); then
+        cat "${infile}.html" >> "${tmpdir}/make_html_tmp"
+    fi
+    
+    mv "${tmpdir}/make_html_tmp" "${infile}.html"
 }
 ##############################################################################
 # These functions makes html versions of the readcounts files, by genome.
@@ -183,7 +190,7 @@ find_readcounts () {
                 for i in "${genome_array[@]}"; do
                     ref="${i}"
                     ref2="${i}_desc"
-                    make_html ${!ref} ${!ref2}
+                    make_html ${!ref} ${!ref2} ${target}
                 done
             else
                 # No readcounts file exists. UCSC browser description area is just
