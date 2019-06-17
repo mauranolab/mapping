@@ -161,6 +161,11 @@ for genome in "${genome_dirs[@]}"; do
             continue
         fi
 
+        # Create an html file for this assembly. Later it will get moved to "descriptions" subdirectory.
+        echo "<pre>" > "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
+        echo "Source data located in: ${BASE}${genome}${assmbly%/}" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
+        echo "</pre>" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
+
         # Note we that ignore emacs backups in the next line via the [/d]?$
         bed_files=($(ls "${BASE}${genome}${assmbly}"* | egrep *[.]bed[0-9]*$))
     
@@ -271,6 +276,7 @@ while read -r line_in ; do
         echo "    compositeTrack on" >> ${out_file}
         echo "    visibility pack" >> ${out_file}
         echo "    type bigBed" >> ${out_file}
+        echo "    html descriptions/${genome}_assembly_${assmbly}.html" >> ${out_file}
         echo "    shortLabel ${assmbly}" >> ${out_file}
         echo "    longLabel ${assmbly}" >> ${out_file}
         echo "    parent ${genome}_Assemblies off" >> ${out_file}
