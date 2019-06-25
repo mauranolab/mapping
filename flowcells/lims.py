@@ -38,7 +38,7 @@ def getLIMSsheet(sheet):
 
 
 #Verify consistency in common entries between Sample Sheet and LIMS sheets
-def validateSampleSheetAgainstLIMS(lims, seq):
+def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask):
     #TODO sort order
     print("Check sequencing sheet for consistency with LIMS")
     commonCols = set(lims.columns.values).intersection(set(seq.columns.values))
