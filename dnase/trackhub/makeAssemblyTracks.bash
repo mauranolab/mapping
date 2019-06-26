@@ -261,6 +261,7 @@ while read -r line_in ; do
         if [[ "${genome}" == "cegsvectors" ]]; then
             echo "group cegsvectors" >> ${out_file}
         fi
+        echo "priority 1.1" >> ${out_file}
         echo superTrack on show >> ${out_file}
         echo " " >> ${out_file}
 

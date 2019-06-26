@@ -3,8 +3,3 @@ label CEGS
 priority 10
 defaultIsClosed 0
 
-name gc_content
-label GC Content
-priority 0
-defaultIsClosed 1
-
