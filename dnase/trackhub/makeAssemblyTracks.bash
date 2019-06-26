@@ -279,7 +279,15 @@ while read -r line_in ; do
         echo "    html descriptions/${genome}_assembly_${assmbly}.html" >> ${out_file}
         echo "    shortLabel ${assmbly}" >> ${out_file}
         echo "    longLabel ${assmbly}" >> ${out_file}
-        echo "    parent ${genome}_Assemblies off" >> ${out_file}
+
+        # Display assembly tracks by default if genome=cegsvectors. Otherwise not.
+        if [[ "${genome}" == "cegsvectors" ]]; then
+            # This does not work with the supertrack:  echo "    parent ${genome}_Assemblies on" >> ${out_file}
+            echo "    parent ${genome}_Assemblies" >> ${out_file}
+        else
+            echo "    parent ${genome}_Assemblies off" >> ${out_file}
+        fi
+
         echo " " >> ${out_file}
     fi
 
