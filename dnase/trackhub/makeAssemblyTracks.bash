@@ -261,7 +261,6 @@ while read -r line_in ; do
         if [[ "${genome}" == "cegsvectors" ]]; then
             echo "group cegsvectors" >> ${out_file}
         fi
-        echo "priority 1.1" >> ${out_file}
         echo superTrack on show >> ${out_file}
         echo " " >> ${out_file}
 
@@ -289,6 +288,8 @@ while read -r line_in ; do
             echo "    parent ${genome}_Assemblies off" >> ${out_file}
         fi
 
+        # This keeps the assmbly composite on top of the other tracks in the browser (except for GC Content).
+        echo "    priority 25" >> ${out_file}
         echo " " >> ${out_file}
     fi
 
