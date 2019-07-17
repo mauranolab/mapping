@@ -1,0 +1,32 @@
+#!/bin/bash
+set -eu -o pipefail
+
+#SBATCH --job-name=sort_chrom
+
+########################################################
+## Variables passed in via sbatch export.
+########################################################
+echo Starting to sort chrom: ${chrom}
+
+x=${BAM%.bam}         # Cut off the trailing "bam"
+y=${x##*.}            # Assign the base to y. This will be one of genotypes, like "hg38_full"
+z=${x%.${y}}          # Cut off the trailing ${y}
+sample_name=${z##*/}  # The remaining base is the sample name.
+echo "sample_name is: ${sample_name}"
+
+BAM_OUT="${FINAL_OUTDIR}/bams/${sample_name}.${chrom}.${BAM_N}.bam"
+
+## Replace pipes with spaces.
+input_to_samtools2=${input_to_samtools//|/ }
+
+## Sort bam file by read name.  picard does it lexigraphically.  samtools does it "naturally".
+samtools view -h -b -f ${BAM_K} -F ${BAM_E} ${BAM} ${input_to_samtools2} | \
+java -XX:ParallelGCThreads=2 -Dpicard.useLegacyParser=false -jar $PICARDPATH/picard.jar SortSam \
+     -I=/dev/stdin \
+     -O=${BAM_OUT} \
+     -VERBOSITY=WARNING \
+     -QUIET=true \
+     -SORT_ORDER=queryname
+
+echo Done with ${chrom}
+
