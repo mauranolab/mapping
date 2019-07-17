@@ -137,6 +137,7 @@ if grep ${BS} inputs.txt | grep -q .fastq; then
 elif grep ${BS} inputs.txt | grep ${mappedgenome} | grep -q .bam; then
     #Look for inputs.txt one directory up from the bam files and get fastq files from there
     #Re-counting fastq files really too slow for large jobs so try to grab the counts from the individual analysis logfiles
+    #BUGBUG how robust is this in the presence of missing files? Looks to me like it won't give an error
     sequencedReads=`cat inputs.txt | grep ${BS} | grep .bam | grep ${mappedgenome} | xargs -I {} dirname {} | xargs -I {} find {} -name "analysis*.${mappedgenome}.o*" | xargs awk -F "\t" 'BEGIN {OFS="\t"; sum=0} $1== "Num_sequenced_reads" {sum+=$2} END {print sum}'`
 else
     echo "Couldn't identify source of .fastq files; unable to count total number of sequenced reads"
