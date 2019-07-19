@@ -272,8 +272,7 @@ fi
 #########################################################
 
 time_stamp=$(date +"%m-%d-%y %T")
-echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> "${hub_target}/genomes_description.html"
-echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> "${hub_target}/hub_description.html"
+echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> "${hub_target}/description.html"
 
 ######################################################################################
 # Provide a README with the hub link.
