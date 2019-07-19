@@ -248,7 +248,7 @@ echo "shortLabel ${short_label}" >> "${hub_target}/hub.txt"
 echo "longLabel ${long_label}" >> "${hub_target}/hub.txt"
 echo "genomesFile genomes.txt" >> "${hub_target}/hub.txt"
 echo "email cadley.nyulangone@gmail.com" >> "${hub_target}/hub.txt"
-echo "descriptionUrl hub_description.html" >> "${hub_target}/hub.txt"
+echo "descriptionUrl description.html" >> "${hub_target}/hub.txt"
 
 cd ${path_to_main_driver_script}
 
