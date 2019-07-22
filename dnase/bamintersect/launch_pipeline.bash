@@ -1,9 +1,7 @@
 #!/bin/bash
 set -eu -o pipefail
 
-SOURCE_base=/vol/mauranolab/cadlej01/projects/Sud_mm10_rn6/input_library
-FINAL_base=/vol/mauranolab/cadlej01/projects/Sud_mm10_rn6/outdirs
-src=/vol/mauranolab/cadlej01/projects/Sud_mm10_rn6/src
+src="/vol/mauranolab/cadlej01/projects/Sud_mm10_rn6/src"
 
 while read -r input_file; do
     # Skip blank lines and comments in the input manifest.
@@ -19,26 +17,47 @@ while read -r input_file; do
         fi
     fi
 
-    SOURCE_FILE="${SOURCE_base}/${input_file}"
-    FINAL_OUTDIR="${FINAL_base}/${input_file}"
-    echo
-    echo $SOURCE_FILE
-    echo $FINAL_OUTDIR
+    ######################################################################################
+    # These values in this section need to get set via something.
+    # However, it doesn't have to be via sourcing a file.
+    source "/vol/mauranolab/cadlej01/projects/Sud_mm10_rn6/input_library/${input_file}"
+    # Set in the above source file:
+    #    bamname1
+    #    bam1_keep_flags
+    #    bam1_exclude_flags
+    #    bamname2
+    #    bam2_keep_flags
+    #    bam2_exclude_flags
+    #    reads_match
+    #    final_csv_delete
+    #    bam1_5p_HA
+    #    bam1_3p_HA
+    #    make_csv
+    #    make_table
 
-    export_vars="SOURCE_FILE=${SOURCE_FILE}"
-    export_vars="${export_vars},FINAL_OUTDIR=${FINAL_OUTDIR}"
-    export_vars="${export_vars},src=${src}"
+    # Could also derive sample_name from the bam files, for example.
+    sample_name=${input_file}
+    outdir="/vol/mauranolab/cadlej01/projects/Sud_mm10_rn6/outdirs/${sample_name}"
 
-    # Make the master output directory for this analysis
-    rm -rf ${FINAL_OUTDIR}  # Clear out the old one, if necessary.
-    mkdir ${FINAL_OUTDIR}
+    ######################################################################################
 
-    # Make a place for the related slurm reports.
-    mkdir "${FINAL_OUTDIR}/log"
+    # Notice the equal signs, which are needed for getopt!
+    "${src}/call_launch_bam_intersect.bash" \
+        --src ${src} \
+        --outdir ${outdir} \
+        --sample_name ${sample_name} \
+        --bamname1 ${bamname1} \
+        --bam1_keep_flags ${bam1_keep_flags} \
+        --bam1_exclude_flags ${bam1_exclude_flags} \
+        --bamname2 ${bamname2} \
+        --bam2_keep_flags ${bam2_keep_flags} \
+        --bam2_exclude_flags ${bam2_exclude_flags} \
+        --reads_match ${reads_match} \
+        --final_csv_delete=${final_csv_delete} \
+        --bam1_5p_HA=${bam1_5p_HA} \
+        --bam1_3p_HA=${bam1_3p_HA} \
+        --make_csv ${make_csv} \
+        --make_table ${make_table}
 
-    # Make a place for all the small chromosome bam files.
-    mkdir "${FINAL_OUTDIR}/bams"
-
-    sbatch --export=${export_vars} --output="${FINAL_OUTDIR}/log/launch_bam_intersect.${input_file}.o_%j"  "${src}/launch_bam_intersect.sbatch"
 done < launch_pipeline.manifest
 

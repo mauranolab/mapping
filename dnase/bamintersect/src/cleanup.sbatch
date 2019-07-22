@@ -9,6 +9,15 @@ set -eu -o pipefail
 ## FINAL_OUTDIR is passed in via an sbatch export
 ## src is passed in via an sbatch export
 ## reads_match is passed in via an sbatch export
+## make_csv is passed in via an sbatch export
+## make_table is passed in via an sbatch export
+## final_csv_delete is passed in via an sbatch export
+## bam1_5p_HA is passed in via an sbatch export
+## bam1_3p_HA is passed in via an sbatch export
+## sample_name is passed in via an sbatch export
+## annotationgenome is passed in via an sbatch export
+## make_csv is passed in via an sbatch export
+## make_table is passed in via an sbatch export
 ########################################################
 
 echo In cleanup
@@ -46,10 +55,10 @@ pwd
 ## Number of array jobs = N1 * N2.
 ## As an example, mm10 vs rn6 generates 552 jobs:  (19 + 3 + 1) * (20 + 3 + 1)
 ##
-## As long as the number of array jobs is less than 10,000 we will pass through the
+## As long as the number of array jobs is less than 5,000 we will pass through the
 ## below while loop just once. sbatch will launch all (N1 * N2) jobs in a single array call.
 
-array_incr=10000
+array_incr=5000
 array_start=1
 array_end=${array_incr}
 while :
@@ -61,6 +70,7 @@ do
     export_vars="FINAL_OUTDIR=${FINAL_OUTDIR}"
     export_vars="${export_vars},src=${src}"
     export_vars="${export_vars},reads_match=${reads_match}"
+    export_vars="${export_vars},make_csv=${make_csv}"
 
     ## Max possible value for array end is 100,000
     ## Max possible number of jobs is 50,000
@@ -101,27 +111,29 @@ rm "${FINAL_OUTDIR}/f1.bed"
 rm -r "${FINAL_OUTDIR}/TEMP_DIR_CL1"
 rm -r "${FINAL_OUTDIR}/bams"
 
-date
-echo Leaving cleanup
-
-exit 0
-
 ##########################################################################################################
-## WIP:
+## Create the final output tables.
 
-## Create the final output files.
-
-echo final_csv_delete: "${final_csv_delete}"     ##  passed in via an sbatch export
-
-size=${#final_csv_delete}
-if [ ${size} -lt 1 ]; then
-    delete_ranges=NA
-else
-    IFS='|' read -ra delete_ranges <<< "${final_csv_delete}"
+if [ ${make_csv} != "True" ]; then
+    # Need the bed file to make the table.
+    # Maybe make both bed and bam files, and delete bed file later?
+    echo "Making 2 bam files, so exiting cleanup.sbatch prior to calling filter_tsv.bash"
+    exit 0
 fi
 
-## ./filter_tsv.bash ${FINAL_OUTDIR} ${hg38_5p_HA} ${hg38_3p_HA} "${delete_ranges[@]}"
+if [ ${make_table} != "True" ]; then
+    echo "LP integration table not required."
+    exit 0
+fi
+
+# Need flags to turn things on and off below, or make mutiple tables?
+
+# May not be robust enough...
+main_chrom=$(tail -n+1 "${FINAL_OUTDIR}/log/chrom_list1" | head -n 1) || true
+bedops --chrom ${main_chrom} --everything "${FINAL_OUTDIR}/combined_tsv_files.bed" > "${FINAL_OUTDIR}/ceg_chrom1.bed"
+
+${src}/filter_tsv.bash ${FINAL_OUTDIR} ${bam1_5p_HA} ${bam1_3p_HA} ${sample_name} ${annotationgenome} ${final_csv_delete}
 
 date
-echo Leaving cleanup
+echo "Done with cleanup.sbatch"
 

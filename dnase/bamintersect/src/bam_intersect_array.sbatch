@@ -7,6 +7,7 @@ set -eu -o pipefail
 ## FINAL_OUTDIR is passed in via an sbatch export
 ## src is passed in via an sbatch export
 ## reads_match is passed in via an sbatch export
+## make_csv is passed in via an sbatch export
 ########################################################
 echo "SLURM_ARRAY_JOB_ID=$SLURM_ARRAY_JOB_ID"
 echo "SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID"
@@ -35,12 +36,11 @@ else
     same="--same"
 fi
 
-## Hard coded for this version of the code.
-## if [ ${make_csv} = "False" ]; then
-##     make_csv_flag=""
-## else
+if [ ${make_csv} = "False" ]; then
+    make_csv_flag=""
+else
     make_csv_flag="--make_csv"
-## fi
+fi
 
 "${src}/bam_intersect.py" --bam1 ${bam1} --bam2 ${bam2} --outdir ${outdir} ${same} ${make_csv_flag}
 
