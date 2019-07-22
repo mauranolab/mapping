@@ -6,5 +6,5 @@ twoBitPath cegsvectors/data/cegsvectors.2bit
 organism CEGS
 scientificName .
 defaultPos LP087:1-6634
-htmlPath genomes_description.html
+htmlPath description.html
  
