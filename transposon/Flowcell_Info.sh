@@ -344,7 +344,7 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     
     
     R --quiet --no-save << EOF
-    source("${src}/maagj01_profile.R")
+    source("${src}/Flowcell_Info.R")
     
     library(stringr)
     library(reshape2)
@@ -622,7 +622,7 @@ if [[ `find ${dirs} -maxdepth 1 -name "*Saturation*.txt" | sed 's/^..//g' | sed 
     rm -f $OUTDIR/SaturationCurve/*pdf
     rm -f $OUTDIR/SaturationCurve/*png
     R --quiet --no-save << EOF
-    source("${src}/maagj01_profile.R")
+    source("${src}/Flowcell_Info.R")
     
     SaturationCurve <- read("$OUTDIR/SaturationCurve/SaturationCurve.txt")
     
