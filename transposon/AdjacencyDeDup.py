@@ -155,7 +155,7 @@ parser.add_argument("--col", action='store', type=int, default=1, help = "Column
 parser.add_argument("--groupcol", action='store', type=int, help = "BC will only be collapsed for sequences having the same value in this column. NB: must be sorted on this column. [%(default)s]")
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
 parser.add_argument('--version', action='version', version='%(prog)s ' + version)
-parser.add_argument('-o','--output', action='store', dest='output',help='Deduplicated barcode file')
+parser.add_argument('-o', '--output', action='store', dest='output',help='Deduplicated barcode file')
 
 
 try:

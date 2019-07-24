@@ -11,7 +11,7 @@ if(length(commandArgs(TRUE) == 1)) {
 }
 
 
-###Define functions for splitting the lines - originally in maagj01_profile.R
+###Define functions for splitting the lines
 splitLines <- function(Term,sep) {
 	data.frame(do.call('rbind', strsplit(as.character(Sample[grep(Term,Sample,fixed=T)]),sep,fixed=TRUE)),stringsAsFactors=F)
 }

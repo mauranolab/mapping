@@ -1,4 +1,4 @@
-###From ~maagj01/.Rprofile
+###
 fancy_scientific <- function(l) { 
 	# turn in to character string in scientific notation 
 	l <- format(l, scientific = TRUE) 
