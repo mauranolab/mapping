@@ -60,21 +60,23 @@ head -n 1 ${outfile} > "${TMP_OUT}/header"
 ###########################################################################
 # CEGS_byLocus section:
 
-echo
-Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
-        --out ${outfile} \
-        --workingDir ${workingDir} \
-        --descend \
-        --project CEGS_byLocus \
-        --quiet
-
-# Split up the samplesforTrackhub.R output into separate files for each genome.
-for i in "${genome_array[@]}"; do
-    declare "outfile_${i}"="${outfile_base}_${i}_consolidated_locus.tsv"
-    ref="outfile_${i}"
-    head -n 1 ${outfile} > ${!ref}
-    grep ${i} ${outfile} >> ${!ref}
-done
+if [ ${hub_type} = "CEGS" ]; then
+    echo
+    Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
+            --out ${outfile} \
+            --workingDir ${workingDir} \
+            --descend \
+            --project CEGS_byLocus \
+            --quiet
+    
+    # Split up the samplesforTrackhub.R output into separate files for each genome.
+    for i in "${genome_array[@]}"; do
+        declare "outfile_${i}"="${outfile_base}_${i}_consolidated_locus.tsv"
+        ref="outfile_${i}"
+        head -n 1 ${outfile} > ${!ref}
+        grep ${i} ${outfile} >> ${!ref}
+    done
+fi
 
 # This is the end of the samplesforTrackhub.R section for making the CEGS_byLocus files.
 #
@@ -327,13 +329,14 @@ for i in "${genome_array[@]}"; do
 done
 
 ###############################
-consol_suffix_in="_consolidated_locus"
-supertrack_in="By_Locus"
+if [ ${hub_type} = "CEGS" ]; then
+    consol_suffix_in="_consolidated_locus"
+    supertrack_in="By_Locus"
 
-for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ${URL_path}/mapped/ ${supertrack_in}
-done
-
+    for i in "${genome_array[@]}"; do
+        make_tracks ${i} ${consol_suffix_in} ${URL_path}/mapped/ ${supertrack_in}
+    done
+fi
 ###############################
 echo "Done with Daler python code."
 
