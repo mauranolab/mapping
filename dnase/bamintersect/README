@@ -1,10 +1,17 @@
+
+TODO:  help text.
+
+====================================================================
+====================================================================
 https://docs.python.org/3/library/csv.html
 
 https://pysam.readthedocs.io/en/latest/genindex.html
+
+https://bedops.readthedocs.io/en/latest/content/reference/set-operations/bedops.html
 =============================================================================================================================================
 Overview of the code (there are 2 ways to launch it):
 
-launch_pipeline.bash:                                                         some_code.bash:
+launch_pipeline.bash:                                                         call_one_sample.bash:
     - collects input data from files for multiple runs via a while loop           - an example of something that might be embedded in a larger program.
     - calls call_launch_bam_intersect.bash once for each loop                     - calls call_launch_bam_intersect.bash once
                ||                                                                       ||
@@ -15,39 +22,15 @@ launch_pipeline.bash:                                                         so
                \/
 call_launch_bam_intersect.bash:
     - Collects input data via getopt for a single run. Creates some output and working directories for the run.
-    - Initiates launch_bam_intersect.sbatch, which is a slurm job.
-        = The slurm job is launched and control is passed back to launch_pipeline.bash or some_code.bash very quickly.
-               ||
-               \/
-launch_bam_intersect.sbatch:
     - Does some setup work, then launches array jobs which create small lexigraphically sorted bam files for each of the sample chromosomes.
         == The array jobs are in sort_chrom_.sbatch
+    - Does some more setup work (calling prep_big_array_job.sbatch as well).
+    - Launches bam_intersect_array.sbatch, which is a large array job.
     - When the array jobs are done, cleanup.sbatch is called.
                ||
                \/
 cleanup.sbatch:
-    - Compares each small bam file from one sample against those of the other sample, and looks for common read IDs.
-        = This is done via bam_intersect_array.sbatch, which calls bam_intersect.py
-    - Consolidates the comparison results into a single large sorted bed file.
-    - Constructs the LP Integration read count table (via filter_tsv.bash).
+    - Consolidates the array job results into a single large sorted bed file.
+    - Constructs the LP Integration read count table (via filter_tsv.bash), and other outputs.
 
 =============================================================================================================================================
-An example of how to call call_launch_bam_intersect.bash:
-
-"${src}/call_launch_bam_intersect.bash" \
-    --src ${src} \
-    --outdir ${outdir} \
-    --sample_name ${sample_name} \
-    --bamname1 ${bamname1} \
-    --bam1_keep_flags ${bam1_keep_flags} \
-    --bam1_exclude_flags ${bam1_exclude_flags} \
-    --bamname2 ${bamname2} \
-    --bam2_keep_flags ${bam2_keep_flags} \
-    --bam2_exclude_flags ${bam2_exclude_flags} \
-    --reads_match ${reads_match} \
-    --final_csv_delete=${final_csv_delete} \
-    --bam1_5p_HA=${bam1_5p_HA} \
-    --bam1_3p_HA=${bam1_3p_HA} \
-    --make_csv ${make_csv} \
-    --make_table ${make_table}
-
