@@ -9,6 +9,7 @@ set -eu -o pipefail
 ## reads_match is passed in via an sbatch export
 ## make_csv is passed in via an sbatch export
 ########################################################
+
 echo "SLURM_ARRAY_JOB_ID=$SLURM_ARRAY_JOB_ID"
 echo "SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID"
 echo "FINAL_OUTDIR is: ${FINAL_OUTDIR}"   # Passed in via sbatch export
