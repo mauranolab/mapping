@@ -1,7 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-#Based on /home/maagj01/scratch/transposon/submitMerged.sh
 #TODO merge with submit.sh a la dnase pipeline -- main issue is whether to remove files or not
 
 

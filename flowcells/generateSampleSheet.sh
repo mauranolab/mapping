@@ -50,7 +50,10 @@ strdist <- function(x,y) {
 	if(length(x) != length(y)) {
 		stop("ERROR: diff lengths unsupported!")
 	}
-	length(which(unlist(strsplit(x, "")) != unlist(strsplit(y, ""))))
+	xlist <- unlist(strsplit(x, ""))
+	ylist <- unlist(strsplit(y, ""))
+	#N's count as wildcards and match anything
+	length(which(xlist != ylist & xlist!="N" & ylist!="N"))
 }
 
 
