@@ -283,18 +283,19 @@ JOB_ID1=$(sbatch --parsable --dependency=afterok${JOB_ID0} --export=ALL,${export
           --output="${FINAL_OUTDIR}/log/prep_array_job.${sample_name}.o_%j" "${src}/prep_big_array_job.sbatch")
 
 ################################################################################################
-## Launch the big array job:
+## The big array job:
+
+n1=$(wc -l < "${FINAL_OUTDIR}/log/chrom_list1_simple")
+n2=$(wc -l < "${FINAL_OUTDIR}/log/chrom_list2_simple")
+let "array_size = ${n1} * ${n2}"
 
 export_vars="FINAL_OUTDIR=${FINAL_OUTDIR}"
 export_vars="${export_vars},src=${src}"
 export_vars="${export_vars},reads_match=${reads_match}"
 export_vars="${export_vars},make_csv=${make_csv}"
 
-## "big_array_job.sbatch" does the actual launching of the array job. The array job itself does not return
-## till it is complete. So JOB_ID2 will not be marked complete till the array job finishes, yet the code does
-## not need to pause at this point. "big_array_job.sbatch" is launched, and we move right on to "cleanup.sbatch", below.
-JOB_ID2=$(sbatch --parsable --dependency=afterok:${JOB_ID1} --export=ALL,${export_vars} \
-          --output="${FINAL_OUTDIR}/log/big_array_job.${sample_name}.o_%j" "${src}/big_array_job.sbatch")
+JOB_ID2=$(sbatch --parsable --dependency=afterok:${JOB_ID1} --export="ALL,${export_vars}" --array="1-${array_size}" \
+          --output="${FINAL_OUTDIR}/log/bam_intersect_array.o_%A_%a" "${src}/bam_intersect_array.sbatch")
 
 ################################################################################################
 ## Cleanup:
