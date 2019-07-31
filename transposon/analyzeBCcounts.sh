@@ -90,7 +90,7 @@ else
     echo
     echo "No UMIs found"
     
-    countfile="${sample}.barcode.counts.txt"
+    countfile="${OUTDIR}/${sample}.barcode.counts.txt"
 fi
 
 echo
