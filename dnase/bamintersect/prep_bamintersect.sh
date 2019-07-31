@@ -1,18 +1,17 @@
 #!/bin/bash
 set -eu -o pipefail
 
-#SBATCH --job-name=prep_big_array_job
-
 ########################################################
-## FINAL_OUTDIR is passed in via an sbatch export
+## sampleOutdir is passed in via an sbatch export
 ########################################################
 
-echo In prep_big_array_job.sbatch
+echo In prep_bamintersect.sh
 
-ls -1 ${FINAL_OUTDIR}/bams/*.1.bam > "${FINAL_OUTDIR}/bams/chr_list_1"
-ls -1 ${FINAL_OUTDIR}/bams/*.2.bam > "${FINAL_OUTDIR}/bams/chr_list_2"
+# These files were created by the two sort_bamintersect array jobs.
+ls -1 ${sampleOutdir}/bams/*.1.bam > "${sampleOutdir}/bams/chr_list_1"
+ls -1 ${sampleOutdir}/bams/*.2.bam > "${sampleOutdir}/bams/chr_list_2"
 
-TEMP_DIR_CL1="${FINAL_OUTDIR}/TEMP_DIR_CL1"
+TEMP_DIR_CL1="${sampleOutdir}/TEMP_DIR_CL1"
 echo TEMP_DIR_CL1 is: ${TEMP_DIR_CL1}
 mkdir ${TEMP_DIR_CL1}
 
@@ -27,9 +26,9 @@ while read -r bam1; do
         BASE1=${BASE1#*\.}   ## Get rid of the sample name.
         BASE2=${BASE2#*\.} 
 
-        echo ${bam1} ${bam2} "${TEMP_DIR_CL1}/${BASE1}___${BASE2}"  >> "${FINAL_OUTDIR}/bams/array_list"
-    done < "${FINAL_OUTDIR}/bams/chr_list_2"
-done < "${FINAL_OUTDIR}/bams/chr_list_1"
+        echo ${bam1} ${bam2} "${TEMP_DIR_CL1}/${BASE1}___${BASE2}"  >> "${sampleOutdir}/bams/array_list"
+    done < "${sampleOutdir}/bams/chr_list_2"
+done < "${sampleOutdir}/bams/chr_list_1"
 
-echo Leaving prep_big_array_job.sbatch
+echo Leaving prep_intersect.sh
 

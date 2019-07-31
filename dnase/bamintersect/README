@@ -13,24 +13,25 @@ Overview of the code (there are 2 ways to launch it):
 
 launch_pipeline.bash:                                                         call_one_sample.bash:
     - collects input data from files for multiple runs via a while loop           - an example of something that might be embedded in a larger program.
-    - calls call_launch_bam_intersect.bash once for each loop                     - calls call_launch_bam_intersect.bash once
+    - calls submit_bamintersect.sh once for each loop                             - calls submit_bamintersect.sh once
                ||                                                                       ||
                ||                                                                       //
                || <=======================<========================<===========<====<===
                ||
                ||
                \/
-call_launch_bam_intersect.bash:
+submit_bamintersect.sh:
     - Collects input data via getopt for a single run. Creates some output and working directories for the run.
     - Does some setup work, then launches array jobs which create small lexigraphically sorted bam files for each of the sample chromosomes.
-        == The array jobs are in sort_chrom_.sbatch
-    - Does some more setup work (calling prep_big_array_job.sbatch as well).
-    - Launches bam_intersect_array.sbatch, which is a large array job.
-    - When the array jobs are done, cleanup.sbatch is called.
+        == The array jobs are in sort_bamintersect.sh
+    - Does some more setup work (calling prep_bamintersect.sh).
+    - Launches bamintersect.sh, which is a large array job.
+    - When the array jobs are done, merge_bamintersect.sh is called.
                ||
                \/
-cleanup.sbatch:
+merge_bamintersect.sh:
     - Consolidates the array job results into a single large sorted bed file.
-    - Constructs the LP Integration read count table (via filter_tsv.bash), and other outputs.
+    - Constructs the LP Integration read count table (via filter_tsv.sh), and other outputs.
 
 =============================================================================================================================================
+

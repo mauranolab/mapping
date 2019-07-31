@@ -1,17 +1,84 @@
 #!/bin/bash
 set -eu -o pipefail
 
-src="/vol/mauranolab/cadlej01/projects/Sud_mm10_rn6/src"
+src="/vol/mauranolab/cadlej01/projects/Sud_mm10_rn6"
 
 # Maybe this should be passed in?
 outdirs="/vol/mauranolab/cadlej01/projects/Sud_mm10_rn6/outdirs"
 
 module load samtools/1.9
-module load picard/2.18.15
+
+module load picard/2.18.15 1>/dev/null
+# Redirects this output from picard:
+#     Loading picard/2.18.15
+#       Loading requirement: jdk/jdk1.8.0_101
+
 module load bedops/2.4.35
 
-################################################
+############################################################
 # Start of "getopt" section
+############################################################
+# For use with the getopt "-h" flag:
+
+function usage {
+cat << USAGE
+
+Usage: $(basename "$0") [Options]
+  Required Options:
+     --sample_name {sample name}
+     --bam1 {full path to bam file #1}
+     --bam1genome {something like LP123, mm10, or hg38. Others are valid as well.}
+     --bam2 {full path to bam file #2}
+     --bam2genome {something like LP123, mm10, or hg38. Others are valid as well.}
+
+  Optional Options:
+          --bam1_keep_flags {a sam format flag value required of all bam1 reads to be 
+                             included in the analysis. Default = 9}
+                            
+          --bam1_exclude_flags {a sam format flag value required of all bam1 reads to be 
+                                excluded from the analysis. Default = 3076}
+                  Examples:
+
+                      # Require read is paired.
+                      # Require mate is unmapped.
+                      bam1_keep_flags="9"
+
+                      # Exclude read unmapped.
+                      # Exclude PCR or optical duplicates.
+                      # Exclude supplementary aligments.
+                      bam1_exclude_flags="3076"
+
+          --bam2_keep_flags {a sam format flag value required of all bam2 reads to be 
+                             included in the analysis. Default = 1}
+                            
+          --bam2_exclude_flags {a sam format flag value required of all bam2 reads to be 
+                                excluded from the analysis. Default = 3076}
+
+          --reads_match {no argument}
+                 # This flag tells bam_intersect.py how to match the reads from each bam file.
+                 # If set, reads should be matched like [read1 read1], or [read2 read2].
+                 # If unset, reads are paired like [read1 read2], or [read2 read1].
+                 # Set this option for unpaired reads.
+                 # The default is to have it unset.
+
+           --do_not_make_csv {no argument}
+                 # Main output is a single bed file (unset), or 2 bam files (set).
+                 # The default is to have it unset.
+
+           --do_not_make_table {no argument}
+                 # Output a "counts.txt" table summarizing results (unset), or no table (set).
+                 # The default is to have it unset.
+
+           --clear_logs {no argument}
+                 # If set, clears out the log file subdirectories, since they can accumulate logs from previous runs.
+                 # The default is to have it unset.
+
+           -h,--help    Print this help message.
+
+USAGE
+}
+############################################################
+# Defining the getopt arguments:
 #
 # No colons = option does not have an argument.
 # One colon = option has a required argument.
@@ -24,17 +91,23 @@ module load bedops/2.4.35
 
 long_arg_list=(
     sample_name:
-    bamname1:
+    bam1:
+    bam1genome:
     bam1_keep_flags:
     bam1_exclude_flags:
-    bamname2:
+    bam2:
+    bam2genome:
     bam2_keep_flags:
     bam2_exclude_flags:
     reads_match
     do_not_make_csv
     do_not_make_table
+    clear_logs
     help
 )
+
+############################################################
+# Parsing the getopt arguments:
 
 long_args=$(printf "%s," "${long_arg_list[@]}")   # Turn the arg array into a string with commas.
 long_args=$(echo ${long_args} | sed 's/,$/ /')    # Get rid of final comma.
@@ -49,6 +122,7 @@ eval set -- "$CMD_LINE"
     make_csv=True
     make_table=True
     reads_match=False
+    clear_logs=False
     
     # Require read is paired.
     # Require mate is unmapped.
@@ -73,14 +147,18 @@ while true ; do
     case "$1" in
         --sample_name)
             sample_name=$2 ; shift 2 ;;
-        --bamname1)
+        --bam1)
             bamname1=$2 ; shift 2 ;;
+        --bam1genome)
+            cegsgenome=$2 ; shift 2 ;;
         --bam1_keep_flags)
             bam1_keep_flags=$2 ; shift 2 ;;
         --bam1_exclude_flags)
             bam1_exclude_flags=$2 ; shift 2 ;;
-        --bamname2)
+        --bam2)
             bamname2=$2 ; shift 2 ;;
+        --bam2genome)
+            annotationgenome=$2 ; shift 2 ;;
         --bam2_keep_flags)
             bam2_keep_flags=$2 ; shift 2 ;;
         --bam2_exclude_flags)
@@ -91,7 +169,9 @@ while true ; do
             make_csv=False ; shift 1 ;;
         --do_not_make_table)
             make_table=False ; shift 1 ;;
-        -h|--help) echo "Some helpful text." ; shift ; exit 0 ;;
+        --clear_logs)
+            clear_logs=True ; shift 1 ;;
+        -h|--help) usage; shift ; exit 0 ;;
         --) shift ; break ;;
         *) echo "getopt internal error!" ; exit 1 ;;
     esac
@@ -99,20 +179,14 @@ done
 
 # End of getopt section.
 ################################################
-# We now have:  the standard sample_name, bamname1, bamname2
+# We now have:  the standard sample_name, bamname1, bamname2, cegsgenome, annotationgenome
 # Derive some other required values from what we have.
-
-    x=${bamname1%.bam}
-    cegsgenome=${x##*.}
-
-    x=${bamname2%.bam}
-    annotationgenome=${x##*.}
 
     sample_name="${sample_name}.${cegsgenome}_vs_${annotationgenome}"
     echo "final sample_name is: ${sample_name}"
 
     # Modify this for use in the flowcell pipeline ?
-    FINAL_OUTDIR="${outdirs}/${sample_name}"
+    sampleOutdir="${outdirs}/${sample_name}"
 
     # Get the correct chrX non-HA zones (0-based bed style numbers, not UCSC positions):
     # The 5p and 3p outer boundaries of the HAs are as of Mar 29, 2019.
@@ -184,123 +258,136 @@ done
 ################################################
 # Make some output directories.
 
-# Make the master output directory for this analysis
-rm -rf ${FINAL_OUTDIR}  # Clear out the old one, if necessary.
-mkdir ${FINAL_OUTDIR}
+if [ "${clear_logs}" = "True" ]; then
+    rm -rf "${sampleOutdir}/log"  # Clear out the log directory.
+fi
 
-# Make a place for the related slurm reports.
-mkdir "${FINAL_OUTDIR}/log"
+if [ -d "${sampleOutdir}" ]; then
+    if [ ! -d "${sampleOutdir}/log" ]; then
+        mkdir "${sampleOutdir}/log"
+    fi
 
-# Make a place for all the small chromosome bam files.
-mkdir "${FINAL_OUTDIR}/bams"
+    if [ ! -d "${sampleOutdir}/bams" ]; then
+        mkdir "${sampleOutdir}/bams"
+    fi
+else
+    # Make the master output directory for this analysis
+    mkdir ${sampleOutdir}
+
+    # Make a place for the related slurm reports.
+    mkdir "${sampleOutdir}/log"
+
+    # Make a place for all the small chromosome bam files.
+    mkdir "${sampleOutdir}/bams"
+fi
 
 ########################################################
 # Make the chromosome lists which will eventually drive the array jobs.
 
-samtools idxstats ${bamname1} | awk '$1 != "*" {print $1}' > "${FINAL_OUTDIR}/log/chrom_list1"
-num_lines=$(wc -l < "${FINAL_OUTDIR}/log/chrom_list1")
-cp "${FINAL_OUTDIR}/log/chrom_list1" "${FINAL_OUTDIR}/inputs.chrom_list1.txt"
+samtools idxstats ${bamname1} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/chrom_list1"
+num_lines=$(wc -l < "${sampleOutdir}/log/chrom_list1")
+cp "${sampleOutdir}/log/chrom_list1" "${sampleOutdir}/inputs.chrom_list1.txt"
 
 if [ "${num_lines}" -ge "5" ]; then
     ## Get the simple chromosome name mask
-    grep -E '^chr[0-9]*$|^chr[XYM]$' "${FINAL_OUTDIR}/log/chrom_list1" | sed 's/^/^/' | sed 's/$/$/' > "${FINAL_OUTDIR}/log/chrom_list1_simple_mask"
+    grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/chrom_list1" | sed 's/^/^/' | sed 's/$/$/' > "${sampleOutdir}/log/chrom_list1_simple_mask"
 
     ## Apply mask to chomosome names
-    grep -v -f "${FINAL_OUTDIR}/log/chrom_list1_simple_mask" "${FINAL_OUTDIR}/log/chrom_list1" > "${FINAL_OUTDIR}/log/chrom_list1_long"
+    grep -v -f "${sampleOutdir}/log/chrom_list1_simple_mask" "${sampleOutdir}/log/chrom_list1" > "${sampleOutdir}/log/chrom_list1_long"
 
-    ## We'll strip the pipes out in sort_chrom.sbatch
-    chrom_list1_input_to_samtools=$(cat "${FINAL_OUTDIR}/log/chrom_list1_long" | paste -sd "|" -)
+    ## We'll strip the pipes out in sort_bamintersect.sh
+    chrom_list1_input_to_samtools=$(cat "${sampleOutdir}/log/chrom_list1_long" | paste -sd "|" -)
 
     ## Get simple chromosome names
-    grep -E '^chr[0-9]*$|^chr[XYM]$' "${FINAL_OUTDIR}/log/chrom_list1" >  "${FINAL_OUTDIR}/log/chrom_list1_simple"
-    num_lines=$(wc -l < "${FINAL_OUTDIR}/log/chrom_list1_long")
+    grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/chrom_list1" >  "${sampleOutdir}/log/chrom_list1_simple"
+    num_lines=$(wc -l < "${sampleOutdir}/log/chrom_list1_long")
     if [ "${num_lines}" -ge "1" ]; then
-        echo "all_other" >> "${FINAL_OUTDIR}/log/chrom_list1_simple"
+        echo "all_other" >> "${sampleOutdir}/log/chrom_list1_simple"
     fi
 else
     # A small number of chromosomes is an indicator that this is a LP/PL file.
     # There will be no "all_other" in this file.
-    cp "${FINAL_OUTDIR}/log/chrom_list1" "${FINAL_OUTDIR}/log/chrom_list1_simple"
+    cp "${sampleOutdir}/log/chrom_list1" "${sampleOutdir}/log/chrom_list1_simple"
     chrom_list1_input_to_samtools="NA"   # To avoid a pipefail.
 fi
 
 
-samtools idxstats ${bamname2} | awk '$1 != "*" {print $1}' > "${FINAL_OUTDIR}/log/chrom_list2"
-num_lines=$(wc -l < "${FINAL_OUTDIR}/log/chrom_list2")
-cp "${FINAL_OUTDIR}/log/chrom_list2" "${FINAL_OUTDIR}/inputs.chrom_list2.txt"
+samtools idxstats ${bamname2} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/chrom_list2"
+num_lines=$(wc -l < "${sampleOutdir}/log/chrom_list2")
+cp "${sampleOutdir}/log/chrom_list2" "${sampleOutdir}/inputs.chrom_list2.txt"
 
 ## Get the simple chromosome name mask
-grep -E '^chr[0-9]*$|^chr[XYM]$' "${FINAL_OUTDIR}/log/chrom_list2" | sed 's/^/^/' | sed 's/$/$/' > "${FINAL_OUTDIR}/log/chrom_list2_simple_mask"
+grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/chrom_list2" | sed 's/^/^/' | sed 's/$/$/' > "${sampleOutdir}/log/chrom_list2_simple_mask"
 
 ## Apply mask to chomosome names
-grep -v -f "${FINAL_OUTDIR}/log/chrom_list2_simple_mask" "${FINAL_OUTDIR}/log/chrom_list2" > "${FINAL_OUTDIR}/log/chrom_list2_long"
+grep -v -f "${sampleOutdir}/log/chrom_list2_simple_mask" "${sampleOutdir}/log/chrom_list2" > "${sampleOutdir}/log/chrom_list2_long"
 
-## We'll strip the pipes out in sort_chrom.sbatch
-chrom_list2_input_to_samtools=$(cat "${FINAL_OUTDIR}/log/chrom_list2_long" | paste -sd "|" -)
+## We'll strip the pipes out in sort_bamintersect.sh
+chrom_list2_input_to_samtools=$(cat "${sampleOutdir}/log/chrom_list2_long" | paste -sd "|" -)
 
 ## Get simple chromosome names
-grep -E '^chr[0-9]*$|^chr[XYM]$' "${FINAL_OUTDIR}/log/chrom_list2" >  "${FINAL_OUTDIR}/log/chrom_list2_simple"
-num_lines=$(wc -l < "${FINAL_OUTDIR}/log/chrom_list2_long")
+grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/chrom_list2" >  "${sampleOutdir}/log/chrom_list2_simple"
+num_lines=$(wc -l < "${sampleOutdir}/log/chrom_list2_long")
 if [ "${num_lines}" -ge "1" ]; then
-    echo "all_other" >> "${FINAL_OUTDIR}/log/chrom_list2_simple"
+    echo "all_other" >> "${sampleOutdir}/log/chrom_list2_simple"
 fi
 ################################################################################################
 ## Create the small chromosome bam files, and sort them:
 
-export_vars="FINAL_OUTDIR=${FINAL_OUTDIR}"
+export_vars="sampleOutdir=${sampleOutdir}"
 export_vars="${export_vars},BAM=${bamname1}"
 export_vars="${export_vars},BAM_K=${bam1_keep_flags}"      # Required. Use "0" if necessary.
 export_vars="${export_vars},BAM_E=${bam1_exclude_flags}"   # Required. Use "0" if necessary.
 export_vars="${export_vars},BAM_N=1"
 export_vars="${export_vars},input_to_samtools2=${chrom_list1_input_to_samtools}"
 
-num_lines=$(wc -l < "${FINAL_OUTDIR}/log/chrom_list1_simple")
+num_lines=$(wc -l < "${sampleOutdir}/log/chrom_list1_simple")
 
-JOB_ID0=$(sbatch --parsable --export=ALL,${export_vars} --array="1-${num_lines}" \
-        --output="${FINAL_OUTDIR}/log/sort_chrom_1.${sample_name}.o_%A_%a" "${src}/sort_chrom.sbatch")
+JOB_ID0=$(sbatch --parsable --export=ALL,${export_vars} --array="1-${num_lines}" --job-name=sort_bamintersect \
+        --output="${sampleOutdir}/log/sort_bamintersect_1.${sample_name}.o_%A_%a" "${src}/sort_bamintersect.sh")
 
 
-export_vars="FINAL_OUTDIR=${FINAL_OUTDIR}"
+export_vars="sampleOutdir=${sampleOutdir}"
 export_vars="${export_vars},BAM=${bamname2}"
 export_vars="${export_vars},BAM_K=${bam2_keep_flags}"      # Required. Use "0" if necessary.
 export_vars="${export_vars},BAM_E=${bam2_exclude_flags}"   # Required. Use "0" if necessary.
 export_vars="${export_vars},BAM_N=2"
 export_vars="${export_vars},input_to_samtools2=${chrom_list2_input_to_samtools}"
 
-num_lines=$(wc -l < "${FINAL_OUTDIR}/log/chrom_list2_simple")
+num_lines=$(wc -l < "${sampleOutdir}/log/chrom_list2_simple")
 
-JOB_ID1=$(sbatch --parsable --export=ALL,${export_vars} --array="1-${num_lines}" \
-        --output="${FINAL_OUTDIR}/log/sort_chrom_2.${sample_name}.o_%A_%a" "${src}/sort_chrom.sbatch")
+JOB_ID1=$(sbatch --parsable --export=ALL,${export_vars} --array="1-${num_lines}" --job-name=sort_bamintersect \
+        --output="${sampleOutdir}/log/sort_bamintersect_2.${sample_name}.o_%A_%a" "${src}/sort_bamintersect.sh")
 
 JOB_ID0=":${JOB_ID0}:${JOB_ID1}"
 
 ################################################################################################
 ## Prepare for the big array job:
 
-export_vars="FINAL_OUTDIR=${FINAL_OUTDIR}"
+export_vars="sampleOutdir=${sampleOutdir}"
 
-JOB_ID1=$(sbatch --parsable --dependency=afterok${JOB_ID0} --export=ALL,${export_vars} \
-          --output="${FINAL_OUTDIR}/log/prep_array_job.${sample_name}.o_%j" "${src}/prep_big_array_job.sbatch")
+JOB_ID1=$(sbatch --parsable --dependency=afterok${JOB_ID0} --export=ALL,${export_vars} --job-name=prep_bamintersect \
+          --output="${sampleOutdir}/log/prep_bamintersect.${sample_name}.o_%j" "${src}/prep_bamintersect.sh")
 
 ################################################################################################
 ## The big array job:
 
-n1=$(wc -l < "${FINAL_OUTDIR}/log/chrom_list1_simple")
-n2=$(wc -l < "${FINAL_OUTDIR}/log/chrom_list2_simple")
+n1=$(wc -l < "${sampleOutdir}/log/chrom_list1_simple")
+n2=$(wc -l < "${sampleOutdir}/log/chrom_list2_simple")
 let "array_size = ${n1} * ${n2}"
 
-export_vars="FINAL_OUTDIR=${FINAL_OUTDIR}"
+export_vars="sampleOutdir=${sampleOutdir}"
 export_vars="${export_vars},src=${src}"
 export_vars="${export_vars},reads_match=${reads_match}"
 export_vars="${export_vars},make_csv=${make_csv}"
 
 JOB_ID2=$(sbatch --parsable --dependency=afterok:${JOB_ID1} --export="ALL,${export_vars}" --array="1-${array_size}" \
-          --output="${FINAL_OUTDIR}/log/bam_intersect_array.o_%A_%a" "${src}/bam_intersect_array.sbatch")
+          --output="${sampleOutdir}/log/bamintersect.${sample_name}.o_%A_%a" --job-name=bamintersect "${src}/bamintersect.sh")
 
 ################################################################################################
 ## Cleanup:
 
-export_vars="FINAL_OUTDIR=${FINAL_OUTDIR}"
+export_vars="sampleOutdir=${sampleOutdir}"
 export_vars="${export_vars},src=${src}"
 ## export_vars="${export_vars},reads_match=${reads_match}"
 export_vars="${export_vars},exclude_regions_from_counts=${exclude_regions_from_counts}"
@@ -312,6 +399,6 @@ export_vars="${export_vars},annotationgenome=${annotationgenome}"
 export_vars="${export_vars},make_csv=${make_csv}"
 export_vars="${export_vars},make_table=${make_table}"
 
-sbatch --parsable --dependency=afterok:${JOB_ID2} --export=ALL,${export_vars} \
-       --output="${FINAL_OUTDIR}/log/cleanup.${sample_name}.o_%j" "${src}/cleanup.sbatch"
+sbatch --parsable --dependency=afterok:${JOB_ID2} --export=ALL,${export_vars} --job-name=merge_bamintersect \
+       --output="${sampleOutdir}/log/merge_bamintersect.${sample_name}.o_%j" "${src}/merge_bamintersect.sh"
 

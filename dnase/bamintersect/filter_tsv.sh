@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu -o pipefail
 
-FINAL_OUTDIR=$1
+sampleOutdir=$1
 bam1_5p_HA=$2
 bam1_3p_HA=$3
 sample_name=$4
@@ -27,13 +27,13 @@ IFS='-' read -r r1 r2 <<< "${range}"
 echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${outer_HAs3p}
 #####################################################################################
 
-file_1="${FINAL_OUTDIR}/${sample_name}.${main_chrom}.bed"  # The universe of all reads from a bam1 chromosome, in bed12 format
+file_1="${sampleOutdir}/${sample_name}.${main_chrom}.bed"  # The universe of all reads from a bam1 chromosome, in bed12 format
                                                            # [chr start end readID flag +/-] x 2
 
 # Maybe we want to filter out some of the reads from our universe:
 if [ ${exclude_regions_from_counts} = "NA" ];then
     # We're not deleting any reads in this scenario, so sort and move on.
-    # The "NA" is assigned in cleanup.sbatch when the "exclude_regions_from_counts" input file field is blank.
+    # The "NA" is assigned in merge_bamintersect.sh when the "exclude_regions_from_counts" input file field is blank.
     sort-bed ${file_1} > "${TMPDIR_CSV}/filter_csv.output"
 else
     # We want to delete file_1 reads that overlap the ranges in this bed3 file.
@@ -50,7 +50,7 @@ else
 fi
 # filter_csv.output contains the reads we want to keep, in bed12 format.
 
-cp "${TMPDIR_CSV}/filter_csv.output" "${FINAL_OUTDIR}/${sample_name}.${main_chrom}.informative.bed"
+cp "${TMPDIR_CSV}/filter_csv.output" "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed"
 
 #####################################################################################
 # Start building the output table:
@@ -119,7 +119,7 @@ grep  -v $'\t'1$ "${TMPDIR_CSV}/tmp8a.out" > "${TMPDIR_CSV}/tmp8b.out" || true
 sed "s/$/\t${main_chrom}/" "${TMPDIR_CSV}/tmp8b.out" > "${TMPDIR_CSV}/tmp8.out"
 
 # Dump data into main output file.
-cat "${TMPDIR_CSV}/tmp8.out" >> "${FINAL_OUTDIR}/${sample_name}.counts.txt"
+cat "${TMPDIR_CSV}/tmp8.out" >> "${sampleOutdir}/${sample_name}.counts.txt"
 
 #####################################################################################
 #####################################################################################
@@ -149,11 +149,11 @@ bedops --element-of 1 "${TMPDIR_CSV}/hprt_reads" ${outer_HAs3p} > "${TMPDIR_CSV}
 num_lines_5p=$(wc -l < "${TMPDIR_CSV}/hprt_reads5p")
 num_lines_3p=$(wc -l < "${TMPDIR_CSV}/hprt_reads3p")
 
-echo -e "${main_chrom}:" >> "${FINAL_OUTDIR}/${sample_name}.counts.anc_info.txt"
-echo -e "    Number of HPRT1 5p HA reads:\t${num_lines_5p}" >> "${FINAL_OUTDIR}/${sample_name}.counts.anc_info.txt"
-echo -e "    Number of HPRT1 3p HA reads:\t${num_lines_3p}" >> "${FINAL_OUTDIR}/${sample_name}.counts.anc_info.txt"
+echo -e "${main_chrom}:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo -e "    Number of HPRT1 5p HA reads:\t${num_lines_5p}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo -e "    Number of HPRT1 3p HA reads:\t${num_lines_3p}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 #####################################################################################
 #####################################################################################
 # For testing
-# cp -r "${TMPDIR_CSV}" "${FINAL_OUTDIR}"
+# cp -r "${TMPDIR_CSV}" "${sampleOutdir}"
 
