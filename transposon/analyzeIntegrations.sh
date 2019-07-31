@@ -254,13 +254,14 @@ awk -v cutoff=2 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | u
 
 echo
 echo "Histogram of number of insertions between two neighboring DNase sites"
-uniqueIntervals=$(tail -n +2 ${hotspotfile} | paste ${hotspotfile} - | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $4, $5}' | sed \$d | awk -F "\t" 'BEGIN {OFS="\t"} {if ($1==$3) print $1, $2, $4}' | bedtools intersect -wa -a - -b $OUTDIR/${sample}.barcodes.coords.bed | sort | uniq | wc -l | awk '{print $1}')
-allIntervals=$(wc -l ${hotspotfile} | awk '{print $1}')
+gcat ${hotspotfile} > $TMPDIR/hotspotfile.bed
+uniqueIntervals=$(tail -n +2 $TMPDIR/hotspotfile.bed | paste $TMPDIR/hotspotfile.bed - | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $4, $5}' | sed \$d | awk -F "\t" 'BEGIN {OFS="\t"} {if ($1==$3) print $1, $2, $4}' | bedtools intersect -wa -a - -b $OUTDIR/${sample}.barcodes.coords.bed | sort | uniq | wc -l | awk '{print $1}')
+allIntervals=$(wc -l $TMPDIR/hotspotfile.bed | awk '{print $1}')
 zeroInsertions=`echo $allIntervals-$uniqueIntervals | bc -l`
 echo " "$zeroInsertions 0
 
-tail -n +2 ${hotspotfile} |
-paste ${hotspotfile} - |
+tail -n +2 $TMPDIR/hotspotfile.bed |
+paste $TMPDIR/hotspotfile.bed - |
 awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $4, $5}' |
 sed \$d |
 awk -F "\t" 'BEGIN {OFS="\t"} {if ($1==$3) print $1, $2, $4}' |
@@ -283,13 +284,13 @@ echo "Density track"
 #awk -F "\t" 'BEGIN {OFS="\t"} {$NF=2^($NF+1); print}' > $TMPDIR/K562.CCLE.CNV.hg38.bed
 
 #score is insertion count per Mb bin. Disabled code normalizes to N=2 by CCLE CNV map
+#TODO normalize to count of unique insertions?
 cat ${chromsizes} | 
 awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="chrEBV"' |
 awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - | cut -f1,3 | awk -v step=100000 -v binwidth=1000000 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
 #--faster is ok since we are dealing with bins and read starts
 bedmap --faster --delim "\t" --bp-ovr 1 --echo --count - $OUTDIR/${sample}.uniqcoords.bed |
 #resize intervals down from full bin width to step size
-#Intervals then conform to Richard's convention that the counts are reported in 20bp windows including reads +/-75 from the center of that window
 awk -v step=100000 -v binwidth=1000000 -F "\t" 'BEGIN {OFS="\t"} {offset=(binwidth-step)/2 ; $2+=offset; $3-=offset; print}' |
 
 ##Take a distance-weighted average of the copy number over the interval and normalize to N=2
