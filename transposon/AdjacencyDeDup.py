@@ -216,7 +216,7 @@ else:
     process_lines_byGroup(lastGroup, startRow, index+1, wr)
 
 
-print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + "lines processed with" + str(numNonEmptyBCsProcessed) + "non-empty BCs)", file=sys.stderr)
+print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + " lines processed with " + str(numNonEmptyBCsProcessed) + " non-empty BCs)", file=sys.stderr)
 if groupcol is not None:
     print("[AdjacencyDeDup] " + str(numGroupsRead) + " unique groups were found", file=sys.stderr)
 print("[AdjacencyDeDup] " + str(numAmbiguousLines) + " reads with ambiguous BCs were masked out", file=sys.stderr)
