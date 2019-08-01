@@ -42,7 +42,7 @@ echo
 echo "Extracting barcodes from ${BCreadFile}"
 date
 if [[ "${plasmidSeq}" == "None" ]]; then
-    echo "No plasmid sequence provided, will extract barcodes from BC read only"
+    echo "No plasmid sequence provided, will extract barcodes using BC read only"
     plasmidcmd=""
 else
     plasmidcmd="--plasmidSeq ${plasmidSeq} --plasmidRead $TMPDIR/${sample}.plasmid.fastq.gz"
