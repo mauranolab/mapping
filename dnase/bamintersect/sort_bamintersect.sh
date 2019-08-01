@@ -1,14 +1,12 @@
 #!/bin/bash
 set -eu -o pipefail
 
-#SBATCH --job-name=sort_chrom
-
 ########################################################
 ## Variables passed in via sbatch export.
 ########################################################
 
 ## The "|| true" prevents the SIGPIPE signal problem. It's only needed when set -eo pipefail is enabled.
-chrom=$(tail -n+${SLURM_ARRAY_TASK_ID} "${FINAL_OUTDIR}/log/chrom_list${BAM_N}_simple" | head -n 1) || true
+chrom=$(tail -n+${SLURM_ARRAY_TASK_ID} "${sampleOutdir}/log/chrom_list${BAM_N}_simple" | head -n 1) || true
 
 if [ ${chrom} = "all_other" ]; then
     input_to_samtools=${input_to_samtools2}
@@ -24,7 +22,7 @@ z=${x%.${y}}          # Cut off the trailing ${y}
 sample_name=${z##*/}  # The remaining base is the sample name.
 echo "sample_name is: ${sample_name}"
 
-BAM_OUT="${FINAL_OUTDIR}/bams/${sample_name}.${chrom}.${BAM_N}.bam"
+BAM_OUT="${sampleOutdir}/bams/${sample_name}.${chrom}.${BAM_N}.bam"
 
 ## Replace pipes with spaces.
 input_to_samtools3=${input_to_samtools//|/ }
