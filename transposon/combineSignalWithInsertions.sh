@@ -87,7 +87,6 @@ awk -F "\t" -v sampleName="${PREFIX}" 'BEGIN {OFS="\t"} {print $0, sampleName}' 
 mv $OUTPUT.new $OUTPUT
 
 
-#Distance to TSS
 echo 'doing distance to nearest TSS'
 header="$header\tDistToTSS\tNearestRefseqGeneTSS\tNearestRefseqGeneStrand"
 closest-features --delim '\t' --closest --dist --no-ref $OUTPUT /vol/isg/annotation/bed/hg38/refseq_gene/refGene.CombinedTxStarts.bed | 
@@ -95,7 +94,6 @@ awk -F "\t" 'BEGIN {OFS="\t"} {print $NF, $(NF-3), $(NF-1)}' | paste $OUTPUT - >
 mv $OUTPUT.new $OUTPUT
 
 
-#Distance to DNase
 echo 'doing distance to nearest DHS '
 header="$header\tDistToNearestDHS"
 sort-bed $OUTPUT | closest-features --closest --dist --no-ref - /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch |
@@ -110,6 +108,13 @@ bedops -u /home/mauram01/scratch/hybridmice/dnase/lineagemcv/all.lineage.dhs.unm
 bedmap  --delim '\t' --skip-unmapped --echo --fraction-ref 1.0 --count  /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch - | 
 awk 'BEGIN {OFS="\t"} {print $1, $2, $3, NR, $4}' > $TMPDIR/DHS_MCV.bed
 closest-features --delim '\t' --dist --closest $OUTPUT $TMPDIR/DHS_MCV.bed | awk '{print $(NF-1)}' | paste $OUTPUT - > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
+echo 'doing distance to nearest CTCF site '
+header="$header\tDistToNearestCTCF"
+sort-bed $OUTPUT | closest-features --closest --dist --no-ref - /vol/isg/encode/CTCF_maurano_cell_reports_2015/ctcf.bycelltype.K562.hg38.starch |
+awk -F'|' 'BEGIN {OFS="\t"} {print $2}' | paste $OUTPUT - > $OUTPUT.new
 mv $OUTPUT.new $OUTPUT
 
 

@@ -51,10 +51,22 @@ echo
 echo "SAMtools statistics for sample ${sample}"
 samtools flagstat $OUTDIR/${sample}.bam | tee $TMPDIR/${sample}.flagstat.txt
 
-echo
+#Reproduce some of the statistics that filter_reads.py prints, but do it here for the full dataset. Note we use the 512 flag to hopefully speed these up before. I suppose we could just run filter_reads.py here without much performance penalty
 echo -n -e "${sample}\tTotal PF reads\t"
 cat $TMPDIR/${sample}.flagstat.txt | grep "in total" | awk '{print $1}'
 
+echo -n -e "${sample}\tTotal reads mapping to pSB or pTR\t"
+samtools view -f 512 $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3=="pTR" || $3=="pSB"' | wc -l
+
+echo -n -e "${sample}\tTotal mapped reads MAPQ<10\t"
+samtools view -F 4 -f 512 $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $5<10' | wc -l
+
+echo -n -e "${sample}\tTotal unmapped reads\t"
+samtools view -f 516 -c $OUTDIR/${sample}.bam
+
+echo -n -e "${sample}\tTotal reads mapped to unscaffolded contigs\t"
+#BUGBUG nonzero exit if those chroms are not present
+samtools view -f 512 $OUTDIR/${sample}.bam | cut -f3 | grep -E "hap|random|^chrUn_|_alt$|scaffold|^C\d+" -c
 
 echo
 readlengths=`samtools view ${samflags} $OUTDIR/${sample}.bam | cut -f10 | awk 'BEGIN {ORS=", "} {lengths[length($0)]++} END {for (l in lengths) {print l " (" lengths[l] ")" }}' | perl -pe 's/, $//g;'`

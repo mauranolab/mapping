@@ -52,15 +52,15 @@ echo "Aligning reads"
 userAlnOptions=""
 permittedMismatches=2
 curGenome="hg38_noalt"
-bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t $NSLOTS -Y"
-
+bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t ${NSLOTS} -Y"
+minMAPQ=10
 
 echo
 echo "Mapping to reference ${curGenome}"
 bwaIndexBase=/vol/isg/annotation/bwaIndex
 case "${curGenome}" in
 hg38_noalt)
-    bwaIndex=${bwaIndexBase}/hg38_noalt/hg38_noalt;;
+    bwaIndex=${bwaIndexBase}/hg38_noalt_transposon/hg38_noalt_transposon;;
 mm10)
     bwaIndex=${bwaIndexBase}/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set;;
 *)
@@ -93,9 +93,9 @@ echo "Extracting"
 echo -e "extractcmd=bwa ${extractcmd} | (...)"
 bwa ${extractcmd} |
 #No need to sort SE data
-#samtools sort -@ $NSLOTS -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
+#samtools sort -@ ${NSLOTS} -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
 #TODO UMIs don't seem to be in format filter_reads.py expects so they are not getting passed into bam
-${src}/../dnase/filter_reads.py --reqFullyAligned --failUnwantedRefs --max_mismatches ${permittedMismatches} --min_mapq 10 - - |
+${src}/../dnase/filter_reads.py --reqFullyAligned --failUnwantedRefs --unwanted_refs_list "hap|random|^chrUn_|_alt$|scaffold|^C\d+|^pSB$|^pTR$" --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} - - |
 samtools view -@ NSLOTS -1 - > $OUTDIR/${sample}.bam
 
 
