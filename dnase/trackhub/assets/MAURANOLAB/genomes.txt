@@ -1,0 +1,10 @@
+genome mauranolab
+trackDb mauranolab/trackDb_001.txt
+description Maurano Lab annotation and sequencing data
+groups mauranolab/mauranolab_groups.txt
+twoBitPath mauranolab/data/mauranolab.2bit
+organism MauranoLab
+scientificName .
+defaultPos pSB:1-6489
+htmlPath description.html
+ 
