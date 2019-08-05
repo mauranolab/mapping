@@ -6,10 +6,22 @@
 path_to_main_driver_script=$1
 hub_target=$2
 TMPDIR=$3
-shift 3
+hub_type=$4
+shift 4
 genome_array=("$@")
 
 module load bedops/2.4.35
+
+####################################################################
+# Set some hub_type dependent constants.
+
+if [ ${hub_type} = "CEGS" ]; then
+    assmbly_type1="cegsvectors"
+    assmbly_type2="cegs"
+else
+    assmbly_type1="mauranolab"
+    assmbly_type2="mauranolab"
+fi
 
 ####################################################################
 # We need to make bigBED files from bed files. To do this we need 
@@ -130,7 +142,7 @@ OUTFILE="${TMPDIR}/assembly_tracks/output_full_paths"
 echo Starting calls to bedToBigBed... > make_bigBED.log
 
 # Move to where the assembly sequences are kept, and get the names of the genome directories.
-BASE="/vol/cegs/sequences/"
+BASE="/vol/${assmbly_type2}/sequences/"
 cd ${BASE}
 genome_dirs=($(ls -d */))   # Elements will look like:  hg38/
 
@@ -142,13 +154,13 @@ for genome in "${genome_dirs[@]}"; do
         continue
     fi
 
-    if [[ ${genome} == "cegsvectors_"* ]]; then
-        # New cegsvectors directories are being added to /vol/cegs/sequences - Ignore them.
+    if [[ ${genome} == "${assmbly_type1}_"* ]]; then
+        # New ${assmbly_type} directories are being added to /vol/[cegs or mauranolab]/sequences - Ignore them.
         continue
-    elif [ "${genome}" = "cegsvectors/" ]; then
-        chrom_sizes="/vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes"
-        cp "${path_to_main_driver_script}/assets/CEGS/trackDb_cegsvectors_Analyses.txt" \
-           "${TMPDIR}/assembly_tracks/trackDb_assemblies_cegsvectors.txt"
+    elif [ "${genome}" = "${assmbly_type1}/" ]; then
+        chrom_sizes="/vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes"
+        cp "${path_to_main_driver_script}/assets/CEGS/trackDb_${assmbly_type1}_Analyses.txt" \
+           "${TMPDIR}/assembly_tracks/trackDb_assemblies_${assmbly_type1}.txt"
     else
         chrom_sizes="/vol/isg/annotation/fasta/${genome/\//}/${genome/\//}.chrom.sizes"
     fi
@@ -194,13 +206,13 @@ done
 # At the end of the above for loops, we're now in ${TMPDIR}/assembly_tracks
 
 # Divert here to make the cytoband file:
-cat /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes | LC_COLLATE=C sort -k1,1 -k2,2n | awk '{print $1,0,$2,$1,"gneg"}' > cytoBandIdeo.bed
-bedToBigBed -type=bed4 cytoBandIdeo.bed -as="${path_to_main_driver_script}/cytoband.as" /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes cytoBandIdeo.bigBed
+cat /vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes | LC_COLLATE=C sort -k1,1 -k2,2n | awk '{print $1,0,$2,$1,"gneg"}' > cytoBandIdeo.bed
+bedToBigBed -type=bed4 cytoBandIdeo.bed -as="${path_to_main_driver_script}/cytoband.as" /vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes cytoBandIdeo.bigBed
 
 
 # Divert again to make the GC percentage file:
-hgGcPercent -wigOut -doGaps -file=stdout -win=5 -verbose=0 cegsvectors /vol/cegs/sequences/cegsvectors > cegsvectors.wig
-wigToBigWig cegsvectors.wig /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes cegsvectors.gc.bw
+hgGcPercent -wigOut -doGaps -file=stdout -win=5 -verbose=0 ${assmbly_type1} /vol/${assmbly_type2}/sequences/${assmbly_type1} > ${assmbly_type1}.wig
+wigToBigWig ${assmbly_type1}.wig /vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes ${assmbly_type1}.gc.bw
 
 
 # Sort OUTFILE (made in the above for loops), so that the lines are all grouped by:
@@ -213,7 +225,7 @@ mv ${OUTFILE}_tmp ${OUTFILE}
 
 # Clear out old track files, just in case.
 for i in "${genome_array[@]}"; do
-    [ "${i}" = "cegsvectors" ] && continue
+    [ "${i}" = "${assmbly_type1}" ] && continue
     rm -f "trackDb_assemblies_${i}.txt"
 done
 
@@ -243,7 +255,7 @@ while read -r line_in ; do
         out_file="trackDb_assemblies_"${genome}".txt"
         old_genome=${genome}
 
-        if [[ "${genome}" == "cegsvectors" ]]; then
+        if [[ "${genome}" == "${assmbly_type1}" ]]; then
             # Add the cytoband track:
             echo "track cytoBandIdeo" >> ${out_file}
             echo "type bigBed" >> ${out_file}
@@ -257,9 +269,9 @@ while read -r line_in ; do
         echo "shortLabel Assemblies" >> ${out_file}
         echo "longLabel Assemblies" >> ${out_file}
 
-        # We need this to avoid having the cegsvectors Assemblies being shown in the "Other" control group.
-        if [[ "${genome}" == "cegsvectors" ]]; then
-            echo "group cegsvectors" >> ${out_file}
+        # We need this to avoid having the ${assmbly_type1} Assemblies being shown in the "Other" control group.
+        if [[ "${genome}" == "${assmbly_type1}" ]]; then
+            echo "group ${assmbly_type1}" >> ${out_file}
         fi
         echo superTrack on show >> ${out_file}
         echo " " >> ${out_file}
@@ -280,8 +292,8 @@ while read -r line_in ; do
         echo "    shortLabel ${assmbly}" >> ${out_file}
         echo "    longLabel ${assmbly}" >> ${out_file}
 
-        # Display assembly tracks by default if genome=cegsvectors. Otherwise not.
-        if [[ "${genome}" == "cegsvectors" ]]; then
+        # Display assembly tracks by default if genome=${assmbly_type1}. Otherwise not.
+        if [[ "${genome}" == "${assmbly_type1}" ]]; then
             # This does not work with the supertrack:  echo "    parent ${genome}_Assemblies on" >> ${out_file}
             echo "    parent ${genome}_Assemblies" >> ${out_file}
         else
