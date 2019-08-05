@@ -168,11 +168,9 @@ for i in "${genome_array[@]}"; do
 done
 echo " "
 
-# For a CEGS hub, we also need to make tracks for the various assemblies. Do it here:
-if [ ${hub_type} = "CEGS" ]; then
-    echo "Starting makeAssemblyTracks.bash"
-    ./makeAssemblyTracks.bash ${path_to_main_driver_script} ${hub_target} ${TMPDIR} "${genome_array[@]}"
-fi
+# We also need to make tracks for the various assemblies. Do it here:
+echo "Starting makeAssemblyTracks.bash"
+./makeAssemblyTracks.bash ${path_to_main_driver_script} ${hub_target} ${TMPDIR} ${hub_type} "${genome_array[@]}"
 
 # Now construct the "flowcell" and "aggregation" tracks in TMPDIR.
 echo "Starting make_tracks.bash"
@@ -187,17 +185,30 @@ update_genome () {
     genome=$1
     cd "${hub_target}/${genome}"
 
+    # Process the Assembly tracks.
     if [ ${hub_type} = "CEGS" ]; then
-        # Only CEGS has assembly tracks.
         cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" trackDb_001.txt
 
         if [ ${genome} = "cegsvectors" ]; then
             cp "${TMPDIR}/assembly_tracks/cytoBandIdeo.bigBed" data
         fi
+    else
+        # MAURANOLAB may not have assemblies in all genomes.
+        if [ -f "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" ]; then
+            cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" trackDb_001.txt
+        fi
+
+        if [ ${genome} = "mauranolab" ]; then
+            cp "${TMPDIR}/assembly_tracks/cytoBandIdeo.bigBed" data
+        fi
     fi
 
     # Process the "flowcell" tracks.
-    cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated.out" >> trackDb_001.txt
+    num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated.tsv")`
+    if [ ${num_line} -gt 1 ]; then
+       # If num_line == 1, then there are no flowcell tracks for this genome.
+       cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated.out" >> trackDb_001.txt
+    fi
 
     # Process the "aggregation" tracks.
     num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated_agg.tsv")`
@@ -229,8 +240,9 @@ done
 
 # Move the GC percentage file:
 if [ ${hub_type} = "CEGS" ]; then
-    # Only CEGS has assembly tracks.
     cp "${TMPDIR}/assembly_tracks/cegsvectors.gc.bw" "${hub_target}/cegsvectors/data"
+else
+    cp "${TMPDIR}/assembly_tracks/mauranolab.gc.bw" "${hub_target}/mauranolab/data"
 fi
 
 ######################################################################################
@@ -262,6 +274,7 @@ fi
 
 for i in "${genome_array[@]}"; do
     [ "${i}" = "cegsvectors" ] && continue
+    [ "${i}" = "mauranolab" ] && continue
     echo "genome ${i}" >> "${hub_target}/genomes.txt"
     echo "trackDb ${i}/trackDb_001.txt" >> "${hub_target}/genomes.txt"
     echo " " >> "${hub_target}/genomes.txt"
@@ -270,6 +283,8 @@ done
 #########################################################
 if [ "${hub_type}" = "CEGS" ]; then
     cp "/vol/cegs/sequences/cegsvectors/cegsvectors.2bit" "${hub_target}/cegsvectors/data/cegsvectors.2bit"
+else
+    cp "/vol/mauranolab/sequences/mauranolab/mauranolab.2bit" "${hub_target}/mauranolab/data/mauranolab.2bit"
 fi
 #########################################################
 
