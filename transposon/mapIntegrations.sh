@@ -33,7 +33,7 @@ ${src}/extractBCcounts.sh ${sample} $BCreadSeq $bclen $chunksize $plasmidSeq $ex
 
 
 #TODO f2 is the read containing the primer sequence and the genomic regions. 
-f2=$OUTDIR/${sample}.trimmed.plasmid.fastq.gz
+f2=$OUTDIR/${sample}.plasmid.fastq.gz
 sample="${sample}.$jobid"
 #BUGBUG @RG wrong below--includes jobids
 #TODO 
@@ -75,8 +75,8 @@ esac
 R2primerlen=18
 echo "Trimming $R2primerlen bp primer from R2"
 zcat -f $f2 | awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-awk -F "\t" 'BEGIN {OFS="\t"} {if(NR % 4==1 ) {split($0, name, "_"); print name[1]} else {print}}' |
-awk -v trim=$R2primerlen '{if(NR % 4==2 || NR % 4==0) {print substr($0, trim+1)} else if (NR % 4==1) {print $1} else {print}}' | pigz -p ${NSLOTS} -c -9 > $TMPDIR/${sample}.genome.fastq.gz
+#awk -F "\t" 'BEGIN {OFS="\t"} {if(NR % 4==1 ) {split($0, name, "_"); print name[1]} else {print}}' |
+awk -v trim=$R2primerlen '{if(NR % 4==2 || NR % 4==0) {print substr($0, trim+1)} else if (NR % 4==1) {print $1} else {print}}' | pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.genome.fastq.gz
 
 
 date

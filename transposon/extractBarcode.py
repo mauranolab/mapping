@@ -2,75 +2,13 @@
 from sys import argv
 import sys
 import re
-import swalign
 import argparse
 import io
 import gzip
-import leven 
-from leven import levenshtein
 from umi_tools._dedup_umi import edit_distance
+import swalign
 
-
-###Command line arguments
-parser = argparse.ArgumentParser(prog = "extractBarcode.py", description = "Filter fastq.gz files to retain reads with barcodes matching expected sequence in both barcode read and in plasmid read", allow_abbrev=False)
-
-bc_parser = parser.add_argument_group()
-bc_parser.add_argument('--BCread', action='store', required=True, help='Read with barcode (fastq.gz file)')
-bc_parser.add_argument('--referenceSeq', action='store', required=True, help='Reference sequence for BC read including barcode (as B+ at BC position)')
-
-plasmid_parser = parser.add_argument_group()
-plasmid_parser.add_argument('--plasmidRead', action='store', default=None, help='Read containing the fixed plasmid (fastq.gz file)')
-plasmid_parser.add_argument('--plasmidSeq', action='store', default=None, help='Plasmid reference sequence')
-
-parser.add_argument("--minBaseQ", action='store', type=int, default=30, help = "The minimum baseQ required over the BC region [%(default)s]. Assumes Phred 33")
-parser.add_argument('--bclen', action='store', type=int, required=True, help='length of barcode (barcodes longer than this will be trimmed) [%(default)s]')
-
-BCrevcomp_parser = parser.add_mutually_exclusive_group(required=False)
-parser.set_defaults(BCrevcomp=False)
-BCrevcomp_parser.add_argument('--BCrevcomp', dest='BCrevcomp', action='store_true', help='BC should be reverse complemented from sequencing read')
-BCrevcomp_parser.add_argument('--no-BCrevcomp', dest='BCrevcomp', action='store_false', help='BC should not be reverse complemented from sequencing read')
-
-parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
-parser.add_argument('--version', action='version', version='%(prog)s 1.0')
-
-try:
-    args = parser.parse_args()
-except argparse.ArgumentError as exc:
-    print(exc.message, '\n', exc.argument)
-    sys.exit(2)
-
-
-if args.plasmidRead is None:
-    if args.plasmidSeq is not None:
-        parser.error("Can't specify plasmid sequence without giving plasmid read file")
-    else:
-        enforcePlasmidRead = False
-else:
-    if args.plasmidSeq is None:
-        parser.error("Requires both plasmid read and plasmid sequence")
-    else:
-        enforcePlasmidRead = True
-
-
-#inputBCread = gzip.open(args.BCread, 'rt') 
-if args.BCread=="-":
-    inputBCread = sys.stdin
-else:
-    inputBCread = gzip.open(args.BCread, 'rt') 
-
-
-if enforcePlasmidRead:
-    inputplasmidRead = gzip.open(args.plasmidRead, 'rt')
-    plasmidSeq = args.plasmidSeq
-    plasmidSeq = plasmidSeq.upper()
-    plasmidSeqLength = len(plasmidSeq)
-    #plasmidSeq = plasmidSeq.encode()
-    numWrongPlasmid=0
-    
-#plasmidSeq='AGCTGCACAGCAACACCGAGCTGGGCATCGTGGAGTACCAGCACGCCTTCAAGACCCCCATCGCCTTCGCCAGATC'
-
-print("Extract barcodes\nParameters:", file=sys.stderr)
-print(args, file=sys.stderr)
+#BUGBUG Appears not to enforce matching if there is readthrough past the BC sequence?
 
 
 ###Utility functions
@@ -81,50 +19,161 @@ def revcomp(seq):
     return "".join(complement.get(base, base) for base in reversed(seq))
 
 
-###Fixed paramters
+def checkReadAgainstRefSequence(readseq, refseq, editDistTotals, mismatchByPos):
+    #Permit readthrough into barcode region by excising any BC from both readseq and refseq
+#    print("DEBUG raw readseq=", readseq, "; refseq=", refseq, file=sys.stderr, sep="")
+    bc_pos_match = re.search('B+', refseq)
+    if bc_pos_match is not None:
+        bc_start = bc_pos_match.start()
+        bc_end = bc_pos_match.end()
+        
+        readseq = readseq[:bc_start] + readseq[bc_end:]
+        refseq = refseq[:bc_start] + refseq[bc_end:]
+    
+    minLen = min(len(readseq), len(refseq))
+    
+#    print("DEBUG compare minLen=", minLen, "; readseq=", readseq, "; refseq=", refseq, file=sys.stderr, sep="")
+    
+    mismatchPosition = [i for i in range(minLen) if readseq[i] != refseq[i]]
+    editDist = edit_distance(readseq[0:minLen].encode(), refseq[0:minLen].encode())
+    
+    readEditDistPassed = editDist <= maxEditDist
+    
+    editDistTotals[editDist] += 1
+    
+    #BUGBUG doesn't account for offset in --align mode. I guess this should this be relative to ref?
+    for mm in list(map(int, mismatchPosition)):
+        mismatchByPos[mm] += 1
+    
+    return editDist, readEditDistPassed
+
+
+###Fixed parameters
+#Specifically this is Hamming Distance (i.e. no insertions/deletions permitted)
+maxEditDist = 2
+
+
+###Command line arguments
+version="1.1"
+
+parser = argparse.ArgumentParser(prog = "extractBarcode.py", description = "Filter fastq.gz files to retain reads with barcodes matching expected sequence in both barcode read and in plasmid read", allow_abbrev=False)
+
+bc_parser = parser.add_argument_group()
+bc_parser.add_argument('--BCread', action='store', required=True, help='Read with barcode (fastq.gz file or - for stdin)')
+bc_parser.add_argument('--bcRefSeq', action='store', required=True, help='Reference sequence for BC read including barcode (as B+ at BC position)')
+
+plasmid_parser = parser.add_argument_group()
+plasmid_parser.add_argument('--plasmidRead', action='store', default=None, help='Read containing the fixed plasmid (fastq.gz file)')
+plasmid_parser.add_argument('--plasmidRefSeq', action='store', default=None, help='Reference sequence plasmid read')
+
+parser.add_argument("--minBaseQ", action='store', type=int, default=30, help = "The minimum baseQ required over the BC region [%(default)s]. Assumes Phred 33. NB 2 bases are allowed to be below threshold")
+parser.add_argument('--bclen', action='store', type=int, required=True, help='length of barcode (barcodes longer than this will be dropped) [%(default)s]')
+
+parser.add_argument("--align", action='store_true', default=False, help = "Perform SW alignment of read to ref seq")
+parser.add_argument("--maxOffset", action='store', type=int, default=3, help = "Max amount of bp shift allowed (only used with --align, must be non-negative) [%(default)s]")
+
+BCrevcomp_parser = parser.add_mutually_exclusive_group(required=False)
+parser.set_defaults(BCrevcomp=False)
+BCrevcomp_parser.add_argument('--BCrevcomp', dest='BCrevcomp', action='store_true', help='BC should be reverse complemented from sequencing read')
+BCrevcomp_parser.add_argument('--no-BCrevcomp', dest='BCrevcomp', action='store_false', help='BC should not be reverse complemented from sequencing read')
+
+parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
+parser.add_argument('--version', action='version', version='%(prog)s ' + version)
+
+try:
+    args = parser.parse_args()
+except argparse.ArgumentError as exc:
+    print(exc.message, '\n', exc.argument)
+    sys.exit(2)
+
+
+if args.plasmidRead is None:
+    if args.plasmidRefSeq is not None:
+        parser.error("Can't specify plasmid sequence without giving plasmid read file")
+    else:
+        enforcePlasmidRead = False
+else:
+    if args.plasmidRefSeq is None:
+        parser.error("Requires both plasmid read and plasmid sequence")
+    else:
+        enforcePlasmidRead = True
+
+
+if args.BCread=="-":
+    inputBCread = sys.stdin
+else:
+    inputBCread = gzip.open(args.BCread, 'rt') 
+
+
+if enforcePlasmidRead:
+    inputPlasmidRead = gzip.open(args.plasmidRead, 'rt')
+    plasmidRefSeq = args.plasmidRefSeq
+    plasmidRefSeq = plasmidRefSeq.upper()
+    plasmidRefSeqLength = len(plasmidRefSeq)
+    numWrongPlasmidSeq = 0
+    
+
+print("Extract barcodes\nParameters:", file=sys.stderr)
+print(args, file=sys.stderr)
+
+
 #Minimum baseq
 minBaseQ = args.minBaseQ
 
-#Levenstein Distance
-maxEditDist=2
 
 #Reference sequence with Barcode
-#referenceSeq = 'CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBCTAGTTGTGGGATCTTTGTCCAAACTCATCGAGCTCGGGA'
+#bcRefSeq = 'CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBCTAGTTGTGGGATCTTTGTCCAAACTCATCGAGCTCGGGA'
+#plasmidRefSeq='AGCTGCACAGCAACACCGAGCTGGGCATCGTGGAGTACCAGCACGCCTTCAAGACCCCCATCGCCTTCGCCAGATC'
 
-referenceSeq = args.referenceSeq
-referenceSeq = referenceSeq.upper()
-referenceSeqLen = len(referenceSeq)
+bcRefSeq = args.bcRefSeq.upper()
+bc_pos_match = re.search('B+', bcRefSeq)
+bcRefSeq_bc_start = bc_pos_match.start()
+bcRefSeq_bc_end = bc_pos_match.end()
+bcRefSeq_bc_len = bcRefSeq_bc_end - bcRefSeq_bc_start
+bcRefSeqLength = len(bcRefSeq)
 
-bc_pos = re.search('B+', referenceSeq)
-bc_start = bc_pos.start()
-bc_end = bc_pos.end()
-bc_len = bc_end - bc_start
-#If read doesn't get full BC, that's ok, we'll get as much as there is
+#These will stay 0 unless we are in --align mode
+BCreadOffset = 0
+bcRefSeqOffset = 0
+
+#If read doesn't get full BC, that's ok, we'll get as much as there is and check it against bclen at the end 
 if args.verbose:
-    print("Raw BC seq ", bc_start, "-", bc_end, ": ", referenceSeq[bc_start : bc_end], "\n", file=sys.stderr)
+    print("Raw BC seq ", bcRefSeq_bc_start, "-", bcRefSeq_bc_end, ": ", bcRefSeq[bcRefSeq_bc_start : bcRefSeq_bc_end], "(", bcRefSeqLength, " nt)\n", file=sys.stderr)
+
+
+if args.align:
+       match = 2
+       mismatch = -3
+       scoring = swalign.NucleotideScoringMatrix(match, mismatch)
+       gap = -100
+       gapext= -100
+       sw = swalign.LocalAlignment(scoring, gap, gapext, wildcard='B')  # you can also choose gap penalties, etc...
+       
+       barcodeOffsets = [0] * (2*args.maxOffset+1)
 
 
 ###BC extraction
 if args.verbose:
     print("Starting extraction\n\n", file=sys.stderr)
 
-numskipped=0
-numread=0
-numWrongBCseq=0
-numlowQual=0
-numWrongBclength=0
+numReads = 0
+numReadsSkipped = 0
+numReadsNotAligned = 0
+numReadsWrongBCseq = 0
+numReadsLowBCQual = 0
+numReadsWrongBClength = 0
 
+#Initialize lists for worst-case of a read that is same length as the provided reference sequence
+BCeditDistTotals = [0] * (bcRefSeqLength+1)
+BCmismatchByPos = [0] * bcRefSeqLength
 
-BClevenDist = [0] * (bc_start+1)
-PlasmidlevenDist = [0] * (referenceSeqLen+1) #Why +1?
+if enforcePlasmidRead:
+    PlasmidEditDistTotals = [0] * (plasmidRefSeqLength+1)
+    PlasmidMismatchByPos = [0] * plasmidRefSeqLength
 
-PlasmidmissmatchLoc = [0] * (referenceSeqLen) 
-BClmissmatchLoc = [0] * (bc_start)
-BCHammingVsLevensthein = 0
-PlasmidHammingVsLevensthein = 0
 try:
     while(True):
-        
+        ###Get read (possibly with pair)
         BCread = [None] * 4
         BCread[0] = inputBCread.readline().rstrip('\n') #readname
         #Python has no way to detect EOF?!?
@@ -136,122 +185,128 @@ try:
         
         if enforcePlasmidRead:
             PLread = [None] * 4
-            PLread[0] = inputplasmidRead.readline().rstrip('\n') #readname
+            PLread[0] = inputPlasmidRead.readline().rstrip('\n') #readname
             #Python has no way to detect EOF?!?
             if PLread[0] == "":
                 break
-            PLread[1] = inputplasmidRead.readline().rstrip('\n').upper() #sequence
-            PLread[2] = inputplasmidRead.readline().rstrip('\n') #+
-            PLread[3] = inputplasmidRead.readline().rstrip('\n').upper() #baseQ
+            PLread[1] = inputPlasmidRead.readline().rstrip('\n').upper() #sequence
+            PLread[2] = inputPlasmidRead.readline().rstrip('\n') #+
+            PLread[3] = inputPlasmidRead.readline().rstrip('\n').upper() #baseQ
         
         #Increment counter only after successfully reading both BC and plasmid read
-        numread += 1
+        numReads += 1
         
         
-        readname = BCread[0].split(' ')[0][1:].split('_')
-        curReadLen = len(BCread[1])
-        if curReadLen > referenceSeqLen:
-            raise Exception("Read length (" + str(curReadLen) + ") is longer than ref sequence length (" + str(referenceSeqLen) + ")")
-        
-        #Filters
-        readBCpassed = None
-        readPlasmidpassed = None
-        readMinbaseQpassed = None
-        readLengthpassed = None
-        
-        bc_baseQ = BCread[3][(bc_start) : (bc_end)]
+        ###Filters
+        readAlignmentPassed = None
+        readBCreadEditDistPassed = None
+        readPlasmidReadEditDistPassed = None
+        readBCMinBaseQpassed = None
+        readBClengthPassed = None
         
         
-        #Minimum length of BC read
-        BCminLen = len(BCread[1][0:bc_start])
-        BCmismatchPosition = [i for i in range(BCminLen) if BCread[1][0:bc_start][i] != referenceSeq[:bc_start][i]]
-        BCeditDist = edit_distance(BCread[1][0:bc_start].encode(), referenceSeq[:bc_start].encode())
-        BCeditDistHamming = edit_distance(BCread[1][0:bc_start].encode(), referenceSeq[:bc_start].encode())
-        BClevenDist[BCeditDist] += 1
-        
-        for BCmis in list(map(int, BCmismatchPosition)):
-            BClmissmatchLoc[BCmis] += 1
-        
-        if BCeditDistHamming != BCeditDist:
-            BCHammingVsLevensthein +=1
-        
-        #Check if the start of the barcode read matches the plasmid
-        if BCeditDist <= maxEditDist:
-            readBCpassed = True
-        else:
-            readBCpassed = False
-        
-        
-        
-        #Minimum length of plasmid read
-        if enforcePlasmidRead:
-            #TODO permit readthrough into barcode region
+        #Optionally shift the BCsequence after alignment to reference
+        #Don't think it would make sense to combine this with --plasmidRead / --plasmidRefSeq although it is not prohibited
+        if args.align:
+            alignment = sw.align(bcRefSeq, BCread[1])
             
-            PlasmidminLen = min(len(PLread[1]), len(plasmidSeq))
-            #Find mismatch position
-            PlasmidmismatchPosition = [i for i in range(PlasmidminLen) if PLread[1][0:PlasmidminLen][i] != plasmidSeq[0:PlasmidminLen][i]]
-            plasmidEditDist = edit_distance(PLread[1][0:PlasmidminLen].encode(), plasmidSeq[0:PlasmidminLen].encode())
-            plasmidEditDistHamming = edit_distance(PLread[1][0:PlasmidminLen].encode(), plasmidSeq[0:PlasmidminLen].encode())
-            PlasmidlevenDist[plasmidEditDist] += 1
+            #Set this here, will be updated below in case we adjust BCread
+            curReadLen = len(BCread[1])
             
-            for plasMis in list(map(int, PlasmidmismatchPosition)):
-                PlasmidmissmatchLoc[plasMis] += 1
+            #Don't count barcode length in computing proportion of read that was matched to reference sequence.
+            alignedLenLeftOfBC = max(bcRefSeq_bc_start - alignment.r_pos, 0)
+            alignedLenRightOfBC = max(alignment.r_end - bcRefSeq_bc_end, 0)
+            #alignedLen = alignment.r_end - alignment.r_pos - bcRefSeq_bc_len
+            alignedLen = alignedLenLeftOfBC + alignedLenRightOfBC
+            propAligned =  alignedLen / (curReadLen - bcRefSeq_bc_len)
+            offset = alignment.q_pos - alignment.r_pos
             
-            if plasmidEditDistHamming != plasmidEditDist:
-                PlasmidHammingVsLevensthein +=1
-            
-            if plasmidEditDist <= maxEditDist:
-                readPlasmidpassed = True
+            if alignedLen >= 20 and alignedLenLeftOfBC >= 5 and alignedLenRightOfBC >= 5 and propAligned > 0.8 and offset <= args.maxOffset and offset >= -args.maxOffset:
+                if offset > 0:
+                    BCreadOffset = offset
+                    bcRefSeqOffset = 0
+                else:
+                    BCreadOffset = 0
+                    bcRefSeqOffset = -1 * offset
+                
+#                print("DEBUG BCreadOffset=", BCreadOffset, "; bcRefSeqOffset=", bcRefSeqOffset, file=sys.stderr, sep="")
+                
+                barcodeOffsets[offset+args.maxOffset] += 1
+                readAlignmentPassed = True
             else:
-                readPlasmidpassed = False
+                readAlignmentPassed = False
+            
+            if args.verbose:
+                print("Query: ", BCread[1], file=sys.stderr)
+                print(alignment.dump(), file=sys.stderr)
+                print("Alignment results: ", alignedLen, " total nt aligned (", propAligned *100, "%, read length ", curReadLen, "): ", alignedLenLeftOfBC, " nt left of BC, ", alignedLenRightOfBC, " nt right of BC; alignment offset=", offset, "; BCreadOffset=", BCreadOffset, ", bcRefSeqOffset=", bcRefSeqOffset, ".", file=sys.stderr, sep="")
         
         
-        #Check the baseQ of the barcode
-        if sum([ord(i)-33 >=minBaseQ for i in bc_baseQ])>=(args.bclen-2):
-            readMinbaseQpassed = True
+        BCeditDist, readBCreadEditDistPassed = checkReadAgainstRefSequence(BCread[1][BCreadOffset:], bcRefSeq[bcRefSeqOffset:], BCeditDistTotals, BCmismatchByPos)
+        if enforcePlasmidRead:
+            plasmidEditDist, readPlasmidReadEditDistPassed = checkReadAgainstRefSequence(PLread[1], plasmidRefSeq, PlasmidEditDistTotals, PlasmidMismatchByPos)
+        
+        
+        #Extract BC and check length
+        bc_seq = BCread[1][(bcRefSeq_bc_start-bcRefSeqOffset) : (bcRefSeq_bc_end-bcRefSeqOffset)]
+        #print("DEBUG found BC:", bc_seq, file=sys.stderr, sep="")
+        if len(bc_seq) == args.bclen:
+            readBClengthPassed = True
         else:
-            readMinbaseQpassed = False
+            readBClengthPassed = False
         
-        
-        bc_seq = BCread[1][(bc_start) : (bc_end)]
         if(args.BCrevcomp):
             bc_seq = revcomp(bc_seq)
         
-        if len(bc_seq) == args.bclen:
-            readLengthpassed = True
+        #Check the baseQ of the barcode
+        bc_baseQ = BCread[3][(bcRefSeq_bc_start-bcRefSeqOffset) : (bcRefSeq_bc_end-bcRefSeqOffset)]
+        #NB Permits 2 bases to be below threshold
+        if sum([ord(i)-33 >= minBaseQ for i in bc_baseQ]) >= args.bclen-2:
+            readBCMinBaseQpassed = True
         else:
-            readLengthpassed = False
+            readBCMinBaseQpassed = False
         
+        #TODO 10x check cell BC baseq
         
-        if readBCpassed and readPlasmidpassed and readMinbaseQpassed and readLengthpassed and (enforcePlasmidRead or readPlasmidpassed):
-            if(len(readname)>1):
-                UMI_Seq = readname[1]
-            else:
-                UMI_Seq = ""
-            print(bc_seq, readname[0], UMI_Seq, sep="\t")
+        ###Extract UMI and cell BC if present
+        #Read name format: [@...]_[cell_seq]?_[UMI_seq] [Illumina multiplexing BCs]
+        readname = BCread[0].split(' ')[0][1:].split('_')
+        if readBCreadEditDistPassed and readBCMinBaseQpassed and readBClengthPassed and (not enforcePlasmidRead or readPlasmidReadEditDistPassed) and (not args.align or readAlignmentPassed):
+            #Read is good
+            UMI_seq = ""
+            cell_seq = ""
+            if(len(readname)>2):
+                cell_seq = readname[1]
+                UMI_seq = readname[2]
+            elif(len(readname)>1):
+                UMI_seq = readname[1]
+            print(bc_seq, readname[0], UMI_seq, cell_seq, sep="\t")
         else:
-            numskipped += 1 
-            print("", readname[0], "", sep="\t")
+            numReadsSkipped += 1
+            print("", readname[0], "", "", sep="\t")
         
         
-        #Get statistics of failed reads
-        if not readBCpassed:
-            numWrongBCseq += 1
+        ###Update statistics of failed reads
+        if not readAlignmentPassed:
+            numReadsNotAligned += 1
             if args.verbose:
-                print("Barcode read doesn't match plasmid start. Levenshtein distance is ", BCeditDist, sep="", file=sys.stderr)
-        if enforcePlasmidRead:
-            if not readPlasmidpassed:
-                numWrongPlasmid += 1
-                if args.verbose:
-                    print("Plasmid sequence doesn't match. Levenshtein distance is ", plasmidEditDist, sep="", file=sys.stderr)
-        if not readMinbaseQpassed:
-            numlowQual += 1
+                print("Bad alignment!", file=sys.stderr, sep="")
+        if not readBCreadEditDistPassed:
+            numReadsWrongBCseq += 1
+            if args.verbose:
+                print("Barcode read exceeds distance threshold; Hamming distance is ", BCeditDist, sep="", file=sys.stderr)
+        if enforcePlasmidRead and not readPlasmidReadEditDistPassed:
+            numWrongPlasmidSeq += 1
+            if args.verbose:
+                print("Plasmid sequence exceeds distance threshold;  Hamming distance is ", plasmidEditDist, sep="", file=sys.stderr)
+        if not readBClengthPassed:
+            numReadsWrongBClength += 1
+            if args.verbose:
+                print("BC not right length! ", file=sys.stderr)
+        if not readBCMinBaseQpassed:
+            numReadsLowBCQual += 1
             if args.verbose:
                 print("Low baseQ in BC", sep="", file=sys.stderr)
-        if not readLengthpassed:
-            numWrongBclength += 1 
-            if args.verbose:
-                print("bc not right length! ", file=sys.stderr)
 
 
 except KeyboardInterrupt:
@@ -260,17 +315,22 @@ except KeyboardInterrupt:
 finally:
     inputBCread.close()
     if enforcePlasmidRead:
-        inputplasmidRead.close()
+        inputPlasmidRead.close()
     
     print("\nextractBarcode.py statistics:", file=sys.stderr)
-    print("Processed", numread, "reads. Skipped", numskipped, "of these reads:", file=sys.stderr)
-    print("    Reads with wrong Barcode seq: ", numWrongBCseq, " (", format(numWrongBCseq/numread*100, '.2f'), "%)", sep="", file=sys.stderr)
+    print("Processed", numReads, "reads. Skipped", numReadsSkipped, "of these reads:", file=sys.stderr)
+    if args.align:
+        print("    Reads not aligned: ", numReadsNotAligned, " (", format(numReadsNotAligned/numReads*100, '.2f'), "%)", sep="", file=sys.stderr)
+    print("    Reads with barcode read sequence exceeding distance threshold: ", numReadsWrongBCseq, " (", format(numReadsWrongBCseq/numReads*100, '.2f'), "%)", sep="", file=sys.stderr)
     if enforcePlasmidRead:
-        print("    Reads with wrong Plasmid seq: ", numWrongPlasmid, " (", format(numWrongPlasmid/numread*100, '.2f'), "%)", sep="", file=sys.stderr)
-    print("    Reads with >2 bp with minBaseQ <", minBaseQ, ": ", numlowQual, " (", format(numlowQual/numread*100, '.2f'), "%)", sep="", file=sys.stderr)
-    print("    Reads with BC length not equal to ", args.bclen, ": ", numWrongBclength, " (", format(numWrongBclength/numread*100, '.2f'), "%)", sep="", file=sys.stderr)
-    print("Percentage kept reads: ", format(((numread-(numskipped))/numread)*100, '.2f'), '%', sep="", file=sys.stderr)
-    print("\nBC Hamming distances: ", list(range(0,bc_start+1)), BClevenDist, sep="", file=sys.stderr)
-    print("BC mismatch positions: ", list(range(0,bc_start+1)), BClmissmatchLoc, sep="", file=sys.stderr)
-    print("Plasmid Hamming distances: ", list(range(1,40+1)), PlasmidlevenDist, sep="", file=sys.stderr)
-    print("Plasmid mismatch positions: ", list(range(1,40+1)), PlasmidmissmatchLoc, sep="", file=sys.stderr)
+        print("    Reads with plasmid read sequence exceeding distance threshold: ", numWrongPlasmidSeq, " (", format(numWrongPlasmidSeq/numReads*100, '.2f'), "%)", sep="", file=sys.stderr)
+    print("    Reads with >2 bp in BC with minBaseQ <", minBaseQ, ": ", numReadsLowBCQual, " (", format(numReadsLowBCQual/numReads*100, '.2f'), "%)", sep="", file=sys.stderr)
+    print("    Reads with BC length not equal to ", args.bclen, ": ", numReadsWrongBClength, " (", format(numReadsWrongBClength/numReads*100, '.2f'), "%)", sep="", file=sys.stderr)
+    print("Percentage reads kept: ", format(((numReads-(numReadsSkipped))/numReads)*100, '.2f'), '%', sep="", file=sys.stderr)
+    print("\nBC read edit distances: ", list(range(0, len(BCeditDistTotals))), BCeditDistTotals, sep="", file=sys.stderr)
+    print("BC read mismatches by position: ", list(range(0, len(BCmismatchByPos))), BCmismatchByPos, sep="", file=sys.stderr)
+    if enforcePlasmidRead:
+        print("Plasmid read edit distances: ", list(range(0, len(PlasmidEditDistTotals))), PlasmidEditDistTotals, sep="", file=sys.stderr)
+        print("Plasmid read mismatches by position: ", list(range(0, len(PlasmidMismatchByPos))), PlasmidMismatchByPos, sep="", file=sys.stderr)
+    if args.align:
+        print("BC read offsets: ", list(range(-args.maxOffset, args.maxOffset+1)), barcodeOffsets, sep="", file=sys.stderr)

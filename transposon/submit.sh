@@ -6,7 +6,6 @@ set -euo pipefail
 export OPENBLAS_NUM_THREADS=1
 
 module load pigz
-module load trimmomatic/0.38
 module load weblogo/3.5.0
 module load ImageMagick
 module load picard/1.140
@@ -54,7 +53,7 @@ f1=`find ${basedir}/ -maxdepth 1 -name "*_R1_*.fastq.gz" | sort`
 f2=`find ${basedir}/ -maxdepth 1 -name "*_R2_*.fastq.gz" | sort`
 
 
-if [[ "${sampleType}" != "DNA" ]] && [[ "${sampleType}" != "RNA" ]] && [[ "${sampleType}" != "iPCR" ]]; then
+if [[ "${sampleType}" != "DNA" ]] && [[ "${sampleType}" != "10xRNA" ]] && [[ "${sampleType}" != "RNA" ]] && [[ "${sampleType}" != "iPCR" ]]; then
     echo "ERROR submit: unknown sample type ${sampleType}"
     exit 2
 fi
@@ -115,20 +114,42 @@ if [ ${runPreprocess} -eq 1 ]; then
     ${src}/../dnase/filterNextSeqReadsForPolyG.py --inputfileR1 $TMPDIR/${sample}.R1.fastq.gz --inputfileR2 $TMPDIR/${sample}.R2.fastq.gz --maxPolyG 75 --outputfileR1 $TMPDIR/${sample}.filtered.R1.fastq.gz --outputfileR2 $TMPDIR/${sample}.filtered.R2.fastq.gz
     
     
+    echo
+    echo -n "# reads R1: "
+    zcat -f $TMPDIR/${sample}.filtered.R1.fastq.gz | awk 'END {print NR/4}'
+    echo -n "# reads R2: "
+    zcat -f $TMPDIR/${sample}.filtered.R2.fastq.gz | awk 'END {print NR/4}'
+    
+    
+    echo
+    echo "FASTQC"
+    date
+    fastqc --outdir $OUTDIR $TMPDIR/${sample}.filtered.R1.fastq.gz
+    echo
+    fastqc --outdir $OUTDIR $TMPDIR/${sample}.filtered.R2.fastq.gz
+    
+    
     ##BCread:
     #RNA, iPCR - R1
-    #DNA - R2
+    #DNA, RNA 10x - R2
     
     ##UMI (additional Ns may be present from PCR primers but do not represent a true UMI)
     #RNA: UMI is preserved on both reads
+    #RNA 10x: UMI is in the on-bead RT primer (plasmid read); Ns on RNA (R1) are not true UMI
     #DNA: UMI is only preserved in the plasmid read 
     #iPCR: No UMI
     #ChIP: UMI is only preserved in the plasmid read (4N for all)
     
     echo "Trimming/extracting UMI from R1 files ${f1} and R2 files ${f2}"
     date
-    echo "Trimming ${R1trim} bp from R1"
-    bc1pattern="^(?P<umi_1>.{$R1trim})"
+    
+    if [[ "${sampleType}" == "10xRNA" ]]; then
+        echo "Extracting cell BC and UMI for 10x data"
+        bc1pattern="^(?P<cell_1>.{16})(?P<umi_1>.{12})"
+    else
+        echo "Trimming ${R1trim} bp from R1"
+        bc1pattern="^(?P<umi_1>.{$R1trim})"
+    fi
     
     #Only extract UMI from R2 for RNA or iPCR samples (bcread is R1), throw it away for DNA samples
     if [[ "${R2trim}" -gt 0 && "${bcread}" == "R1" ]]; then
@@ -139,63 +160,53 @@ if [ ${runPreprocess} -eq 1 ]; then
         echo "Removing ${R2trim} bp from R2"
     fi
     
+    
     echo "umi_tools extract --bc-pattern \"${bc1pattern}\" --bc-pattern2 \"${bc2pattern}\""
+    #TODO --quality-filter-threshold for UMI filtering?
     #/home/mauram01/.local/bin/umi_tools extract --help
-    /home/mauram01/.local/bin/umi_tools extract --quality-encoding=phred33 --quality-filter-threshold=30 --compresslevel=9 -v 0 --log2stderr --extract-method regex --bc-pattern "${bc1pattern}" --bc-pattern2 "${bc2pattern}" -I $TMPDIR/${sample}.filtered.R1.fastq.gz -S $OUTDIR/${sample}.R1.fastq.gz --read2-in=$TMPDIR/${sample}.filtered.R2.fastq.gz --read2-out=$OUTDIR/${sample}.R2.fastq.gz
-    
-    
-    echo
-    echo -n "# reads R1: "
-    zcat -f $OUTDIR/${sample}.R1.fastq.gz | awk 'END {print NR/4}'
-    echo -n "# reads R2: "
-    zcat -f $OUTDIR/${sample}.R2.fastq.gz | awk 'END {print NR/4}'
-    
-    
-    echo
-    echo "FASTQC"
-    date
-    fastqc --outdir $OUTDIR $OUTDIR/${sample}.R1.fastq.gz
-    echo
-    fastqc --outdir $OUTDIR $OUTDIR/${sample}.R2.fastq.gz
+    /home/mauram01/.local/bin/umi_tools extract --quality-encoding=phred33 --quality-filter-threshold=30 --compresslevel=9 -v 0 --log2stderr --extract-method regex --bc-pattern "${bc1pattern}" --bc-pattern2 "${bc2pattern}" -I $TMPDIR/${sample}.filtered.R1.fastq.gz -S $OUTDIR/${sample}.${R1file}.fastq.gz --read2-in=$TMPDIR/${sample}.filtered.R2.fastq.gz --read2-out=$OUTDIR/${sample}.${R2file}.fastq.gz
     
     
     echo
     echo "Weblogo of raw UMI"
     date
     #Use tail to run through to end of file so zcat doesn't throw an error code
-    #UMI gets put on both fastq, so just look at R1
-    UMIlength=`zcat -f $OUTDIR/${sample}.R1.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print length(readname[2])}' | tail -1`
+    #UMI gets put on both fastq, so just look at BC file
+    UMIlength=`zcat -f $OUTDIR/${sample}.BC.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print length(readname[2])}' | tail -1`
     if [[ "${UMIlength}" -gt 0 ]]; then
         echo "Making weblogo of UMI"
-        zcat -f $OUTDIR/${sample}.R1.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print readname[2]}' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' | weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R1 UMI sequence" --stacks-per-line 100 > $TMPDIR/${sample}.R1.raw.UMI.eps
-        convert $TMPDIR/${sample}.R1.raw.UMI.eps $OUTDIR/${sample}.R1.raw.UMI.png
+        zcat -f $OUTDIR/${sample}.BC.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print readname[2]}' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' | weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} UMI sequence" --stacks-per-line 100 > $TMPDIR/${sample}.raw.UMI.eps
+        convert $TMPDIR/${sample}.raw.UMI.eps $OUTDIR/${sample}.raw.UMI.png
     fi
     
-    
-    #TODO get rid of trimmomatic -- I think the main thing is either extending the sequence provided or having extractBarcodes.py deal gracefully with readlength > alignment sequence and/or readthrough from plasmid read into barcode
     echo
-    echo "Trimmomatic"
+    echo "Weblogo of raw cellBC"
     date
-    trimmomaticBaseOpts="-threads $NSLOTS"
-    trimmomaticSteps="CROP:68"
-    java org.usadellab.trimmomatic.TrimmomaticPE $trimmomaticBaseOpts $OUTDIR/${sample}.R1.fastq.gz $OUTDIR/${sample}.R2.fastq.gz $OUTDIR/${sample}.trimmed.${R1file}.fastq.gz $OUTDIR/${sample}.trimmed.${R1file}.unpaired.fastq.gz $OUTDIR/${sample}.trimmed.${R2file}.fastq.gz $OUTDIR/${sample}.${R2file}.unpaired.fastq.gz $trimmomaticSteps
+    #Use tail to run through to end of file so zcat doesn't throw an error code
+    #cellBC gets put on both fastq, so just look at BC file
+    cellBClength=`zcat -f $OUTDIR/${sample}.BC.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print length(readname[3])}' | tail -1`
+    if [[ "${cellBClength}" -gt 0 ]]; then
+        echo "Making weblogo of cellBC"
+        zcat -f $OUTDIR/${sample}.BC.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print readname[3]}' | shuf -n 1000000 | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' | weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} R1 cellBC sequence" --stacks-per-line 100 > $TMPDIR/${sample}.raw.cellBC.eps
+        convert $TMPDIR/${sample}.raw.cellBC.eps $OUTDIR/${sample}.raw.cellBC.png
+    fi
     
     
     ###Weblogo of processed reads
     echo "Weblogo of processed reads"
     date
-    zcat -f $OUTDIR/${sample}.trimmed.BC.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
+    zcat -f $OUTDIR/${sample}.BC.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
     weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} BC processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.BC.processed.eps
     convert $TMPDIR/${sample}.BC.processed.eps $OUTDIR/${sample}.BC.processed.png
     
-    zcat -f $OUTDIR/${sample}.trimmed.plasmid.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
+    zcat -f $OUTDIR/${sample}.plasmid.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
     weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} plasmid processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.plasmid.processed.eps
     convert $TMPDIR/${sample}.plasmid.processed.eps $OUTDIR/${sample}.plasmid.processed.png
 fi
 
 
 ###Finally submit jobs
-numlines=`zcat -f $OUTDIR/${sample}.trimmed.BC.fastq.gz | wc -l`
+numlines=`zcat -f $OUTDIR/${sample}.BC.fastq.gz | wc -l`
 chunksize=2000000 #Split fastq into 500,000 reads for deduplication (500,000 x 4)
 numjobs=`echo "${numlines} / ${chunksize}" | bc -l -q`
 numjobs=$(floor ${numjobs})

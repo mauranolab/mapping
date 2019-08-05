@@ -40,7 +40,7 @@ import argparse
 import collections
 
 
-version="1.3"
+version="1.4"
 
 
 parser = argparse.ArgumentParser(prog = "filter_reads", description = "manually corrects the flags in a single- or pair-end BAM alignment file", allow_abbrev=False)
@@ -155,25 +155,25 @@ def parseRead(read):
     global totalReads
     totalReads += 1
     
-    return parseUMI(read)
-
-def parseUMI(read):
-    # strip off the umi, and place it in a custom tag (if it exists)
+    #Strip off the umi and cell barcode, and place them in a custom tag (if it exists).
+    #This also loses any info in the read name after the space (In the case of bwa, these are already gone)
+    #Too late to retain UMI/cellBC qualities
+    #Read name format: [...]_[cell_seq]?_[UMI_seq] [Illumina multiplexing BCs]
+    #Hash (#) was the the stam lab read name convention, and we used the XD tag circa 2015 but we haven't ever used either here
+    #See SAM optional fields spec at https://samtools.github.io/hts-specs/SAMtags.pdf
+    #cellranger uses UR for raw UMI
+    readname = read.query_name.split(' ')[0].split('_')
+    if(len(readname)>2):
+        cell_seq = readname[1]
+        UMI_seq = readname[2]
+        
+        read.setTag("RX", UMI_seq)
+        read.setTag("CR", cell_seq) #CB would be corrected
+    elif(len(readname)>1):
+        UMI_seq = readname[1]
+        read.setTag("RX", UMI_seq)
     
-    try:
-        #I think # is the the stam lab convention
-        #/vol/mauranolab/flowcells/fastq/FCH3YVFAFXY/umi/demuxReadsByContent.py and /home/mauram01/.local/bin/umi_tools dedup expect them to be separated from read name by _ (but is configurable)
-        #I think bcl2fastq uses :
-        umi_loc = read.query_name.index('#')
-    
-    except:
-        pass
-    
-    else:
-        #Picard seems to expect RX tag by default https://broadinstitute.github.io/picard/command-line-overview.html#UmiAwareMarkDuplicatesWithMateCigar
-        #UM?
-        read.setTag("XD", read.query_name[umi_loc+1:])
-        read.query_name = read.query_name[:umi_loc]
+    read.query_name = readname[0]
     
     return read;
 

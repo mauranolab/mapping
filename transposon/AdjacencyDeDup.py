@@ -18,11 +18,8 @@ from umi_tools._dedup_umi import edit_distance
 
 
 #TODO Make sure to ignore input lines with "" barcode
-# edit_distance('abcd'.encode(),'aaad'.encode())
 
 ###
-
-
 def breadth_first_search(node, adj_list):
     searched = set()
     found = set()
@@ -36,7 +33,7 @@ def breadth_first_search(node, adj_list):
         queue.update(adj_list[node])
         searched.update((node,))
         queue.difference_update(searched)
-            
+    
     return found
 
 def dedup_dir_adj(Counter):
@@ -104,7 +101,7 @@ def replace_dedup(data, bcColNum, myUMIcounts, deduped_UMI, wr):
                     if max(barCount, key=barCount.get) == min(barCount, key=barCount.get):
                         newBC = sorted(barCount)[0]
                     else:
-                        newBC = max(barCount, key=barCount.get)##TODO Barcodes with same number replace
+                        newBC = max(barCount, key=barCount.get) ##TODO Barcodes with same number replace
                     #print(line)
                 if len(matches)>1:
                     newBC = ""
@@ -147,12 +144,12 @@ def process_lines_byGroup(lastGroup, startRow, index, wr):
 
 
 ###Argument parsing
-version="1.0"
+version="1.1"
 
 parser = argparse.ArgumentParser(prog = "DeDup_adjacencyOutput", description = "Deduplicate and correct barcodes", allow_abbrev=False)
 parser.add_argument('inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences (other columns are passed through)')
 parser.add_argument("--col", action='store', type=int, default=1, help = "Column with barcodes in it [%(default)s]")
-parser.add_argument("--groupcol", action='store', type=int, help = "BC will only be collapsed for sequences having the same value in this column. NB: must be sorted on this column. [%(default)s]")
+parser.add_argument("--groupcols", action='store', type=str, help = "Comma-separated list of column numbers. BCs will only be collapsed for sequences having the same values in these columns. NB: must be sorted on these columns, with priority given to lower-numbered columns. [%(default)s]")
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
 parser.add_argument('--version', action='version', version='%(prog)s ' + version)
 parser.add_argument('-o', '--output', action='store', dest='output',help='Deduplicated barcode file')
@@ -165,10 +162,11 @@ except argparse.ArgumentError as exc:
     sys.exit(2)
 
 col = args.col-1
-if args.groupcol is None:
-    groupcol = None
+if args.groupcols is None:
+    groupcols = None
 else:
-    groupcol = args.groupcol-1
+    groupcols = [int(i)-1 for i in args.groupcols.split(",")]
+    groupcols.sort()
 
 
 ###Main
@@ -198,16 +196,21 @@ numNonEmptyBCsProcessed = 0
 numAmbiguousLines = 0
 numGroupsRead = 0
 
-if groupcol is None:
+if groupcols is None:
     process_lines(input_data, wr)
 else:
     startRow = 0
     lastGroup = None
     for index in range(len(input_data)):
         line = input_data[index]
-        curGroup = line[groupcol]
+        
+        #Make key by concatenating contents from all groupcols specified
+        curGroup = ""
+        for groupcol in groupcols:
+            curGroup += "+" + str(line[groupcol])
+        
         if curGroup != lastGroup:
-            if index>0:
+            if index > 0:
                 numGroupsRead += 1
                 process_lines_byGroup(lastGroup, startRow, index, wr)
             lastGroup = curGroup
@@ -217,7 +220,7 @@ else:
 
 
 print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + " lines processed with " + str(numNonEmptyBCsProcessed) + " non-empty BCs)", file=sys.stderr)
-if groupcol is not None:
+if groupcols is not None:
     print("[AdjacencyDeDup] " + str(numGroupsRead) + " unique groups were found", file=sys.stderr)
 print("[AdjacencyDeDup] " + str(numAmbiguousLines) + " reads with ambiguous BCs were masked out", file=sys.stderr)
 

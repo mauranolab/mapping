@@ -76,7 +76,7 @@ def getBasedir(lab, sampleType, fc):
             else:
                 raise Exception("Don't know how to aggregate data from " + lab)
             basedir += fc + "/" + bwaPipelineAnalysisCommandMap[sampleType] + "/"
-        elif sampleType in ['Transposon DNA', 'Transposon RNA', 'Transposon iPCR', 'Transposon iPCR Capture']:
+        elif sampleType in ['Transposon DNA', 'Transposon RNA', 'Transposon 10xRNA', 'Transposon iPCR', 'Transposon iPCR Capture']:
            basedir = "/vol/mauranolab/transposon/" + fc
         else:
             raise Exception("Don't know how to aggregate data for " + sampleType) 
@@ -107,13 +107,18 @@ def transposonSamples(line):
     bclen = "16"
     
     #Unique line to each library 
-    if sampleType == "Transposon DNA" or sampleType == "Transposon RNA":
+    if sampleType in ['Transposon DNA', 'Transposon RNA', 'Transposon 10xRNA']:
         plasmidSeq="AGCTGCACAGCAACACCGAGCTGGGCATCGTGGAGTACCAGCACGCCTTCAAGACCCCCATCGCCTTCGCCAGATC"
         extractBCargs="--no-BCrevcomp"
         if sampleType == "Transposon DNA":
             bcread = "R2"
         elif sampleType == "Transposon RNA":
             bcread = "R1"
+        elif sampleType == "Transposon 10xRNA":
+            BCreadSeq = "TTGGACAAAGATCCCACAACTAGCBBBBBBBBBBBBBBBBCCTAATTGCCTAGAAAGGAGCAGACGATATGGCGTCGCTCC"
+            bcread = "R2"
+            extractBCargs="--BCrevcomp"
+            plasmidSeq="None" #Nothing to align to in the cell BC / UMI (just the pT tail after).
         else:
             raise Exception("IMPOSSIBLE")
     elif sampleType == "Transposon iPCR" or sampleType == "Transposon iPCR Capture":
@@ -321,8 +326,8 @@ if args.aggregate or args.aggregate_sublibraries:
 
 #Some aggregations must be processed in groups of samples
 if args.aggregate or args.aggregate_sublibraries:
-    if len(set(flowcellFile['Sample Type']).intersection(set(['Transposon DNA', 'Transposon RNA', 'Transposon iPCR', 'Transposon iPCR Capture']))) > 0:
-        for curSample in set(flowcellFile[flowcellFile['Sample Type'].isin(['Transposon DNA', 'Transposon RNA', 'Transposon iPCR', 'Transposon iPCR Capture'])]['Sample #']):
+    if len(set(flowcellFile['Sample Type']).intersection(set(['Transposon DNA', 'Transposon RNA', 'Transposon 10xRNA', 'Transposon iPCR', 'Transposon iPCR Capture']))) > 0:
+        for curSample in set(flowcellFile[flowcellFile['Sample Type'].isin(['Transposon DNA', 'Transposon RNA', 'Transposon 10xRNA', 'Transposon iPCR', 'Transposon iPCR Capture'])]['Sample #']):
             print(aggregateTransposonSamples(flowcellFile[flowcellFile['Sample #']==curSample]))
 
 
@@ -350,8 +355,8 @@ for index, line in flowcellFile.iterrows():
         if re.compile(r'^BS[0-9]{5}[A-Z]?$').search(sampleID) is None:
             raise Exception("Can't parse " + sampleID + " as BS number")
         
-        if sampleType == "Transposon DNA" or sampleType == "Transposon RNA" or sampleType == "Transposon iPCR" or sampleType == "Transposon iPCR Capture":
-            if  args.aggregate or args.aggregate_sublibraries:
+        if sampleType in ['Transposon DNA', 'Transposon RNA', 'Transposon 10xRNA', 'Transposon iPCR', 'Transposon iPCR Capture']:
+            if args.aggregate or args.aggregate_sublibraries:
                 continue
             qsubLine = transposonSamples(line)
         elif sampleType in ["Hi-C", "3C-seq", "Capture-C"]:
