@@ -130,7 +130,7 @@ awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"; groupnum=1} { \
     split($0, last); \
 }' |
 #NB no need to sort
-${src}/AdjacencyDeDup.py --col 6 --groupcol 8 -o - - |
+${src}/AdjacencyDeDup.py --col 6 --groupcols 8 -o - - |
 #BUGBUG occasionally spits out null barcodes , e.g. from FCHHLLWBGX7/BS01481A-RDL_20180722_K562_pMH022_T0098_GFPpos_iPCR
 #chr12   109074738       109074739       NB501831:111:HHLLWBGX7:4:13407:1923:8064        -
 awk -F "\t" 'BEGIN {OFS="\t"} $6!=""' |

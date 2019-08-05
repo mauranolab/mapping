@@ -18,7 +18,7 @@ def process_lines(input_data, wr):
      
     if args.verbose:
         print("\nNumber of unique barcodes:", totalBCs, file=sys.stderr)
-        print("The 10 most common BCs before removal:",myCounts.most_common(10), file=sys.stderr)
+        print("The 10 most common BCs before removal:", myCounts.most_common(10), file=sys.stderr)
     
     failedBCs = [x for x in myCounts.keys() if myCounts[x] / totalBCs > freq]
     
@@ -29,18 +29,19 @@ def process_lines(input_data, wr):
         if oldBC in failedBCs:
             line[col] = ""
             #check rather than throwing an exception in case a malformed file has non-uniform number of columns
-            if umicol < len(line):
-                line[umicol] = ""
+            for maskcol in maskcols:
+                if maskcol < len(line):
+                    line[maskcol] = ""
         wr.writerows([line])
 
 
 ###Argument parsing
-version="1.1"
+version="1.2"
 
 parser = argparse.ArgumentParser(prog = "removeOverrepresentedBCs", description = "Removes overrepresented BCs based on frequency", allow_abbrev=False)
 parser.add_argument('inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences (other columns are passed through)')
 parser.add_argument("--col", action='store', type=int, default=1, help = "Column with barcodes in it [%(default)s]")
-parser.add_argument("--umicol", action='store', type=int, default=1, help = "Column with UMI in it -- this will be masked but not analyzed [%(default)s]")
+parser.add_argument("--maskcols", action='store', type=str, help = "Comma-separated list of column numbers. For failed BCs, these columns to be masked with an empty screen but not analyzed [%(default)s]")
 parser.add_argument("--freq", action='store', type=float, default=0.01, help = "Mask barcodes present at this frequency or higher [%(default)s]")
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
 parser.add_argument('--version', action='version', version='%(prog)s ' + version)
@@ -54,7 +55,8 @@ except argparse.ArgumentError as exc:
     sys.exit(2)
 
 col = args.col-1
-umicol = args.umicol-1
+maskcols = [int(i)-1 for i in args.maskcols.split(",")]
+maskcols.sort()
 freq = args.freq
 
 
