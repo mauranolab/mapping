@@ -21,6 +21,9 @@ echo "Analyzing data for ${sample} (minReadCutoff=${minReadCutoff})"
 zcat ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz | ${src}/removeOverrepresentedBCs.py --col 1 --maskcols 3,4 --freq 0.01 -o ${TMPDIR}/${sample}.barcodes.txt -
 
 
+#TODO 10x dedup UMI/ellBC also group by cellBC?
+
+
 if [ `cat ${TMPDIR}/${sample}.barcodes.txt | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | wc -l` -eq 0 ]; then
     echo "analyzeBCcounts.sh WARNING: no barcodes left, so exiting!"
     echo "Done!!!"
@@ -28,6 +31,8 @@ if [ `cat ${TMPDIR}/${sample}.barcodes.txt | cut -f1 | awk -F "\t" 'BEGIN {OFS="
 fi
 
 
+echo
+echo "Compressing"
 pigz -p ${NSLOTS} -c -9 ${TMPDIR}/${sample}.barcodes.txt > ${OUTDIR}/${sample}.barcodes.txt.gz
 
 #Empty BCs haven't been filtered yet for non-UMI data
@@ -97,6 +102,30 @@ else
 fi
 
 
+echo
+echo "Barcode counts"
+
+echo -n -e "${sample}\tNumber of unique barcodes\t"
+#TODO move to extract.py
+cat ${countfile} | wc -l
+
+echo -n -e "${sample}\tNumber of unique barcodes passing minimum read cutoff\t"
+#TODO move to extract.py
+cat ${countfile} | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $2>=minReadCutoff' | wc -l
+
+echo -n -e "${sample}\tNumber of analyzed reads\t"
+cat ${countfile} | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"; sum=0; total=0} $2>=minReadCutoff {sum+=$2} {total+=$2} END {print sum}'
+
+echo
+echo "Histogram of number of reads per barcode"
+cat ${countfile} | cut -f2 | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+
+echo
+echo "Barcode lengths"
+cut -f1 ${countfile} |
+awk '{print length($0)}' | sort -g | uniq -c | sort -k2,2 | awk '$2!=0'
+
+
 minCellBCLength=`zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($4)}' | uniq | sort -n | awk 'NR==1'`
 echo
 echo -e "${sample}\tMinimum cellBC length\t${minCellBCLength}"
@@ -113,56 +142,31 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     sort -k1,1 -k2,2 -k4,4 | uniq -c | sort -k2,2 |
     awk 'BEGIN {OFS="\t"} {print $2, $3, $4, $1}' |
     #Format: BC, UMI, cellBC, n
-    cut -f1,3 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' > ${OUTDIR}/${sample}.barcode.counts.byCell.txt
-    #Format: BC, cellBC, n
-    
-    #TODO 10x whitelist BCs?
+    cut -f1,3 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' |
+    #TODO parameterize and do more precise filtering of 10x whitelist BCs. we do miss some by not allowing mismatches but it's pretty few reads 
+    fgrep -w -f /home/mauram01/public_html/blog/2019aug02/cells.whitelist.txt | awk 'BEGIN {OFS="\t"; print "BC", "cellBC", "count"} {print}' > ${OUTDIR}/${sample}.barcode.counts.byCell.txt
     
     
     echo -n -e "${sample}\tNumber of cells\t"
-    cut -f2 ${OUTDIR}/${sample}.barcode.counts.byCell.txt | sort | uniq | wc -l
+    cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv cut -f cellBC | sort | uniq | wc -l
     
-    echo -n -e "${sample}\tHistogram of number of cells per BC\t"
-    cut -f1 ${OUTDIR}/${sample}.barcode.counts.byCell.txt | sort | uniq -c | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+    echo -e "${sample}\tHistogram of number of cells per BC"
+    cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv cut -f BC | sort | uniq -c | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
     
-    echo -n -e "${sample}\tHistogram of number of BCs per cell\t"
-    cut -f2 ${OUTDIR}/${sample}.barcode.counts.byCell.txt | sort | uniq -c | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+    echo -e "${sample}\tHistogram of number of BCs per cell"
+    cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv cut -f cellBC | sort | uniq -c | awk '{print $1}' | awk -v cutoff=15 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
     
-    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputfilename ${OUTDIR}/${sample}.clones.txt
+    echo
+    #TODO 10x hard read cutoff
+    cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv filter '$count >= 5' | ${src}/genotypeClones.py --inputfilename - --outputfilename ${OUTDIR}/${sample}.clones.txt
+    echo
     
-    echo -n -e "${sample}\tHistogram of number of cells per clone\t"
+    echo -e "${sample}\tHistogram of number of cells per clone"
     cat ${OUTDIR}/${sample}.clones.txt | mlr --headerless-csv-output --tsv cut -f ncells | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
     
-    echo -n -e "${sample}\tHistogram of number of BCs per clone\t"
-    cat ${OUTDIR}/${sample}.clones.txt | mlr --headerless-csv-output --tsv cut -f nBCs | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+    echo -e "${sample}\tHistogram of number of BCs per clone"
+    cat ${OUTDIR}/${sample}.clones.txt | mlr --headerless-csv-output --tsv cut -f nBCs | awk '{print $1}' | awk -v cutoff=15 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 fi
-
-
-
-echo
-echo "Barcode counts"
-
-echo -n -e "${sample}\tNumber of unique barcodes\t"
-#TODO move to extract.py
-cat ${countfile} | wc -l
-
-echo -n -e "${sample}\tNumber of unique barcodes passing minimum read cutoff\t"
-#TODO move to extract.py
-cat ${countfile} | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $2>=minReadCutoff' | wc -l
-
-echo -n -e "${sample}\tNumber of analyzed reads\t"
-cat ${countfile} | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"; sum=0; total=0} $2>=minReadCutoff {sum+=$2} {total+=$2} END {print sum}'
-
-
-echo
-echo "Histogram of number of reads per barcode"
-cat ${countfile} | cut -f2 | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
-
-
-echo
-echo "Barcode lengths"
-cut -f1 ${countfile} |
-awk '{print length($0)}' | sort -g | uniq -c | sort -k2,2 | awk '$2!=0'
 
 
 echo

@@ -91,7 +91,7 @@ def replace_dedup(data, bcColNum, myUMIcounts, deduped_UMI, wr):
     for line in data:
         numLinesProcessed += 1
         oldBC = line[bcColNum]
-        if oldBC!="":
+        if oldBC != "":
             numNonEmptyBCsProcessed += 1
             results = demul_index[oldBC]
             matches = [dedupMulti[x] for x in results]
@@ -112,17 +112,22 @@ def replace_dedup(data, bcColNum, myUMIcounts, deduped_UMI, wr):
 
 
 def process_lines(input_data, wr):
+    global numUniqueBCs
+    global numUniqueBCsAfterDedup
+    
     #Checks which barcodes are the most common before deduplication
     bcColNum = col
     myUMIcounts = collections.Counter([line[bcColNum] for line in input_data])
     #if args.verbose:
         #print(myUMIcounts, file=sys.stderr)
+    numUniqueBCs += len(myUMIcounts)
     if args.verbose:
         print("\nNumber of unique barcodes:", len(myUMIcounts), file=sys.stderr)
         print("The 10 most common UMIs before directional adjacency correction:", myUMIcounts.most_common(10), file=sys.stderr)
         print('\nDeduping barcodes', file=sys.stderr)
     #Deduplicate the barcodes using directional adjacency
     deduped_UMI = dedup_dir_adj(myUMIcounts)
+    numUniqueBCsAfterDedup += len(deduped_UMI)
     if args.verbose:
         print("\nNumber of unique barcodes after deduplication:", len(deduped_UMI), file=sys.stderr)
         print("\nAssociated barcodes with the top 10 UMIs directional adjacency correction:",'\n', deduped_UMI[:10], file=sys.stderr)
@@ -195,6 +200,8 @@ numLinesProcessed = 0
 numNonEmptyBCsProcessed = 0
 numAmbiguousLines = 0
 numGroupsRead = 0
+numUniqueBCs = 0
+numUniqueBCsAfterDedup = 0
 
 if groupcols is None:
     process_lines(input_data, wr)
@@ -220,9 +227,12 @@ else:
 
 
 print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + " lines processed with " + str(numNonEmptyBCsProcessed) + " non-empty BCs)", file=sys.stderr)
+print("[AdjacencyDeDup] Number of unique barcodes before deduplication:", numUniqueBCs, file=sys.stderr)
+print("[AdjacencyDeDup] Number of unique barcodes after deduplication:", numUniqueBCsAfterDedup, file=sys.stderr)
 if groupcols is not None:
     print("[AdjacencyDeDup] " + str(numGroupsRead) + " unique groups were found", file=sys.stderr)
 print("[AdjacencyDeDup] " + str(numAmbiguousLines) + " reads with ambiguous BCs were masked out", file=sys.stderr)
+#TODO report number unique BCs before/after
 
 
 inputfile.close()

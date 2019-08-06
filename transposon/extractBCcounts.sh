@@ -94,7 +94,6 @@ if [[ "${minUMILength}" -gt "4" ]]; then
     zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz |
     ##Here we stop being in order of original fastq
     sort -k1,1 |
-    #TODO 10x also group by cellBC
     ${src}/AdjacencyDeDup.py --col 3 --groupcols 1 -o - - | 
     #Mask BC and cellBC for reads where UMI was ambiguous -- I don't think this affects counts since both alternate UMIs must be present and this would just be a duplicate, but I haven't checked. Spot checking shows the failed UMIs have lots of G
     awk -F "\t" 'BEGIN {OFS="\t"} $3=="" {$1=""; $4=""} {print}' |

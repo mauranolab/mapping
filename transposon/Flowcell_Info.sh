@@ -297,6 +297,12 @@ find ${dirs} -maxdepth 1 -name "*barcodes.png" | xargs --no-run-if-empty cp -t $
 for i in `ls $OUTDIR/Weblogos_Barcode/*barcodes.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_Barcode/index.html
 
 
+echo "weblogo for Cell Barcode sequence"
+mkdir -p $OUTDIR/Weblogos_CellBC
+find ${dirs} -maxdepth 1 -name "*cellBCs.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_CellBC
+for i in `ls $OUTDIR/Weblogos_CellBC/*cellBCs.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_CellBC/index.html
+
+
 #####
 echo
 echo "Summarize flowcell info"
@@ -334,13 +340,14 @@ mv $OUTDIR/FlowcellSummary/index1 $OUTDIR/FlowcellSummary/index.html
 
 
 ######
-#Levenstein distance per sample
+#Edit distance per sample
 #######
+#BUGBUG hardcoded number of columns, can't handle mixed runs with different number of columns
 if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     mkdir -p $OUTDIR/EditDist
     
-    for i in `find ${dirs} -maxdepth 1 \( -name "extract*" -o -name "map*" \)`; do Dist=$(grep 'BC Hamming distance' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g'| perl -pe 's/, /\t/g' | grep 'Hamming distance' > $OUTDIR/EditDist/BC_EditDist
-    for i in `find ${dirs} -maxdepth 1 \( -name "extract*" -o -name "map*" \)`; do Dist=$(grep 'Plasmid Hamming distance' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g'| perl -pe 's/, /\t/g' | grep 'Hamming distance' > $OUTDIR/EditDist/Plasmid_EditDist
+    for i in `find ${dirs} -maxdepth 1 \( -name "extract*" -o -name "map*" \)`; do Dist=$(grep 'BC read edit distances' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g' | perl -pe 's/, /\t/g' > $OUTDIR/EditDist/BC_EditDist
+    for i in `find ${dirs} -maxdepth 1 \( -name "extract*" -o -name "map*" \)`; do Dist=$(grep 'Plasmid read edit distances' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g' | perl -pe 's/, /\t/g' > $OUTDIR/EditDist/Plasmid_EditDist
     
     
     R --quiet --no-save << EOF
@@ -348,44 +355,44 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     
     library(stringr)
     library(reshape2)
-    BCleven<-read("$OUTDIR/EditDist/BC_EditDist",stringsAsFactors=F)
-    BCleven[,1]<-gsub('\\\.o.*','',gsub('extract.|map.','',(gsub('.*/','',BCleven[,1]))))
+    BCEditDist<-read("$OUTDIR/EditDist/BC_EditDist",stringsAsFactors=F)
+    BCEditDist[,1]<-gsub('\\\.o.*','',gsub('extract.|map.','',(gsub('.*/','',BCEditDist[,1]))))
     
-    BCleven<-summaryBy(.~V1, data=BCleven,FUN=sum)
-    colnames(BCleven)<-c('Sample',0:18)
-    BCleven<-melt(BCleven)
-    BCleven[,4]<-"Barcode"
+    BCEditDist<-summaryBy(.~V1, data=BCEditDist,FUN=sum)
+    colnames(BCEditDist)<-c('Sample',0:18)
+    BCEditDist<-melt(BCEditDist)
+    BCEditDist[,4]<-"Barcode"
     
-    Plasmidleven<-read("$OUTDIR/EditDist/Plasmid_EditDist",stringsAsFactors=F)
-    Plasmidleven[,1]<-gsub('\\\.o.*','',gsub('extract.|map.','',(gsub('.*/','',Plasmidleven[,1]))))
+    PlasmidEditDist<-read("$OUTDIR/EditDist/Plasmid_EditDist",stringsAsFactors=F)
+    PlasmidEditDist[,1]<-gsub('\\\.o.*','',gsub('extract.|map.','',(gsub('.*/','',PlasmidEditDist[,1]))))
     
-    Plasmidleven<-summaryBy(.~V1, data=Plasmidleven,FUN=sum)
-    colnames(Plasmidleven)<-c('Sample',0:(ncol(Plasmidleven)-2))
-    Plasmidleven<-melt(Plasmidleven)
-    Plasmidleven[,4]<-'Plasmid'
+    PlasmidEditDist<-summaryBy(.~V1, data=PlasmidEditDist,FUN=sum)
+    colnames(PlasmidEditDist)<-c('Sample',0:(ncol(PlasmidEditDist)-2))
+    PlasmidEditDist<-melt(PlasmidEditDist)
+    PlasmidEditDist[,4]<-'Plasmid'
     
-    if (length(grep('iPCR\$',Plasmidleven[,1]))>0) {
-        Plasmidleven[grep('iPCR\$',Plasmidleven[,1]),][,4] <-'Primer'
+    if (length(grep('iPCR\$',PlasmidEditDist[,1]))>0) {
+        PlasmidEditDist[grep('iPCR\$',PlasmidEditDist[,1]),][,4] <-'Primer'
     }
     
-    BCleven<-rbind(BCleven,Plasmidleven)
-    colnames(BCleven)[1:4]<-c('Sample','Hamming','Reads','Read')
-    BCleven[,2]<-as.numeric(as.character(BCleven[,2]))
-    BCleven[,3]<-as.numeric(as.character(BCleven[,3]))
+    BCEditDist<-rbind(BCEditDist,PlasmidEditDist)
+    colnames(BCEditDist)[1:4]<-c('Sample','Hamming','Reads','Read')
+    BCEditDist[,2]<-as.numeric(as.character(BCEditDist[,2]))
+    BCEditDist[,3]<-as.numeric(as.character(BCEditDist[,3]))
     
-    colnames(BCleven)[1:4]<-c('Sample','Hamming','Reads','Read')
+    colnames(BCEditDist)[1:4]<-c('Sample','Hamming','Reads','Read')
     
     
-    myColors <- brewer.pal(4,"Set1")
-    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
+    myColors <- brewer.pal(5,"Set1")
+    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA','10xRNA'),levels=c('RNA','iPCR','Plasmid','DNA','10xRNA'))
     colScale <- scale_fill_manual(name = "Type",values = myColors)
-    height <- ceiling(length(unique(BCleven[,"Sample"]))/3)*2
+    height <- ceiling(length(unique(BCEditDist[,"Sample"]))/3)*2
     
     #plot
-    BCleven\$Type<-gsub(".*_",'',BCleven\$Sample)
-    BCleven\$Sample<- substr(BCleven\$Sample, 0, min(nchar(BCleven\$Sample)))
-    #pdf("$OUTDIR/EditDist/LevenDistance_BC.pdf",height=10,width=20)
-    bcl<-ggplot(BCleven[grep('Barcode',BCleven[,4]),], aes(Hamming,Reads,fill=Type)) + 
+    BCEditDist\$Type<-gsub(".*_",'',BCEditDist\$Sample)
+    BCEditDist\$Sample<- substr(BCEditDist\$Sample, 0, min(nchar(BCEditDist\$Sample)))
+    #pdf("$OUTDIR/EditDist/EditDistDistance_BC.pdf",height=10,width=20)
+    bcl<-ggplot(BCEditDist[grep('Barcode',BCEditDist[,4]),], aes(Hamming,Reads,fill=Type)) + 
     geom_bar(stat="identity",color='black',size=0.25,alpha=0.4) +
     #ggtitle('GGlo')+
     facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
@@ -400,12 +407,12 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     pdf(NULL)
     gp = ggplotGrob(bcl)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
-    ggsave(gp ,file="$OUTDIR/EditDist/LevenDistance_BC.pdf", width=13, height=height)
+    ggsave(gp ,file="$OUTDIR/EditDist/EditDistDistance_BC.pdf", width=13, height=height)
     
     
     #plot
-    #pdf("$OUTDIR/EditDist/LevenDistance_Plasmid.pdf",height=10,width=20)
-    pll<-ggplot(BCleven[grep('Plasmid|Primer',BCleven[,4]),], aes(Hamming,Reads,fill=Type)) + 
+    #pdf("$OUTDIR/EditDist/EditDistDistance_Plasmid.pdf",height=10,width=20)
+    pll<-ggplot(BCEditDist[grep('Plasmid|Primer',BCEditDist[,4]),], aes(Hamming,Reads,fill=Type)) + 
     geom_bar(stat="identity",color="black", size=0.1,alpha=0.4) +
     #ggtitle('GGlo')+
     facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
@@ -421,12 +428,12 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     pdf(NULL)
     gp = ggplotGrob(pll)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
-    ggsave(gp ,file="$OUTDIR/EditDist/LevenDistance_Plasmid.pdf", width=13, height=height)
+    ggsave(gp ,file="$OUTDIR/EditDist/EditDistDistance_Plasmid.pdf", width=13, height=height)
     
 EOF
     
-    convert -density 300 $OUTDIR/EditDist/LevenDistance_BC.pdf -quality 100 $OUTDIR/EditDist/LevenDistance_BC.png
-    convert -density 300 $OUTDIR/EditDist/LevenDistance_Plasmid.pdf -quality 100 $OUTDIR/EditDist/LevenDistance_Plasmid.png
+    convert -density 300 $OUTDIR/EditDist/EditDistDistance_BC.pdf -quality 100 $OUTDIR/EditDist/EditDistDistance_BC.png
+    convert -density 300 $OUTDIR/EditDist/EditDistDistance_Plasmid.pdf -quality 100 $OUTDIR/EditDist/EditDistDistance_Plasmid.png
     
     for i in `ls $OUTDIR/EditDist/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/EditDist/index.html
 fi
@@ -439,65 +446,65 @@ mkdir -p $OUTDIR/BarcodeFreq
 for i in `find ${dirs} -maxdepth 1 -name *barcode.counts.txt | sed 's/^..//g' | sed 's/\/.*//g'`; do reads=$(cut -f2 ${i}/${i}.barcode.counts.txt | awk '{sum+=$1} END {print sum}'); sort -nk2 ${i}/${i}.barcode.counts.txt| awk -v OFS='\t' -F'\t' -v sample="$i" -v reads="$reads" '{print $1, $2, sample, reads}'; done > $OUTDIR/BarcodeFreq/BarcodeFreq.txt
 
 
-R --quiet --no-save << EOF
-library(dplyr)
-BC <- read("$OUTDIR/BarcodeFreq/BarcodeFreq.txt")
-colnames(BC) <- c("Barcodes","barcodeFreq", "Sample", 'TotalBCcount')
-BC[,"Type"]<-gsub(".*_",'',gsub('_Merged','',BC[,"Sample"]))
-BC[,"cpm"] <- BC[,"barcodeFreq"]/(BC[,"TotalBCcount"]/1e6)
-BC[,"BC.bin"] <- cut(BC[,"cpm"], breaks=c( 0, 1.1, 5.1, 10.1, 50.1, 100.1, 1000.1, 10000.1, 100000.1, 1000000.1), right=F, include.lowest=T, labels=c("0-1", "1-5", "5-10", "10-50", "50-100", "100-1000", "100-10000", "10000-100000","+100000"))
-#BC <- BC %>%
-#    group_by(Sample, cpm) %>%
-#    mutate(quantile = ntile(cpm, 10))
-#quantBCs <- lsit()
-#for (i in 1:length(unique(BC\$Sample))) {
-#    quantile(BC[BC\$Sample %in% 'BS493A-MSH_K562~A1~GGlo~HS2~A1~1Linear~ExoI_Rep2_DNA',]\$cpm, prob = seq(0, 1, length = 11), type = 5
+#R --quiet --no-save << EOF
+#library(dplyr)
+#BC <- read("$OUTDIR/BarcodeFreq/BarcodeFreq.txt")
+#colnames(BC) <- c("Barcodes","barcodeFreq", "Sample", 'TotalBCcount')
+#BC[,"Type"]<-gsub(".*_",'',gsub('_Merged','',BC[,"Sample"]))
+#BC[,"cpm"] <- BC[,"barcodeFreq"]/(BC[,"TotalBCcount"]/1e6)
+#BC[,"BC.bin"] <- cut(BC[,"cpm"], breaks=c( 0, 1.1, 5.1, 10.1, 50.1, 100.1, 1000.1, 10000.1, 100000.1, 1000000.1), right=F, include.lowest=T, labels=c("0-1", "1-5", "5-10", "10-50", "50-100", "100-1000", "100-10000", "10000-100000","+100000"))
+##BC <- BC %>%
+##    group_by(Sample, cpm) %>%
+##    mutate(quantile = ntile(cpm, 10))
+##quantBCs <- lsit()
+##for (i in 1:length(unique(BC\$Sample))) {
+##    quantile(BC[BC\$Sample %in% 'BS493A-MSH_K562~A1~GGlo~HS2~A1~1Linear~ExoI_Rep2_DNA',]\$cpm, prob = seq(0, 1, length = 11), type = 5
+##
+#myColors <- brewer.pal(5,"Set1")
+#names(myColors) <- factor(c('RNA','iPCR','Plasmid','DNA','10xRNA'),levels=c('RNA','iPCR','Plasmid','DNA','10xRNA'))
+#colScale <- scale_fill_manual(name = "Type",values = myColors)
+#BC[,"Sample"]<- substr(BC[,"Sample"], 0, min(nchar(BC[,"Sample"])))
 #
-myColors <- brewer.pal(4,"Set1")
-names(myColors) <- factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
-colScale <- scale_fill_manual(name = "Type",values = myColors)
-BC[,"Sample"]<- substr(BC[,"Sample"], 0, min(nchar(BC[,"Sample"])))
-
-height <- ceiling(length(unique(BC[,"Sample"]))/3)*2
-
-ggHist <- BC %>%
-    ggplot(aes(x=log10(cpm+1),fill=Type)) +
-    geom_histogram(binwidth=0.1, colour='black', alpha=0.4) +
-    theme_classic()+
-    colScale+
-    facet_wrap(~Sample,scales="free_y", ncol=3)+ 
-    theme_classic()+
-    coord_cartesian(xlim = c(0, 4))+
-    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
-
-pdf(NULL)
-gp = ggplotGrob(ggHist)
-gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
-ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeHist.pdf", width=13, height=height)
-
-
-##ggsave(t,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
-#t<-ggplot(BC, aes(x=BC.bin,fill=Type)) +
-#geom_bar(color="black", size=0.25) +
-#theme_classic()+
-#colScale+
-#xlab('BC bin (cpm)') +
-#facet_wrap(~Sample,scales="free_y")+ 
-#theme_classic()+
-#theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=60,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
-##ggsave(t,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
+#height <- ceiling(length(unique(BC[,"Sample"]))/3)*2
+#
+#ggHist <- BC %>%
+#    ggplot(aes(x=log10(cpm+1),fill=Type)) +
+#    geom_histogram(binwidth=0.1, colour='black', alpha=0.4) +
+#    theme_classic()+
+#    colScale+
+#    facet_wrap(~Sample,scales="free_y", ncol=3)+ 
+#    theme_classic()+
+#    coord_cartesian(xlim = c(0, 4))+
+#    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
 #
 #pdf(NULL)
-#gp = ggplotGrob(t)
+#gp = ggplotGrob(ggHist)
 #gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
-#ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
+#ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeHist.pdf", width=13, height=height)
 #
-EOF
-
-rm $OUTDIR/BarcodeFreq/BarcodeFreq.txt
-for i in `ls  $OUTDIR/BarcodeFreq | grep pdf | sed 's/.pdf//g'`; do convert -density 300 $OUTDIR/BarcodeFreq//${i}.pdf -quality 100 $OUTDIR/BarcodeFreq/${i}.png; done
-
-for i in `ls $OUTDIR/BarcodeFreq/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a> <br>' ; done  >$OUTDIR/BarcodeFreq/index.html
+#
+###ggsave(t,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
+##t<-ggplot(BC, aes(x=BC.bin,fill=Type)) +
+##geom_bar(color="black", size=0.25) +
+##theme_classic()+
+##colScale+
+##xlab('BC bin (cpm)') +
+##facet_wrap(~Sample,scales="free_y")+ 
+##theme_classic()+
+##theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=60,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
+###ggsave(t,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
+##
+##pdf(NULL)
+##gp = ggplotGrob(t)
+##gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
+##ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
+##
+#EOF
+#
+#rm $OUTDIR/BarcodeFreq/BarcodeFreq.txt
+#for i in `ls  $OUTDIR/BarcodeFreq | grep pdf | sed 's/.pdf//g'`; do convert -density 300 $OUTDIR/BarcodeFreq//${i}.pdf -quality 100 $OUTDIR/BarcodeFreq/${i}.png; done
+#
+#for i in `ls $OUTDIR/BarcodeFreq/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a> <br>' ; done  >$OUTDIR/BarcodeFreq/index.html
 
 
 #####
@@ -518,8 +525,8 @@ if [[ `find ${dirs} -maxdepth 1 -name "*.barcode.counts.withUMI.txt.gz" | sed 's
       # BC\$BC.bin <- cut(BC\$BarcodeFreq_UMI, breaks=c( 0, 1.1, 5.1, 10.1, 50.1, 100.1, 1000.1, 10000.1, 100000.1, 1000000.1), right=F, include.lowest=T, labels=c("0-1", "1-5", "5-10", "10-50", "50-100", "100-1000", "100-10000", "10000-100000","+100000"))
       # BC\$Type<-gsub(".*_",'',gsub('_Merged','',BC\$Sample))
     
-    myColors <- brewer.pal(4,"Set1")
-    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
+    myColors <- brewer.pal(5,"Set1")
+    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA','10xRNA'),levels=c('RNA','iPCR','Plasmid','DNA','10xRNA'))
     colScale <- scale_fill_manual(name = "Type",values = myColors)
     BC\$Sample<- substr(BC\$Sample, 0, min(nchar(BC\$Sample)))
     
@@ -579,8 +586,8 @@ EOF
     cat(height, '\n')
     maxUMI\$Type<-gsub(".*_",'',gsub('_Merged','',maxUMI\$V4))
     
-    myColors <- brewer.pal(4,"Set1")
-    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
+    myColors <- brewer.pal(5,"Set1")
+    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA','10xRNA'),levels=c('RNA','iPCR','Plasmid','DNA','10xRNA'))
     colScale <- scale_fill_manual(name = "Type",values = myColors)
     maxUMI\$V4<- substr(maxUMI\$V4, 0, min(nchar(maxUMI\$V4)))
     library(dplyr)
@@ -636,9 +643,9 @@ if [[ `find ${dirs} -maxdepth 1 -name "*Saturation*.txt" | sed 's/^..//g' | sed 
     colnames(SaturationCurve)[1:6] <- c("Reads","Unique_BC","minReads","NA","Sample",'Type')
     
     SaturationCurve\$Sample<- substr(SaturationCurve\$Sample, 0, min(nchar(SaturationCurve\$Sample)))
-    myColors <- brewer.pal(4,"Set1")
-    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
-    colScale <- scale_colour_manual(name = "Type",values = myColors)
+    myColors <- brewer.pal(5,"Set1")
+    names(myColors) <- factor(c('RNA','iPCR','Plasmid','DNA','10xRNA'),levels=c('RNA','iPCR','Plasmid','DNA','10xRNA'))
+    colScale <- scale_colour_manual(name = "Type", values = myColors)
     height <- ceiling(length(unique(SaturationCurve[,"Sample"]))/3)*2
     
     s1 <- ggplot(SaturationCurve, aes(Reads, Unique_BC,color=Type)) + 
@@ -657,8 +664,6 @@ if [[ `find ${dirs} -maxdepth 1 -name "*Saturation*.txt" | sed 's/^..//g' | sed 
     gp = ggplotGrob(s1)
     gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
     ggsave(gp ,file="$OUTDIR/SaturationCurve/SaturationCurve.pdf", width=13, height=height)
-    
-    
 EOF
     
     convert -density 300 $OUTDIR/SaturationCurve/SaturationCurve.pdf -quality 100 $OUTDIR/SaturationCurve/SaturationCurve.png
@@ -698,8 +703,8 @@ if [[ `find ${dirs} -maxdepth 1 -type d | grep BS | grep iPCR| wc -l` -ge 1 ]]; 
     R --quiet --no-save << EOF
     library(stringr)
     library(reshape2)
-    myColors <- brewer.pal(4,"Set1")
-    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA'),levels=c('RNA','iPCR','Plasmid','DNA'))
+    myColors <- brewer.pal(5,"Set1")
+    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA','10xRNA'),levels=c('RNA','iPCR','Plasmid','DNA','10xRNA'))
     colScale <- scale_fill_manual(name = "Type",values = myColors)
     
     

@@ -96,7 +96,7 @@ bwa ${extractcmd} |
 #samtools sort -@ ${NSLOTS} -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
 #TODO UMIs don't seem to be in format filter_reads.py expects so they are not getting passed into bam
 ${src}/../dnase/filter_reads.py --reqFullyAligned --failUnwantedRefs --unwanted_refs_list "hap|random|^chrUn_|_alt$|scaffold|^C\d+|^pSB$|^pTR$" --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} - - |
-samtools view -@ NSLOTS -1 - > $OUTDIR/${sample}.bam
+samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${sample}.sortbyname -l 1 > $OUTDIR/${sample}.bam
 
 
 echo
