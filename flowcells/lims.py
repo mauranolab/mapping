@@ -17,6 +17,22 @@ import glob
 #create project, service account key, share sheet with service account manually from google drive UI
 
 
+#Convenience function
+def getValueFromLIMS(lims, bs, colname):
+    if lims is None:
+        #Shouldn't happen but fail gracefully anyway
+        print("Couldn't get ", colname, " from LIMS!", sep="", file=sys.stderr)
+        return ""
+    else:
+        matches = lims[lims['Sample #'] == bs][colname].unique()
+        if len(matches) == 0:
+            #Multiple matches should never occur if BS numbers are unique
+            raise Exception("Found no LIMS entries for " + bs)
+        if len(matches) > 1:
+            #Multiple matches should never occur if BS numbers are unique
+            raise Exception("Found multiple LIMS entries for " + bs)
+        return matches[0]
+
 #Pull the LIMS sheet from google using the service account secrets file and spreadsheet ID.
 def getLIMSsheet(sheet):
     try:
