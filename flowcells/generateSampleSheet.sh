@@ -20,11 +20,17 @@ awk -v doRevComp=0 -f ~/lib/revcomp.awk -F "\t" --source  'BEGIN {OFS=","; split
     $1=="#Indices" && $2!="" {split($2, bclens, ",")}
     $0!~/^#/ && $1!="" && $5!="Pool" {if(bclens[1]==0) {$7="_"} if(bclens[2]==0) {$8="_"} split($7, bc1, "_"); split($8, bc2, "_"); if(doRevComp==1) {bc2[2]=revcomp(bc2[2])} print "Sample_" $2, $2, "", "",  bc1[1], toupper(substr(bc1[2], 0, bclens[1])),  bc2[1], toupper(substr(bc2[2], 0, bclens[2])), "Project_" $3, "";}' >> SampleSheet.csv
 
-#validate date format as 
+echo
+echo
+echo "Sample sheet validation"
+#validate date format as YYYY-MM-DD
 readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Load date" {print $2}' info.txt`
 if [[ ! "${readgroup_date}" =~ 201[5-9]\-[0-2][0-9]\-[0123][0-9] ]]; then
     echo "WARNING: invalid FC load date ${readgroup_date}"
 fi
+
+
+awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Format" {split($2, fcreadformat, ",")} $0!~/^#/ && $1!="" {gsub(/^[SP]E /, "", $18); split($18, sampleReadFormat, ","); if(sampleReadFormat[1]>fcreadformat[1] || sampleReadFormat[2]>fcreadformat[2]) {print "WARNING: Sample " $1 "-" $2 " requires longer read lengths (" sampleReadFormat[1] "," sampleReadFormat[2] ") than programmed"}}' info.txt
 
 
 #TODO not sure how to get a single quote inside
@@ -33,6 +39,9 @@ $1=="#Sample Name" && inheader==1 { inheader=0; next}
 inheader==0 && $1~/[\-%\(\)\"\/\. ]/ { print "WARNING: Sample name for " $1 "-" $2 " contains invalid characters"; }
 inheader==0 { curBSnum=substr($2, 3, 5); if(curBSnum < lastBSnum) { print "WARNING: Sample " $1 "-" $2 " appears out of order"; } lastBSnum=curBSnum; }'
 
+
+echo
+echo
 
 R --quiet --no-save << 'EOF'
 data <- read.table("SampleSheet.csv", header=T, skip=19, sep=",", comment.char = "", quote = "", strip.white = TRUE, stringsAsFactors = F)
