@@ -5,6 +5,7 @@ set -euo pipefail
 #https://stackoverflow.com/questions/51256738/multiple-instances-of-python-running-simultaneously-limited-to-35
 export OPENBLAS_NUM_THREADS=1
 
+module load miller
 module load pigz
 module load weblogo/3.5.0
 module load ImageMagick
@@ -218,9 +219,9 @@ date
 
 if [ ${runExtract} -eq 1 ]; then
     if [[ ${sampleType} == "iPCR" ]]; then
-        qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N mapintegrations.${sample} -o ${sample} -b y "${src}/mapIntegrations.sh ${sample} ${BCreadSeq} $bclen ${chunksize} ${plasmidSeq} ${extractBCargs}" | perl -pe 's/[^\d].+$//g;' > sgeid.extract.${sample}
+        qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N mapintegrations.${sample} -o ${sample} -b y "${src}/mapIntegrations.sh ${sample} ${BCreadSeq} ${bclen} ${chunksize} ${plasmidSeq} ${extractBCargs}" | perl -pe 's/[^\d].+$//g;' > sgeid.extract.${sample}
     else
-        qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N extract.${sample} -o ${sample} -b y "${src}/extractBCcounts.sh ${sample} ${BCreadSeq} $bclen ${chunksize} ${plasmidSeq} ${extractBCargs}" | perl -pe 's/[^\d].+$//g;' > sgeid.extract.${sample}
+        qsub -S /bin/bash -t 1-${numjobs} -terse -j y -N extract.${sample} -o ${sample} -b y "${src}/extractBCcounts.sh ${sample} ${BCreadSeq} ${bclen} ${chunksize} ${plasmidSeq} ${extractBCargs}" | perl -pe 's/[^\d].+$//g;' > sgeid.extract.${sample}
     fi
 fi
 
@@ -258,8 +259,7 @@ if [ ${runMerge} -eq 1 ]; then
         else 
             cp ${bamfiles} $OUTDIR/${sample}.bam
         fi
-        #TODO sort in mapIntegrations.sh?
-        #samtools index $OUTDIR/${sample}.bam
+        samtools index $OUTDIR/${sample}.bam
         rm -f ${bamfiles}
     fi
     

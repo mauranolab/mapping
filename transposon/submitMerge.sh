@@ -8,6 +8,7 @@ set -euo pipefail
 #https://stackoverflow.com/questions/51256738/multiple-instances-of-python-running-simultaneously-limited-to-35
 export OPENBLAS_NUM_THREADS=1
 
+module load miller
 module load pigz
 module load samtools/1.9
 
@@ -58,8 +59,7 @@ if [ ${runMerge} -eq 1 ]; then
         else 
             cp ${bamfiles} $OUTDIR/${sample}.bam
         fi
-        #TODO sort in mapIntegrations.sh?
-        #samtools index $OUTDIR/${sample}.bam
+        samtools index $OUTDIR/${sample}.bam
     fi
 EOF
 fi

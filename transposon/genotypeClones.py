@@ -30,7 +30,10 @@ except argparse.ArgumentError as exc:
 
 
 inputfilename = args.inputfilename
-inputfile = open(inputfilename, 'r') 
+if inputfilename=="-":
+    inputfile = sys.stdin
+else:
+    inputfile = open(inputfilename, 'r') 
 
 outputfilename = args.outputfilename
 if outputfilename=="-":
@@ -45,9 +48,8 @@ wr.writeheader()
 input_data = inputfile.readlines()
 input_data = [line.rstrip("\n").split('\t') for line in input_data]
 
-G = nx.Graph()
-
 #Bipartite graph between BCs and cells
+G = nx.Graph()
 for line in input_data:
     bc = line[0]
     cellbc = line[1]
@@ -57,8 +59,16 @@ for line in input_data:
     G.add_node(cellbc, type="cell")
     G.add_edge(bc, cellbc, weight=count)
 
-#Iterate over cell nodes and print out all neighbors
+
+print("[genotypeClones] Read " + str(len([x for x in G.nodes() if G.nodes[x]['type'] == 'cell'])) + " unique cells", file=sys.stderr)
+print("[genotypeClones] Read " + str(len([x for x in G.nodes() if G.nodes[x]['type'] == 'BC'])) + " unique BCs", file=sys.stderr)
+
+
+#Iterate over connected components (clones) and print out all neighbors
 cloneid = 0
+totalCells = 0
+totalBCs = 0
+totalCount = 0
 while(len(G.nodes()) > 0):
     cloneid += 1
     nodes = nx.algorithms.components.node_connected_component(G, list(G.nodes)[0])
@@ -70,11 +80,15 @@ while(len(G.nodes()) > 0):
     #Num UMIs supporting total clone/BCs
     count = sum([int(G.edges[x]['weight']) for x in edges])
     G.remove_nodes_from(nodes)
+    
+    totalCells += len(cells)
+    totalBCs += len(bcs)
+    totalCount += count
+    
     wr.writerow({ 'clone': 'clone-' + str(cloneid), 'cellBC': ",".join(cells), 'BC': ",".join(bcs), 'count': count, 'ncells': len(cells), 'nBCs': len(bcs) })
-    #BUGBUG printing some weird output
 
 
-print("[genotypeClones] Identified " + str(cloneid) + " unique clones", file=sys.stderr)
+print("[genotypeClones] Identified " + str(cloneid) + " unique clones, with an average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid,2), " BCs, ", round(totalCount/cloneid, 2), " reads", sep="", file=sys.stderr)
 
 
 inputfile.close()
