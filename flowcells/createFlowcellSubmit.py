@@ -7,9 +7,13 @@ import pygsheets
 import os
 import glob
 
+#Get LIMS info
+sys.path.append("/vol/mauranolab/mapped/src/flowcells")
+from lims import getLIMSsheet, getValueFromLIMS
+
 
 ###Argument parsing
-version="1.4"
+version="1.5"
 
 parser = argparse.ArgumentParser(prog = "createFlowcellSubmit", description = "Outputs submit commands for all samples from the info.txt located in the flowcell data folder", allow_abbrev=False)
 
@@ -185,17 +189,15 @@ def addCEGSgenomes(line):
 #            return ",cegsvectors_" + "_".join(sampleName.split("_")[0:3])
         
         additionalGenomesToMap = []
-        if lims is not None:
-            #Multiple matches should never occur if BS numbers are unique so take first
-            geneticModification = lims[lims['Sample #']==line['Original Sample #']]['Genetic modification'].unique()[0]
-            for curGeneticModification in geneticModification.split(","):
-                for curCegsGenome in cegsGenomes:
-                    #Genome must match entire contents of a field (e.g., HPRT1 doesn't match dHPRT1), excepting the square brackets denoting integration site
-                    if curCegsGenome == re.sub(r'\[.+\]$', '', curGeneticModification):
-                        #Add the genome including the cegsvectors_ prefix
-                        additionalGenomesToMap.append("cegsvectors_" + curCegsGenome)
-                        #Not possible to match any further genomes since wildcards are not allowed
-                        break
+        geneticModification = getValueFromLIMS(lims, line['Original Sample #'], 'Genetic modification')
+        for curGeneticModification in geneticModification.split(","):
+            for curCegsGenome in cegsGenomes:
+                #Genome must match entire contents of a field (e.g., HPRT1 doesn't match dHPRT1), excepting the square brackets denoting integration site
+                if curCegsGenome == re.sub(r'\[.+\]$', '', curGeneticModification):
+                    #Add the genome including the cegsvectors_ prefix
+                    additionalGenomesToMap.append("cegsvectors_" + curCegsGenome)
+                    #Not possible to match any further genomes since wildcards are not allowed
+                    break
         return additionalGenomesToMap
 
 def bwaPipeline(line):
@@ -218,7 +220,7 @@ def bwaPipeline(line):
         }
     else:
         raise Exception("Can't parse " + sampleType)
-    mappedgenomes = [ speciesToGenomeReference[curSpecies ] for curSpecies in line["Species"].split(",") ]
+    mappedgenomes = [ speciesToGenomeReference[curSpecies ] for curSpecies in getValueFromLIMS(lims, line['Original Sample #'], 'Species').split(",") ]
     mappedgenomes += addCEGSgenomes(line)
     
     if args.aggregate:
@@ -238,12 +240,10 @@ def bwaPipeline(line):
         doDNACaptureCleanup = True
     
     sampleAnnotation = [ ]
-    #Multiple matches should never occur if BS numbers are unique so take first
-    sex = lims[lims['Sample #']==line['Original Sample #']]['Sex'].unique()[0]
+    sex = getValueFromLIMS(lims, line['Original Sample #'], 'Sex')
     if sex is not "":
         sampleAnnotation.append("Sex=" + sex)
-    #Multiple matches should never occur if BS numbers are unique so take first
-    bait_set=lims[lims['Sample #']==line['Original Sample #']]['Bait set'].unique()[0]
+    bait_set = getValueFromLIMS(lims, line['Original Sample #'], 'Bait set')
     if bait_set is not "":
         sampleAnnotation.append("Bait_set=" + bait_set)
     
@@ -332,9 +332,6 @@ if args.aggregate or args.aggregate_sublibraries:
 
 
 ###Dispatch appropriate function handler per sample line
-#Get LIMS info
-sys.path.append("/vol/mauranolab/mapped/src/flowcells")
-from lims import getLIMSsheet
 limsWks, lims, limsMask = getLIMSsheet("LIMS")
 
 #Will map to these custom genomes when specified, stored as they appear in LIMS (without cegsvectors_ prefix)
@@ -369,7 +366,7 @@ for index, line in flowcellFile.iterrows():
         #We have successfully generated the command line
         print(qsubLine)
     except Exception as e:
-        print("WARNING for sample ", sampleName, ":", e, file=sys.stderr)
+        print("WARNING for sample ", sampleName, ":", e, sep="", file=sys.stderr)
         print("#Couldn't process " + sampleName + "-" + sampleID)
 
 
