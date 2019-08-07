@@ -30,14 +30,42 @@ if [[ ! "${readgroup_date}" =~ 201[5-9]\-[0-2][0-9]\-[0123][0-9] ]]; then
 fi
 
 
-awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Format" {split($2, fcreadformat, ",")} $0!~/^#/ && $1!="" {gsub(/^[SP]E /, "", $18); split($18, sampleReadFormat, ","); if(sampleReadFormat[1]>fcreadformat[1] || sampleReadFormat[2]>fcreadformat[2]) {print "WARNING: Sample " $1 "-" $2 " requires longer read lengths (" sampleReadFormat[1] "," sampleReadFormat[2] ") than programmed"}}' info.txt
+awk -F "\t" 'BEGIN {OFS="\t"} $1=="#FC kit" { kitcycles="NA"; \
+    if($2=="HighOutput_75cycle") {kitcycles=92} \
+    else if($2=="MidOutput_150cycle" || $2=="HighOutput_150cycle") {kitcycles=168} \
+    else if($2=="MidOutput_300cycle" || $2=="HighOutput_300cycle") {kitcycles=347} \
+} \
+$1=="#Format" {split($2, fcreadformat, ",")} \
+$1=="#Indices" {split($2, fcindices, ",")} \
+END {\
+    totalcycles=fcreadformat[1]+fcreadformat[2]+fcindices[1]+fcindices[2]; \
+    if(totalcycles != kitcycles) { \
+        print "WARNING: " totalcycles " cycles programmed while the kit contains reagents for " kitcycles \
+    } \
+}' info.txt
+
+
+awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Format" {split($2, fcreadformat, ",")} \
+$0!~/^#/ && $1!="" { \
+    gsub(/^[SP]E /, "", $18); \
+    split($18, sampleReadFormat, ","); \
+    if(sampleReadFormat[1]>fcreadformat[1] || sampleReadFormat[2]>fcreadformat[2]) { \
+        print "WARNING: Sample " $1 "-" $2 " requires longer read lengths (" sampleReadFormat[1] "," sampleReadFormat[2] ") than programmed" \
+    } \
+}' info.txt
 
 
 #TODO not sure how to get a single quote inside
-cat info.txt | awk -F "\t" 'BEGIN {OFS="\t"; inheader=1; lastBSnum=0}
-$1=="#Sample Name" && inheader==1 { inheader=0; next}
-inheader==0 && $1~/[\-%\(\)\"\/\. ]/ { print "WARNING: Sample name for " $1 "-" $2 " contains invalid characters"; }
-inheader==0 { curBSnum=substr($2, 3, 5); if(curBSnum < lastBSnum) { print "WARNING: Sample " $1 "-" $2 " appears out of order"; } lastBSnum=curBSnum; }'
+cat info.txt | awk -F "\t" 'BEGIN {OFS="\t"; inheader=1; lastBSnum=0} \
+$1=="#Sample Name" && inheader==1 { inheader=0; next } \
+inheader==0 && $1~/[\-%\(\)\"\/\. ]/ { print "WARNING: Sample name for " $1 "-" $2 " contains invalid characters"; } \
+inheader==0 { \
+    curBSnum=substr($2, 3, 5); \
+    if(curBSnum < lastBSnum) { \
+        print "WARNING: Sample " $1 "-" $2 " appears out of order"; \
+    } \
+    lastBSnum=curBSnum; \
+}'
 
 echo "Finished validation"
 
