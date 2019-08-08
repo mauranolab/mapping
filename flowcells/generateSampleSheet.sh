@@ -128,7 +128,7 @@ countBCcollisions <- function(data, bc1len=8, bc2len=8) {
                 bc2 <- bcs[j]
                 if(bc2!="_") {
                     results[i,j] = strdist(bc1, bc2)
-                    if(results[i,j] <=2) {
+                    if(results[i,j] <= 2) {
                         cat("pair ", i, " (", bc1, ") and ", j, " (", bc2, ") differ by only ", results[i,j], "\n", sep="")
                         numSamplesTooClose <- numSamplesTooClose + 1
                     }
@@ -146,13 +146,13 @@ countBCcollisions <- function(data, bc1len=8, bc2len=8) {
 
 
 if (minBClen <= maxBC1len) {
-    bc1range <- minBClen:maxBC1len
+    bc1range <- c(0,minBClen:maxBC1len)
 } else {
     bc1range <- maxBC1len
 }
 
 if (minBClen <= maxBC2len) {
-    bc2range <- minBClen:maxBC2len
+    bc2range <- c(0,minBClen:maxBC2len)
 } else {
     bc2range <- maxBC2len
 }
@@ -168,7 +168,12 @@ for(bc1len in bc1range) {
 }
 
 cat("\nNumber of samples too close by BC sequencing lengths:\n")
-print.data.frame(results, row.names=F)
+#print.data.frame(results, row.names=F)
+results.wide <- cast(bc1len~bc2len, value="numSamplesTooClose", data=results, fun.aggregate=sum, add.missing=T, fill=NA)
+#Cast adds bc2 as colnames but not rownames
+rownames(results.wide) <- paste("bc1", results.wide[,1])
+results.wide <- results.wide[,-1]
+print.data.frame(results.wide, row.names=T)
 EOF
 
 
