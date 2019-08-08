@@ -162,6 +162,8 @@ numReadsNotAligned = 0
 numReadsWrongBCseq = 0
 numReadsLowBCQual = 0
 numReadsWrongBClength = 0
+numReadsNsInBC = 0
+numReadsNsInUMI = 0
 
 #Initialize lists for worst-case of a read that is same length as the provided reference sequence
 BCeditDistTotals = [0] * (bcRefSeqLength+1)
@@ -203,6 +205,8 @@ try:
         readPlasmidReadEditDistPassed = None
         readBCMinBaseQpassed = None
         readBClengthPassed = None
+        readNoNsInBCPassed = None
+        readNoNsInUMIPassed = None
         
         
         #Optionally shift the BCsequence after alignment to reference
@@ -258,6 +262,11 @@ try:
         if(args.BCrevcomp):
             bc_seq = revcomp(bc_seq)
         
+        if re.search('[^ACGT]', bc_seq) is not None:
+            readNoNsInBCPassed = False
+        else:
+            readNoNsInBCPassed = True
+        
         #Check the baseQ of the barcode
         bc_baseQ = BCread[3][(bcRefSeq_bc_start-bcRefSeqOffset) : (bcRefSeq_bc_end-bcRefSeqOffset)]
         #NB Permits 2 bases to be below threshold
@@ -271,15 +280,22 @@ try:
         ###Extract UMI and cell BC if present
         #Read name format: [@...]_[cell_seq]?_[UMI_seq] [Illumina multiplexing BCs]
         readname = BCread[0].split(' ')[0][1:].split('_')
-        if readBCreadEditDistPassed and readBCMinBaseQpassed and readBClengthPassed and (not enforcePlasmidRead or readPlasmidReadEditDistPassed) and (not args.align or readAlignmentPassed):
+        UMI_seq = ""
+        cell_seq = ""
+        if(len(readname)>2):
+            cell_seq = readname[1]
+            UMI_seq = readname[2]
+        elif(len(readname)>1):
+            UMI_seq = readname[1]
+        
+        if UMI_seq!="" and re.search('[^ACGT]', UMI_seq) is not None: #re will not find any thing in "" but just to be explicit
+            readNoNsInUMIPassed = False
+        else:
+            readNoNsInUMIPassed = True
+
+        
+        if readBCreadEditDistPassed and readBCMinBaseQpassed and readBClengthPassed and readNoNsInBCPassed and (not enforcePlasmidRead or readPlasmidReadEditDistPassed) and (not args.align or readAlignmentPassed):
             #Read is good
-            UMI_seq = ""
-            cell_seq = ""
-            if(len(readname)>2):
-                cell_seq = readname[1]
-                UMI_seq = readname[2]
-            elif(len(readname)>1):
-                UMI_seq = readname[1]
             print(bc_seq, readname[0], UMI_seq, cell_seq, sep="\t")
         else:
             numReadsSkipped += 1
@@ -303,6 +319,14 @@ try:
             numReadsWrongBClength += 1
             if args.verbose:
                 print("BC not right length! ", file=sys.stderr)
+        if not readNoNsInBCPassed:
+            numReadsNsInBC += 1
+            if args.verbose:
+                print("Non-ACGT bases in BC", sep="", file=sys.stderr)
+        if not readNoNsInUMIPassed:
+            numReadsNsInUMI += 1
+            if args.verbose:
+                print("Non-ACGT bases in UMI", sep="", file=sys.stderr)
         if not readBCMinBaseQpassed:
             numReadsLowBCQual += 1
             if args.verbose:
@@ -326,6 +350,8 @@ finally:
         print("    Reads with plasmid read sequence exceeding distance threshold: ", numWrongPlasmidSeq, " (", format(numWrongPlasmidSeq/numReads*100, '.2f'), "%)", sep="", file=sys.stderr)
     print("    Reads with >2 bp in BC with minBaseQ <", minBaseQ, ": ", numReadsLowBCQual, " (", format(numReadsLowBCQual/numReads*100, '.2f'), "%)", sep="", file=sys.stderr)
     print("    Reads with BC length not equal to ", args.bclen, ": ", numReadsWrongBClength, " (", format(numReadsWrongBClength/numReads*100, '.2f'), "%)", sep="", file=sys.stderr)
+    print("    Reads with non-ACGT bases in BC: ", numReadsNsInBC, " (", format(numReadsNsInBC/numReads*100, '.2f'), "%)", sep="", file=sys.stderr)
+    print("    Reads with non-ACGT bases in UMI: ", numReadsNsInUMI, " (", format(numReadsNsInUMI/numReads*100, '.2f'), "%)", sep="", file=sys.stderr)
     print("Percentage reads kept: ", format(((numReads-(numReadsSkipped))/numReads)*100, '.2f'), '%', sep="", file=sys.stderr)
     print("\nBC read edit distances: ", list(range(0, len(BCeditDistTotals))), BCeditDistTotals, sep="", file=sys.stderr)
     print("BC read mismatches by position: ", list(range(0, len(BCmismatchByPos))), BCmismatchByPos, sep="", file=sys.stderr)
