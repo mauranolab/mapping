@@ -30,6 +30,15 @@ if [[ ! "${readgroup_date}" =~ 201[5-9]\-[0-2][0-9]\-[0123][0-9] ]]; then
 fi
 
 
+#TODO check read count total
+awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Expected reads" {expectedReads=$2; programmedReads=0} \
+$0!~/^#/ && $1!="" { programmedReads+= $17 } \
+END { if(programmedReads != expectedReads) { \
+        print "WARNING: Total of " programmedReads " reads requested for a FC that yields " expectedReads; \
+    } \
+}' info.txt
+
+
 awk -F "\t" 'BEGIN {OFS="\t"} $1=="#FC kit" { kitcycles="NA"; \
     if($2=="HighOutput_75cycle") {kitcycles=92} \
     else if($2=="MidOutput_150cycle" || $2=="HighOutput_150cycle") {kitcycles=168} \
