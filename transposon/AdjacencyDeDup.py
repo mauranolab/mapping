@@ -78,7 +78,7 @@ def dedup_dir_adj(Counter):
 ###
 def replace_dedup(data, bcColNum, myUMIcounts, deduped_UMI, wr):
     global numLinesProcessed
-    global numNonEmptyBCsProcessed
+    global numNonEmptyBClinesProcessed
     global numAmbiguousLines
     
     #Create index of all deduplicated barcodes
@@ -92,7 +92,7 @@ def replace_dedup(data, bcColNum, myUMIcounts, deduped_UMI, wr):
         numLinesProcessed += 1
         oldBC = line[bcColNum]
         if oldBC != "":
-            numNonEmptyBCsProcessed += 1
+            numNonEmptyBClinesProcessed += 1
             results = demul_index[oldBC]
             matches = [dedupMulti[x] for x in results]
             if len(matches)>0:
@@ -135,17 +135,31 @@ def process_lines(input_data, wr):
     replace_dedup(input_data, bcColNum, myUMIcounts, deduped_UMI, wr)
 
 
-def process_lines_byGroup(lastGroup, startRow, index, wr):
+def process_lines_byGroup(group, startRow, index, wr):
+    global numLinesProcessed
+    global numNonEmptyBClinesProcessed
+    
+    bcColNum = col
+    
     if args.verbose:
-        print("Processing ", lastGroup, " on lines ", startRow, "-", index-1, file=sys.stderr, sep="")
-    if startRow==index-1 or lastGroup=="":
-        #Only one BC in this group (or it's "") so just print
+        print("Processing ", group, " on lines ", startRow, "-", index-1, file=sys.stderr, sep="")
+    if startRow==index-1 or group=="":
+        #Only one BC in this group or it's "" so just print
+        
+        #Not pretty but since we are not calling process_lines, we do need to update the statistics
+        for i in range(startRow, index):
+            numLinesProcessed += 1
+            if input_data[i][bcColNum] != "":
+                numNonEmptyBClinesProcessed +=1
+        
+        #BUGBUG why aren't the subsequent two ranges startRow:(index-1)
+        
         if args.verbose:
             print("Only one BC in this group so just print", file=sys.stderr, sep="")
-        wr.writerows(input_data[startRow:(index)]) ###Writes only the unique barcodes
+        wr.writerows(input_data[startRow:index]) ###Writes only the unique barcodes
     else:
-        #print(input_data[startRow:(index)], startRow,index)
-        process_lines(input_data[startRow:(index)], wr) #FIX Removed index-1 now it prints the last entry per group
+        #print(input_data[startRow:index], startRow,index)
+        process_lines(input_data[startRow:index], wr) #FIX Removed index-1 now it prints the last entry per group
 
 
 ###Argument parsing
@@ -197,7 +211,7 @@ wr = csv.writer(outfile, delimiter='\t', lineterminator=os.linesep, skipinitials
 
 
 numLinesProcessed = 0
-numNonEmptyBCsProcessed = 0
+numNonEmptyBClinesProcessed = 0
 numAmbiguousLines = 0
 numGroupsRead = 0
 numUniqueBCs = 0
@@ -212,10 +226,9 @@ else:
         line = input_data[index]
         
         #Make key by concatenating contents from all groupcols specified
-        curGroup = ""
-        for groupcol in groupcols:
-            curGroup += "+" + str(line[groupcol])
+        curGroup = "+".join([ str(line[groupcol]) for groupcol in groupcols ])
         
+        #index points to the first record in input_data of the next group (not the one we are processing)
         if curGroup != lastGroup:
             if index > 0:
                 numGroupsRead += 1
@@ -226,7 +239,7 @@ else:
     process_lines_byGroup(lastGroup, startRow, index+1, wr)
 
 
-print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + " lines processed with " + str(numNonEmptyBCsProcessed) + " non-empty BCs)", file=sys.stderr)
+print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + " lines processed, " + str(numNonEmptyBClinesProcessed) + " with non-empty BCs)", file=sys.stderr)
 print("[AdjacencyDeDup] Number of unique barcodes before deduplication:", numUniqueBCs, file=sys.stderr)
 print("[AdjacencyDeDup] Number of unique barcodes after deduplication:", numUniqueBCsAfterDedup, file=sys.stderr)
 if groupcols is not None:
