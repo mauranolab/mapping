@@ -32,7 +32,7 @@ fi
 
 #TODO check read count total
 awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Expected reads" {expectedReads=$2; programmedReads=0} \
-$0!~/^#/ && $1!="" { programmedReads+= $17 } \
+$0!~/^#/ && $1!="" && $5!="Pool" { programmedReads+= $17 } \
 END { if(programmedReads != expectedReads) { \
         print "WARNING: Total of " programmedReads " reads requested for a FC that yields " expectedReads; \
     } \
