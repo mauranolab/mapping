@@ -18,11 +18,36 @@ fi
 
 
 echo "Analyzing data for ${sample} (minReadCutoff=${minReadCutoff})"
+
+echo
 zcat ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz | ${src}/removeOverrepresentedBCs.py --col 1 --maskcols 3,4 --freq 0.01 -o ${TMPDIR}/${sample}.barcodes.txt -
 
 
-#TODO 10x dedup UMI/ellBC also group by cellBC?
+#Doesn't count length if the BC has been masked to ""
+minUMILength=`zcat -f ${TMPDIR}/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($3)}' | uniq | sort -n | awk 'NR==1'`
+minCellBCLength=`zcat -f ${TMPDIR}/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($4)}' | uniq | sort -n | awk 'NR==1'`
 
+
+echo
+echo -e "${sample}\tMinimum UMI length\t${minUMILength}"
+echo -e "${sample}\tMinimum cellBC length\t${minCellBCLength}"
+
+if [ "${minCellBCLength}" -gt 0 ]; then
+    #The BC correction doesn't seem to do much, but the UMI corrections can have an effect
+    #TODO apply whitelist ahead of time or correct cellBC/UMI to cellranger data here?
+    echo
+    echo "Secondary deduping by cellBC"
+    cat ${TMPDIR}/${sample}.barcodes.txt | sort -k4,4 -k1,1 |
+    #Dedup BC by cellBC
+    ${src}/AdjacencyDeDup.py --col 1 --groupcols 4 -o - - |
+    awk -F "\t" 'BEGIN {OFS="\t"} $1=="" {$3=""; $4=""} {print}' |
+    #Need to re-sort since some BCs have changed
+    sort -k4,4 -k1,1 |
+    #Dedup UMI by BC+cellBC
+    ${src}/AdjacencyDeDup.py --col 3 --groupcols 4,1 -o - - |
+    awk -F "\t" 'BEGIN {OFS="\t"} $3=="" {$1=""; $4=""} {print}' > ${TMPDIR}/${sample}.barcodes.txt.new
+    mv ${TMPDIR}/${sample}.barcodes.txt.new ${TMPDIR}/${sample}.barcodes.txt
+fi
 
 if [ `cat ${TMPDIR}/${sample}.barcodes.txt | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | wc -l` -eq 0 ]; then
     echo "analyzeBCcounts.sh WARNING: no barcodes left, so exiting!"
@@ -32,11 +57,12 @@ fi
 
 
 echo
-echo "Compressing"
-pigz -p ${NSLOTS} -c -9 ${TMPDIR}/${sample}.barcodes.txt > ${OUTDIR}/${sample}.barcodes.txt.gz
+echo "Sorting and compressing"
+sort -k1,1 -k3,3 -k4,4 ${TMPDIR}/${sample}.barcodes.txt | pigz -p ${NSLOTS} -c -9 - > ${OUTDIR}/${sample}.barcodes.txt.gz
 
 #Empty BCs haven't been filtered yet for non-UMI data
-zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | awk -F "\t" '$1!=""' | cut -f1 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $1}' > ${OUTDIR}/${sample}.barcode.counts.txt
+#Already sorted by BC, UMI, CellBC
+zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | awk -F "\t" '$1!=""' | cut -f1 | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $1}' > ${OUTDIR}/${sample}.barcode.counts.txt
 
 
 ###Overall summary statistics
@@ -52,10 +78,8 @@ weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type d
 convert $TMPDIR/${sample}.barcodes.eps ${OUTDIR}/${sample}.barcodes.png
 
 ##UMIs weblogo
-minUMILength=`zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($3)}' | uniq | sort -n | awk 'NR==1'`
-echo
-echo -e "${sample}\tMinimum UMI length\t${minUMILength}"
 if [ "${minUMILength}" -gt 0 ]; then
+    echo
     echo "Generating UMI weblogo"
     #Need to trim in case not all the same length
     zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | cut -f3 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -v trim=${minUMILength} -F "\t" 'BEGIN {OFS="\t"} {print substr($0, 0, trim)}' | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
@@ -72,9 +96,11 @@ if [ "${minUMILength}" -ge 5 ]; then
     echo "Barcode counts (including UMI)"
     zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz |
     awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | cut -f1,3 |
-    sort -k1,1 -k2,2 | uniq -c | sort -k2,2 |
+    #Sort on BC, UMI and count reads per BC+UMI
+    sort -k1,1 -k2,2 | uniq -c |
     awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' |
     #Format: BC, UMI, n
+    sort -k1,1 |
     pigz -p ${NSLOTS} -c -9 > ${OUTDIR}/${sample}.barcode.counts.withUMI.txt.gz
     
     echo "Barcode counts UMI-corrected"
@@ -126,9 +152,6 @@ cut -f1 ${countfile} |
 awk '{print length($0)}' | sort -g | uniq -c | sort -k2,2 | awk '$2!=0'
 
 
-minCellBCLength=`zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($4)}' | uniq | sort -n | awk 'NR==1'`
-echo
-echo -e "${sample}\tMinimum cellBC length\t${minCellBCLength}"
 if [ "${minCellBCLength}" -gt 0 ]; then
     echo "Generating cellBC weblogo"
     #Need to trim in case not all the same length
@@ -139,10 +162,25 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     echo "Barcode counts including cellBC"
     zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz |
     awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | cut -f1,3,4 |
-    sort -k1,1 -k2,2 -k4,4 | uniq -c | sort -k2,2 |
+    #Already sorted by BC, UMI, CellBC
+    sort -k1,1 -k2,2 -k4,4 | 
+    #Count reads per BC+UMI+CellBC
+    uniq -c |
     awk 'BEGIN {OFS="\t"} {print $2, $3, $4, $1}' |
     #Format: BC, UMI, cellBC, n
+
+    #Filter on minPropReadsForBC
+    #Join in pre-UMI counts in column 5
+    join -j 1 -a 1 - ${OUTDIR}/${sample}.barcode.counts.txt |
+    #join -t "\t" doesn't work so get back to tabs
+    awk 'BEGIN {OFS="\t"} {print $1, $2, $3, $4, $5}' |
+    #Format: BC, UMI, cellBC, n, total counts for this BC
+    awk -v minPropReadsForBC=0.05 -F "\t" 'BEGIN {OFS="\t"} $4/$5>minPropReadsForBC' | cut -f1-4 |
+    
+    #Sort on BC and count reads perBC+CellBC
+    sort -k1,1 -k3,3 |
     cut -f1,3 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' |
+    #Format: BC, cellBC, n
     #TODO parameterize and do more precise filtering of 10x whitelist BCs. we do miss some by not allowing mismatches but it's pretty few reads 
     fgrep -w -f /home/mauram01/public_html/blog/2019aug02/cells.whitelist.txt | awk 'BEGIN {OFS="\t"; print "BC", "cellBC", "count"} {print}' > ${OUTDIR}/${sample}.barcode.counts.byCell.txt
     
@@ -157,6 +195,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv cut -f cellBC | sort | uniq -c | awk '{print $1}' | awk -v cutoff=15 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
     
     echo
+    
     #TODO 10x hard read cutoff
     cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv filter '$count >= 5' | ${src}/genotypeClones.py --inputfilename - --outputfilename ${OUTDIR}/${sample}.clones.txt
     echo
