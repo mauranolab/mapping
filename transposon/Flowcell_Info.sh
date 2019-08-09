@@ -350,92 +350,92 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
     for i in `find ${dirs} -maxdepth 1 \( -name "extract*" -o -name "map*" \)`; do Dist=$(grep 'Plasmid read edit distances' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g' | perl -pe 's/, /\t/g' > $OUTDIR/EditDist/Plasmid_EditDist
     
     
-    R --quiet --no-save << EOF
-    source("${src}/Flowcell_Info.R")
-    
-    library(stringr)
-    library(reshape2)
-    BCEditDist<-read("$OUTDIR/EditDist/BC_EditDist",stringsAsFactors=F)
-    BCEditDist[,1]<-gsub('\\\.o.*','',gsub('extract.|map.','',(gsub('.*/','',BCEditDist[,1]))))
-    
-    BCEditDist<-summaryBy(.~V1, data=BCEditDist,FUN=sum)
-    colnames(BCEditDist)<-c('Sample',0:18)
-    BCEditDist<-melt(BCEditDist)
-    BCEditDist[,4]<-"Barcode"
-    
-    PlasmidEditDist<-read("$OUTDIR/EditDist/Plasmid_EditDist",stringsAsFactors=F)
-    PlasmidEditDist[,1]<-gsub('\\\.o.*','',gsub('extract.|map.','',(gsub('.*/','',PlasmidEditDist[,1]))))
-    
-    PlasmidEditDist<-summaryBy(.~V1, data=PlasmidEditDist,FUN=sum)
-    colnames(PlasmidEditDist)<-c('Sample',0:(ncol(PlasmidEditDist)-2))
-    PlasmidEditDist<-melt(PlasmidEditDist)
-    PlasmidEditDist[,4]<-'Plasmid'
-    
-    if (length(grep('iPCR\$',PlasmidEditDist[,1]))>0) {
-        PlasmidEditDist[grep('iPCR\$',PlasmidEditDist[,1]),][,4] <-'Primer'
-    }
-    
-    BCEditDist<-rbind(BCEditDist,PlasmidEditDist)
-    colnames(BCEditDist)[1:4]<-c('Sample','Hamming','Reads','Read')
-    BCEditDist[,2]<-as.numeric(as.character(BCEditDist[,2]))
-    BCEditDist[,3]<-as.numeric(as.character(BCEditDist[,3]))
-    
-    colnames(BCEditDist)[1:4]<-c('Sample','Hamming','Reads','Read')
-    
-    
-    myColors <- brewer.pal(5,"Set1")
-    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA','10xRNA'),levels=c('RNA','iPCR','Plasmid','DNA','10xRNA'))
-    colScale <- scale_fill_manual(name = "Type",values = myColors)
-    height <- ceiling(length(unique(BCEditDist[,"Sample"]))/3)*2
-    
-    #plot
-    BCEditDist\$Type<-gsub(".*_",'',BCEditDist\$Sample)
-    BCEditDist\$Sample<- substr(BCEditDist\$Sample, 0, min(nchar(BCEditDist\$Sample)))
-    #pdf("$OUTDIR/EditDist/EditDistDistance_BC.pdf",height=10,width=20)
-    bcl<-ggplot(BCEditDist[grep('Barcode',BCEditDist[,4]),], aes(Hamming,Reads,fill=Type)) + 
-    geom_bar(stat="identity",color='black',size=0.25,alpha=0.4) +
-    #ggtitle('GGlo')+
-    facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
-    theme_classic()+
-    colScale+
-    xlab('Hamming distance')+
-    theme(legend.position = "bottom",legend.text=element_text(size=8))+
-    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-    #scale_x_continuous(label= fancy_scientific)+
-    scale_y_continuous(label= fancy_scientific)
-    #dev.off()
-    pdf(NULL)
-    gp = ggplotGrob(bcl)
-    gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
-    ggsave(gp ,file="$OUTDIR/EditDist/EditDistDistance_BC.pdf", width=13, height=height)
-    
-    
-    #plot
-    #pdf("$OUTDIR/EditDist/EditDistDistance_Plasmid.pdf",height=10,width=20)
-    pll<-ggplot(BCEditDist[grep('Plasmid|Primer',BCEditDist[,4]),], aes(Hamming,Reads,fill=Type)) + 
-    geom_bar(stat="identity",color="black", size=0.1,alpha=0.4) +
-    #ggtitle('GGlo')+
-    facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
-    theme_classic()+
-    colScale+
-    xlab('Hamming distance')+
-    #scale_fill_brewer('Set1')+
-    theme(legend.position = "bottom",legend.text=element_text(size=8))+
-    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
-    #scale_x_continuous(label= fancy_scientific)+
-    scale_y_continuous(label= fancy_scientific)
-    #dev.off()
-    pdf(NULL)
-    gp = ggplotGrob(pll)
-    gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
-    ggsave(gp ,file="$OUTDIR/EditDist/EditDistDistance_Plasmid.pdf", width=13, height=height)
-    
-EOF
-    
-    convert -density 300 $OUTDIR/EditDist/EditDistDistance_BC.pdf -quality 100 $OUTDIR/EditDist/EditDistDistance_BC.png
-    convert -density 300 $OUTDIR/EditDist/EditDistDistance_Plasmid.pdf -quality 100 $OUTDIR/EditDist/EditDistDistance_Plasmid.png
-    
-    for i in `ls $OUTDIR/EditDist/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/EditDist/index.html
+#    R --quiet --no-save << EOF
+#    source("${src}/Flowcell_Info.R")
+#    
+#    library(stringr)
+#    library(reshape2)
+#    BCEditDist<-read("$OUTDIR/EditDist/BC_EditDist",stringsAsFactors=F)
+#    BCEditDist[,1]<-gsub('\\\.o.*','',gsub('extract.|map.','',(gsub('.*/','',BCEditDist[,1]))))
+#    
+#    BCEditDist<-summaryBy(.~V1, data=BCEditDist,FUN=sum)
+#    colnames(BCEditDist)<-c('Sample',0:18)
+#    BCEditDist<-melt(BCEditDist)
+#    BCEditDist[,4]<-"Barcode"
+#    
+#    PlasmidEditDist<-read("$OUTDIR/EditDist/Plasmid_EditDist",stringsAsFactors=F)
+#    PlasmidEditDist[,1]<-gsub('\\\.o.*','',gsub('extract.|map.','',(gsub('.*/','',PlasmidEditDist[,1]))))
+#    
+#    PlasmidEditDist<-summaryBy(.~V1, data=PlasmidEditDist,FUN=sum)
+#    colnames(PlasmidEditDist)<-c('Sample',0:(ncol(PlasmidEditDist)-2))
+#    PlasmidEditDist<-melt(PlasmidEditDist)
+#    PlasmidEditDist[,4]<-'Plasmid'
+#    
+#    if (length(grep('iPCR\$',PlasmidEditDist[,1]))>0) {
+#        PlasmidEditDist[grep('iPCR\$',PlasmidEditDist[,1]),][,4] <-'Primer'
+#    }
+#    
+#    BCEditDist<-rbind(BCEditDist,PlasmidEditDist)
+#    colnames(BCEditDist)[1:4]<-c('Sample','Hamming','Reads','Read')
+#    BCEditDist[,2]<-as.numeric(as.character(BCEditDist[,2]))
+#    BCEditDist[,3]<-as.numeric(as.character(BCEditDist[,3]))
+#    
+#    colnames(BCEditDist)[1:4]<-c('Sample','Hamming','Reads','Read')
+#    
+#    
+#    myColors <- brewer.pal(5,"Set1")
+#    names(myColors)<-factor(c('RNA','iPCR','Plasmid','DNA','10xRNA'),levels=c('RNA','iPCR','Plasmid','DNA','10xRNA'))
+#    colScale <- scale_fill_manual(name = "Type",values = myColors)
+#    height <- ceiling(length(unique(BCEditDist[,"Sample"]))/3)*2
+#    
+#    #plot
+#    BCEditDist\$Type<-gsub(".*_",'',BCEditDist\$Sample)
+#    BCEditDist\$Sample<- substr(BCEditDist\$Sample, 0, min(nchar(BCEditDist\$Sample)))
+#    #pdf("$OUTDIR/EditDist/EditDistDistance_BC.pdf",height=10,width=20)
+#    bcl<-ggplot(BCEditDist[grep('Barcode',BCEditDist[,4]),], aes(Hamming,Reads,fill=Type)) + 
+#    geom_bar(stat="identity",color='black',size=0.25,alpha=0.4) +
+#    #ggtitle('GGlo')+
+#    facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
+#    theme_classic()+
+#    colScale+
+#    xlab('Hamming distance')+
+#    theme(legend.position = "bottom",legend.text=element_text(size=8))+
+#    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+#    #scale_x_continuous(label= fancy_scientific)+
+#    scale_y_continuous(label= fancy_scientific)
+#    #dev.off()
+#    pdf(NULL)
+#    gp = ggplotGrob(bcl)
+#    gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
+#    ggsave(gp ,file="$OUTDIR/EditDist/EditDistDistance_BC.pdf", width=13, height=height)
+#    
+#    
+#    #plot
+#    #pdf("$OUTDIR/EditDist/EditDistDistance_Plasmid.pdf",height=10,width=20)
+#    pll<-ggplot(BCEditDist[grep('Plasmid|Primer',BCEditDist[,4]),], aes(Hamming,Reads,fill=Type)) + 
+#    geom_bar(stat="identity",color="black", size=0.1,alpha=0.4) +
+#    #ggtitle('GGlo')+
+#    facet_wrap(~Sample+Read,scales = "free_y", ncol=3)+ 
+#    theme_classic()+
+#    colScale+
+#    xlab('Hamming distance')+
+#    #scale_fill_brewer('Set1')+
+#    theme(legend.position = "bottom",legend.text=element_text(size=8))+
+#    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))+
+#    #scale_x_continuous(label= fancy_scientific)+
+#    scale_y_continuous(label= fancy_scientific)
+#    #dev.off()
+#    pdf(NULL)
+#    gp = ggplotGrob(pll)
+#    gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
+#    ggsave(gp ,file="$OUTDIR/EditDist/EditDistDistance_Plasmid.pdf", width=13, height=height)
+#    
+#EOF
+#    
+#    convert -density 300 $OUTDIR/EditDist/EditDistDistance_BC.pdf -quality 100 $OUTDIR/EditDist/EditDistDistance_BC.png
+#    convert -density 300 $OUTDIR/EditDist/EditDistDistance_Plasmid.pdf -quality 100 $OUTDIR/EditDist/EditDistDistance_Plasmid.png
+#    
+#    for i in `ls $OUTDIR/EditDist/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/EditDist/index.html
 fi
 
 
@@ -446,65 +446,65 @@ mkdir -p $OUTDIR/BarcodeFreq
 for i in `find ${dirs} -maxdepth 1 -name *barcode.counts.txt | sed 's/^..//g' | sed 's/\/.*//g'`; do reads=$(cut -f2 ${i}/${i}.barcode.counts.txt | awk '{sum+=$1} END {print sum}'); sort -nk2 ${i}/${i}.barcode.counts.txt| awk -v OFS='\t' -F'\t' -v sample="$i" -v reads="$reads" '{print $1, $2, sample, reads}'; done > $OUTDIR/BarcodeFreq/BarcodeFreq.txt
 
 
-#R --quiet --no-save << EOF
-#library(dplyr)
-#BC <- read("$OUTDIR/BarcodeFreq/BarcodeFreq.txt")
-#colnames(BC) <- c("Barcodes","barcodeFreq", "Sample", 'TotalBCcount')
-#BC[,"Type"]<-gsub(".*_",'',gsub('_Merged','',BC[,"Sample"]))
-#BC[,"cpm"] <- BC[,"barcodeFreq"]/(BC[,"TotalBCcount"]/1e6)
-#BC[,"BC.bin"] <- cut(BC[,"cpm"], breaks=c( 0, 1.1, 5.1, 10.1, 50.1, 100.1, 1000.1, 10000.1, 100000.1, 1000000.1), right=F, include.lowest=T, labels=c("0-1", "1-5", "5-10", "10-50", "50-100", "100-1000", "100-10000", "10000-100000","+100000"))
-##BC <- BC %>%
-##    group_by(Sample, cpm) %>%
-##    mutate(quantile = ntile(cpm, 10))
-##quantBCs <- lsit()
-##for (i in 1:length(unique(BC\$Sample))) {
-##    quantile(BC[BC\$Sample %in% 'BS493A-MSH_K562~A1~GGlo~HS2~A1~1Linear~ExoI_Rep2_DNA',]\$cpm, prob = seq(0, 1, length = 11), type = 5
-##
-#myColors <- brewer.pal(5,"Set1")
-#names(myColors) <- factor(c('RNA','iPCR','Plasmid','DNA','10xRNA'),levels=c('RNA','iPCR','Plasmid','DNA','10xRNA'))
-#colScale <- scale_fill_manual(name = "Type",values = myColors)
-#BC[,"Sample"]<- substr(BC[,"Sample"], 0, min(nchar(BC[,"Sample"])))
+R --quiet --no-save << EOF
+library(dplyr)
+BC <- read("$OUTDIR/BarcodeFreq/BarcodeFreq.txt")
+colnames(BC) <- c("Barcodes","barcodeFreq", "Sample", 'TotalBCcount')
+BC[,"Type"]<-gsub(".*_",'',gsub('_Merged','',BC[,"Sample"]))
+BC[,"cpm"] <- BC[,"barcodeFreq"]/(BC[,"TotalBCcount"]/1e6)
+BC[,"BC.bin"] <- cut(BC[,"cpm"], breaks=c( 0, 1.1, 5.1, 10.1, 50.1, 100.1, 1000.1, 10000.1, 100000.1, 1000000.1), right=F, include.lowest=T, labels=c("0-1", "1-5", "5-10", "10-50", "50-100", "100-1000", "100-10000", "10000-100000","+100000"))
+#BC <- BC %>%
+#    group_by(Sample, cpm) %>%
+#    mutate(quantile = ntile(cpm, 10))
+#quantBCs <- lsit()
+#for (i in 1:length(unique(BC\$Sample))) {
+#    quantile(BC[BC\$Sample %in% 'BS493A-MSH_K562~A1~GGlo~HS2~A1~1Linear~ExoI_Rep2_DNA',]\$cpm, prob = seq(0, 1, length = 11), type = 5
 #
-#height <- ceiling(length(unique(BC[,"Sample"]))/3)*2
-#
-#ggHist <- BC %>%
-#    ggplot(aes(x=log10(cpm+1),fill=Type)) +
-#    geom_histogram(binwidth=0.1, colour='black', alpha=0.4) +
-#    theme_classic()+
-#    colScale+
-#    facet_wrap(~Sample,scales="free_y", ncol=3)+ 
-#    theme_classic()+
-#    coord_cartesian(xlim = c(0, 4))+
-#    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
+myColors <- brewer.pal(5,"Set1")
+names(myColors) <- factor(c('RNA','iPCR','Plasmid','DNA','10xRNA'),levels=c('RNA','iPCR','Plasmid','DNA','10xRNA'))
+colScale <- scale_fill_manual(name = "Type",values = myColors)
+BC[,"Sample"]<- substr(BC[,"Sample"], 0, min(nchar(BC[,"Sample"])))
+
+height <- ceiling(length(unique(BC[,"Sample"]))/3)*2
+
+ggHist <- BC %>%
+    ggplot(aes(x=log10(cpm+1),fill=Type)) +
+    geom_histogram(binwidth=0.1, colour='black', alpha=0.4) +
+    theme_classic()+
+    colScale+
+    facet_wrap(~Sample,scales="free_y", ncol=3)+ 
+    theme_classic()+
+    coord_cartesian(xlim = c(0, 4))+
+    theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
+
+pdf(NULL)
+gp = ggplotGrob(ggHist)
+gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
+ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeHist.pdf", width=13, height=height)
+
+
+##ggsave(t,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
+#t<-ggplot(BC, aes(x=BC.bin,fill=Type)) +
+#geom_bar(color="black", size=0.25) +
+#theme_classic()+
+#colScale+
+#xlab('BC bin (cpm)') +
+#facet_wrap(~Sample,scales="free_y")+ 
+#theme_classic()+
+#theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=60,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
+##ggsave(t,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
 #
 #pdf(NULL)
-#gp = ggplotGrob(ggHist)
+#gp = ggplotGrob(t)
 #gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
-#ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeHist.pdf", width=13, height=height)
+#ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
 #
-#
-###ggsave(t,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
-##t<-ggplot(BC, aes(x=BC.bin,fill=Type)) +
-##geom_bar(color="black", size=0.25) +
-##theme_classic()+
-##colScale+
-##xlab('BC bin (cpm)') +
-##facet_wrap(~Sample,scales="free_y")+ 
-##theme_classic()+
-##theme(axis.title.x = element_text(size=14),axis.text.x  = element_text(size=12,angle=60,hjust=1),axis.title.y=element_text(size=14),axis.text.y=element_text(size=12))
-###ggsave(t,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
-##
-##pdf(NULL)
-##gp = ggplotGrob(t)
-##gp = editGrob(grid.force(gp), gPath("GRID.stripGrob", "GRID.text"), grep = TRUE, global = TRUE, just = "left", x = unit(0.1,"npc"))
-##ggsave(gp ,file="$OUTDIR/BarcodeFreq/BarcodeFreq.pdf", width=20, height=10)
-##
-#EOF
-#
-#rm $OUTDIR/BarcodeFreq/BarcodeFreq.txt
-#for i in `ls  $OUTDIR/BarcodeFreq | grep pdf | sed 's/.pdf//g'`; do convert -density 300 $OUTDIR/BarcodeFreq//${i}.pdf -quality 100 $OUTDIR/BarcodeFreq/${i}.png; done
-#
-#for i in `ls $OUTDIR/BarcodeFreq/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a> <br>' ; done  >$OUTDIR/BarcodeFreq/index.html
+EOF
+
+rm $OUTDIR/BarcodeFreq/BarcodeFreq.txt
+for i in `ls  $OUTDIR/BarcodeFreq | grep pdf | sed 's/.pdf//g'`; do convert -density 300 $OUTDIR/BarcodeFreq//${i}.pdf -quality 100 $OUTDIR/BarcodeFreq/${i}.png; done
+
+for i in `ls $OUTDIR/BarcodeFreq/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a> <br>' ; done  >$OUTDIR/BarcodeFreq/index.html
 
 
 #####
