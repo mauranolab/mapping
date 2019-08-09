@@ -335,21 +335,24 @@ workbook.close()
 END
 
 
-echo '<a href="'${fc}.xlsx'"><font size="6">FlowcellSummary</font></a>'| cat $OUTDIR/FlowcellSummary/index.html - > $OUTDIR/FlowcellSummary/index1
-mv $OUTDIR/FlowcellSummary/index1 $OUTDIR/FlowcellSummary/index.html
+echo >> $OUTDIR/FlowcellSummary/index.html
+echo '<a href="'${fc}.xlsx'"><font size="6">FlowcellSummary</font></a><br>' >> $OUTDIR/FlowcellSummary/index.html
+echo >> $OUTDIR/FlowcellSummary/index.html
+date >> $OUTDIR/FlowcellSummary/index.html
+echo >> $OUTDIR/FlowcellSummary/index.html
 
 
 ######
 #Edit distance per sample
 #######
 #BUGBUG hardcoded number of columns, can't handle mixed runs with different number of columns
-if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
-    mkdir -p $OUTDIR/EditDist
-    
-    for i in `find ${dirs} -maxdepth 1 \( -name "extract*" -o -name "map*" \)`; do Dist=$(grep 'BC read edit distances' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g' | perl -pe 's/, /\t/g' > $OUTDIR/EditDist/BC_EditDist
-    for i in `find ${dirs} -maxdepth 1 \( -name "extract*" -o -name "map*" \)`; do Dist=$(grep 'Plasmid read edit distances' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g' | perl -pe 's/, /\t/g' > $OUTDIR/EditDist/Plasmid_EditDist
-    
-    
+#if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
+#    mkdir -p $OUTDIR/EditDist
+#    
+#    for i in `find ${dirs} -maxdepth 1 \( -name "extract*" -o -name "map*" \)`; do Dist=$(grep 'BC read edit distances' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g' | perl -pe 's/, /\t/g' > $OUTDIR/EditDist/BC_EditDist
+#    for i in `find ${dirs} -maxdepth 1 \( -name "extract*" -o -name "map*" \)`; do Dist=$(grep 'Plasmid read edit distances' $i); echo $i $Dist; done | awk -v OFS='\t' -F'[' '{print $1, $3}' | sed 's/]//g' | perl -pe 's/, /\t/g' > $OUTDIR/EditDist/Plasmid_EditDist
+#    
+#    
 #    R --quiet --no-save << EOF
 #    source("${src}/Flowcell_Info.R")
 #    
@@ -436,7 +439,7 @@ if [[ ! `pwd` =~ ^\/vol\/mauranolab\/transposon\/aggregations\/ ]]; then
 #    convert -density 300 $OUTDIR/EditDist/EditDistDistance_Plasmid.pdf -quality 100 $OUTDIR/EditDist/EditDistDistance_Plasmid.png
 #    
 #    for i in `ls $OUTDIR/EditDist/*.png | sort | sed 's/.png//g' | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}.pdf'"><img src="'${i}.png'" width="1200"></a>' ; done  >$OUTDIR/EditDist/index.html
-fi
+#fi
 
 
 #####
