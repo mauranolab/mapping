@@ -114,6 +114,7 @@ def replace_dedup(data, bcColNum, myUMIcounts, deduped_UMI, wr):
 def process_lines(input_data, wr):
     global numUniqueBCs
     global numUniqueBCsAfterDedup
+    #BUGBUG I think numUniqueBCs/numUniqueBCsAfterDedup double count the same BC that shows up in multiple groups
     
     #Checks which barcodes are the most common before deduplication
     bcColNum = col
@@ -151,6 +152,7 @@ def process_lines_byGroup(group, startRow, index, wr):
             numLinesProcessed += 1
             if input_data[i][bcColNum] != "":
                 numNonEmptyBClinesProcessed +=1
+        #BUGBUG numUniqueBCs and numUniqueBCsAfterDedup would need to get updated too
         
         #BUGBUG why aren't the subsequent two ranges startRow:(index-1)
         
@@ -240,8 +242,8 @@ else:
 
 
 print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + " lines processed, " + str(numNonEmptyBClinesProcessed) + " with non-empty BCs)", file=sys.stderr)
-print("[AdjacencyDeDup] Number of unique barcodes before deduplication:", numUniqueBCs, file=sys.stderr)
-print("[AdjacencyDeDup] Number of unique barcodes after deduplication:", numUniqueBCsAfterDedup, file=sys.stderr)
+print("[AdjacencyDeDup] Number of unique BCs pre-deduplication:", numUniqueBCs, file=sys.stderr)
+print("[AdjacencyDeDup] Number of unique BCs post-deduplication:", numUniqueBCsAfterDedup, file=sys.stderr)
 if groupcols is not None:
     print("[AdjacencyDeDup] " + str(numGroupsRead) + " unique groups were found", file=sys.stderr)
 print("[AdjacencyDeDup] " + str(numAmbiguousLines) + " reads with ambiguous BCs were masked out", file=sys.stderr)
