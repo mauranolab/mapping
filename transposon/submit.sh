@@ -141,6 +141,8 @@ if [ ${runPreprocess} -eq 1 ]; then
     #iPCR: No UMI
     #ChIP: UMI is only preserved in the plasmid read (4N for all)
     
+    
+    echo
     echo "Trimming/extracting UMI from R1 files ${f1} and R2 files ${f2}"
     date
     
@@ -163,6 +165,7 @@ if [ ${runPreprocess} -eq 1 ]; then
     
     
     echo "umi_tools extract --bc-pattern \"${bc1pattern}\" --bc-pattern2 \"${bc2pattern}\""
+    #TODO this is pretty slow for big 10xRNA samples
     #TODO --quality-filter-threshold for UMI filtering?
     #/home/mauram01/.local/bin/umi_tools extract --help
     /home/mauram01/.local/bin/umi_tools extract --quality-encoding=phred33 --quality-filter-threshold=30 --compresslevel=9 -v 0 --log2stderr --extract-method regex --bc-pattern "${bc1pattern}" --bc-pattern2 "${bc2pattern}" -I $TMPDIR/${sample}.filtered.R1.fastq.gz -S $OUTDIR/${sample}.${R1file}.fastq.gz --read2-in=$TMPDIR/${sample}.filtered.R2.fastq.gz --read2-out=$OUTDIR/${sample}.${R2file}.fastq.gz
@@ -200,9 +203,12 @@ if [ ${runPreprocess} -eq 1 ]; then
     weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} BC processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.BC.processed.eps
     convert $TMPDIR/${sample}.BC.processed.eps $OUTDIR/${sample}.BC.processed.png
     
-    zcat -f $OUTDIR/${sample}.plasmid.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
-    weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} plasmid processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.plasmid.processed.eps
-    convert $TMPDIR/${sample}.plasmid.processed.eps $OUTDIR/${sample}.plasmid.processed.png
+    #BUGBUG needs to be disable  if nothing left on plasmid read (e.g. 28bp sequencing of 10xRNA R1)
+    if [ 1 -eq 1 ]; then
+        zcat -f $OUTDIR/${sample}.plasmid.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
+        weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} plasmid processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.plasmid.processed.eps
+        convert $TMPDIR/${sample}.plasmid.processed.eps $OUTDIR/${sample}.plasmid.processed.png
+    fi
 fi
 
 
