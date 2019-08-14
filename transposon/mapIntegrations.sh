@@ -32,7 +32,7 @@ echo "Analyzing barcodes"
 ${src}/extractBCcounts.sh ${sample} $BCreadSeq $bclen $chunksize $plasmidSeq $extractBCargs
 
 
-#TODO f2 is the read containing the primer sequence and the genomic regions. 
+#TODO f2 is the read containing the primer sequence and the genomic regions.
 f2=$OUTDIR/${sample}.plasmid.fastq.gz
 sample="${sample}.$jobid"
 #BUGBUG @RG wrong below--includes jobids
