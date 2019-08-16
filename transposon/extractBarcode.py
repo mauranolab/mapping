@@ -8,8 +8,6 @@ import gzip
 from umi_tools._dedup_umi import edit_distance
 import swalign
 
-#BUGBUG Appears not to enforce matching if there is readthrough past the BC sequence?
-
 
 ###Utility functions
 #https://stackoverflow.com/questions/25188968/reverse-complement-of-dna-strand-using-python
@@ -37,7 +35,7 @@ def checkReadAgainstRefSequence(readseq, refseq, editDistTotals, mismatchByPos):
     mismatchPosition = [i for i in range(minLen) if readseq[i] != refseq[i]]
     editDist = edit_distance(readseq[0:minLen].encode(), refseq[0:minLen].encode())
     
-    readEditDistPassed = editDist <= maxEditDist
+    readEditDistPassed = editDist <= (maxEditDist * minLen)
     
     editDistTotals[editDist] += 1
     
@@ -49,10 +47,6 @@ def checkReadAgainstRefSequence(readseq, refseq, editDistTotals, mismatchByPos):
 
 
 ###Fixed parameters
-#Specifically this is Hamming Distance (i.e. no insertions/deletions permitted)
-maxEditDist = 2
-
-
 ###Command line arguments
 version="1.1"
 
@@ -76,6 +70,8 @@ BCrevcomp_parser = parser.add_mutually_exclusive_group(required=False)
 parser.set_defaults(BCrevcomp=False)
 BCrevcomp_parser.add_argument('--BCrevcomp', dest='BCrevcomp', action='store_true', help='BC should be reverse complemented from sequencing read')
 BCrevcomp_parser.add_argument('--no-BCrevcomp', dest='BCrevcomp', action='store_false', help='BC should not be reverse complemented from sequencing read')
+
+parser.add_argument("--maxEditDist", action='store', type=float, default=0.1, help = "Max edit (hamming) distance as a proportion of total sequence length. Applied to both BC and plasmid reads. [%(default)s]")
 
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
 parser.add_argument('--version', action='version', version='%(prog)s ' + version)
@@ -111,7 +107,8 @@ if enforcePlasmidRead:
     plasmidRefSeq = plasmidRefSeq.upper()
     plasmidRefSeqLength = len(plasmidRefSeq)
     numWrongPlasmidSeq = 0
-    
+
+maxEditDist = args.maxEditDist
 
 print("Extract barcodes\nParameters:", file=sys.stderr)
 print(args, file=sys.stderr)
