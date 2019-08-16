@@ -28,6 +28,8 @@ BAM_OUT="${sampleOutdir}/bams/${sample_name}.${chrom}.${BAM_N}.bam"
 input_to_samtools3=${input_to_samtools//|/ }
 
 ## Sort bam file by read name.  picard does it lexigraphically.  samtools does it "naturally".
+## java -XX:ParallelGCThreads=2 -Dpicard.useLegacyParser=false -jar $PICARDPATH/picard.jar SortSam \
+## java -XX:ParallelGCThreads=2 -Xss256k -Dpicard.useLegacyParser=false -jar $PICARDPATH/picard.jar SortSam \
 samtools view -h -b -f ${BAM_K} -F ${BAM_E} ${BAM} ${input_to_samtools3} | \
 java -XX:ParallelGCThreads=2 -Dpicard.useLegacyParser=false -jar $PICARDPATH/picard.jar SortSam \
      -I=/dev/stdin \

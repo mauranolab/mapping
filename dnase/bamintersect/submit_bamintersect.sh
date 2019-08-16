@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eu -o pipefail
 
+# TODO Make thread dump and deal with java thread problem.
+
 src="/vol/mauranolab/cadlej01/projects/Sud_mm10_rn6"
 
 # Maybe this should be passed in?
@@ -188,31 +190,77 @@ done
     # Modify this for use in the flowcell pipeline ?
     sampleOutdir="${outdirs}/${sample_name}"
 
-    # Get the correct chrX non-HA zones (0-based bed style numbers, not UCSC positions):
-    # The 5p and 3p outer boundaries of the HAs are as of Mar 29, 2019.
-    # The assumed HPRT1 deletion zone is:  chrX    134459946   134501642
-    # See: /vol/cegs/sequences/hg38/HPRT1/HPRT1_assembly.bed
+    # Get the correct HA zones (0-based bed style numbers, not UCSC positions):
+    #     The 5p and 3p outer boundaries of the HPRT1 HAs are as of Mar 29, 2019.
+    #     See: /vol/cegs/sequences/hg38/HPRT1/HPRT1_assembly.bed
+    #
+    #     The 5p and 3p outer boundaries of the Sox2 HAs are as of Aug 9, 2019.
+    #     See: /vol/cegs/sequences/mm10/Sox2/Sox2_assembly.bed
+    #
     # Also: \\research-cifs.nyumc.org\Research\CEGS\Sequences\Landing Pads Summary Table.xlsx (8 JUL 2019)
     if echo "${cegsgenome}" | grep -q "LP058" ; then
         # HA lengths: 1032/1014 (LP058)
-        bam1_5p_HA="chrX:0-134458914"
-        bam1_3p_HA="chrX:134502656-156040895"
+        bam1_5p_HA="chrX:134458914-134459946"
+        bam1_3p_HA="chrX:134501642-134502656"
+        deletion_gene=HPRT1
     elif echo "${cegsgenome}" | grep -q "LP087" ; then
         # HA lengths: 251/250 (LP061)
-        bam1_5p_HA="chrX:0-134459695"
-        bam1_3p_HA="chrX:134501892-156040895"
+        bam1_5p_HA="chrX:134459695-134459946"
+        bam1_3p_HA="chrX:134501642-134501892"
+        deletion_gene=HPRT1
     elif echo "${cegsgenome}" | grep -q "LP123" ; then
         # HA lengths: 251/250 (LP061)
-        bam1_5p_HA="chrX:0-134459695"
-        bam1_3p_HA="chrX:134501892-156040895"
+        bam1_5p_HA="chrX:134459695-134459946"
+        bam1_3p_HA="chrX:134501642-134501892"
+        deletion_gene=HPRT1
     elif echo "${cegsgenome}" | grep -q "LP062" ; then
         # HA lengths: 100/100 (LP062)
-        bam1_5p_HA="chrX:0-134459846"
-        bam1_3p_HA="chrX:134501742-156040895"
+        bam1_5p_HA="chrX:134459846-134459946"
+        bam1_3p_HA="chrX:134501642-134501742"
+        deletion_gene=HPRT1
+    elif echo "${cegsgenome}" | grep -q "LP097a" ; then
+        # HA lengths: 142/278 (LP097a)
+        bam1_5p_HA="chr3:34631310-34631452"
+        bam1_3p_HA="chr3:34768108-34768386"
+        deletion_gene=Sox2ot
+    elif echo "${cegsgenome}" | grep -q "LP131a" ; then
+        # HA lengths: 142/278 (LP131a)
+        bam1_5p_HA="chr3:34631310-34631452"
+        bam1_3p_HA="chr3:34768108-34768386"
+        deletion_gene=Sox2ot
+    elif echo "${cegsgenome}" | grep -q "LP097b" ; then
+        # HA lengths: 142/183 (LP097b)
+        bam1_5p_HA="chr3:34631310-34631452"
+        bam1_3p_HA="chr3:34774117-34774300"
+        deletion_gene=Sox2ot
+    elif echo "${cegsgenome}" | grep -q "LP131b" ; then
+        # HA lengths: 142/183 (LP131b)
+        bam1_5p_HA="chr3:34631310-34631452"
+        bam1_3p_HA="chr3:34774117-34774300"
+        deletion_gene=Sox2ot
     else
         bam1_5p_HA="NA"
         bam1_3p_HA="NA"
+        deletion_gene="NA"
+        deletion_range="NA"
         echo "No HA match for ${sample_name}     genome is: ${cegsgenome}"
+    fi
+
+
+    # Compute deletion range coordinates.
+    if [ "${bam1_5p_HA}" != "NA" ]; then
+        IFS=':' read -ra ADDR <<< "${bam1_5p_HA}"
+        del_chrom=${ADDR[0]}
+        del_range=${ADDR[1]}
+        IFS='-' read -ra ADDR <<< "${del_range}"
+        del_5p=${ADDR[1]}
+
+        IFS=':' read -ra ADDR <<< "${bam1_3p_HA}"
+        del_range=${ADDR[1]}
+        IFS='-' read -ra ADDR <<< "${del_range}"
+        del_3p=${ADDR[0]}
+
+        deletion_range="${del_chrom}:${del_5p}-${del_3p}"
     fi
 
 
@@ -222,6 +270,18 @@ done
     # exclude_regions_from_counts="NA"
     if echo "${cegsgenome}" | grep -q "LP058" ; then
         exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
+        cegsLP=True
+    elif echo "${cegsgenome}" | grep -q "LP097a" ; then
+        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
+        cegsLP=True
+    elif echo "${cegsgenome}" | grep -q "LP097b" ; then
+        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
+        cegsLP=True
+    elif echo "${cegsgenome}" | grep -q "LP131a" ; then
+        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
+        cegsLP=True
+    elif echo "${cegsgenome}" | grep -q "LP131b" ; then
+        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
         cegsLP=True
     elif echo "${cegsgenome}" | grep -q "LP087" ; then
         exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
@@ -239,8 +299,7 @@ done
         exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/PL1_payload_vs_hg38.bed"
         cegsLP=False
     else
-        echo "No uninformative regions match for ${sample_name}"
-        echo "genome is: ${cegsgenome}"
+        # No uninformative regions
         exclude_regions_from_counts="NA"
         cegsLP=False
     fi
@@ -252,6 +311,11 @@ done
             exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_pSpCas9.bed"
         elif echo "${annotationgenome}" | grep -q "PL1" ; then
             exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_PL1_payload.bed"
+        fi
+    else
+        if echo "${annotationgenome}" | grep -q "mm10" ; then
+            # Arrive here when $cegsgenome == pSpCas9, and $annotationgenome == mm10
+            exclude_regions_from_counts="NA"
         fi
     fi
 
@@ -354,7 +418,6 @@ done
 
 TEMP_DIR_CL1="${sampleOutdir}/TEMP_DIR_CL1"
 rm -rf ${TEMP_DIR_CL1}   ## In case it got left over from a previous failed run.
-echo TEMP_DIR_CL1 is: ${TEMP_DIR_CL1}
 mkdir ${TEMP_DIR_CL1}
 
 ## bam1s is a full path to the sorted, single chromosome bam file generated by sort_chrom.sbatch
@@ -368,7 +431,13 @@ while read -r bam1s; do
         BASE1=${BASE1#*\.}   ## Get rid of the sample name.
         BASE2=${BASE2#*\.}
 
+        # Not sure if this is a problem.  Got inconsistent results.  Once saw the
+        # merge sbatch have "Dependency never satisfied".  But then it went away next 
+        # time.  Maybe due to buffering here? This should flush all the non-sbatch output
+        # from here and above. The sbatch's will flush when they exit.
+        # stdbuf --output=0 echo ${bam1s} ${bam2s} "${TEMP_DIR_CL1}/${BASE1}___${BASE2}"  >> "${sampleOutdir}/bams/array_list"
         echo ${bam1s} ${bam2s} "${TEMP_DIR_CL1}/${BASE1}___${BASE2}"  >> "${sampleOutdir}/bams/array_list"
+
     done < "${sampleOutdir}/bams/chr_list_2"
 done < "${sampleOutdir}/bams/chr_list_1"
 
@@ -414,11 +483,50 @@ export_vars="${export_vars},src=${src}"
 export_vars="${export_vars},reads_match=${reads_match}"
 export_vars="${export_vars},make_csv=${make_csv}"
 
+#          --kill-on-invalid-dep=yes \
 JOB_ID1=$(sbatch --parsable --dependency=afterok${JOB_ID0} --export="ALL,${export_vars}" --array="1-${array_size}" \
           --output="${sampleOutdir}/log/bamintersect.${sample_name}.o_%A_%a" --job-name=bamintersect "${src}/bamintersect.sh")
 
 ################################################################################################
 ## Cleanup:
+
+## Clear out the old output files, if any.
+rm -f "${sampleOutdir}/${sample_name}.informative.bed"
+rm -f "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+################################################################################################
+## Send some summary info to the anc file:
+echo "bam files:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "${bamname1}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "${bamname2}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+echo "${deletion_gene} Deletion Range is: ${deletion_range}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+echo "${deletion_gene} HAs:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "    ${bam1_5p_HA}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "    ${bam1_3p_HA}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+samtools idxstats ${bamname1} > "${TEMP_DIR_CL1}/${sample_name}.counts.anc_info.txt"
+num_lines=$(wc -l < "${TEMP_DIR_CL1}/${sample_name}.counts.anc_info.txt")
+let "num_lines = num_lines - 1"
+echo "samtools idx output for first bam file: reference sequence name, sequence length, # mapped reads and # unmapped reads." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+head "-${num_lines}" "${TEMP_DIR_CL1}/${sample_name}.counts.anc_info.txt" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+rm "${TEMP_DIR_CL1}/${sample_name}.counts.anc_info.txt"
+
+if [ "${exclude_regions_from_counts}" = "NA" ]; then
+    echo -e "No filter regions assigned for this sample."  >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+else
+    echo -e "Filter out reads from these regions:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    cat ${exclude_regions_from_counts} | sed 's/^/         /' >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+fi
+echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+################################################################################################
+## Merge output from the array jobs.
 
 export_vars="sampleOutdir=${sampleOutdir}"
 export_vars="${export_vars},src=${src}"
@@ -431,7 +539,20 @@ export_vars="${export_vars},cegsgenome=${cegsgenome}"
 export_vars="${export_vars},annotationgenome=${annotationgenome}"
 export_vars="${export_vars},make_csv=${make_csv}"
 export_vars="${export_vars},make_table=${make_table}"
+export_vars="${export_vars},deletion_gene=${deletion_gene}"
+export_vars="${export_vars},deletion_range=${deletion_range}"
 
-sbatch --parsable --dependency=afterok:${JOB_ID1} --export=ALL,${export_vars} --job-name=merge_bamintersect \
-       --output="${sampleOutdir}/log/merge_bamintersect.${sample_name}.o_%j" "${src}/merge_bamintersect.sh"
+#          --kill-on-invalid-dep=yes \
+JOB_ID2=$(sbatch --wait --parsable --dependency=afterok:${JOB_ID1} --export=ALL,${export_vars} --job-name=merge_bamintersect \
+          --output="${sampleOutdir}/log/merge_bamintersect.${sample_name}.o_%j" "${src}/merge_bamintersect.sh")
+
+################################################################################################
+# Exit status reports:
+
+# All_Job_IDs="${JOB_ID0}:${JOB_ID1}:${JOB_ID2}"
+# All_Job_IDs="${All_Job_IDs/:}"
+# echo ${All_Job_IDs}
+
+# sbatch --dependency=afterany${All_Job_IDs} --export="All_Job_IDs=${All_Job_IDs}" --job-name=final_report \
+#        --output="${sampleOutdir}/log/final_report.${sample_name}.o_%j" "${src}/final_report.sh"
 
