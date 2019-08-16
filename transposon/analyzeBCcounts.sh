@@ -168,21 +168,27 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     uniq -c |
     awk 'BEGIN {OFS="\t"} {print $2, $3, $4, $1}' |
     #Format: BC, UMI, cellBC, n
-
+    
     #Filter on minPropReadsForBC
     #Join in pre-UMI counts in column 5
     join -j 1 -a 1 - ${OUTDIR}/${sample}.barcode.counts.txt |
     #join -t "\t" doesn't work so get back to tabs
-    awk 'BEGIN {OFS="\t"} {print $1, $2, $3, $4, $5}' |
+    awk 'BEGIN {OFS="\t"} {print $1, $2, $3, $4, $5}' > $TMPDIR/${sample}.barcodes.minPropReadsForBC.txt
     #Format: BC, UMI, cellBC, n, total counts for this BC
-    awk -v minPropReadsForBC=0.05 -F "\t" 'BEGIN {OFS="\t"} $4/$5>minPropReadsForBC' | cut -f1-4 |
+    
+    echo -n -e "${sample}\tNumber of reads passing minPropReadsForBC filter\t"
+    cat $TMPDIR/${sample}.barcodes.minPropReadsForBC.txt | awk -v minPropReadsForBC=0.05 -F "\t" 'BEGIN {OFS="\t"} $4/$5>minPropReadsForBC {filtered+=$4} {total+=$4} END {print filtered, total}'
+    
+    cat $TMPDIR/${sample}.barcodes.minPropReadsForBC.txt |
+    #Do the actual filter
+    awk -v minPropReadsForBC=0 -F "\t" 'BEGIN {OFS="\t"} $4/$5>minPropReadsForBC' | cut -f1-4 |
     
     #Sort on BC and count reads perBC+CellBC
     sort -k1,1 -k3,3 |
     cut -f1,3 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' |
     #Format: BC, cellBC, n
     #TODO parameterize and do more precise filtering of 10x whitelist BCs. we do miss some by not allowing mismatches but it's pretty few reads 
-    fgrep -w -f /home/mauram01/public_html/blog/2019aug02/cells.whitelist.txt | awk 'BEGIN {OFS="\t"; print "BC", "cellBC", "count"} {print}' > ${OUTDIR}/${sample}.barcode.counts.byCell.txt
+    fgrep -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.whitelist.txt | awk 'BEGIN {OFS="\t"; print "BC", "cellBC", "count"} {print}' > ${OUTDIR}/${sample}.barcode.counts.byCell.txt
     
     
     echo -n -e "${sample}\tNumber of cells\t"
@@ -196,8 +202,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     
     echo
     
-    #TODO 10x hard read cutoff
-    cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv filter '$count >= 5' | ${src}/genotypeClones.py --inputfilename - --outputfilename ${OUTDIR}/${sample}.clones.txt
+    cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | ${src}/genotypeClones.py --inputfilename - --outputfilename ${OUTDIR}/${sample}.clones.txt
     echo
     
     echo -e "${sample}\tHistogram of number of cells per clone"
