@@ -150,7 +150,7 @@ genome_dirs=($(ls -d */))   # Elements will look like:  hg38/
 # genome_array could be bigger than genome_dirs though.
 
 for genome in "${genome_dirs[@]}"; do
-    if [[ "${genome}" == "bak"* ]] || [[ "${genome}" == "trash"* ]]; then
+    if [[ "${genome}" == "bak"* ]] || [[ "${genome}" == "trash"* ]] || [[ "${genome}" == "src"* ]]; then
         continue
     fi
 
@@ -159,7 +159,7 @@ for genome in "${genome_dirs[@]}"; do
         continue
     elif [ "${genome}" = "${assmbly_type1}/" ]; then
         chrom_sizes="/vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes"
-        cp "${path_to_main_driver_script}/assets/CEGS/trackDb_${assmbly_type1}_Analyses.txt" \
+        cp "${path_to_main_driver_script}/assets/${hub_type}/trackDb_${assmbly_type1}_Analyses.txt" \
            "${TMPDIR}/assembly_tracks/trackDb_assemblies_${assmbly_type1}.txt"
     else
         chrom_sizes="/vol/isg/annotation/fasta/${genome/\//}/${genome/\//}.chrom.sizes"
@@ -169,7 +169,7 @@ for genome in "${genome_dirs[@]}"; do
     assmbly_dirs=($(ls -d */))   # Elements will look like:  HPRT1/
 
     for assmbly in "${assmbly_dirs[@]}"; do
-        if [[ "${assmbly}" == "bak"* ]] || [[ "${assmbly}" == "trash"* ]] || [[ "${assmbly}" == "src"* ]]; then
+        if [[ "${assmbly}" == "bak"* ]] || [[ "${assmbly}" == "trash"* ]]; then
             continue
         fi
 

@@ -9,6 +9,8 @@ cegsgenome=$5
 annotationgenome=$6
 exclude_regions_from_counts=$7
 main_chrom=$8
+deletion_gene=$9
+deletion_range=${10}
 
 TMPDIR_CSV=`mktemp -d`   # TMPDIR_CSV has no trailing slash
 echo "main_chrom: ${main_chrom}       TMPDIR_CSV is: ${TMPDIR_CSV}"
@@ -17,6 +19,7 @@ echo "main_chrom: ${main_chrom}       TMPDIR_CSV is: ${TMPDIR_CSV}"
 # Parse homology arm boundaries.  These are the regions beyond the edge of the HAs.
 outer_HAs5p="${TMPDIR_CSV}/outer_HAs5p"
 outer_HAs3p="${TMPDIR_CSV}/outer_HAs3p"
+deletion_range_f="${TMPDIR_CSV}/deletion_range"
 
 IFS=':' read -r chr range <<< "${bam1_5p_HA}"
 IFS='-' read -r r1 r2 <<< "${range}"
@@ -25,6 +28,10 @@ echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${outer_HAs5p}
 IFS=':' read -r chr range <<< "${bam1_3p_HA}"
 IFS='-' read -r r1 r2 <<< "${range}"
 echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${outer_HAs3p}
+
+IFS=':' read -r chr range <<< "${deletion_range}"
+IFS='-' read -r r1 r2 <<< "${range}"
+echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${deletion_range_f}
 #####################################################################################
 
 file_1="${sampleOutdir}/${sample_name}.${main_chrom}.bed"  # The universe of all reads from a bam1 chromosome, in bed12 format
@@ -123,10 +130,10 @@ cat "${TMPDIR_CSV}/tmp8.out" >> "${sampleOutdir}/${sample_name}.counts.txt"
 
 #####################################################################################
 #####################################################################################
-# Find the number of HPRT1 reads that cross over the edges of the HAs.
+# Find the number of "deletion_gene" reads that cross over the edges of the HAs.
 
-# Get the boundaries of the HPRT1 reads.
-grep HPRT1 "${TMPDIR_CSV}/tmp8.out" |
+# Get the boundaries of the "deletion_gene" reads.
+grep "${deletion_gene}" "${TMPDIR_CSV}/tmp8.out" |
 awk -f <(cat << "AWK_HEREDOC_03"
 BEGIN{FS="\t"; OFS="\t"}
 {
@@ -134,26 +141,43 @@ BEGIN{FS="\t"; OFS="\t"}
 }
 END{}
 AWK_HEREDOC_03
-) > "${TMPDIR_CSV}/hprt1" || true
+) > "${TMPDIR_CSV}/del_gen1" || true
 
-# Need to sort them for bedops.
-sort-bed "${TMPDIR_CSV}/hprt1" > "${TMPDIR_CSV}/hprt2"
-
-# Extract the HPRT1 reads from our universe of retained reads, built above.
-bedops --element-of 1 "${TMPDIR_CSV}/filter_csv.bed3" "${TMPDIR_CSV}/hprt2" > "${TMPDIR_CSV}/hprt_reads"
-
-# Now get the reads that cross the HA edges.
-bedops --element-of 1 "${TMPDIR_CSV}/hprt_reads" ${outer_HAs5p} > "${TMPDIR_CSV}/hprt_reads5p"
-bedops --element-of 1 "${TMPDIR_CSV}/hprt_reads" ${outer_HAs3p} > "${TMPDIR_CSV}/hprt_reads3p"
-
-num_lines_5p=$(wc -l < "${TMPDIR_CSV}/hprt_reads5p")
-num_lines_3p=$(wc -l < "${TMPDIR_CSV}/hprt_reads3p")
+cat ${outer_HAs5p} > "${TMPDIR_CSV}/outer_HAs"
+cat ${outer_HAs3p} >> "${TMPDIR_CSV}/outer_HAs"
 
 echo -e "${main_chrom}:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo -e "    Number of HPRT1 5p HA reads:\t${num_lines_5p}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo -e "    Number of HPRT1 3p HA reads:\t${num_lines_3p}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+while read -r line_in; do
+    # IFS=$'\t' read -r  x y z rest_of_line <<< $line_in
+    echo ${line_in} | sed 's/ /\t/g' > "${TMPDIR_CSV}/del_gen2"
+
+    # Extract the "deletion_gene" reads from our universe of retained reads, built above.
+    bedops --element-of 1 "${TMPDIR_CSV}/filter_csv.bed3" "${TMPDIR_CSV}/del_gen2" > "${TMPDIR_CSV}/del_gen_reads"
+
+    # Now get the reads that cross the HA edges.
+    bedops --not-element-of 1 "${TMPDIR_CSV}/del_gen_reads" "${TMPDIR_CSV}/outer_HAs" \
+                              "${deletion_range_f}" > "${TMPDIR_CSV}/del_gen_reads_out"
+
+    num_lines=$(wc -l < "${TMPDIR_CSV}/del_gen_reads_out")
+    line_in=$(cat "${TMPDIR_CSV}/del_gen2" | sed 's/\t/:/' | sed 's/\t/-/')
+    echo -e "    Number of ${deletion_gene} ${line_in} over the HA reads:\t${num_lines}" >> \
+            "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+
+    # Now get the reads that are in the deletion range.
+    bedops --element-of 1 "${TMPDIR_CSV}/del_gen_reads" "${deletion_range_f}" > "${TMPDIR_CSV}/del_range_reads_out"
+
+    num_lines=$(wc -l < "${TMPDIR_CSV}/del_range_reads_out")
+    echo -e "    Number of ${deletion_gene} ${line_in} Deletion Range reads:\t${num_lines}" >> \
+            "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+done < "${TMPDIR_CSV}/del_gen1"
+
+echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
 #####################################################################################
 #####################################################################################
 # For testing
+# touch "${TMPDIR_CSV}/${main_chrom}"
 # cp -r "${TMPDIR_CSV}" "${sampleOutdir}"
 
