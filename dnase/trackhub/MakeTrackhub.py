@@ -287,7 +287,7 @@ for assay_type in assays:
             short_label="Reads",
             maxItems=10000, #Set high so that dense sequencing tracks can be displayed as this parameter can not be changed in the UI
 #            maxWindowToDraw=10000,
-            pairEndsByName="on",
+            pairEndsByName=".",
             long_label="Reads")
         composite.add_view(Reads_view)
         
