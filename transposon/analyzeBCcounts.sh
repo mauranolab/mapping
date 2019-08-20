@@ -202,14 +202,17 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     
     echo
     
-    cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | ${src}/genotypeClones.py --inputfilename - --outputfilename ${OUTDIR}/${sample}.clones.txt
+    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputsummary ${OUTDIR}/${sample}.clones.txt --outputfilename - | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
     echo
     
     echo -e "${sample}\tHistogram of number of cells per clone"
-    cat ${OUTDIR}/${sample}.clones.txt | mlr --headerless-csv-output --tsv cut -f ncells | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+    cat ${OUTDIR}/${sample}.clones.txt | mlr --headerless-csv-output --tsv cut -f ncells | awk -v cutoff=15 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
     
     echo -e "${sample}\tHistogram of number of BCs per clone"
-    cat ${OUTDIR}/${sample}.clones.txt | mlr --headerless-csv-output --tsv cut -f nBCs | awk '{print $1}' | awk -v cutoff=15 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+    cat ${OUTDIR}/${sample}.clones.txt | mlr --headerless-csv-output --tsv cut -f nBCs | awk -v cutoff=20 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+    
+    echo -e "${sample}\tHistogram of number of cells per BCs"
+    cat ${OUTDIR}/${sample}.byCounts.txt | mlr --headerless-csv-output --tsv cut -f BC | uniq -c | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 fi
 
 
