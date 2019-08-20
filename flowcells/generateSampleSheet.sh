@@ -1,10 +1,13 @@
 #!/bin/bash
 set -eu -o pipefail
 
+src="/vol/mauranolab/mapped/src"
+#TODO /home/mauram01/lib/revcomp.awk
+
 echo "Paste in a full flowcell entry (including #header lines, followed by a newline and CTRL-D"
 
 #Boilerplate header
-cat /vol/mauranolab/mapped/src/flowcells/SampleSheet.template.txt > SampleSheet.csv
+cat ${src}/flowcells/SampleSheet.template.txt > SampleSheet.csv
 
 
 ###Parse the sequencing sheet info from STDIN
@@ -16,7 +19,7 @@ perl -pe 's/^(#.+[^\t])\t+$/\1/g;' |
 #Also creates info.txt
 tee info.txt |
 #NB our sample sheet records RC for BC2, which according to https://support.illumina.com/content/dam/illumina-support/documents/documentation/system_documentation/miseq/indexed-sequencing-overview-guide-15057455-04.pdf is valid for iSeq 100, MiniSeq, NextSeq, HiSeq X, HiSeq 4000, or HiSeq 3000. Therefore for runs on NovaSeqTM 6000, MiSeqTM, HiSeq 2500, and HiSeq 2000, BC2 must be RC back to the original sequence.
-awk -v doRevComp=0 -f ~/lib/revcomp.awk -F "\t" --source  'BEGIN {OFS=","; split("8,8", bclens, ",")} 
+awk -v doRevComp=0 -f ${src}/flowcells/revcomp.awk -F "\t" --source  'BEGIN {OFS=","; split("8,8", bclens, ",")} 
     $1=="#Indices" && $2!="" {split($2, bclens, ",")}
     $0!~/^#/ && $1!="" && $5!="Pool" {if(bclens[1]==0) {$7="_"} if(bclens[2]==0) {$8="_"} split($7, bc1, "_"); split($8, bc2, "_"); if(doRevComp==1) {bc2[2]=revcomp(bc2[2])} print "Sample_" $2, $2, "", "",  bc1[1], toupper(substr(bc1[2], 0, bclens[1])),  bc2[1], toupper(substr(bc2[2], 0, bclens[2])), "Project_" $3, "";}' >> SampleSheet.csv
 
@@ -83,6 +86,8 @@ echo
 echo
 
 R --quiet --no-save << 'EOF'
+suppressPackageStartupMessages(library(reshape))
+
 data <- read.table("SampleSheet.csv", header=T, skip=19, sep=",", comment.char = "", quote = "", strip.white = TRUE, stringsAsFactors = F)
 
 if(nrow(data) == 0) {
@@ -174,6 +179,8 @@ results.wide <- cast(bc1len~bc2len, value="numSamplesTooClose", data=results, fu
 rownames(results.wide) <- paste("bc1", results.wide[,1])
 results.wide <- results.wide[,-1]
 print.data.frame(results.wide, row.names=T)
+
+#BUGBUG no output for single index runs
 EOF
 
 
