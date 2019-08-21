@@ -45,6 +45,7 @@ fi
 
 echo "Analyzing data for ${sample}"
 echo "Analyzing read mapping (minReadCutoff=${minReadCutoff})"
+date
 
 
 echo
@@ -83,6 +84,7 @@ convert $TMPDIR/${sample}.genomic.eps ${OUTDIR}/${sample}.genomic.png
 
 echo
 echo "Merge mapping and barcodes"
+date
 #Subtract additional 1 bp from reads on + strand so that the coordinates represent 1 nt to the left of the insertion site (i.e. for A^T, the coordinates point to T)
 samtools view ${samflags} $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
     readlength = length($10); \
@@ -119,6 +121,7 @@ cat $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed | cut -f6 | sort | uniq 
 
 echo
 echo "Coordinate-based deduping"
+date
 cat $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed | cut -f1-7 |
 awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"; groupnum=1} { \
     if( NR>1 && (last[1] != $1 || $2 - last[2] > maxstep || $3 - last[3] > maxstep || last[5] != $5 )) { \
@@ -148,8 +151,9 @@ cat $OUTDIR/${sample}.barcodes.readnames.coords.bed | cut -f6 | sort | uniq -c |
 #Go through entire file with awk despite only looking at first line so zcat terminates properly
 minUMILength=`zcat -f $OUTDIR/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($3)}' | uniq | sort -n | awk 'NR==1'`
 if [[ "${minUMILength}" -gt "5" ]]; then
+    #never implemented deduping
     echo
-    echo "Coordinate-based UMI deduping"
+    echo "Analyzing UMIs"
     
     cat $OUTDIR/${sample}.barcodes.readnames.coords.bed | cut -f1-2,5-7 | sort -k1,1 -k2,2g -k4,4 -k5,5 | uniq -c |
     awk 'BEGIN {OFS="\t"} {print $2, $3, $5, $1, $4}' > $TMPDIR/${sample}.coords.collapsedUMI.bed
