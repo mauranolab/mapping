@@ -55,7 +55,7 @@ date
 
 
 echo
-echo "Error-correcting barcodes"
+echo "Correcting barcodes"
 date
 echo "Deduping BCs"
 zcat $TMPDIR/${sample}.barcodes.raw.txt.gz | ${src}/AdjacencyDeDup.py --col 1 -o - -  | 

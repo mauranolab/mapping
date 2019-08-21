@@ -47,13 +47,15 @@ if [ ${runMerge} -eq 1 ]; then
     bcfiles=`echo ${indivsamples} | perl -pe 's/\/+$//g;' -e 's/\/+( +)/\1/g;' | awk 'BEGIN {ORS=" "} {for(i=1; i<=NF; i++) {split($i, path, "/"); print $i "/" path[length(path)] ".barcodes.preFilter.txt.gz" }}'`
     echo -e "Will merge barcode files: ${bcfiles}\n"
     
-    cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -o ${sample} -terse > sgeid.merge.${sample}
+    cat <<EOF | qsub -S /bin/bash -j y -b y -N merge.${sample} -o ${sample} -terse > sgeid.merge.${sample}
     set -eu -o pipefail
     echo "Merging barcodes"
+    date
     zcat -f ${bcfiles} | pigz -p ${NSLOTS} -c -9 > ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz
     
     if [[ ${sampleType} == "iPCR" ]]; then
         echo "Merging bam files"
+        date
         if [[ `echo ${bamfiles} | wc | awk '{print $2}'` -gt 1 ]]; then 
             samtools merge -f -l 9 $OUTDIR/${sample}.bam ${bamfiles}
         else 
@@ -61,6 +63,10 @@ if [ ${runMerge} -eq 1 ]; then
         fi
         samtools index $OUTDIR/${sample}.bam
     fi
+    
+    echo
+    echo Done
+    date
 EOF
 fi
 

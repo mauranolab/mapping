@@ -27,6 +27,7 @@ jobid=${SGE_TASK_ID}
 #mkdir -p $TMPDIR
 #echo "using $TMPDIR as TMPDIR"
 
+echo
 echo "Analyzing barcodes"
 #Will read SGE_TASK_ID independently
 ${src}/extractBCcounts.sh ${sample} $BCreadSeq $bclen $chunksize $plasmidSeq $extractBCargs
