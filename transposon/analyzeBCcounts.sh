@@ -18,6 +18,7 @@ fi
 
 
 echo "Analyzing data for ${sample} (minReadCutoff=${minReadCutoff})"
+date
 
 echo
 zcat ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz | ${src}/removeOverrepresentedBCs.py --col 1 --maskcols 3,4 --freq 0.01 -o ${TMPDIR}/${sample}.barcodes.txt -
@@ -37,6 +38,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     #TODO apply whitelist ahead of time or correct cellBC/UMI to cellranger data here?
     echo
     echo "Secondary deduping by cellBC"
+    date
     cat ${TMPDIR}/${sample}.barcodes.txt | sort -k4,4 -k1,1 |
     #Dedup BC by cellBC
     ${src}/AdjacencyDeDup.py --col 1 --groupcols 4 -o - - |
@@ -58,6 +60,7 @@ fi
 
 echo
 echo "Sorting and compressing"
+date
 sort -k1,1 -k3,3 -k4,4 ${TMPDIR}/${sample}.barcodes.txt | pigz -p ${NSLOTS} -c -9 - > ${OUTDIR}/${sample}.barcodes.txt.gz
 
 #Empty BCs haven't been filtered yet for non-UMI data
@@ -91,6 +94,7 @@ fi
 if [ "${minUMILength}" -ge 5 ]; then
     echo
     echo "Analyzing UMIs"
+    date
     
     echo
     echo "Barcode counts (including UMI)"
@@ -182,37 +186,42 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     cat $TMPDIR/${sample}.barcodes.minPropReadsForBC.txt |
     #Do the actual filter
     awk -v minPropReadsForBC=0 -F "\t" 'BEGIN {OFS="\t"} $4/$5>minPropReadsForBC' | cut -f1-4 |
-    
     #Sort on BC and count reads perBC+CellBC
     sort -k1,1 -k3,3 |
     cut -f1,3 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' |
     #Format: BC, cellBC, n
-    #TODO parameterize and do more precise filtering of 10x whitelist BCs. we do miss some by not allowing mismatches but it's pretty few reads 
-    fgrep -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.whitelist.txt | awk 'BEGIN {OFS="\t"; print "BC", "cellBC", "count"} {print}' > ${OUTDIR}/${sample}.barcode.counts.byCell.txt
+    #TODO parameterize and do more precise filtering of 10x whitelist BCs. we do miss some by not allowing mismatches but it's pretty few reads
+    #TODO report high-count cellBCs not on whitelist, mainly in case umi_tools dedup is not working well
+    fgrep -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.whitelist.txt |
+    fgrep -v -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.pSB.excluded.txt |
+    awk 'BEGIN {OFS="\t"; print "BC", "cellBC", "count"} {print}' > ${OUTDIR}/${sample}.barcode.counts.byCell.txt
     
     
     echo -n -e "${sample}\tNumber of cells\t"
     cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv cut -f cellBC | sort | uniq | wc -l
     
     echo -e "${sample}\tHistogram of number of cells per BC"
-    cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv cut -f BC | sort | uniq -c | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
-    
-    echo -e "${sample}\tHistogram of number of BCs per cell"
-    cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv cut -f cellBC | sort | uniq -c | awk '{print $1}' | awk -v cutoff=15 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
-    
+    cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv cut -f BC | sort | uniq -c | mlr -p --ofs "\t" --ofmt %.1lf histogram -f 1 --nbins 4 --auto -o nCells
     echo
     
-    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputsummary ${OUTDIR}/${sample}.clones.txt --outputfilename - | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
+    echo -e "${sample}\tHistogram of number of BCs per cell"
+    cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv cut -f cellBC | sort | uniq -c | mlr -p --ofs "\t" --ofmt %.1lf histogram -f 1 --nbins 4 --auto -o nBCs
+    echo
+    
+    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputwide ${OUTDIR}/${sample}.clones.txt --outputlong ${OUTDIR}/${sample}.clones.counts.filtered.txt --output - --printGraph ${OUTDIR}/clones | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
     echo
     
     echo -e "${sample}\tHistogram of number of cells per clone"
-    cat ${OUTDIR}/${sample}.clones.txt | mlr --headerless-csv-output --tsv cut -f ncells | awk -v cutoff=15 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+    cat ${OUTDIR}/${sample}.clones.txt | mlr --tsv --ofmt %.1lf histogram -f ncells --nbins 10 --auto
+    echo
     
     echo -e "${sample}\tHistogram of number of BCs per clone"
-    cat ${OUTDIR}/${sample}.clones.txt | mlr --headerless-csv-output --tsv cut -f nBCs | awk -v cutoff=20 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+    cat ${OUTDIR}/${sample}.clones.txt | mlr --tsv --ofmt %.1lf histogram -f nBCs --nbins 5 --auto
+    echo
     
     echo -e "${sample}\tHistogram of number of cells per BCs"
-    cat ${OUTDIR}/${sample}.byCounts.txt | mlr --headerless-csv-output --tsv cut -f BC | uniq -c | awk '{print $1}' | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+    cat ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt | mlr --headerless-csv-output --tsv cut -f BC | uniq -c | mlr --fs space --repifs --ocsv --ofs "\t" --ofmt %.1lf histogram -f 1 --nbins 5 --auto -o nCells
+    echo
 fi
 
 
