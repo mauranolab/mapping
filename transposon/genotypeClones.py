@@ -241,17 +241,21 @@ def writeOutputFiles(G):
     totalBCsSkipped = 0
     totalCount = 0
     
-    outputfilename = args.outputfilename
+    longoutfile = open(args.outputlong, 'w')
+    longwr = csv.DictWriter(longoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'clone', 'count'])
+    longwr.writeheader()
+    
+    outputfilename = args.output
     if outputfilename=="-":
         outfile = sys.stdout
     else:
         outfile = open(outputfilename, 'w')
-    outwr = csv.DictWriter(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'cellBC', 'count', 'clone', 'edgenum'])
+    outwr = csv.DictWriter(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'cellBC', 'count', 'clone'])
     outwr.writeheader()
     
-    summaryoutfile = open(args.outputsummary, 'w')
-    summarywr = csv.DictWriter(summaryoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'count', 'nedges', 'nBCs', 'ncells'])
-    summarywr.writeheader()
+    wideoutfile = open(args.outputwide, 'w')
+    widewr = csv.DictWriter(wideoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'count', 'nedges', 'nBCs', 'ncells'])
+    widewr.writeheader()
     
     try:
         for subG in nx.connected_component_subgraphs(G):
@@ -274,23 +278,24 @@ def writeOutputFiles(G):
             
             
             for bc in bcs:
-                edgenum = 0
+                longwr.writerow({ 'BC': bc, 'clone': 'clone-' + str(cloneid).zfill(4), 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])])})
+                
                 #Start with edges with highest UMIs
                 for edge in sorted(subG.edges([bc]), key=lambda e: subG.edges[e]['weight'], reverse=True):
-                    edgenum += 1
                     if subG.nodes[edge[0]]['type'] == 'BC':
                         cellBC = edge[1]
                     else:
                         cellBC = edge[0]
-                    outwr.writerow({ 'BC': bc, 'cellBC': cellBC, 'clone': 'clone-' + str(cloneid).zfill(4), 'count': subG.edges[edge]['weight'], 'edgenum': edgenum })
+                    outwr.writerow({ 'BC': bc, 'cellBC': cellBC, 'clone': 'clone-' + str(cloneid).zfill(4), 'count': subG.edges[edge]['weight'] })
             
-            summarywr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': 'clone-' + str(cloneid).zfill(4), 'count': count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells) })
+            widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': 'clone-' + str(cloneid).zfill(4), 'count': count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells) })
     
     finally:
         outfile.close()
-        summaryoutfile.close()
+        longoutfile.close()
+        wideoutfile.close()
     
-    print("[genotypeClones] Identified ", str(cloneid), " unique clones, ", totalCells, " cells, and ", totalBCs, " BCs. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalCount/cloneid, 2), " UMIs", sep="", file=sys.stderr)
+    print("[genotypeClones] Identified ", str(cloneid), " unique clones, ", totalCells, " cells, and ", totalBCs, " BCs. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalCount/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
 
 
 ###Command line arguments
@@ -298,8 +303,9 @@ version="1.0"
 
 parser = argparse.ArgumentParser(prog = "genotypeClones.py", description = "Graph approach to generate unified list of which BCs are present in which cells", allow_abbrev=False)
 parser.add_argument('--inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences. First line must be header (unused)')
-parser.add_argument('--outputsummary', action='store', help='Tab-delimited list of clones and the cells/BCs they include')
-parser.add_argument('--outputfilename', action='store', help='Tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file')
+parser.add_argument('--outputlong', action='store', help='Tab-delimited list of BC counts totalled per clone')
+parser.add_argument('--outputwide', action='store', help='Tab-delimited list of clones and the cells/BCs they include')
+parser.add_argument('--output', action='store', help='Tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
 
 parser.add_argument('--minreads', action='store', type=int, default=2, help='Min UMI filter for input file')
 parser.add_argument('--minPropOfBCReads', action='store', type=float, default=0.15, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
