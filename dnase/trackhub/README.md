@@ -78,6 +78,8 @@ sort -k2,2 | cut -f1 > inputs.txt
 tail +2 ../SampleIDs.tsv |
 perl -pe 's/ /_/g;' -e 's/\-/_/g;' -e "s/[\(\)\'%]//g;" |
 awk -v src=${src} -F "\t" '{print src "/submit.sh hg38_noalt mapBwaAln,dnase " $5  " " $3}' |
+#use this line for old SampleIDs.tsv format (everything but mouseencode)
+#awk -v src=${src} -F "\t" '{print src "/submit.sh hg38_noalt mapBwaAln,dnase " $3  " " $2}' |
 #Use this line instead for ChIP-seq
 #awk -v src=${src} -F "\t" '{print src "/submit.sh hg38_noalt mapBwaAln,chipseq " $5 "-" $9  " " $3}' |
 sort |
