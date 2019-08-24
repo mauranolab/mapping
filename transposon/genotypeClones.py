@@ -242,7 +242,7 @@ def writeOutputFiles(G):
     totalCount = 0
     
     longoutfile = open(args.outputlong, 'w')
-    longwr = csv.DictWriter(longoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'clone', 'count'])
+    longwr = csv.DictWriter(longoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'clone', 'count', 'nCells'])
     longwr.writeheader()
     
     outputfilename = args.output
@@ -278,7 +278,7 @@ def writeOutputFiles(G):
             
             
             for bc in bcs:
-                longwr.writerow({ 'BC': bc, 'clone': 'clone-' + str(cloneid).zfill(4), 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])])})
+                longwr.writerow({ 'BC': bc, 'clone': 'clone-' + str(cloneid).zfill(4), 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])]), 'nCells': len(subG.edges([bc]))})
                 
                 #Start with edges with highest UMIs
                 for edge in sorted(subG.edges([bc]), key=lambda e: subG.edges[e]['weight'], reverse=True):
