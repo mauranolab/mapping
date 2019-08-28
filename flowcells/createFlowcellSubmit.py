@@ -107,36 +107,34 @@ def transposonSamples(line):
     fileLocation = getBasedir(line['Lab'], sampleType, line['FC']) + "Sample_" + line["Sample #"] + '/"'
     
     #default parameters that can be overriden below
-    BCreadSeq = "CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBGCTAGTTGTGGGATCTTTGTCCAAACTCATCGAGCTCGGGA"
     bclen = "16"
     
     #Unique line to each library 
-    if sampleType in ['Transposon DNA', 'Transposon RNA', 'Transposon 10xRNA']:
+    if sampleType in ['Transposon DNA', 'Transposon RNA']:
+        BCreadSeq = "CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBGCTAGTTGTGGGATCTTTGTCCAAACTCATCGAGCTCGGGA"
         plasmidSeq="AGCTGCACAGCAACACCGAGCTGGGCATCGTGGAGTACCAGCACGCCTTCAAGACCCCCATCGCCTTCGCCAGATC"
         extractBCargs="--no-BCrevcomp"
         if sampleType == "Transposon DNA":
             bcread = "R2"
         elif sampleType == "Transposon RNA":
             bcread = "R1"
-        elif sampleType == "Transposon 10xRNA":
-            BCreadSeq = "TTGGACAAAGATCCCACAACTAGCBBBBBBBBBBBBBBBBCCTAATTGCCTAGAAAGGAGCAGACGATATGGCGTCGCTCC"
-            bcread = "R2"
-            extractBCargs="--BCrevcomp"
-            plasmidSeq="None" #Nothing to align to in the cell BC / UMI (just the pT tail after).
         else:
             raise Exception("IMPOSSIBLE")
-    elif sampleType == "Transposon iPCR" or sampleType == "Transposon iPCR Capture":
-        if sampleType == "Transposon iPCR":
-            bcread = "R1"
-            plasmidSeq="CTTCCGACTTCAACTGTA"
-            extractBCargs="--no-BCrevcomp"
-        elif sampleType == "Transposon iPCR Capture":
-            BCreadSeq="AAAGATCCCACAACTAGCBBBBBBBBBBBBBBBBCCTAATTGCCTAGAAAGGAGCAGACG"
-            bcread = "R2"
-            plasmidSeq="None"
-            extractBCargs="--BCrevcomp"
-        else:
-            raise Exception("IMPOSSIBLE")
+    elif sampleType == "Transposon iPCR":
+        bcread = "R1"
+        BCreadSeq = "CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBGCTAGTTGTGGGATC" #Shorter sequence ends at the DpnII site
+        plasmidSeq="CTTCCGACTTCAACTGTA"
+        extractBCargs="--no-BCrevcomp"
+    elif sampleType == "Transposon iPCR Capture":
+        bcread = "R2"
+        BCreadSeq = "AAAGATCCCACAACTAGCBBBBBBBBBBBBBBBBCCTAATTGCCTAGAAAGGAGCAGACG"
+        plasmidSeq = "None"
+        extractBCargs="--BCrevcomp"
+    elif sampleType == "Transposon 10xRNA":
+        bcread = "R2"
+        BCreadSeq = "TTGGACAAAGATCCCACAACTAGCBBBBBBBBBBBBBBBBCCTAATTGCCTAGAAAGGAGCAGACGATATGGCGTCGCTCC"
+        plasmidSeq="None" #Nothing to align to in the cell BC / UMI (just the pT tail after).
+        extractBCargs="--BCrevcomp"
     else:
         raise Exception("Can't handle sampleType" + sampleType)
     submitCommand = ' '.join([qsub + fullSampleName, sampleTypeShort, line["R1 Trim (P5)"], line["R2 Trim (P7)"], bcread, bclen, BCreadSeq, plasmidSeq, extractBCargs, fileLocation])
