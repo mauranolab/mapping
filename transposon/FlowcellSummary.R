@@ -50,7 +50,7 @@ getReadsPerSite <- function(Sample) {
 analysisFiles <- list.files('./', pattern='\\.o[0-9]+$', include.dirs = FALSE)
 analysisFiles <- analysisFiles[grep('^submit\\.', analysisFiles, invert=T)]
 analysisFiles <- analysisFiles[file.info(analysisFiles)$size>200]#Removes i with errors
-outputCols <- c("Flowcell", "BS", "Name", "Type", "Total read pairs", "Total barcodes", "BC+UMI", "UMI length", "Unique BC", "BC length", "Complexity", "Mapped reads", "Mapped+BC reads", "Read lengths", "Raw unique sites", "Unique sites", "#BC 1 site", "#BC 2+ sites", "Prop 2+", "Prop Chimeric")
+outputCols <- c("Flowcell", "BS", "Name", "Type", "Total read pairs", "Total barcodes", "BC+UMI", "UMI length", "Unique BC", "BC length", "Complexity", "Mapped reads", "Prop pSB/pTR", "Mapped+BC reads", "Read lengths", "Raw unique sites", "Unique sites", "#BC 1 site", "#BC 2+ sites", "Prop 2+", "Prop Chimeric")
 data <- as.data.frame(matrix(ncol=length(outputCols), nrow=length(analysisFiles)))
 colnames(data) <- outputCols
 
@@ -98,6 +98,7 @@ for (i in 1:length(analysisFiles)) {
 		
 		if(data[i, "Type"] == "iPCR") {
 			data[i, "Mapped reads"] <- as.numeric(splitLines('Total PF reads', '\t')$X3)
+			data[i, "Prop pSB/pTR"] <- signif(as.numeric(splitLines('Total reads mapping to pSB or pTR', '\t')$X3) / data[i, "Mapped reads"], 2)
 			data[i, "Mapped+BC reads"] <- as.numeric(splitLines('Number of reads passing all filters and having barcodes assigned', '\t')$X3)
 			data[i, "Read lengths"] <- gsub(" \\([0-9]+\\)", "", splitLines('Read lengths', '\t')$X3)
 			data[i, "Raw unique sites"] <- as.numeric(splitLines('Number of unique insertion sites before collapsing nearby ones', '\t')$X3[1])
