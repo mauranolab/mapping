@@ -50,7 +50,7 @@ getReadsPerSite <- function(Sample) {
 analysisFiles <- list.files('./', pattern='\\.o[0-9]+$', include.dirs = FALSE)
 analysisFiles <- analysisFiles[grep('^submit\\.', analysisFiles, invert=T)]
 analysisFiles <- analysisFiles[file.info(analysisFiles)$size>200]#Removes i with errors
-outputCols <- c("Flowcell", "BS", "Name", "Type", "Total read pairs", "Total barcodes", "BC+UMI", "UMI length", "Unique BC", "BC length", "Complexity", "Mapped reads", "Mapped+BC reads", "Read lengths", "Raw unique sites", "Unique sites", "#BC 1 site", "#BC 2+ sites", "Prop 2+")
+outputCols <- c("Flowcell", "BS", "Name", "Type", "Total read pairs", "Total barcodes", "BC+UMI", "UMI length", "Unique BC", "BC length", "Complexity", "Mapped reads", "Mapped+BC reads", "Read lengths", "Raw unique sites", "Unique sites", "#BC 1 site", "#BC 2+ sites", "Prop 2+", "Prop Chimeric")
 data <- as.data.frame(matrix(ncol=length(outputCols), nrow=length(analysisFiles)))
 colnames(data) <- outputCols
 
@@ -59,7 +59,7 @@ for (i in 1:length(analysisFiles)) {
 	Sample <- readLines(analysisFiles[i])
 	Sample <- sub("^\\s+", "", Sample)
 	data[i, "Flowcell"] <- basename(getwd())
-	data[i, "Name"] <- gsub('_RNA$|_DNA$|_iPCR$', '', gsub('\\.o.*|.*-', '', analysisFiles[i]))
+	data[i, "Name"] <- gsub('_(10x)?RNA$|_DNA$|_iPCR$', '', gsub('\\.o.*|.*-', '', analysisFiles[i]))
 	data[i, "BS"] <- gsub('-.*', '', analysisFiles[i])
 	if(grepl('Merged', analysisFiles[i])) {
 		data[i, "Type"] <- gsub('.*_|\\.o.*', '', gsub('_Merged', '', analysisFiles[i]))
@@ -70,7 +70,8 @@ for (i in 1:length(analysisFiles)) {
 		data[i, "Total read pairs"] <- as.numeric(splitLines('Number of total reads', '\t')$X3)
 		data[i, "Total barcodes"] <- as.numeric(splitLines('Number of total read barcodes', '\t')$X3)
 		#Note tail() takes "Number of unique barcodes passing minimum read cutoff" when present; "Number of unique barcodes" if not
-		data[i, "Unique BC"] <- as.numeric(tail(splitLines('Number of unique barcodes', '\t'),1)$X3)
+		#Note we grep for "Number of unique barcodes" but actually use tail to get "Number of unique barcodes passing minimum read cutoff" for recent versions of pipeline -- TODO just get the latter directly
+		data[i, "Unique BC"] <- as.numeric(tail(splitLines('Number of unique barcodes passing', '\t'),1)$X3)
 #BUGBUG I think Jesper was accounting for merged i from samples with multiple BC lengths here, but the first clause looks broken either way
 #		if(getLength('Barcode lengths')$X1!=data[i, "Unique BC"]) {
 #			data[i, "BC length"] <- strsplit(Sample[grep(as.character(data[i, "Unique BC"]-1), Sample, fixed=T)], "\\s+")[[1]][2]
@@ -95,7 +96,7 @@ for (i in 1:length(analysisFiles)) {
 			data[i, "Complexity"] <- signif(data[i, "BC+UMI"] / data[i, "Total barcodes"], 2)
 		}
 		
-		if(any(grepl('Total PF reads', Sample))) {
+		if(data[i, "Type"] == "iPCR") {
 			data[i, "Mapped reads"] <- as.numeric(splitLines('Total PF reads', '\t')$X3)
 			data[i, "Mapped+BC reads"] <- as.numeric(splitLines('Number of reads passing all filters and having barcodes assigned', '\t')$X3)
 			data[i, "Read lengths"] <- gsub(" \\([0-9]+\\)", "", splitLines('Read lengths', '\t')$X3)
@@ -104,6 +105,10 @@ for (i in 1:length(analysisFiles)) {
 			data[i, "#BC 1 site"] <- as.numeric(getInsert(Sample)[1])
 			data[i, "#BC 2+ sites"] <- as.numeric(getInsert(Sample)[2])
 			data[i, "Prop 2+"] <- signif(data[i, "#BC 2+ sites"] / (data[i, "#BC 1 site" ] + data[i, "#BC 2+ sites"]), 2)
+			data[i, "Prop Chimeric"] <- signif(1 - as.numeric(splitLines('Number of BC+insertions passing minPropReadsAtSite cutoff', '\t')$X3[1]) / as.numeric(splitLines('Number of BC+insertions after collapsing nearby ones', '\t')$X3[1]), 2)
+		} else if(data[i, "Type"] == "10xRNA") {
+			data[i, "Prop Chimeric"] <- signif(1 - as.numeric(splitLines('Number of reads passing minPropReadsForBC filter', '\t')$X3[1]) / as.numeric(splitLines('Number of reads passing minPropReadsForBC filter', '\t')$X4[1]), 2)
+			print(t(splitLines('Number of reads passing minPropReadsForBC filter', '\t')))
 		}
 	}
 }
