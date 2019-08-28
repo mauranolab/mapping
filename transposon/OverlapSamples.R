@@ -21,11 +21,11 @@ option_list = list(
 	make_option(c("-c", "--samplesC"), type="character", default=NULL, 
 		help="Comma separated list of SamplesC (assumed to be iPCR)", metavar="character"),
 	make_option(c("--typeA"), type="character", default=NULL, 
-		help="Sample type for sample A (for thresholding and inferring filename): DNA, RNA, iPCR", metavar="character"),
+		help="Sample type for sample A (for thresholding and inferring filename): DNA, RNA, 10xRNA, iPCR", metavar="character"),
 	make_option(c("--typeB"), type="character", default=NULL, 
-		help="Sample type for sample B (for thresholding and inferring filename): DNA, RNA, iPCR", metavar="character"),
+		help="Sample type for sample B (for thresholding and inferring filename): DNA, RNA, 10xRNA, iPCR", metavar="character"),
 	make_option(c("--typeC"), type="character", default=NULL, 
-		help="Sample type for sample C (for thresholding and inferring filename): DNA, RNA, iPCR", metavar="character"),
+		help="Sample type for sample C (for thresholding and inferring filename): DNA, RNA, 10xRNA, iPCR", metavar="character"),
 	make_option(c("-o", "--output"), type="character", default=NULL, 
 		help="output folder for all comparisons", metavar="character")
 ); 
@@ -98,7 +98,7 @@ loadBCfile <- function(filename, type, thresh) {
 	if(type=="iPCR") {
 		bcfilename <- paste0(filename, '/', basename(filename), ".barcodes.coords.bed")
 		col.names <- c("chrom", "chromStart", "chromEnd", "bc", "count", "strand")
-	} else if (type %in% c("DNA", "RNA")) {
+	} else if (type %in% c("DNA", "RNA", "10xRNA")) {
 		bcfilename <- paste0(filename, '/', basename(filename), ".barcode.counts.UMI_corrected.txt")
 		if(!file.exists(bcfilename)) {
 			bcfilename <- paste0(filename, '/', basename(filename), ".barcode.counts.txt")
@@ -187,7 +187,7 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesB) & is.null(opt$samplesC)) {
 	BCpairs$B <- as.character(BCpairs$B)
 	BCpairs <- BCpairs[BCpairs$A != BCpairs$B,]
 	usefulBCs <- comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=TRUE)
-#	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=TRUE), by=c("Name", "BS_A", "BS_B"))
+#	usefulBCs <- merge(comparePair(BCpairs, opt$typeA, opt$typeA, applyThreshold=FALSE), by=c("Name", "BS_A", "BS_B"), usefulBCs)
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=outfile, row.names=F, sep='\t', quote=F)
 }
 
@@ -198,7 +198,7 @@ if (!is.null(opt$samplesA) & is.null(opt$samplesB) & is.null(opt$samplesC)) {
 if (!is.null(opt$samplesA) & !is.null(opt$samplesB) & is.null(opt$samplesC)) {
 	BCpairs <- data.frame("A"=samplesA, "B"=samplesB, stringsAsFactors=F)
 	usefulBCs <- comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=TRUE)
-#	usefulBCs <- merge(usefulBCs, comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=TRUE), by=c("Name", "BS_A", "BS_B"))
+#	usefulBCs <- merge(comparePair(BCpairs, opt$typeA, opt$typeB, applyThreshold=FALSE), by=c("Name", "BS_A", "BS_B"), usefulBCs)
 	write.table(usefulBCs[order(usefulBCs[,1]),], file=outfile, row.names=F, sep='\t', quote=F)
 }
 
