@@ -26,15 +26,25 @@ OUTBASE=$4
 PREFIX=`basename $OUTBASE`
 #TMPDIR=/tmp
 
-dnafile=`find ${DNA} -name "*.barcode.counts.UMI_corrected.txt"`
-if [ -z "${dnafile}" ]; then
-    #Fall back on non-UMI counts
-    dnafile=`find ${DNA} -name "*.barcode.counts.txt"`
-fi
-rnafile=`find ${RNA} -name "*.barcode.counts.UMI_corrected.txt"`
-if [ -z "${rnafile}" ]; then
-    #Fall back on non-UMI counts
-    rnafile=`find ${RNA} -name "*.barcode.counts.txt"`
+if [[ "${DNA}" == "none" ]]; then
+    dnafile=/dev/null
+    #All entries will be NA
+    rnafile=`find ${RNA} -name "*.clones.counts.filtered.txt"`
+    echo "Preprocessing 10xRNA files $rnafile"
+    cat ${rnafile} | mlr --tsv --headerless-csv-output put '$count=$count/$nCells' then cut -f BC,count then sort -f BC > $TMPDIR/$PREFIX.counts.txt
+    rnafile="$TMPDIR/$PREFIX.counts.txt"
+else
+    dnafile=`find ${DNA} -name "*.barcode.counts.UMI_corrected.txt"`
+    if [ -z "${dnafile}" ]; then
+        #Fall back on non-UMI counts
+        dnafile=`find ${DNA} -name "*.barcode.counts.txt"`
+    fi
+    
+    rnafile=`find ${RNA} -name "*.barcode.counts.UMI_corrected.txt"`
+    if [ -z "${rnafile}" ]; then
+        #Fall back on non-UMI counts
+        rnafile=`find ${RNA} -name "*.barcode.counts.txt"`
+    fi
 fi
 ipcrfile=`find ${iPCR} -name "*.barcodes.coords.bed"`
 
@@ -111,7 +121,7 @@ closest-features --delim '\t' --dist --closest $OUTPUT $TMPDIR/DHS_MCV.bed | awk
 mv $OUTPUT.new $OUTPUT
 
 
-echo 'doing distance to nearest CTCF site '
+echo 'doing distance to nearest CTCF site'
 header="$header\tDistToNearestCTCF"
 sort-bed $OUTPUT | closest-features --closest --dist --no-ref - /vol/isg/encode/CTCF_maurano_cell_reports_2015/ctcf.bycelltype.K562.hg38.starch |
 awk -F'|' 'BEGIN {OFS="\t"} {print $2}' | paste $OUTPUT - > $OUTPUT.new

@@ -37,7 +37,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     #The BC correction doesn't seem to do much, but the UMI corrections can have an effect
     #TODO apply whitelist ahead of time or correct cellBC/UMI to cellranger data here?
     echo
-    echo "Secondary deduping by cellBC"
+    echo "Secondary deduping BC by cellBC and UMI by BC+cellBC"
     date
     cat ${TMPDIR}/${sample}.barcodes.txt | sort -k4,4 -k1,1 |
     #Dedup BC by cellBC
@@ -193,6 +193,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     #TODO parameterize and do more precise filtering of 10x whitelist BCs. we do miss some by not allowing mismatches but it's pretty few reads
     #TODO report high-count cellBCs not on whitelist, mainly in case umi_tools dedup is not working well
     fgrep -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.whitelist.txt |
+    fgrep -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.readcounts.excluded.txt |
     fgrep -v -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.pSB.excluded.txt |
     awk 'BEGIN {OFS="\t"; print "BC", "cellBC", "count"} {print}' > ${OUTDIR}/${sample}.barcode.counts.byCell.txt
     

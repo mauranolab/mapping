@@ -10,7 +10,7 @@ getcolor () {
     local trackcolor
     
     trackcolor="51,128,195" #blue
-    if [[ "$1" =~ A1fw ]] || [[ "$1" =~ C1fw ]] || [[ "$1" =~ A1rv ]] || [[ "$1" =~ C1rv ]]; then
+    if [[ "$1" =~ A1fw ]] || [[ "$1" =~ C1fw ]] || [[ "$1" =~ A1rv ]] || [[ "$1" =~ C1rv ]] || [[ "$1" =~ DoubleIns ]]; then
         trackcolor="120,88,165" #purple
     elif [[ "$1" =~ HS2 ]]; then
         trackcolor="238,54,36" #red
