@@ -39,13 +39,12 @@ sampleData  <- subset(sampleData, iPCR >= 2 & !is.na(iPCR))
 #DNA filters
 if(useDNA) {
 	cat("Thresholding and normalizing DNA counts\n")
-	sampleData <- sampleData[!is.na(sampleData[,"DNA"]),]
-	
 	#For normalizing to counts per 1M reads
 	numDNAreads <- sum(sampleData[,"DNA"], na.rm=T)
 	
-	#But DNA/RNA counts are not already thresholded
-	sampleData  <- subset(sampleData, DNA >= 10)
+	#DNA/RNA counts are not already thresholded
+	cat("Removing", length(which(sampleData$DNA < 10 | is.na(sampleData$DNA))), "sites\n")
+	sampleData  <- subset(sampleData, DNA >= 10 & !is.na(DNA))
 	
 	sampleData[,"DNA"] <- sampleData[,"DNA"] / numDNAreads * 10^6
 }
@@ -65,9 +64,14 @@ cat("Removing", length(which(duplicaterows(paste(sampleData[,"chrom"], sampleDat
 sampleData <- sampleData[!duplicaterows(paste(sampleData[,"chrom"], sampleData[,"chromStart"])),]
 
 
-#TODO Don't think zeroing NAs is so good for 10x data
-cat("Zeroing NAs at", length(which(is.na(sampleData[,"RNA"]))), "sites with no RNA reads\n")
-sampleData[is.na(sampleData[,"RNA"]), "RNA"] <- 0
+if(useDNA) {
+	#Don't think zeroing NAs is so good for 10x data, at least at current coverage
+	cat("Zeroing NAs at", length(which(is.na(sampleData[,"RNA"]))), "sites with no RNA reads\n")
+	sampleData[is.na(sampleData[,"RNA"]), "RNA"] <- 0
+} else {
+	cat("Removing", length(which(is.na(sampleData$RNA))), "sites\n")
+	sampleData  <- subset(sampleData, !is.na(RNA))
+}
 
 cat("Finished filtering.", nrow(sampleData), "sites remaining\n")
 
@@ -77,7 +81,7 @@ if(useDNA) {
 } else {
 	sampleData$expression <- sampleData[,"RNA"]
 }
-#Add pseudocount, as.numeric strips attr that messes up further analysis
+#Add pseudocount. The as.numeric strips attr that messes up further analysis
 sampleData$zscore <- as.numeric(scale(log(sampleData[,"expression"]+1, base=2)))
 
 
@@ -145,7 +149,9 @@ if(useDNA) {
 	colnames(DNA.overlaps.byReadDecile)[colnames(DNA.overlaps.byReadDecile)=="DNA.bin"] <- "reads.bin"
 	colnames(DNA.overlaps.byReadDecile)[colnames(DNA.overlaps.byReadDecile)=="DNA.decile"] <- "reads.decile"
 	print.data.frame(DNA.overlaps.byReadDecile, row.names=F, right=F)
-	write.table(melt.data.frame(DNA.overlaps.byReadDecile), row.names=F, col.names=T, quote=F, file=paste0(outbase, ".DNA.intersections.byReadDecile.txt"), append=F, sep="\t")
+	DNA.overlaps.byReadDecile.long <- melt.data.frame(DNA.overlaps.byReadDecile)
+	colnames(DNA.overlaps.byReadDecile.long)[colnames(DNA.overlaps.byReadDecile.long)=="variable"] <- "target"
+	write.table(DNA.overlaps.byReadDecile.long, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".DNA.intersections.byReadDecile.txt"), append=F, sep="\t")
 }
 
 
@@ -157,7 +163,13 @@ RNA.overlaps.byReadDecile <- cbind(sample=prefix, source="RNA", summaryBy(DNA+iP
 colnames(RNA.overlaps.byReadDecile)[colnames(RNA.overlaps.byReadDecile)=="RNA.bin"] <- "reads.bin"
 colnames(RNA.overlaps.byReadDecile)[colnames(RNA.overlaps.byReadDecile)=="RNA.decile"] <- "reads.decile"
 print.data.frame(RNA.overlaps.byReadDecile, row.names=F, right=F)
-write.table(melt.data.frame(RNA.overlaps.byReadDecile), row.names=F, col.names=T, quote=F, file=paste0(outbase, ".RNA.intersections.byReadDecile.txt"), append=F, sep="\t")
+RNA.overlaps.byReadDecile.long <- melt.data.frame(RNA.overlaps.byReadDecile)
+colnames(RNA.overlaps.byReadDecile.long)[colnames(RNA.overlaps.byReadDecile.long)=="variable"] <- "target"
+if(!useDNA) {
+	#easier to drop afterwards rather than make two formulae above
+	RNA.overlaps.byReadDecile.long <- RNA.overlaps.byReadDecile.long[RNA.overlaps.byReadDecile.long$target!="DNA",]
+}
+write.table(RNA.overlaps.byReadDecile.long, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".RNA.intersections.byReadDecile.txt"), append=F, sep="\t")
 
 
 data$iPCR.bin <- cut.pretty(data[,"iPCR"], breaks=unique(quantile(data[,"iPCR"], probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, pretty.labels="left")
@@ -168,7 +180,13 @@ iPCR.overlaps.byReadDecile <- cbind(sample=prefix, source="iPCR", summaryBy(RNA+
 colnames(iPCR.overlaps.byReadDecile)[colnames(iPCR.overlaps.byReadDecile)=="iPCR.bin"] <- "reads.bin"
 colnames(iPCR.overlaps.byReadDecile)[colnames(iPCR.overlaps.byReadDecile)=="iPCR.decile"] <- "reads.decile"
 print.data.frame(iPCR.overlaps.byReadDecile, row.names=F, right=F)
-write.table(melt.data.frame(iPCR.overlaps.byReadDecile), row.names=F, col.names=T, quote=F, file=paste0(outbase, ".iPCR.intersections.byReadDecile.txt"), append=F, sep="\t")
+iPCR.overlaps.byReadDecile.long <- melt.data.frame(iPCR.overlaps.byReadDecile)
+colnames(iPCR.overlaps.byReadDecile.long)[colnames(iPCR.overlaps.byReadDecile.long)=="variable"] <- "target"
+if(!useDNA) {
+	#easier to drop afterwards rather than make two formulae above
+	RNA.overlaps.byReadDecile.long <- RNA.overlaps.byReadDecile.long[RNA.overlaps.byReadDecile.long$target!="DNA",]
+}
+write.table(iPCR.overlaps.byReadDecile.long, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".iPCR.intersections.byReadDecile.txt"), append=F, sep="\t")
 
 
 cat("\nDone!!!\n")
