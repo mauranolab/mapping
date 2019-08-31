@@ -31,6 +31,8 @@ echo ${mappedfiles}
 tail -q -n +2 ${mappedfiles} | sort-bed - >> ${OUTBASE}.mapped.txt
 
 
+#BUGBUG Scaling RNA/DNA to total reads ought to be per transfection?
+
 ${src}/analyzeCombinedSignalWithInsertions.sh ${OUTBASE}
 
 
