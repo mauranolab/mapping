@@ -49,7 +49,7 @@ if [ ${runMerge} -eq 1 ]; then
     
     cat <<EOF | qsub -S /bin/bash -j y -b y -N merge.${sample} -o ${sample} -terse > sgeid.merge.${sample}
     set -eu -o pipefail
-    echo "Merging barcodes"
+    echo "Merging barcodes from files: ${bcfiles}"
     date
     zcat -f ${bcfiles} | pigz -p ${NSLOTS} -c -9 > ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz
     
