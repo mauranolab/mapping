@@ -225,9 +225,10 @@ def printGraph(G, filename, edge_color='weight'):
     nCells = len([ node for node in G.nodes if G.nodes[node]['type'] == 'cell'])
     nBCs = len([ node for node in G.nodes if G.nodes[node]['type'] == 'BC'])
     
-    plt.title(filename + " ({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
+    plt.title(os.path.basename(filename) + " ({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
     
     plt.savefig(filename + '.png')
+    plt.savefig(filename + '.pdf')
     
     matplotlib.pyplot.close(fig)
 

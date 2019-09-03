@@ -57,7 +57,7 @@ echo
 
 #Join all barcodes together and include NAs for each sample 
 join -e NA -a1 -a2 ${dnafile} -o 0 1.2 2.2 ${rnafile} |
-join -e NA -a1 -a2 -1 4 <(sort -k4,4 ${ipcrfile}) -o 1.1 1.2 1.3 0 1.6 2.2 2.3 1.5 -2 1 - | awk -F " " 'BEGIN {OFS="\t"} {print $1, $2, $3, $4, $5, $6, $7, $8, $9}' > $TMPDIR/AllBCs.txt
+join -e NA -a1 -a2 -1 4 -2 1 -o 1.1 1.2 1.3 0 1.6 2.2 2.3 1.5 <(sort -k4,4 ${ipcrfile}) - | awk -F " " 'BEGIN {OFS="\t"} {print $1, $2, $3, $4, $5, $6, $7, $8, $9}' > $TMPDIR/AllBCs.txt
 
 header="chrom\tchromStart\tchromEnd\tBC\tstrand\tDNA\tRNA\tiPCR"
 echo -e $header | cat - $TMPDIR/AllBCs.txt | awk -F "\t" 'BEGIN {OFS="\t"} {print $4, $6, $7, $8}' > ${OUTBASE}.AllBCs.txt
@@ -70,8 +70,9 @@ cat ${OUTBASE}.AllBCs.txt | wc -l
 
 OUTPUT=${OUTBASE}.mapped.txt
 
+#TODO move to pipeline
 #Remove iPCR insertions with more than one location
-cat ${ipcrfile} | awk -F "\t" 'BEGIN {OFS="\t"} {print $4}' | sort  | uniq -c | sort -nk1 | awk '$1==1 {print $2}' > $TMPDIR/${PREFIX}.singleIns.txt
+cat ${ipcrfile} | awk -F "\t" 'BEGIN {OFS="\t"} {print $4}' | sort | uniq -c | sort -nk1 | awk '$1==1 {print $2}' > $TMPDIR/${PREFIX}.singleIns.txt
 
 echo
 echo "Creating bed file for all BCs with a single integration site"
@@ -124,6 +125,15 @@ mv $OUTPUT.new $OUTPUT
 echo 'doing distance to nearest CTCF site'
 header="$header\tDistToNearestCTCF"
 sort-bed $OUTPUT | closest-features --closest --dist --no-ref - /vol/isg/encode/CTCF_maurano_cell_reports_2015/ctcf.bycelltype.K562.hg38.starch |
+awk -F'|' 'BEGIN {OFS="\t"} {print $2}' | paste $OUTPUT - > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
+echo 'doing distance to nearest DHS (excluding CTCF sites)'
+bedops -n -1 /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch /vol/isg/encode/CTCF_maurano_cell_reports_2015/ctcf.bycelltype.K562.hg38.starch > $TMPDIR/K562-DS9764.noctcf.hg38_noalt.fdr0.01.pks.bed
+
+header="$header\tDistToNearestDHSnoCTCF"
+sort-bed $OUTPUT | closest-features --closest --dist --no-ref - $TMPDIR/K562-DS9764.noctcf.hg38_noalt.fdr0.01.pks.bed |
 awk -F'|' 'BEGIN {OFS="\t"} {print $2}' | paste $OUTPUT - > $OUTPUT.new
 mv $OUTPUT.new $OUTPUT
 
