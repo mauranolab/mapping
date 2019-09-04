@@ -19,7 +19,6 @@ echo "main_chrom: ${main_chrom}       TMPDIR_CSV is: ${TMPDIR_CSV}"
 # Parse homology arm boundaries.  These are the regions beyond the edge of the HAs.
 outer_HAs5p="${TMPDIR_CSV}/outer_HAs5p"
 outer_HAs3p="${TMPDIR_CSV}/outer_HAs3p"
-deletion_range_f="${TMPDIR_CSV}/deletion_range"
 
 IFS=':' read -r chr range <<< "${bam1_5p_HA}"
 IFS='-' read -r r1 r2 <<< "${range}"
@@ -29,6 +28,10 @@ IFS=':' read -r chr range <<< "${bam1_3p_HA}"
 IFS='-' read -r r1 r2 <<< "${range}"
 echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${outer_HAs3p}
 
+cp "${TMPDIR_CSV}/outer_HAs5p" "${TMPDIR_CSV}/outer_HAs"
+cat "${TMPDIR_CSV}/outer_HAs3p" >> "${TMPDIR_CSV}/outer_HAs"
+
+deletion_range_f="${TMPDIR_CSV}/deletion_range"
 IFS=':' read -r chr range <<< "${deletion_range}"
 IFS='-' read -r r1 r2 <<< "${range}"
 echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${deletion_range_f}
@@ -54,10 +57,20 @@ else
 
     # Delete reads that overlap the ranges defined in file_3.
     sort-bed ${file_1} | bedops --not-element-of 1 - "${TMPDIR_CSV}/${file_3}" > "${TMPDIR_CSV}/filter_csv.output"
+
+    # Now delete reads that are in the HAs.
+    cut -f1-6 "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bam1.output"
+    cut -f7-12 "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bam2.output"
+    paste "${TMPDIR_CSV}/filter_csv_bam2.output" "${TMPDIR_CSV}/filter_csv_bam1.output" >  "${TMPDIR_CSV}/filter_csv_bamBoth.output"
+    sort-bed "${TMPDIR_CSV}/filter_csv_bamBoth.output" | bedops --not-element-of 1 - "${TMPDIR_CSV}/outer_HAs" > "${TMPDIR_CSV}/filter_csv.output"
+    cut -f1-6 "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bam2.output"
+    cut -f7-12 "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bam1.output"
+    paste "${TMPDIR_CSV}/filter_csv_bam1.output" "${TMPDIR_CSV}/filter_csv_bam2.output" > "${TMPDIR_CSV}/filter_csv_bamBoth.output"
+    sort-bed "${TMPDIR_CSV}/filter_csv_bamBoth.output" > "${TMPDIR_CSV}/filter_csv.output"
+
+    cp "${TMPDIR_CSV}/filter_csv.output" "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed"
 fi
 # filter_csv.output contains the reads we want to keep, in bed12 format.
-
-cp "${TMPDIR_CSV}/filter_csv.output" "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed"
 
 #####################################################################################
 # Start building the output table:
@@ -103,12 +116,14 @@ paste -d $'\t' "${TMPDIR_CSV}/all_regions.bed" "${TMPDIR_CSV}/tmp3.out" > "${TMP
 bedmap --count "${TMPDIR_CSV}/all_regions.bed" "${TMPDIR_CSV}/filter_csv.bed3" > "${TMPDIR_CSV}/tmp5.out"
 paste -d $'\t' "${TMPDIR_CSV}/tmp4.out" "${TMPDIR_CSV}/tmp5.out" > "${TMPDIR_CSV}/tmp6.out"
 
-# Compute the size of each region:
+# Compute the size of each region, and adjust for the bedops 500 bps:
 awk -f <(cat << "AWK_HEREDOC_01"
 BEGIN{FS="\t"; OFS="\t"}
 {
-   width = $3 - $2
-   print $1, $2, $3, width, $4, $5
+   p1 = $2 + 500
+   p2 = $3 - 500
+   width = $3 - $2 - 1000
+   print $1, p1, p2, width, $4, $5
 }
 END{}
 AWK_HEREDOC_01
@@ -126,7 +141,11 @@ grep  -v $'\t'1$ "${TMPDIR_CSV}/tmp8a.out" > "${TMPDIR_CSV}/tmp8b.out" || true
 sed "s/$/\t${main_chrom}/" "${TMPDIR_CSV}/tmp8b.out" > "${TMPDIR_CSV}/tmp8.out"
 
 # Dump data into main output file.
-cat "${TMPDIR_CSV}/tmp8.out" >> "${sampleOutdir}/${sample_name}.counts.txt"
+if [ ${exclude_regions_from_counts} = "NA" ];then
+   cat "${TMPDIR_CSV}/tmp8.out" >> "${sampleOutdir}/${sample_name}.counts.txt"
+else
+   cat "${TMPDIR_CSV}/tmp8.out" >> "${sampleOutdir}/${sample_name}.informative.counts.txt"
+fi
 
 #####################################################################################
 #####################################################################################
@@ -146,7 +165,7 @@ AWK_HEREDOC_03
 cat ${outer_HAs5p} > "${TMPDIR_CSV}/outer_HAs"
 cat ${outer_HAs3p} >> "${TMPDIR_CSV}/outer_HAs"
 
-echo -e "${main_chrom}:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo -e "${main_chrom} (Exclude_Regions file: ${exclude_regions_from_counts}):" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
 while read -r line_in; do
     # IFS=$'\t' read -r  x y z rest_of_line <<< $line_in
@@ -155,21 +174,11 @@ while read -r line_in; do
     # Extract the "deletion_gene" reads from our universe of retained reads, built above.
     bedops --element-of 1 "${TMPDIR_CSV}/filter_csv.bed3" "${TMPDIR_CSV}/del_gen2" > "${TMPDIR_CSV}/del_gen_reads"
 
-    # Now get the reads that cross the HA edges.
-    bedops --not-element-of 1 "${TMPDIR_CSV}/del_gen_reads" "${TMPDIR_CSV}/outer_HAs" \
-                              "${deletion_range_f}" > "${TMPDIR_CSV}/del_gen_reads_out"
-
-    num_lines=$(wc -l < "${TMPDIR_CSV}/del_gen_reads_out")
-    line_in=$(cat "${TMPDIR_CSV}/del_gen2" | sed 's/\t/:/' | sed 's/\t/-/')
-    echo -e "    Number of ${deletion_gene} ${line_in} over the HA reads:\t${num_lines}" >> \
-            "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
-
     # Now get the reads that are in the deletion range.
     bedops --element-of 1 "${TMPDIR_CSV}/del_gen_reads" "${deletion_range_f}" > "${TMPDIR_CSV}/del_range_reads_out"
 
     num_lines=$(wc -l < "${TMPDIR_CSV}/del_range_reads_out")
-    echo -e "    Number of ${deletion_gene} ${line_in} Deletion Range reads:\t${num_lines}" >> \
+    echo -e "    Number of [${deletion_gene} ${line_in}] reads in the Deletion Range:\t${num_lines}" >> \
             "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 done < "${TMPDIR_CSV}/del_gen1"
 

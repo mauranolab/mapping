@@ -4,22 +4,13 @@ https://pysam.readthedocs.io/en/latest/genindex.html
 
 https://bedops.readthedocs.io/en/latest/content/reference/set-operations/bedops.html
 =============================================================================================================================================
-Overview of the code (there are 2 ways to launch it):
+FCHGMYJBGXB_pipeline.sh <=== an example of how to call submit_bamintersect.sh
 
-launch_pipeline.bash:                                                         call_one_sample.bash:
-    - collects input data from files for multiple runs via a while loop           - an example of something that might be embedded in a larger program.
-    - calls submit_bamintersect.sh once for each loop                             - calls submit_bamintersect.sh once
-               ||                                                                       ||
-               ||                                                                       //
-               || <=======================<========================<===========<====<===
-               ||
-               ||
-               \/
 submit_bamintersect.sh:
     - Collects input data via getopt for a single run. Creates some output and working directories for the run.
     - Does some setup work, then launches array jobs which create small lexigraphically sorted bam files for each of the sample chromosomes.
         == The array jobs are in sort_bamintersect.sh
-    - Launches bamintersect.sh, which is a large array job.
+    - Launches bamintersect.sh, which is a large array jobi, and which calls related python code.
     - When the array jobs are done, merge_bamintersect.sh is called.
                ||
                \/
