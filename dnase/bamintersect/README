@@ -4,19 +4,28 @@ https://pysam.readthedocs.io/en/latest/genindex.html
 
 https://bedops.readthedocs.io/en/latest/content/reference/set-operations/bedops.html
 =============================================================================================================================================
-FCHGMYJBGXB_pipeline.sh <=== an example of how to call submit_bamintersect.sh
-
 submit_bamintersect.sh:
     - Collects input data via getopt for a single run. Creates some output and working directories for the run.
     - Does some setup work, then launches array jobs which create small lexigraphically sorted bam files for each of the sample chromosomes.
         == The array jobs are in sort_bamintersect.sh
-    - Launches bamintersect.sh, which is a large array jobi, and which calls related python code.
+    - Launches bamintersect.sh, which is a large array job, and which calls related python code.
     - When the array jobs are done, merge_bamintersect.sh is called.
                ||
                \/
 merge_bamintersect.sh:
     - Consolidates the array job results into a single large sorted bed file.
     - Constructs the LP Integration read count table (via filter_tsv.sh), and other outputs.
+
+=============================================================================================================================================
+
+An example of how to call submit_bamintersect.sh:
+
+./submit_bamintersect.sh \
+       --sample_name BI6_Cast_dSox2_LP131b_Clone1-BS03022A \
+       --bam1 /vol/cegs/mapped/FCHGMYJBGXB/capture/BI6_Cast_dSox2_LP131b_Clone1-BS03022A/BI6_Cast_dSox2_LP131b_Clone1-BS03022A.cegsvectors_LP131.bam \
+       --bam1genome LP131b \
+       --bam2 /vol/cegs/mapped/FCHGMYJBGXB/capture/BI6_Cast_dSox2_LP131b_Clone1-BS03022A/BI6_Cast_dSox2_LP131b_Clone1-BS03022A.mm10.bam \
+       --bam2genome mm10
 
 =============================================================================================================================================
 

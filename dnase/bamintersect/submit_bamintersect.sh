@@ -253,7 +253,8 @@ done
     fi
 
 
-    # Compute deletion range coordinates. Not used downstream from here, but may be needed for special analyses.
+    # Compute deletion range coordinates.
+    # This is still used in filter_tsv.sh, but I'd like to discuss that.
     if [ "${bam1_5p_HA}" != "NA" ]; then
         IFS=':' read -ra ADDR <<< "${bam1_5p_HA}"
         del_chrom=${ADDR[0]}

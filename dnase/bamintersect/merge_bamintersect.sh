@@ -54,8 +54,7 @@ echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_R
 while read main_chrom ; do
     bedops --chrom ${main_chrom} --everything "${sampleOutdir}/${sample_name}.bed" > "${sampleOutdir}/${sample_name}.${main_chrom}.bed"
 
-    ${src}/filter_tsv.sh ${sampleOutdir} ${bam1_5p_HA} ${bam1_3p_HA} ${sample_name} ${cegsgenome} ${annotationgenome} \
-                                     "NA"             ${main_chrom} ${deletion_gene} ${deletion_range}
+    ${src}/filter_tsv.sh ${sampleOutdir} ${bam1_5p_HA} ${bam1_3p_HA} ${sample_name} ${cegsgenome} ${annotationgenome} "NA" ${main_chrom} ${deletion_gene} ${deletion_range}
 
     ${src}/filter_tsv.sh ${sampleOutdir} ${bam1_5p_HA} ${bam1_3p_HA} ${sample_name} ${cegsgenome} ${annotationgenome} \
                        ${exclude_regions_from_counts} ${main_chrom} ${deletion_gene} ${deletion_range}

@@ -55,14 +55,20 @@ else
     # Get rid of comment lines prior to sorting.
     grep -v '^#' ${exclude_regions_from_counts} | sort-bed - > "${TMPDIR_CSV}/${file_3}"   # This is a sorted bed3 file of the ranges we want to delete.
 
-    # Delete reads that overlap the ranges defined in file_3.
+    # Delete reads that overlap the ranges defined in file_3 (which are defined with respect to bam1 coordinates).
     sort-bed ${file_1} | bedops --not-element-of 1 - "${TMPDIR_CSV}/${file_3}" > "${TMPDIR_CSV}/filter_csv.output"
 
     # Now delete reads that are in the HAs.
+    #     filter_csv.output has 12 columns: [chr start end readID flag +/-] x 2, the bam1 data being in 1-6, and the bam2 data being in 7-12.
+    #     The HA coordinates are with respect to bam2, so we need to switch the 6-column halves to use the bedops functions on this file.
     cut -f1-6 "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bam1.output"
     cut -f7-12 "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bam2.output"
     paste "${TMPDIR_CSV}/filter_csv_bam2.output" "${TMPDIR_CSV}/filter_csv_bam1.output" >  "${TMPDIR_CSV}/filter_csv_bamBoth.output"
+
+    #     Sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the HAs:
     sort-bed "${TMPDIR_CSV}/filter_csv_bamBoth.output" | bedops --not-element-of 1 - "${TMPDIR_CSV}/outer_HAs" > "${TMPDIR_CSV}/filter_csv.output"
+
+    #     Now put the surviving bam1 reads back on the left hand side, and sort:
     cut -f1-6 "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bam2.output"
     cut -f7-12 "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bam1.output"
     paste "${TMPDIR_CSV}/filter_csv_bam1.output" "${TMPDIR_CSV}/filter_csv_bam2.output" > "${TMPDIR_CSV}/filter_csv_bamBoth.output"
@@ -116,14 +122,14 @@ paste -d $'\t' "${TMPDIR_CSV}/all_regions.bed" "${TMPDIR_CSV}/tmp3.out" > "${TMP
 bedmap --count "${TMPDIR_CSV}/all_regions.bed" "${TMPDIR_CSV}/filter_csv.bed3" > "${TMPDIR_CSV}/tmp5.out"
 paste -d $'\t' "${TMPDIR_CSV}/tmp4.out" "${TMPDIR_CSV}/tmp5.out" > "${TMPDIR_CSV}/tmp6.out"
 
-# Compute the size of each region, and adjust for the bedops 500 bps:
+# Compute the size of each region, and adjust for the extra 500 bps "bedops --range" added to each end:
 awk -f <(cat << "AWK_HEREDOC_01"
 BEGIN{FS="\t"; OFS="\t"}
 {
-   p1 = $2 + 500
-   p2 = $3 - 500
+   chromStart = $2 + 500
+   chromEnd = $3 - 500
    width = $3 - $2 - 1000
-   print $1, p1, p2, width, $4, $5
+   print $1, chromStart, chromEnd, width, $4, $5
 }
 END{}
 AWK_HEREDOC_01
