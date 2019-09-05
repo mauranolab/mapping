@@ -61,17 +61,14 @@ else
     # Now delete reads that are in the HAs.
     #     filter_csv.output has 12 columns: [chr start end readID flag +/-] x 2, the bam1 data being in 1-6, and the bam2 data being in 7-12.
     #     The HA coordinates are with respect to bam2, so we need to switch the 6-column halves to use the bedops functions on this file.
-    cut -f1-6 "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bam1.output"
-    cut -f7-12 "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bam2.output"
-    paste "${TMPDIR_CSV}/filter_csv_bam2.output" "${TMPDIR_CSV}/filter_csv_bam1.output" >  "${TMPDIR_CSV}/filter_csv_bamBoth.output"
+    awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bamBoth.output"
 
     #     Sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the HAs:
     sort-bed "${TMPDIR_CSV}/filter_csv_bamBoth.output" | bedops --not-element-of 1 - "${TMPDIR_CSV}/outer_HAs" > "${TMPDIR_CSV}/filter_csv.output"
 
     #     Now put the surviving bam1 reads back on the left hand side, and sort:
-    cut -f1-6 "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bam2.output"
-    cut -f7-12 "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bam1.output"
-    paste "${TMPDIR_CSV}/filter_csv_bam1.output" "${TMPDIR_CSV}/filter_csv_bam2.output" > "${TMPDIR_CSV}/filter_csv_bamBoth.output"
+    awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bamBoth.output"
+
     sort-bed "${TMPDIR_CSV}/filter_csv_bamBoth.output" > "${TMPDIR_CSV}/filter_csv.output"
 
     cp "${TMPDIR_CSV}/filter_csv.output" "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed"
