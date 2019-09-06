@@ -189,7 +189,7 @@ for chrom in `samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | cu
     #            editdistance = substr($i, RSTART+5, RLENGTH-5); \
     #        } \
     #    } \
-        if (and($2, 16)) { \
+        if (and(flag, 16)) { \
             strand="-"; \
             #colorString = color ",0,0" ;  \
             chromStart=chromStart+readlength-1; \
