@@ -182,13 +182,16 @@ def addCEGSgenomes(line):
     else:
         sampleName = line["#Sample Name"]
         
-#        Disable finding reference -- only support getting it through google sheets
+#        Disable finding reference from name -- only support getting it through google sheets
 #        if re.search(r'_(Amplicon|BAC|Yeast)$', sampleName) is not None:
 #            return ",cegsvectors_" + "_".join(sampleName.split("_")[0:3])
         
         additionalGenomesToMap = []
-        geneticModification = getValueFromLIMS(lims, line['Original Sample #'], 'Genetic modification')
-        for curGeneticModification in geneticModification.split(","):
+        geneticModification = getValueFromLIMS(lims, line['Original Sample #'], 'Genetic Modification')
+        customReference = getValueFromLIMS(lims, line['Original Sample #'], 'Custom Reference')
+        print("geneticModification", geneticModification, "custref", customReference, file=sys.stderr)
+        #Note if geneticModification/customReference are empty strings, then the list will contain an empty string, but since we only look for cegsvectors_*, it will never match anything
+        for curGeneticModification in geneticModification.split(",") + customReference.split(","):
             for curCegsGenome in cegsGenomes:
                 #Genome must match entire contents of a field (e.g., HPRT1 doesn't match dHPRT1), excepting the square brackets denoting integration site
                 if curCegsGenome == re.sub(r'\[.+\]$', '', curGeneticModification):
@@ -244,6 +247,9 @@ def bwaPipeline(line):
     bait_set = getValueFromLIMS(lims, line['Original Sample #'], 'Bait set')
     if bait_set is not "":
         sampleAnnotation.append("Bait_set=" + bait_set)
+    geneticModification = getValueFromLIMS(lims, line['Original Sample #'], 'Genetic Modification')
+    if geneticModification is not "":
+        sampleAnnotation.append("Genetic_Modification=" + geneticModification)
     
     submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["#Sample Name"] + " " + line["Sample #"] + " " + ','.join(sampleAnnotation)
     
