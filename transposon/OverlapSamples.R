@@ -127,7 +127,9 @@ getThreshold <- function(type, applyThreshold=TRUE) {
 	if(applyThreshold) {
 		if(type=="iPCR") {
 			thresh=thresholdiPCR
-		} else {
+		} else if(type %in% c("RNA", "10xRNA")) {
+			thresh=thresholdRNADNA
+		} else if(type=="DNA") {
 			thresh=thresholdRNADNA
 		}
 	} else {
