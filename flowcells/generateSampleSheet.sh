@@ -85,8 +85,10 @@ echo "Finished validation"
 echo
 echo
 
-R --quiet --no-save << 'EOF'
+Rscript --quiet --no-save - << 'EOF'
 suppressPackageStartupMessages(library(reshape))
+
+printPairs <- FALSE
 
 data <- read.table("SampleSheet.csv", header=T, skip=19, sep=",", comment.char = "", quote = "", strip.white = TRUE, stringsAsFactors = F)
 
@@ -134,7 +136,9 @@ countBCcollisions <- function(data, bc1len=8, bc2len=8) {
                 if(bc2!="_") {
                     results[i,j] = strdist(bc1, bc2)
                     if(results[i,j] <= 2) {
-                        cat("pair ", i, " (", bc1, ") and ", j, " (", bc2, ") differ by only ", results[i,j], "\n", sep="")
+                        if(printPairs) {
+                            cat("pair ", i, " (", bc1, ") and ", j, " (", bc2, ") differ by only ", results[i,j], "\n", sep="") 
+                        }
                         numSamplesTooClose <- numSamplesTooClose + 1
                     }
                 }
@@ -165,10 +169,11 @@ if (minBClen <= maxBC2len) {
 results <- data.frame()
 for(bc1len in bc1range) {
     for(bc2len in bc2range) {
-        cat(paste0("bc1len=", bc1len, ";bc2len=", bc2len, ":\n"))
+        if(printPairs) {
+            cat(paste0("\nbc1len=", bc1len, ";bc2len=", bc2len, ":\n"))
+        }
         numSamplesTooClose <- countBCcollisions(data, bc1len, bc2len)
         results <- rbind(results, data.frame(bc1len=bc1len, bc2len=bc2len, numSamplesTooClose=numSamplesTooClose))
-        cat("\n")
     }
 }
 
