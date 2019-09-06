@@ -56,21 +56,21 @@ else
     # Get rid of comment lines prior to sorting.
     grep -v '^#' ${exclude_regions_from_counts} | sort-bed - > "${TMPDIR_CSV}/${file_3}"   # This is a sorted bed3 file of the ranges we want to delete.
 
-    # Delete reads that overlap the ranges defined in file_3 (which are defined with respect to bam1 coordinates).
-    sort-bed ${file_1} | bedops --not-element-of 1 - "${TMPDIR_CSV}/${file_3}" > "${filter_csv_output}"
 
-    # Now delete reads that are in the HAs.
-    #     filter_csv_output has 12 columns: [chr start end readID flag +/-] x 2, the bam1 data being in 1-6, and the bam2 data being in 7-12.
-    #     The HA coordinates are with respect to bam2, so we need to switch the 6-column halves to use the bedops functions on this file.
-    #     Then, sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the HAs:
-    awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' "${filter_csv_output}" | \
-    sort-bed - | bedops --not-element-of 1 - "${TMPDIR_CSV}/outer_HAs.bed" > "${filter_csv_output}_tmp"
-    mv "${filter_csv_output}_tmp" "${filter_csv_output}"
+    # Comments for the 5 piped lines below:
+    # 1) Delete reads that overlap the ranges defined in file_3 (which are defined with respect to bam1 coordinates).
+    # 2) Now delete reads that are in the HAs.
+    #     2a) The output of step 1 has 12 columns: [chr start end readID flag +/-] x 2, the bam1 data being in 1-6, and the bam2 data being in 7-12.
+    #         The HA coordinates are with respect to bam2, so we need to switch the 6-column halves to use the bedops functions on this file.
+    # 3) Then sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the HAs:
+    # 4) Now put the surviving bam1 reads back on the left hand side,
+    # 5) and sort.
 
-    #     Now put the surviving bam1 reads back on the left hand side, and sort:
-    awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' "${filter_csv_output}" | \
-    sort-bed - > "${filter_csv_output}_tmp"
-    mv "${filter_csv_output}_tmp" "${filter_csv_output}"
+    sort-bed ${file_1} | bedops --not-element-of 1 - "${TMPDIR_CSV}/${file_3}" | \
+    awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
+    sort-bed - | bedops --not-element-of 1 - "${TMPDIR_CSV}/outer_HAs.bed" | \
+    awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
+    sort-bed - > "${filter_csv_output}"
 fi
 # filter_csv.output contains the reads we want to keep, in bed12 format.
 
