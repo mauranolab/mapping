@@ -115,7 +115,7 @@ date
 #Current documentation at https://samtools.github.io/bcftools/howtos/index.html
 
 #Set up ploidy
-sampleAnnotationSex=`echo "${sampleAnnotation}" | awk -v key="Sex" -F "," '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
+sampleAnnotationSex=`echo "${sampleAnnotation}" | awk -v key="Sex" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
 case "${sampleAnnotationSex}" in
 Male)
     sex="M";;
