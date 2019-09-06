@@ -17,8 +17,8 @@ echo "main_chrom: ${main_chrom}       TMPDIR_CSV is: ${TMPDIR_CSV}"
 
 #####################################################################################
 # Parse homology arm boundaries.  These are the regions beyond the edge of the HAs.
-outer_HAs5p="${TMPDIR_CSV}/outer_HAs5p"
-outer_HAs3p="${TMPDIR_CSV}/outer_HAs3p"
+outer_HAs5p="${TMPDIR_CSV}/outer_HAs5p.bed"
+outer_HAs3p="${TMPDIR_CSV}/outer_HAs3p.bed"
 
 IFS=':' read -r chr range <<< "${bam1_5p_HA}"
 IFS='-' read -r r1 r2 <<< "${range}"
@@ -28,10 +28,9 @@ IFS=':' read -r chr range <<< "${bam1_3p_HA}"
 IFS='-' read -r r1 r2 <<< "${range}"
 echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${outer_HAs3p}
 
-cp "${TMPDIR_CSV}/outer_HAs5p" "${TMPDIR_CSV}/outer_HAs"
-cat "${TMPDIR_CSV}/outer_HAs3p" >> "${TMPDIR_CSV}/outer_HAs"
+bedops -u ${outer_HAs5p} ${outer_HAs3p} > "${TMPDIR_CSV}/outer_HAs.bed"
 
-deletion_range_f="${TMPDIR_CSV}/deletion_range"
+deletion_range_f="${TMPDIR_CSV}/deletion_range.bed"
 IFS=':' read -r chr range <<< "${deletion_range}"
 IFS='-' read -r r1 r2 <<< "${range}"
 echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${deletion_range_f}
@@ -40,11 +39,13 @@ echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${deletion_range_f}
 file_1="${sampleOutdir}/${sample_name}.${main_chrom}.bed"  # The universe of all reads from a bam1 chromosome, in bed12 format
                                                            # [chr start end readID flag +/-] x 2
 
+filter_csv_output="${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed"
+
 # Maybe we want to filter out some of the reads from our universe:
 if [ ${exclude_regions_from_counts} = "NA" ];then
     # We're not deleting any reads in this scenario, so sort and move on.
     # The "NA" is assigned in merge_bamintersect.sh when the "exclude_regions_from_counts" input file field is blank.
-    sort-bed ${file_1} > "${TMPDIR_CSV}/filter_csv.output"
+    sort-bed "${file_1}" > "${filter_csv_output}"
 else
     # We want to delete file_1 reads that overlap the ranges in this bed3 file.
     file_2=${exclude_regions_from_counts##*/}
@@ -56,22 +57,20 @@ else
     grep -v '^#' ${exclude_regions_from_counts} | sort-bed - > "${TMPDIR_CSV}/${file_3}"   # This is a sorted bed3 file of the ranges we want to delete.
 
     # Delete reads that overlap the ranges defined in file_3 (which are defined with respect to bam1 coordinates).
-    sort-bed ${file_1} | bedops --not-element-of 1 - "${TMPDIR_CSV}/${file_3}" > "${TMPDIR_CSV}/filter_csv.output"
+    sort-bed ${file_1} | bedops --not-element-of 1 - "${TMPDIR_CSV}/${file_3}" > "${filter_csv_output}"
 
     # Now delete reads that are in the HAs.
-    #     filter_csv.output has 12 columns: [chr start end readID flag +/-] x 2, the bam1 data being in 1-6, and the bam2 data being in 7-12.
+    #     filter_csv_output has 12 columns: [chr start end readID flag +/-] x 2, the bam1 data being in 1-6, and the bam2 data being in 7-12.
     #     The HA coordinates are with respect to bam2, so we need to switch the 6-column halves to use the bedops functions on this file.
-    awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bamBoth.output"
-
-    #     Sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the HAs:
-    sort-bed "${TMPDIR_CSV}/filter_csv_bamBoth.output" | bedops --not-element-of 1 - "${TMPDIR_CSV}/outer_HAs" > "${TMPDIR_CSV}/filter_csv.output"
+    #     Then, sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the HAs:
+    awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' "${filter_csv_output}" | \
+    sort-bed - | bedops --not-element-of 1 - "${TMPDIR_CSV}/outer_HAs.bed" > "${filter_csv_output}_tmp"
+    mv "${filter_csv_output}_tmp" "${filter_csv_output}"
 
     #     Now put the surviving bam1 reads back on the left hand side, and sort:
-    awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' "${TMPDIR_CSV}/filter_csv.output" > "${TMPDIR_CSV}/filter_csv_bamBoth.output"
-
-    sort-bed "${TMPDIR_CSV}/filter_csv_bamBoth.output" > "${TMPDIR_CSV}/filter_csv.output"
-
-    cp "${TMPDIR_CSV}/filter_csv.output" "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed"
+    awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' "${filter_csv_output}" | \
+    sort-bed - > "${filter_csv_output}_tmp"
+    mv "${filter_csv_output}_tmp" "${filter_csv_output}"
 fi
 # filter_csv.output contains the reads we want to keep, in bed12 format.
 
@@ -79,20 +78,20 @@ fi
 # Start building the output table:
 
 # Get just the hg38 bed3 part, then sort it:
-cut -f7-9 "${TMPDIR_CSV}/filter_csv.output" | sort-bed - > "${TMPDIR_CSV}/filter_csv.bed3"
+cut -f7-9 "${filter_csv_output}" | sort-bed - > "${TMPDIR_CSV}/filter_csv.bed3"
 
 # The below makes +/- 500 bps regions around each hg38 read, and merges them when possible. It will return bed3 output.
 bedops --range 500 --merge "${TMPDIR_CSV}/filter_csv.bed3" > "${TMPDIR_CSV}/all_regions.bed"
 
 # Find the gene closest to each region:
 if [ ${annotationgenome} = "mm10" ]; then
-    closest-features --delim "\t" --closest "${TMPDIR_CSV}/all_regions.bed" /vol/isg/annotation/bed/mm10/gencodev17/GencodevM17.gene.bed > "${TMPDIR_CSV}/tmp1.out"
+    closest-features --delim "\t" --closest "${TMPDIR_CSV}/all_regions.bed" /vol/isg/annotation/bed/mm10/gencodev17/GencodevM17.gene.bed > "${TMPDIR_CSV}/reads_and_geneNames.bed"
 else
-    closest-features --delim "\t" --closest "${TMPDIR_CSV}/all_regions.bed" /vol/isg/annotation/bed/hg38/gencodev25/Gencodev25.gene.bed > "${TMPDIR_CSV}/tmp1.out"
+    closest-features --delim "\t" --closest "${TMPDIR_CSV}/all_regions.bed" /vol/isg/annotation/bed/hg38/gencodev25/Gencodev25.gene.bed > "${TMPDIR_CSV}/reads_and_geneNames.bed"
 fi
 
 # Cut out just the gene name column:
-cut -d $'\t' -f7 "${TMPDIR_CSV}/tmp1.out" > "${TMPDIR_CSV}/tmp2.out"
+cut -d $'\t' -f7 "${TMPDIR_CSV}/reads_and_geneNames.bed" > "${TMPDIR_CSV}/geneNames.out"
 
 # Sometimes the gene name is blank (like when the region is not one of the usual chr types). 
 # Replace the blank with a dash.
@@ -109,15 +108,15 @@ BEGIN{}
 }
 END{}
 AWK_HEREDOC_01
-) "${TMPDIR_CSV}/tmp2.out" > "${TMPDIR_CSV}/tmp3.out"
+) "${TMPDIR_CSV}/geneNames.out" > "${TMPDIR_CSV}/geneNames_noBlanks.out"
 
 
 # Add the gene name column to the bed3 output of "bedops --range".
-paste -d $'\t' "${TMPDIR_CSV}/all_regions.bed" "${TMPDIR_CSV}/tmp3.out" > "${TMPDIR_CSV}/tmp4.out"
+paste -d $'\t' "${TMPDIR_CSV}/all_regions.bed" "${TMPDIR_CSV}/geneNames_noBlanks.out" > "${TMPDIR_CSV}/all_regions_and_geneNames.bed"
 
 # Count the number of reads in each region
-bedmap --count "${TMPDIR_CSV}/all_regions.bed" "${TMPDIR_CSV}/filter_csv.bed3" > "${TMPDIR_CSV}/tmp5.out"
-paste -d $'\t' "${TMPDIR_CSV}/tmp4.out" "${TMPDIR_CSV}/tmp5.out" > "${TMPDIR_CSV}/tmp6.out"
+bedmap --count "${TMPDIR_CSV}/all_regions.bed" "${TMPDIR_CSV}/filter_csv.bed3" > "${TMPDIR_CSV}/num_reads.out"
+paste -d $'\t' "${TMPDIR_CSV}/all_regions_and_geneNames.bed" "${TMPDIR_CSV}/num_reads.out" > "${TMPDIR_CSV}/all_regions_geneNames_numReads.bed"
 
 # Compute the size of each region, and adjust for the extra 500 bps "bedops --range" added to each end:
 awk -f <(cat << "AWK_HEREDOC_01"
@@ -130,24 +129,23 @@ BEGIN{FS="\t"; OFS="\t"}
 }
 END{}
 AWK_HEREDOC_01
-) "${TMPDIR_CSV}/tmp6.out" > "${TMPDIR_CSV}/tmp7.out"
+) "${TMPDIR_CSV}/all_regions_geneNames_numReads.bed" > "${TMPDIR_CSV}/all_regionsAdj_geneNames_numReads.bed"
 
 # Sort the table:
-sort -V -t $'\t' -k 6,6rn -k 1,1 -k 2,2n "${TMPDIR_CSV}/tmp7.out" > "${TMPDIR_CSV}/tmp8a.out"
+sort -V -t $'\t' -k 6,6rn -k 1,1 -k 2,2n "${TMPDIR_CSV}/all_regionsAdj_geneNames_numReads.bed" > "${TMPDIR_CSV}/sorted_table.bed"
 
 # Remove line items with only one read.
-# grep -P  -v '\t'1$ "${TMPDIR_CSV}/tmp8a.out" > "${TMPDIR_CSV}/tmp8b.out" || true
-grep  -v $'\t'1$ "${TMPDIR_CSV}/tmp8a.out" > "${TMPDIR_CSV}/tmp8b.out" || true
-# mv "${TMPDIR_CSV}/tmp8a.out" "${TMPDIR_CSV}/tmp8b.out"   # ... or not.
+grep -v $'\t'1$ "${TMPDIR_CSV}/sorted_table.bed" > "${TMPDIR_CSV}/short_sorted_table.bed" || true
+# mv "${TMPDIR_CSV}/sorted_table.bed" "${TMPDIR_CSV}/short_sorted_table.bed"   # ... or not.
 
 # Append the bam1 chromosome name onto the last column.
-sed "s/$/\t${main_chrom}/" "${TMPDIR_CSV}/tmp8b.out" > "${TMPDIR_CSV}/tmp8.out"
+sed "s/$/\t${main_chrom}/" "${TMPDIR_CSV}/short_sorted_table.bed" > "${TMPDIR_CSV}/short_sorted_table_chromName.bed"
 
 # Dump data into main output file.
 if [ ${exclude_regions_from_counts} = "NA" ];then
-   cat "${TMPDIR_CSV}/tmp8.out" >> "${sampleOutdir}/${sample_name}.counts.txt"
+   cat "${TMPDIR_CSV}/short_sorted_table_chromName.bed" >> "${sampleOutdir}/${sample_name}.counts.txt"
 else
-   cat "${TMPDIR_CSV}/tmp8.out" >> "${sampleOutdir}/${sample_name}.informative.counts.txt"
+   cat "${TMPDIR_CSV}/short_sorted_table_chromName.bed" >> "${sampleOutdir}/${sample_name}.informative.counts.txt"
 fi
 
 #####################################################################################
@@ -155,7 +153,7 @@ fi
 # Find the number of "deletion_gene" reads that cross over the edges of the HAs.
 
 # Get the boundaries of the "deletion_gene" reads.
-grep "${deletion_gene}" "${TMPDIR_CSV}/tmp8.out" |
+grep "${deletion_gene}" "${TMPDIR_CSV}/short_sorted_table_chromName.bed" |
 awk -f <(cat << "AWK_HEREDOC_03"
 BEGIN{FS="\t"; OFS="\t"}
 {
@@ -164,9 +162,6 @@ BEGIN{FS="\t"; OFS="\t"}
 END{}
 AWK_HEREDOC_03
 ) > "${TMPDIR_CSV}/del_gen1" || true
-
-cat ${outer_HAs5p} > "${TMPDIR_CSV}/outer_HAs"
-cat ${outer_HAs3p} >> "${TMPDIR_CSV}/outer_HAs"
 
 echo -e "${main_chrom} (Exclude_Regions file: ${exclude_regions_from_counts}):" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
