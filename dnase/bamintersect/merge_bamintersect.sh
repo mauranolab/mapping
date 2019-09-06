@@ -48,10 +48,13 @@ fi
 
 # Initialize the counts output file with a header.
 echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1" > "${sampleOutdir}/${sample_name}.counts.txt"
+echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
 
 # Merge the output related to each bam1 chromosome:
 while read main_chrom ; do
     bedops --chrom ${main_chrom} --everything "${sampleOutdir}/${sample_name}.bed" > "${sampleOutdir}/${sample_name}.${main_chrom}.bed"
+
+    ${src}/filter_tsv.sh ${sampleOutdir} ${bam1_5p_HA} ${bam1_3p_HA} ${sample_name} ${cegsgenome} ${annotationgenome} "NA" ${main_chrom} ${deletion_gene} ${deletion_range}
 
     ${src}/filter_tsv.sh ${sampleOutdir} ${bam1_5p_HA} ${bam1_3p_HA} ${sample_name} ${cegsgenome} ${annotationgenome} \
                        ${exclude_regions_from_counts} ${main_chrom} ${deletion_gene} ${deletion_range}
@@ -63,7 +66,7 @@ while read main_chrom ; do
     ## Number of informative reads
     n2=$(wc -l < "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed")
 
-    echo -e "    Mapped reads with unmapped mates from ${main_chrom}:\t${n1}\tof which\t${n2}\tpassed through the filters (if any) and are potentially informative.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo -e "Mapped reads with unmapped mates from ${main_chrom}:\t${n1}\tof which\t${n2}\tpassed through the filters and HAs, and are potentially informative.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
     # Don't need to keep these anymore.
     rm "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed"
