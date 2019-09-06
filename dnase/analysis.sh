@@ -25,7 +25,7 @@ if [[ "${sampleType}" != "none" ]] && [[ "${sampleType}" != "atac" ]] && [[ "${s
     exit 1
 fi
 
-sampleAnnotationBait=`echo "${sampleAnnotation}" | awk -v key="Bait_set" -F "," '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
+sampleAnnotationBait=`echo "${sampleAnnotation}" | awk -v key="Bait_set" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
 case "${sampleType}" in
     dna)
         ucscTrackDescriptionDataType="DNA";;

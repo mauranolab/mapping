@@ -189,7 +189,6 @@ def addCEGSgenomes(line):
         additionalGenomesToMap = []
         geneticModification = getValueFromLIMS(lims, line['Original Sample #'], 'Genetic Modification')
         customReference = getValueFromLIMS(lims, line['Original Sample #'], 'Custom Reference')
-        print("geneticModification", geneticModification, "custref", customReference, file=sys.stderr)
         #Note if geneticModification/customReference are empty strings, then the list will contain an empty string, but since we only look for cegsvectors_*, it will never match anything
         for curGeneticModification in geneticModification.split(",") + customReference.split(","):
             for curCegsGenome in cegsGenomes:
@@ -251,7 +250,7 @@ def bwaPipeline(line):
     if geneticModification is not "":
         sampleAnnotation.append("Genetic_Modification=" + geneticModification)
     
-    submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["#Sample Name"] + " " + line["Sample #"] + " " + ','.join(sampleAnnotation)
+    submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["#Sample Name"] + " " + line["Sample #"] + " \"" + ';'.join(sampleAnnotation) + "\""
     
     global doBwaCleanup
     doBwaCleanup = True
