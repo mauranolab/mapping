@@ -128,7 +128,7 @@ finally:
         logfile.close()
         
     print("\nfilterNextSeqReadsForPolyG.py statistics:", file=sys.stderr)
-    print('Processed reads ', numreads,":", "Poly-G reads removed in total",polyGreads,":", 'R1 ',R1polyG,': R2 ',R2polyG,': Both ',R1andR2polyG, file=sys.stderr)
+    print('Processed read pairs ', numreads,":", "Poly-G read pairs removed in total",polyGreads,":", 'R1 ',R1polyG,': R2 ',R2polyG,': Both ',R1andR2polyG, file=sys.stderr)
 
 
 print("\nDone!", file=sys.stderr)

@@ -409,4 +409,4 @@ print("\n[filter_reads.py] Failure codes by read pair (", totalReads, " reads pr
 print("[filter_reads.py]", readPairFailureCodes, file=sys.stderr)
 
 
-print("[filter_reads.py] Done!", totalReadsFailed, "failed reads, ", totalReadsDropped, "reads dropped", file=sys.stderr)
+print("[filter_reads.py] Done!", totalReadsFailed, "failed reads,", totalReadsDropped, "reads dropped", file=sys.stderr)
