@@ -38,12 +38,21 @@ case "${bait}" in
 HPRT1_bait)
     grep -w "HPRT1_assembly" /vol/cegs/sequences/hg38/HPRT1/HPRT1_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
+Piga_bait)
+    awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $4~/_assembly$/' /vol/cegs/sequences/mm10/Piga/Piga_assembly.bed | bedops -m - > $TMPDIR/target.bed
+    ;;
+Sox2_bait)
+    awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $4~/_assembly$/' /vol/cegs/sequences/mm10/Sox2/Sox2_assembly.bed | bedops -m - > $TMPDIR/target.bed
+    ;;
 RnHoxa_bait)
     grep -w "RnHoxa_assembly" /vol/cegs/sequences/rn6/RnHoxa/RnHoxa_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
-LP087_bait)
+HTRA1_CH17-165I6_bait)
+    grep -w "CH17-165I6" /vol/cegs/sequences/hg38/HTRA1/HTRA1_assembly.bed | bedops -m - > $TMPDIR/target.bed
+    ;;
+LP058_bait|LP087_bait|LP097_bait|LP131_bait|PL1_bait)
     #TODO not counting backbone since we don't support multiple chromosomes
-    cat /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes | awk -F "\t" 'BEGIN {OFS="\t"} $1=="LP087" {print $1, 0, $2}' > $TMPDIR/target.bed
+    cat /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes | awk -v bait=${bait/_bait/} -F "\t" 'BEGIN {OFS="\t"} $1==bait {print $1, 0, $2}' > $TMPDIR/target.bed
     ;;
 *)
     echo "ERROR: Don't recognize bait ${bait}";
@@ -73,7 +82,7 @@ for covfile in `find ${dirs} -name "*.${mappedgenome}.coverage.binned.starch"`; 
     bamfile=`echo ${covfile} | perl -pe 's/\.coverage.binned.starch$/.bam/g;'`
     
     analysisFile=`dirname ${covfile} | xargs -I {} find {} -name "analysis.*.${mappedgenome}.o*"`
-    sequencedReads=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="Num_sequenced_reads" {print $2; exit}' ${analysisFile}`
+    sequencedReads=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="Num_sequenced_reads" {print $2; exit} END {print "NA"}' ${analysisFile}`
     echo -n -e "${sequencedReads}\t"
     
     #Nonredundant_reads_analyzed
