@@ -317,7 +317,7 @@ for(curdir in mappeddirs) {
 					data$Group[i] <- "Tissues"
 				}
 				if(grepl('^CD|^[him]?A?T[HhNnRr][0-9]*$|^GM[012][0-9][0-9][0-9][0-9]|m?B_?cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|^MEL_GATA1_ER$|macrophage|CH12LX|G1E|mononuclear|megakaryocyte|dendritic|leukemia_stem_cell|^Jurkat|T\\-cell|Raji|NB4|HL\\-60|Karpas\\-422|Loucy', data$Name[i])) { data$Group[i] <- 'Hematopoietic' }
-				if(grepl('ES|^H[179]_hESC|^iPS|^trophoblastic_cell$|^mesendoderm$|^endodermal_cell$|^ectodermal_cell$|^mesodermal_cell$|^WW6$|^ZHBTc4$|^E14TG2a.?4$', data$Name[i])) { data$Group[i] <- 'Pluripotent' }
+				if(grepl('ES|^H[179]_hESC|GM23338|^iPS|^trophoblastic_cell$|^mesendoderm$|^endodermal_cell$|^ectodermal_cell$|^mesodermal_cell$|^WW6$|^ZHBTc4$|^E14TG2a.?4$|^ELF_1$|^EL$|^L1_S8$', data$Name[i])) { data$Group[i] <- 'Pluripotent' }
 				if(opt$project=="humanENCODEdnase") {
 					#Correct UMass to UW samples
 					if(data$Institution[i] == 'UMass') {
