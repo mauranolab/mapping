@@ -29,6 +29,7 @@ module load pigz
 qsubargs=""
 mapThreads=4
 mergeThreads=3
+runBamIntersect=0
 
 #For big jobs:
 #qsubargs="--qos normal -p -500"
@@ -80,6 +81,9 @@ src=`pwd`/${sampleOutdir}/.src
 mkdir -p ${src}
 #use cp -p to preserve timestamps
 find /vol/mauranolab/mapped/src/dnase -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}
+#Only get bamintersect subdir
+mkdir -p ${src}/bamintersect
+find /vol/mauranolab/mapped/src/dnase/bamintersect -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}/bamintersect
 
 
 if [[ "${analysisType}" =~ ^map ]]; then
@@ -90,7 +94,7 @@ if [[ "${analysisType}" =~ ^map ]]; then
     echo
     echo "Mapping ${n} jobs for ${mapname}"
     #NB running many jobs with threads < 4 can sometimes get memory errors, not quite sure of the culprit
-    qsub -S /bin/bash -cwd -V $qsubargs -pe threads ${mapThreads} -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sampleOutdir} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
+    qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mapThreads} -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sampleOutdir} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
 fi
 
 
@@ -106,7 +110,7 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggrega
         echo
         echo "${mergename} merge"
         #NB compression threads are multithreaded. However, samblaster and index are not; former is ~1/4 of time and latter is trivial
-        qsub -S /bin/bash -cwd -V $qsubargs -pe threads ${mergeThreads} -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sampleOutdir} ${BS} ${curGenome}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
+        qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mergeThreads} -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sampleOutdir} ${BS} ${curGenome}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
     done
 fi
 #Clean up sgeid even if we don't run merge
@@ -114,6 +118,26 @@ if [[ "${processingCommand}" =~ ^map ]]; then
     rm -f ${sampleOutdir}/sgeid.map.${mapname}
 fi
 
+
+
+#bamintersect
+if [ ${runBamIntersect} -eq 1 ]; then
+    sampleAnnotationGeneticModification=`echo "${sampleAnnotation}" | awk -v key="Genetic_Modification" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
+echo "found $sampleAnnotationGeneticModification"
+    mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | grep -v "^cegsvectors_"`
+    cegsGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | grep "^cegsvectors_"`
+    for mammalianGenome in ${mammalianGenomes}; do
+        for cegsGenome in ${cegsGenomes}; do
+            cegsGenomeShort="${cegsGenome/cegsvectors_/}"
+            #Limit this to references listed as genetic modifications
+            if [[ ${sampleAnnotationGeneticModification} =~ ${cegsGenomeShort} ]]; then
+                echo "${cegsGenomeShort} vs. ${mammalianGenome} bamintersect"
+                #TODO separate output in bamintersect
+                qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.merge.${name}.${mammalianGenome} ${sampleOutdir}/sgeid.merge.${name}.${cegsGenome} | perl -pe 's/\n/,/g;'` -o ${sampleOutdir} -N submit_bamintersect.${cegsGenomeShort}vs${mammalianGenome} "${src}/bamintersect/submit_bamintersect.sh --sample_name ${name} --bam1 ${sampleOutdir}/${name}.${cegsGenome}.bam --bam1genome ${cegsGenomeShort} --bam2 ${sampleOutdir}/${name}.${mammalianGenome}.bam --bam2genome ${mammalianGenome}"
+            fi
+        done
+    done
+fi
 
 
 for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
@@ -128,7 +152,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     
     echo
     echo "${analysisname} analysis"
-    qsub -S /bin/bash -cwd -V $qsubargs -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sampleOutdir} ${BS} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
+    qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sampleOutdir} ${BS} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
     
     cat ${sampleOutdir}/sgeid.analysis.${analysisname} >> `dirname ${sampleOutdir}`/sgeid.analysis
     
