@@ -29,7 +29,7 @@ module load pigz
 qsubargs=""
 mapThreads=4
 mergeThreads=3
-runBamIntersect=0
+runBamIntersect=1
 
 #For big jobs:
 #qsubargs="--qos normal -p -500"
@@ -122,6 +122,12 @@ fi
 
 #bamintersect
 if [ ${runBamIntersect} -eq 1 ]; then
+    if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
+        bamIntersectHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${name}.${mammalianGenome} ${sampleOutdir}/sgeid.merge.${name}.${cegsGenome} | perl -pe 's/\n/,/g;'`"
+    else
+        bamIntersectHold=""
+    fi
+    
     sampleAnnotationGeneticModification=`echo "${sampleAnnotation}" | awk -v key="Genetic_Modification" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
 echo "found $sampleAnnotationGeneticModification"
     mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | grep -v "^cegsvectors_"`
@@ -133,7 +139,7 @@ echo "found $sampleAnnotationGeneticModification"
             if [[ ${sampleAnnotationGeneticModification} =~ ${cegsGenomeShort} ]]; then
                 echo "${cegsGenomeShort} vs. ${mammalianGenome} bamintersect"
                 #TODO separate output in bamintersect
-                qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.merge.${name}.${mammalianGenome} ${sampleOutdir}/sgeid.merge.${name}.${cegsGenome} | perl -pe 's/\n/,/g;'` -o ${sampleOutdir} -N submit_bamintersect.${cegsGenomeShort}vs${mammalianGenome} "${src}/bamintersect/submit_bamintersect.sh --sample_name ${name} --bam1 ${sampleOutdir}/${name}.${cegsGenome}.bam --bam1genome ${cegsGenomeShort} --bam2 ${sampleOutdir}/${name}.${mammalianGenome}.bam --bam2genome ${mammalianGenome}"
+                qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${bamIntersectHold} -o ${sampleOutdir}/bamintersect -N submit_bamintersect.${cegsGenomeShort}vs${mammalianGenome} "${src}/bamintersect/submit_bamintersect.sh --sample_name ${name} --outdir ${sampleOutdir}/bamintersect --bam1 ${sampleOutdir}/${name}.${cegsGenome}.bam --bam1genome ${cegsGenomeShort} --bam2 ${sampleOutdir}/${name}.${mammalianGenome}.bam --bam2genome ${mammalianGenome}"
             fi
         done
     done
