@@ -12,7 +12,6 @@ main_chrom=$8
 deletion_gene=$9
 deletion_range=${10}
 
-TMPDIR=`mktemp -d`   # TMPDIR has no trailing slash
 echo "main_chrom: ${main_chrom}       TMPDIR is: ${TMPDIR}"
 
 #####################################################################################
