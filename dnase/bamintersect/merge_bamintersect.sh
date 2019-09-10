@@ -1,14 +1,11 @@
 #!/bin/bash
 set -eu -o pipefail
 
-#SBATCH --mail-type=END
-#SBATCH --mail-user=cadley.nyulangone@gmail.com
-
 ## Variables are passed in via sbatch export.
 ##########################################################################################################
 ## Merge the bam_intersect output files:
 
-dir_names=($(ls -d ${OUTDIR_bamintersectPyOut}/*/))      ## These have a trailing /
+dir_names=($(ls -d ${OUTDIR}/bamintersectPyOut/*/))      ## These have a trailing /
 
 first="True"
 for i in ${dir_names[@]}; do
