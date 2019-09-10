@@ -8,28 +8,22 @@ set -eu -o pipefail
 ##########################################################################################################
 ## Merge the bam_intersect output files:
 
-dir_names=($(ls -d ${sampleOutdir}/TEMP_DIR_CL1/*/))      ## These have a trailing /
+dir_names=($(ls -d ${OUTDIR_bamintersectPyOut}/*/))      ## These have a trailing /
 
 first="True"
 for i in ${dir_names[@]}; do
     if [ ${first} = "True" ]; then
-        cp "${i}dsgrep_out.csv" "${sampleOutdir}/f1.bed"
+        cp "${i}dsgrep_out.csv" "${OUTDIR}/f1.bed"
         first="False"
     else
-        cat "${i}dsgrep_out.csv" >> "${sampleOutdir}/f1.bed"
+        cat "${i}dsgrep_out.csv" >> "${OUTDIR}/f1.bed"
     fi
 done
 
 date
 echo Sorting...
-sort-bed "${sampleOutdir}/f1.bed" > "${sampleOutdir}/${sample_name}.bed"
-
+sort-bed "${OUTDIR}/f1.bed" > "${sampleOutdir}/${sample_name}.bed"
 date
-echo Deleting files and directories...
-
-rm "${sampleOutdir}/f1.bed"
-rm -r "${sampleOutdir}/TEMP_DIR_CL1"
-rm -r "${sampleOutdir}/bams"
 
 ##########################################################################################################
 ## Create the final output tables.
@@ -66,12 +60,17 @@ while read main_chrom ; do
     ## Number of informative reads
     n2=$(wc -l < "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed")
 
-    echo -e "Mapped reads with unmapped mates from ${main_chrom}:\t${n1}\tof which\t${n2}\tpassed through the filters and HAs, and are potentially informative.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    # Don't need to keep these in the output directory.
+    mv "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed" ${OUTDIR}
+    mv "${sampleOutdir}/${sample_name}.${main_chrom}.bed" ${OUTDIR}
 
-    # Don't need to keep these anymore.
-    rm "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed"
-    rm "${sampleOutdir}/${sample_name}.${main_chrom}.bed"
+    echo -e "Mapped reads with unmapped mates from ${main_chrom}:\t${n1}\tof which\t${n2}\tpassed through the filters and HAs, and are potentially informative.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 done < "${sampleOutdir}/log/chrom_list1"
+
+#############################################################################
+## Cleanup
+rm -r ${OUTDIR}
+#############################################################################
 
 date
 echo "Done with merge_bamintersect.sh"

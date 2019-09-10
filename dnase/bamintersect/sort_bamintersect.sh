@@ -20,9 +20,8 @@ x=${BAM%.bam}         # Cut off the trailing "bam"
 y=${x##*.}            # Assign the base to y. This will be one of genotypes, like "hg38_full"
 z=${x%.${y}}          # Cut off the trailing ${y}
 sample_name=${z##*/}  # The remaining base is the sample name.
-echo "sample_name is: ${sample_name}"
 
-BAM_OUT="${sampleOutdir}/bams/${sample_name}.${chrom}.${BAM_N}.bam"
+BAM_OUT="${OUTDIR_bams}/${sample_name}.${chrom}.${BAM_N}.bam"
 
 ## Replace pipes with spaces.
 input_to_samtools3=${input_to_samtools//|/ }
