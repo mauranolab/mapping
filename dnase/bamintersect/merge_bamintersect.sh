@@ -8,21 +8,21 @@ set -eu -o pipefail
 ##########################################################################################################
 ## Merge the bam_intersect output files:
 
-dir_names=($(ls -d ${TMPDIR_bamintersectPyOut}/*/))      ## These have a trailing /
+dir_names=($(ls -d ${OUTDIR_bamintersectPyOut}/*/))      ## These have a trailing /
 
 first="True"
 for i in ${dir_names[@]}; do
     if [ ${first} = "True" ]; then
-        cp "${i}dsgrep_out.csv" "${TMPDIR}/f1.bed"
+        cp "${i}dsgrep_out.csv" "${OUTDIR}/f1.bed"
         first="False"
     else
-        cat "${i}dsgrep_out.csv" >> "${TMPDIR}/f1.bed"
+        cat "${i}dsgrep_out.csv" >> "${OUTDIR}/f1.bed"
     fi
 done
 
 date
 echo Sorting...
-sort-bed "${TMPDIR}/f1.bed" > "${sampleOutdir}/${sample_name}.bed"
+sort-bed "${OUTDIR}/f1.bed" > "${sampleOutdir}/${sample_name}.bed"
 date
 
 ##########################################################################################################
@@ -61,15 +61,15 @@ while read main_chrom ; do
     n2=$(wc -l < "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed")
 
     # Don't need to keep these in the output directory.
-    mv "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed" ${TMPDIR}
-    mv "${sampleOutdir}/${sample_name}.${main_chrom}.bed" ${TMPDIR}
+    mv "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed" ${OUTDIR}
+    mv "${sampleOutdir}/${sample_name}.${main_chrom}.bed" ${OUTDIR}
 
     echo -e "Mapped reads with unmapped mates from ${main_chrom}:\t${n1}\tof which\t${n2}\tpassed through the filters and HAs, and are potentially informative.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 done < "${sampleOutdir}/log/chrom_list1"
 
 #############################################################################
 ## Cleanup
-rm -r ${TMPDIR}
+rm -r ${OUTDIR}
 #############################################################################
 
 date

@@ -21,7 +21,7 @@ y=${x##*.}            # Assign the base to y. This will be one of genotypes, lik
 z=${x%.${y}}          # Cut off the trailing ${y}
 sample_name=${z##*/}  # The remaining base is the sample name.
 
-BAM_OUT="${TMPDIR_bams}/${sample_name}.${chrom}.${BAM_N}.bam"
+BAM_OUT="${OUTDIR_bams}/${sample_name}.${chrom}.${BAM_N}.bam"
 
 ## Replace pipes with spaces.
 input_to_samtools3=${input_to_samtools//|/ }
