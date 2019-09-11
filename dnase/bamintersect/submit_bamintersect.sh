@@ -151,7 +151,7 @@ while true ; do
         --sample_name)
             sample_name=$2 ; shift 2 ;;
         --outdir)
-            outdir=$2 ; shift 2 ;;
+            sampleOutdir=$2 ; shift 2 ;;
         --bam1)
             bamname1=$2 ; shift 2 ;;
         --bam1genome)
@@ -189,8 +189,6 @@ done
 
     sample_name="${sample_name}.${cegsgenome}_vs_${annotationgenome}"
     echo "final sample_name is: ${sample_name}"
-
-    sampleOutdir="${outdir}/${sample_name}"
 
     # Get the correct HA zones (0-based bed style numbers, not UCSC positions):
     #     The 5p and 3p outer boundaries of the HPRT1 HAs are as of Mar 29, 2019.
