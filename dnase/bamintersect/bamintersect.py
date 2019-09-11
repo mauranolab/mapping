@@ -255,13 +255,24 @@ if (__name__ == '__main__'):
     parser.add_argument('--outdir', action='store', type=str, help='Full path to a tmp output directory.')
 
     # Type of read matching we want.
-    parser.add_argument('--same', action='store_true', help='True if looking to match read1/read1, or if the reads are unpaired. False if looking to match read1/read2.')
+    parser.add_argument('--same', action='store', type=str, help='True if looking to match read1/read1, or if the reads are unpaired. False if looking to match read1/read2.')
 
     # Do we want to make the 12 column bed file, or 2 bam files?
-    parser.add_argument('--make_csv', action='store_true', help='True if output should be the 12 column bed file. False if we want the 2 bam files')
+    parser.add_argument('--make_csv', action='store', type=str, help='True if output should be the 12 column bed file. False if we want the 2 bam files')
 
     args = parser.parse_args()
 
-    bam_intersect_out = bam_intersect_f(args.bam1, args.bam2, args.outdir, args.same, args.make_csv)
+    # Convert to boolean.
+    if args.same == "True":
+        same_flag = True
+    else:
+        same_flag = False
+
+    if args.make_csv == "True":
+        make_csv_flag = True
+    else:
+        make_csv_flag = False
+
+    bam_intersect_out = bam_intersect_f(args.bam1, args.bam2, args.outdir, same_flag, make_csv_flag)
     sys.exit(bam_intersect_out[0])
 

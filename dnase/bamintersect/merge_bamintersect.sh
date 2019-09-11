@@ -10,16 +10,16 @@ dir_names=($(ls -d ${INTERMEDIATEDIR}/bamintersectPyOut/*/))      ## These have 
 first="True"
 for i in ${dir_names[@]}; do
     if [ ${first} = "True" ]; then
-        cp "${i}dsgrep_out.csv" "${INTERMEDIATEDIR}/f1.bed"
+        cp "${i}dsgrep_out.csv" "${INTERMEDIATEDIR}/unsorted_dsgrep.bed"
         first="False"
     else
-        cat "${i}dsgrep_out.csv" >> "${INTERMEDIATEDIR}/f1.bed"
+        cat "${i}dsgrep_out.csv" >> "${INTERMEDIATEDIR}/unsorted_dsgrep.bed"
     fi
 done
 
 date
 echo Sorting...
-sort-bed "${INTERMEDIATEDIR}/f1.bed" > "${sampleOutdir}/${sample_name}.bed"
+sort-bed "${INTERMEDIATEDIR}/unsorted_dsgrep.bed" > "${sampleOutdir}/${sample_name}.bed"
 date
 
 ##########################################################################################################
@@ -41,6 +41,9 @@ fi
 echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1" > "${sampleOutdir}/${sample_name}.counts.txt"
 echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
 
+# Make sure this has not been left over from a previous run.
+rm -f "${sampleOutdir}/${sample_name}.informative.bed"
+
 # Merge the output related to each bam1 chromosome:
 while read main_chrom ; do
     bedops --chrom ${main_chrom} --everything "${sampleOutdir}/${sample_name}.bed" > "${sampleOutdir}/${sample_name}.${main_chrom}.bed"
@@ -57,9 +60,9 @@ while read main_chrom ; do
     ## Number of informative reads
     n2=$(wc -l < "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed")
 
-    # Don't need to keep these in the output directory.
-    mv "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed" ${INTERMEDIATEDIR}
-    mv "${sampleOutdir}/${sample_name}.${main_chrom}.bed" ${INTERMEDIATEDIR}
+    # Don't need to keep these.
+    rm "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed"
+    rm "${sampleOutdir}/${sample_name}.${main_chrom}.bed"
 
     echo -e "Mapped reads with unmapped mates from ${main_chrom}:\t${n1}\tof which\t${n2}\tpassed through the filters and HAs, and are potentially informative.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 done < "${sampleOutdir}/log/chrom_list1"
