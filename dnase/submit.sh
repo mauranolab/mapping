@@ -77,13 +77,14 @@ name=`basename ${sampleOutdir}`
 mkdir -p ${sampleOutdir}
 
 #Run the job from a local copy of the pipeline for archival and to prevent contention issues if the main tree is modified mid-job
+srcbase="/vol/mauranolab/mapped/src/dnase"
 src=`pwd`/${sampleOutdir}/.src
 mkdir -p ${src}
 #use cp -p to preserve timestamps
-find /vol/mauranolab/mapped/src/dnase -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}
+find ${srcbase} -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}
 #Only get bamintersect subdir
 mkdir -p ${src}/bamintersect
-find /vol/mauranolab/mapped/src/dnase/bamintersect -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}/bamintersect
+find ${srcbase}/bamintersect -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}/bamintersect
 
 
 if [[ "${analysisType}" =~ ^map ]]; then
@@ -119,7 +120,6 @@ if [[ "${processingCommand}" =~ ^map ]]; then
 fi
 
 
-
 #bamintersect
 if [ ${runBamIntersect} -eq 1 ]; then
     sampleAnnotationGeneticModification=`echo "${sampleAnnotation}" | awk -v key="Genetic_Modification" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
@@ -138,7 +138,8 @@ if [ ${runBamIntersect} -eq 1 ]; then
                         bamIntersectHold=""
                     fi
                 
-                qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${bamIntersectHold} -o ${sampleOutdir}/bamintersect -N submit_bamintersect.${cegsGenomeShort}vs${mammalianGenome} "${src}/bamintersect/submit_bamintersect.sh --sample_name ${name} --outdir ${sampleOutdir}/bamintersect --bam1 ${sampleOutdir}/${name}.${cegsGenome}.bam --bam1genome ${cegsGenomeShort} --bam2 ${sampleOutdir}/${name}.${mammalianGenome}.bam --bam2genome ${mammalianGenome}"
+                mkdir -p ${sampleOutdir}/bamintersect/logs
+                qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${bamIntersectHold} -o ${sampleOutdir}/bamintersect/logs -N submit_bamintersect.${cegsGenomeShort}vs${mammalianGenome} "${src}/bamintersect/submit_bamintersect.sh --sample_name ${name} --outdir ${sampleOutdir}/bamintersect --bam1 ${sampleOutdir}/${name}.${cegsGenome}.bam --bam1genome ${cegsGenomeShort} --bam2 ${sampleOutdir}/${name}.${mammalianGenome}.bam --bam2genome ${mammalianGenome}"
             fi
         done
     done
@@ -157,7 +158,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     
     echo
     echo "${analysisname} analysis"
-    qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sampleOutdir} ${BS} ${sampleAnnotation} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
+    qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sampleOutdir} ${BS} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
     
     cat ${sampleOutdir}/sgeid.analysis.${analysisname} >> `dirname ${sampleOutdir}`/sgeid.analysis
     
