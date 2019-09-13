@@ -11,6 +11,7 @@ exclude_regions_from_counts=$7
 main_chrom=$8
 deletion_gene=$9
 deletion_range=${10}
+INTERMEDIATEDIR=${11}
 
 echo "main_chrom: ${main_chrom}       TMPDIR is: ${TMPDIR}"
 
@@ -35,10 +36,10 @@ IFS='-' read -r r1 r2 <<< "${range}"
 echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${deletion_range_f}
 #####################################################################################
 
-file_1="${sampleOutdir}/${sample_name}.${main_chrom}.bed"  # The universe of all reads from a bam1 chromosome, in bed12 format
-                                                           # [chr start end readID flag +/-] x 2
+file_1="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed"  # The universe of all reads from a bam1 chromosome, in bed12 format
+                                                              # [chr start end readID flag +/-] x 2
 
-filter_csv_output="${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed"
+filter_csv_output="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed"
 
 # Maybe we want to filter out some of the reads from our universe:
 if [ ${exclude_regions_from_counts} = "NA" ];then

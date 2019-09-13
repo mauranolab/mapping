@@ -21,6 +21,8 @@ set -eu -o pipefail
 # be kept in mind.
 src=$( dirname "${BASH_SOURCE[0]}" )
 echo "src is: ${src}"
+
+TMPDIR=`mktemp -d`
 ############################################################
 
 module load samtools/1.9
@@ -138,9 +140,9 @@ CMD_LINE=$(getopt -o h --long "${long_args}" -n "$(basename "$0")" -- "$@")
 eval set -- "$CMD_LINE"
 
 # getopt default values:
-    make_csv=True
+    make_csv="--make_csv"
     make_table=True
-    reads_match=False
+    reads_match=""
     clear_logs=False
     
     # Require read is paired.
@@ -167,7 +169,7 @@ while true ; do
         --sample_name)
             sample_name=$2 ; shift 2 ;;
         --outdir)
-            outdir=$2 ; shift 2 ;;
+            sampleOutdir=$2 ; shift 2 ;;
         --bam1)
             bamname1=$2 ; shift 2 ;;
         --bam1genome)
@@ -185,9 +187,9 @@ while true ; do
         --bam2_exclude_flags)
             bam2_exclude_flags=$2 ; shift 2 ;;
         --reads_match)
-            reads_match=True ; shift 1 ;;
+            reads_match="--same" ; shift 1 ;;
         --do_not_make_csv)
-            make_csv=False ; shift 1 ;;
+            make_csv="" ; shift 1 ;;
         --do_not_make_table)
             make_table=False ; shift 1 ;;
         --clear_logs)
@@ -205,8 +207,6 @@ done
 
     sample_name="${sample_name}.${cegsgenome}_vs_${annotationgenome}"
     echo "final sample_name is: ${sample_name}"
-
-    sampleOutdir="${outdir}/${sample_name}"
 
     # Get the correct HA zones (0-based bed style numbers, not UCSC positions):
     #     The 5p and 3p outer boundaries of the HPRT1 HAs are as of Mar 29, 2019.
@@ -364,52 +364,50 @@ mkdir ${INTERMEDIATEDIR}/sorted_bams
 ########################################################
 # Make the chromosome lists which will eventually drive the array jobs.
 
-samtools idxstats ${bamname1} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/chrom_list1"
-num_lines=$(wc -l < "${sampleOutdir}/log/chrom_list1")
-cp "${sampleOutdir}/log/chrom_list1" "${sampleOutdir}/inputs.chrom_list1.txt"
+samtools idxstats ${bamname1} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/${sample_name}.chrom_list1"
+num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1")
 
 if [ "${num_lines}" -ge "5" ]; then
     ## Get the simple chromosome name mask
-    grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/chrom_list1" | sed 's/^/^/' | sed 's/$/$/' > "${sampleOutdir}/log/chrom_list1_simple_mask"
+    grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list1" | sed 's/^/^/' | sed 's/$/$/' > "${TMPDIR}/${sample_name}.chrom_list1_simple_mask"
 
     ## Apply mask to chomosome names
-    grep -v -f "${sampleOutdir}/log/chrom_list1_simple_mask" "${sampleOutdir}/log/chrom_list1" > "${sampleOutdir}/log/chrom_list1_long"
+    grep -v -f "${TMPDIR}/${sample_name}.chrom_list1_simple_mask" "${sampleOutdir}/log/${sample_name}.chrom_list1" > "${TMPDIR}/${sample_name}.chrom_list1_long"
 
     ## We'll strip the pipes out in sort_bamintersect.sh
-    chrom_list1_input_to_samtools=$(cat "${sampleOutdir}/log/chrom_list1_long" | paste -sd "|" -)
+    chrom_list1_input_to_samtools=$(cat "${TMPDIR}/${sample_name}.chrom_list1_long" | paste -sd "|" -)
 
     ## Get simple chromosome names
-    grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/chrom_list1" >  "${sampleOutdir}/log/chrom_list1_simple"
-    num_lines=$(wc -l < "${sampleOutdir}/log/chrom_list1_long")
+    grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list1" >  "${sampleOutdir}/log/${sample_name}.chrom_list1_simple"
+    num_lines=$(wc -l < "${TMPDIR}/${sample_name}.chrom_list1_long")
     if [ "${num_lines}" -ge "1" ]; then
-        echo "all_other" >> "${sampleOutdir}/log/chrom_list1_simple"
+        echo "all_other" >> "${sampleOutdir}/log/${sample_name}.chrom_list1_simple"
     fi
 else
     # A small number of chromosomes is an indicator that this is a LP/PL file.
     # There will be no "all_other" in this file.
-    cp "${sampleOutdir}/log/chrom_list1" "${sampleOutdir}/log/chrom_list1_simple"
+    cp "${sampleOutdir}/log/${sample_name}.chrom_list1" "${sampleOutdir}/log/${sample_name}.chrom_list1_simple"
     chrom_list1_input_to_samtools="NA"   # To avoid a pipefail.
 fi
 
 
-samtools idxstats ${bamname2} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/chrom_list2"
-num_lines=$(wc -l < "${sampleOutdir}/log/chrom_list2")
-cp "${sampleOutdir}/log/chrom_list2" "${sampleOutdir}/inputs.chrom_list2.txt"
+samtools idxstats ${bamname2} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/${sample_name}.chrom_list2"
+num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2")
 
 ## Get the simple chromosome name mask
-grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/chrom_list2" | sed 's/^/^/' | sed 's/$/$/' > "${sampleOutdir}/log/chrom_list2_simple_mask"
+grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list2" | sed 's/^/^/' | sed 's/$/$/' > "${TMPDIR}/${sample_name}.chrom_list2_simple_mask"
 
 ## Apply mask to chomosome names
-grep -v -f "${sampleOutdir}/log/chrom_list2_simple_mask" "${sampleOutdir}/log/chrom_list2" > "${sampleOutdir}/log/chrom_list2_long"
+grep -v -f "${TMPDIR}/${sample_name}.chrom_list2_simple_mask" "${sampleOutdir}/log/${sample_name}.chrom_list2" > "${TMPDIR}/${sample_name}.chrom_list2_long"
 
 ## We'll strip the pipes out in sort_bamintersect.sh
-chrom_list2_input_to_samtools=$(cat "${sampleOutdir}/log/chrom_list2_long" | paste -sd "|" -)
+chrom_list2_input_to_samtools=$(cat "${TMPDIR}/${sample_name}.chrom_list2_long" | paste -sd "|" -)
 
 ## Get simple chromosome names
-grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/chrom_list2" >  "${sampleOutdir}/log/chrom_list2_simple"
-num_lines=$(wc -l < "${sampleOutdir}/log/chrom_list2_long")
+grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list2" >  "${sampleOutdir}/log/${sample_name}.chrom_list2_simple"
+num_lines=$(wc -l < "${TMPDIR}/${sample_name}.chrom_list2_long")
 if [ "${num_lines}" -ge "1" ]; then
-    echo "all_other" >> "${sampleOutdir}/log/chrom_list2_simple"
+    echo "all_other" >> "${sampleOutdir}/log/${sample_name}.chrom_list2_simple"
 fi
 ################################################################################################
 # Setup directories and files for the array jobs.
@@ -429,7 +427,7 @@ for BAM_N in $(seq 1 2); do
 
         BAM_OUT="${INTERMEDIATEDIR}/sorted_bams/${short_name}.${chrom}.${BAM_N}.bam"
         echo ${BAM_OUT} >> "${INTERMEDIATEDIR}/sorted_bams/chr_list_${BAM_N}"
-    done < "${sampleOutdir}/log/chrom_list${BAM_N}_simple"
+    done < "${sampleOutdir}/log/${sample_name}.chrom_list${BAM_N}_simple"
 done
 
 
@@ -465,8 +463,9 @@ export_vars="${export_vars},BAM_E=${bam1_exclude_flags}"   # Required. Use "0" i
 export_vars="${export_vars},BAM_N=1"
 export_vars="${export_vars},input_to_samtools2=${chrom_list1_input_to_samtools}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
+export_vars="${export_vars},sample_name=${sample_name}"
 
-num_lines=$(wc -l < "${sampleOutdir}/log/chrom_list1_simple")
+num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1_simple")
 
 # /vol/mauranolab/cadlej01/projects/Sud_mm10_rn6/test_java contains code and comments regarding java thread
 # problems generated by multiple calls of sort_bamintersect. qos=low probably is good enough to handle the issues.
@@ -480,8 +479,9 @@ export_vars="${export_vars},BAM_E=${bam2_exclude_flags}"   # Required. Use "0" i
 export_vars="${export_vars},BAM_N=2"
 export_vars="${export_vars},input_to_samtools2=${chrom_list2_input_to_samtools}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
+export_vars="${export_vars},sample_name=${sample_name}"
 
-num_lines=$(wc -l < "${sampleOutdir}/log/chrom_list2_simple")
+num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2_simple")
 
 qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log --qos=low -t 1-${num_lines} ${src}/sort_bamintersect.sh > ${sampleOutdir}/sgeid.sort_bamintersect_2
 
@@ -490,8 +490,8 @@ qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_baminters
 ## The big array job:
 echo "Submitting bamintersect job"
 
-n1=$(wc -l < "${sampleOutdir}/log/chrom_list1_simple")
-n2=$(wc -l < "${sampleOutdir}/log/chrom_list2_simple")
+n1=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1_simple")
+n2=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2_simple")
 let "array_size = ${n1} * ${n2}"
 
 export_vars="src=${src}"
@@ -550,3 +550,4 @@ export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log ${src}/merge_bamintersect.sh
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect
+

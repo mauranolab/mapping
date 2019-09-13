@@ -25,7 +25,7 @@ date
 ##########################################################################################################
 ## Create the final output tables.
 
-if [ ${make_csv} != "True" ]; then
+if [ ${make_csv} != "--make_csv" ]; then
     # Need the bed file to make the table.
     # Maybe make both bed and bam files, and delete bed file later?
     echo "Making 2 bam files, so exiting merge_bamintersect.sh prior to calling filter_tsv.bash"
@@ -46,26 +46,22 @@ rm -f "${sampleOutdir}/${sample_name}.informative.bed"
 
 # Merge the output related to each bam1 chromosome:
 while read main_chrom ; do
-    bedops --chrom ${main_chrom} --everything "${sampleOutdir}/${sample_name}.bed" > "${sampleOutdir}/${sample_name}.${main_chrom}.bed"
+    bedops --chrom ${main_chrom} --everything "${sampleOutdir}/${sample_name}.bed" > "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed"
 
-    ${src}/filter_tsv.sh ${sampleOutdir} ${bam1_5p_HA} ${bam1_3p_HA} ${sample_name} ${cegsgenome} ${annotationgenome} "NA" ${main_chrom} ${deletion_gene} ${deletion_range}
+    ${src}/filter_tsv.sh ${sampleOutdir} ${bam1_5p_HA} ${bam1_3p_HA} ${sample_name} ${cegsgenome} ${annotationgenome} "NA" ${main_chrom} ${deletion_gene} ${deletion_range} ${INTERMEDIATEDIR}
 
     ${src}/filter_tsv.sh ${sampleOutdir} ${bam1_5p_HA} ${bam1_3p_HA} ${sample_name} ${cegsgenome} ${annotationgenome} \
-                       ${exclude_regions_from_counts} ${main_chrom} ${deletion_gene} ${deletion_range}
+                       ${exclude_regions_from_counts} ${main_chrom} ${deletion_gene} ${deletion_range} ${INTERMEDIATEDIR}
 
-    cat "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed" >> "${sampleOutdir}/${sample_name}.informative.bed"
+    cat "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed" >> "${sampleOutdir}/${sample_name}.informative.bed"
 
     ## Number of reads
-    n1=$(wc -l < "${sampleOutdir}/${sample_name}.${main_chrom}.bed")
+    n1=$(wc -l < "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed")
     ## Number of informative reads
-    n2=$(wc -l < "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed")
-
-    # Don't need to keep these.
-    rm "${sampleOutdir}/${sample_name}.${main_chrom}.informative.bed"
-    rm "${sampleOutdir}/${sample_name}.${main_chrom}.bed"
+    n2=$(wc -l < "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed")
 
     echo -e "Mapped reads with unmapped mates from ${main_chrom}:\t${n1}\tof which\t${n2}\tpassed through the filters and HAs, and are potentially informative.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-done < "${sampleOutdir}/log/chrom_list1"
+done < "${sampleOutdir}/log/${sample_name}.chrom_list1"
 
 #############################################################################
 ## Cleanup
