@@ -244,7 +244,7 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv):
 
 if (__name__ == '__main__'):
     parser = argparse.ArgumentParser(prog = "bam_intersect.py",
-                                     description = "Given 2 lexicographically sorted bam files, produces a bed12 file which pairs read1 from bam file #1 with read2 from bam file #2 (with the same read IDs), and vice versa.",
+                                     description = "Given 2 lexicographically sorted bam files (Picard, not samtools sort), produces a bed12 file which pairs read1 from bam file #1 with read2 from bam file #2 (with the same read IDs), and vice versa.",
                                      add_help = True)
 
     # bam file names - full paths (bam2 comes in via stdin).
@@ -252,7 +252,7 @@ if (__name__ == '__main__'):
     parser.add_argument('--bam2', action='store', type=str, help='A full path bam file name, or stdin')
 
     # Output directory
-    parser.add_argument('--outdir', action='store', type=str, help='Full path to a tmp output directory.')
+    parser.add_argument('--outdir', action='store', type=str, help='Full path to output directory. Files output: dsgrep_out.csv, dsgrep_out1.bam, dsgrep_out2.bam')
 
     # Type of read matching we want.
     parser.add_argument('--same', action='store_true', help='True if looking to match read1/read1, or if the reads are unpaired. False if looking to match read1/read2.')
