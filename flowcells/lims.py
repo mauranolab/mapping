@@ -57,6 +57,7 @@ def getLIMSsheet(sheet):
 def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask):
     #TODO sort order
     print("Check sequencing sheet for consistency with LIMS")
+    print("Level", "Description", "Sample Name", "Sample #", "Key", "LIMS_value", "SampleSheet_value", sep="\t")
     commonCols = set(lims.columns.values).intersection(set(seq.columns.values))
     numMissingSamples = 0
     numMultipleSamples = 0
@@ -64,21 +65,22 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask):
     for i in seq.index.values[seqMask]:
         curSeq = seq.iloc[i]
         bs = curSeq['Sample #']
+        SampleName = curSeq['Sample Name']
         curLims = lims[limsMask & lims['Sample #'].isin([bs])]
         numEntriesInLIMS = curLims.shape[0]
         if numEntriesInLIMS == 0:
-            print("ERROR: Can't find in LIMS!", bs, sep="\t")
+            print("ERROR", "Can't find in LIMS!", SampleName, bs, "", "", "", sep="\t")
             numMissingSamples += 1
         elif numEntriesInLIMS >= 2:
-            print("ERROR: found " + str(numEntriesInLIMS) + " entries in LIMS!", bs, sep="\t")
+            print("ERROR", "found " + str(numEntriesInLIMS) + " entries in LIMS!", SampleName, bs, "", "", "", sep="\t")
             numMultipleSamples += 1
         else:
             for col in commonCols:
                 if curSeq[col] != curLims[col].item():
                     if curSeq[col] == "" or curLims[col].item() == "":
-                        print("WARNING: missing info", bs, col, curLims[col].item(), curSeq[col], sep="\t")
+                        print("WARNING", "missing info", SampleName, bs, col, curLims[col].item(), curSeq[col], sep="\t")
                     else:
-                        print("ERROR: inconsistent info", bs, col, curLims[col].item(), curSeq[col], sep="\t")
+                        print("ERROR", "inconsistent info", SampleName, bs, col, curLims[col].item(), curSeq[col], sep="\t")
     
     print(str(numMissingSamples) + " total samples missing from LIMS sheet")
     print(str(numMultipleSamples) + " total samples matching multiple entries in LIMS sheet")
