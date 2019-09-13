@@ -22,7 +22,6 @@ set -eu -o pipefail
 src=$( dirname "${BASH_SOURCE[0]}" )
 echo "src is: ${src}"
 
-TMPDIR=`mktemp -d`
 ############################################################
 
 module load samtools/1.9
@@ -353,7 +352,8 @@ mkdir -p ${sampleOutdir}/log
 # Make a directory structure to hold files passed between jobs.
 # It is built within ${sampleOutdir} so it can be persistent.
 # It gets removed at the end of the merge_bamintersect.sh script.
-INTERMEDIATEDIR=`mktemp -d --tmpdir=${sampleOutdir}`   # INTERMEDIATEDIR contains no trailing slash.
+INTERMEDIATEDIR="${sampleOutdir}/tmp.${sample_name}"   # INTERMEDIATEDIR contains no trailing slash.
+mkdir ${INTERMEDIATEDIR}
 
 # Subdirectories will hold output from bamintersect.py
 mkdir ${INTERMEDIATEDIR}/bamintersectPyOut
@@ -368,15 +368,13 @@ samtools idxstats ${bamname1} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/lo
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1")
 
 if [ "${num_lines}" -ge "5" ]; then
-    ## Get the simple chromosome name mask
-    grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list1" | sed 's/^/^/' | sed 's/$/$/' > "${TMPDIR}/${sample_name}.chrom_list1_simple_mask"
-
-    ## Apply mask to chomosome names
-    grep -v -f "${TMPDIR}/${sample_name}.chrom_list1_simple_mask" "${sampleOutdir}/log/${sample_name}.chrom_list1" > "${TMPDIR}/${sample_name}.chrom_list1_long"
-
+    ## Apply the simple chromosome name mask
+    grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list1" | sed 's/^/^/' | sed 's/$/$/' |
+    grep -v -f - "${sampleOutdir}/log/${sample_name}.chrom_list1" > "${TMPDIR}/${sample_name}.chrom_list1_long"
+    
     ## We'll strip the pipes out in sort_bamintersect.sh
     chrom_list1_input_to_samtools=$(cat "${TMPDIR}/${sample_name}.chrom_list1_long" | paste -sd "|" -)
-
+    
     ## Get simple chromosome names
     grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list1" >  "${sampleOutdir}/log/${sample_name}.chrom_list1_simple"
     num_lines=$(wc -l < "${TMPDIR}/${sample_name}.chrom_list1_long")
@@ -394,11 +392,9 @@ fi
 samtools idxstats ${bamname2} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/${sample_name}.chrom_list2"
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2")
 
-## Get the simple chromosome name mask
-grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list2" | sed 's/^/^/' | sed 's/$/$/' > "${TMPDIR}/${sample_name}.chrom_list2_simple_mask"
-
-## Apply mask to chomosome names
-grep -v -f "${TMPDIR}/${sample_name}.chrom_list2_simple_mask" "${sampleOutdir}/log/${sample_name}.chrom_list2" > "${TMPDIR}/${sample_name}.chrom_list2_long"
+## Apply the simple chromosome name mask
+grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list2" | sed 's/^/^/' | sed 's/$/$/' |
+grep -v -f - "${sampleOutdir}/log/${sample_name}.chrom_list2" > "${TMPDIR}/${sample_name}.chrom_list2_long"
 
 ## We'll strip the pipes out in sort_bamintersect.sh
 chrom_list2_input_to_samtools=$(cat "${TMPDIR}/${sample_name}.chrom_list2_long" | paste -sd "|" -)
