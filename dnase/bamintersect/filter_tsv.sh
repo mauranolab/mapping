@@ -36,8 +36,8 @@ IFS='-' read -r r1 r2 <<< "${range}"
 echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${deletion_range_f}
 #####################################################################################
 
-file_1="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed"  # The universe of all reads from a bam1 chromosome, in bed12 format
-                                                              # [chr start end readID flag +/-] x 2
+universeOfAllBam1ChrReads="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed"  # The universe of all reads from a bam1 chromosome, in bed12 format
+                                                                                 # [chr start end readID flag +/-] x 2
 
 filter_csv_output="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed"
 
@@ -45,20 +45,20 @@ filter_csv_output="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.b
 if [ ${exclude_regions_from_counts} = "NA" ];then
     # We're not deleting any reads in this scenario, so sort and move on.
     # The "NA" is assigned in merge_bamintersect.sh when the "exclude_regions_from_counts" input file field is blank.
-    sort-bed "${file_1}" > "${filter_csv_output}"
+    sort-bed "${universeOfAllBam1ChrReads}" > "${filter_csv_output}"
 else
-    # We want to delete file_1 reads that overlap the ranges in this bed3 file.
-    file_2=${exclude_regions_from_counts##*/}
+    # We want to delete universeOfAllBam1ChrReads reads that overlap the ranges in this bed3 file.
+    exclude_regions_filename=${exclude_regions_from_counts##*/}
 
     # Remove the ".bed", and append "_sorted.bed"
-    file_3="${file_2%.bed}_sorted.bed"
+    sorted_exclude_regions_filename="${exclude_regions_filename%.bed}_sorted.bed"
 
     # Get rid of comment lines prior to sorting.
-    grep -v '^#' ${exclude_regions_from_counts} | sort-bed - > "${TMPDIR}/${file_3}"   # This is a sorted bed3 file of the ranges we want to delete.
+    grep -v '^#' ${exclude_regions_from_counts} | sort-bed - > "${TMPDIR}/${sorted_exclude_regions_filename}"   # This is a sorted bed3 file of the ranges we want to delete.
 
 
     # Comments for the 5 piped lines below:
-    # 1) Delete reads that overlap the ranges defined in file_3 (which are defined with respect to bam1 coordinates).
+    # 1) Delete reads that overlap the ranges defined in sorted_exclude_regions_filename (which are defined with respect to bam1 coordinates).
     # 2) Now delete reads that are in the HAs.
     #     2a) The output of step 1 has 12 columns: [chr start end readID flag +/-] x 2, the bam1 data being in 1-6, and the bam2 data being in 7-12.
     #         The HA coordinates are with respect to bam2, so we need to switch the 6-column halves to use the bedops functions on this file.
@@ -66,7 +66,7 @@ else
     # 4) Now put the surviving bam1 reads back on the left hand side,
     # 5) and sort.
 
-    sort-bed ${file_1} | bedops --not-element-of 1 - "${TMPDIR}/${file_3}" | \
+    sort-bed ${universeOfAllBam1ChrReads} | bedops --not-element-of 1 - "${TMPDIR}/${sorted_exclude_regions_filename}" | \
     awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
     sort-bed - | bedops --not-element-of 1 - "${TMPDIR}/outer_HAs.bed" | \
     awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
@@ -94,6 +94,7 @@ fi
 # Cut out just the gene name column, then look for blank gene names.
 # Sometimes the gene name is blank (like when the region is not one of the usual chr types). 
 # Replace the blank with a dash.
+# Then add the gene name column to the bed3 output of "bedops --range".
 cut -d $'\t' -f7 "${TMPDIR}/reads_and_geneNames.bed" |
 awk -f <(cat << "AWK_HEREDOC_01"
 BEGIN{}
@@ -108,16 +109,15 @@ BEGIN{}
 }
 END{}
 AWK_HEREDOC_01
-) > "${TMPDIR}/geneNames_noBlanks.out"
-
-# Add the gene name column to the bed3 output of "bedops --range".
-paste -d $'\t' "${TMPDIR}/all_regions.bed" "${TMPDIR}/geneNames_noBlanks.out" > "${TMPDIR}/all_regions_and_geneNames.bed"
+) |
+paste -d $'\t' "${TMPDIR}/all_regions.bed" - > "${TMPDIR}/all_regions_and_geneNames.bed"
 
 # Count the number of reads in each region
+# Then compute the size of each region, and adjust for the extra 500 bps "bedops --range" added to each end
+# Then sort the table
+# Then remove line items with only one read
 bedmap --count "${TMPDIR}/all_regions.bed" "${TMPDIR}/sorted_speciesReadCoords.bed3" |
-paste -d $'\t' "${TMPDIR}/all_regions_and_geneNames.bed" - > "${TMPDIR}/all_regions_geneNames_numReads.bed"
-
-# Compute the size of each region, and adjust for the extra 500 bps "bedops --range" added to each end:
+paste -d $'\t' "${TMPDIR}/all_regions_and_geneNames.bed" - |
 awk -f <(cat << "AWK_HEREDOC_01"
 BEGIN{FS="\t"; OFS="\t"}
 {
@@ -128,14 +128,9 @@ BEGIN{FS="\t"; OFS="\t"}
 }
 END{}
 AWK_HEREDOC_01
-) "${TMPDIR}/all_regions_geneNames_numReads.bed" > "${TMPDIR}/all_regionsAdj_geneNames_numReads.bed"
-
-# Sort the table:
-sort -V -t $'\t' -k 6,6rn -k 1,1 -k 2,2n "${TMPDIR}/all_regionsAdj_geneNames_numReads.bed" > "${TMPDIR}/sorted_table.bed"
-
-# Remove line items with only one read.
-grep -v $'\t'1$ "${TMPDIR}/sorted_table.bed" > "${TMPDIR}/short_sorted_table.bed" || true
-# mv "${TMPDIR}/sorted_table.bed" "${TMPDIR}/short_sorted_table.bed"   # ... or not.
+) |
+sort -V -t $'\t' -k 6,6rn -k 1,1 -k 2,2n - |
+grep -v $'\t'1$ - > "${TMPDIR}/short_sorted_table.bed" || true
 
 # Append the bam1 chromosome name onto the last column.
 sed "s/$/\t${main_chrom}/" "${TMPDIR}/short_sorted_table.bed" > "${TMPDIR}/short_sorted_table_chromName.bed"
