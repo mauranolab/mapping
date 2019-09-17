@@ -77,11 +77,11 @@ fi
 #####################################################################################
 # Start building the output table:
 
-# Get just the hg38 bed3 part, then sort it:
-cut -f7-9 "${filter_csv_output}" | sort-bed - > "${TMPDIR}/filter_csv.bed3"
+# Get just the hg38/mm10 bed3 part, then sort it:
+cut -f7-9 "${filter_csv_output}" | sort-bed - > "${TMPDIR}/sorted_speciesReadCoords.bed3"
 
-# The below makes +/- 500 bps regions around each hg38 read, and merges them when possible. It will return bed3 output.
-bedops --range 500 --merge "${TMPDIR}/filter_csv.bed3" > "${TMPDIR}/all_regions.bed"
+# The below makes +/- 500 bps regions around each hg38/mm10 read, and merges them when possible. It will return bed3 output.
+bedops --range 500 --merge "${TMPDIR}/sorted_speciesReadCoords.bed3" > "${TMPDIR}/all_regions.bed"
 
 # Find the gene closest to each region:
 if [ ${annotationgenome} = "mm10" ]; then
@@ -90,11 +90,11 @@ else
     closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" /vol/isg/annotation/bed/hg38/gencodev25/Gencodev25.gene.bed > "${TMPDIR}/reads_and_geneNames.bed"
 fi
 
-# Cut out just the gene name column:
-cut -d $'\t' -f7 "${TMPDIR}/reads_and_geneNames.bed" > "${TMPDIR}/geneNames.out"
 
+# Cut out just the gene name column, then look for blank gene names.
 # Sometimes the gene name is blank (like when the region is not one of the usual chr types). 
 # Replace the blank with a dash.
+cut -d $'\t' -f7 "${TMPDIR}/reads_and_geneNames.bed" |
 awk -f <(cat << "AWK_HEREDOC_01"
 BEGIN{}
 {
@@ -108,15 +108,14 @@ BEGIN{}
 }
 END{}
 AWK_HEREDOC_01
-) "${TMPDIR}/geneNames.out" > "${TMPDIR}/geneNames_noBlanks.out"
-
+) > "${TMPDIR}/geneNames_noBlanks.out"
 
 # Add the gene name column to the bed3 output of "bedops --range".
 paste -d $'\t' "${TMPDIR}/all_regions.bed" "${TMPDIR}/geneNames_noBlanks.out" > "${TMPDIR}/all_regions_and_geneNames.bed"
 
 # Count the number of reads in each region
-bedmap --count "${TMPDIR}/all_regions.bed" "${TMPDIR}/filter_csv.bed3" > "${TMPDIR}/num_reads.out"
-paste -d $'\t' "${TMPDIR}/all_regions_and_geneNames.bed" "${TMPDIR}/num_reads.out" > "${TMPDIR}/all_regions_geneNames_numReads.bed"
+bedmap --count "${TMPDIR}/all_regions.bed" "${TMPDIR}/sorted_speciesReadCoords.bed3" |
+paste -d $'\t' "${TMPDIR}/all_regions_and_geneNames.bed" - > "${TMPDIR}/all_regions_geneNames_numReads.bed"
 
 # Compute the size of each region, and adjust for the extra 500 bps "bedops --range" added to each end:
 awk -f <(cat << "AWK_HEREDOC_01"
@@ -161,24 +160,21 @@ BEGIN{FS="\t"; OFS="\t"}
 }
 END{}
 AWK_HEREDOC_03
-) > "${TMPDIR}/del_gen1" || true
+) > "${TMPDIR}/deletion_gene_boundary_reads" || true
 
 echo -e "${main_chrom} (Exclude_Regions file: ${exclude_regions_from_counts}):" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
 while read -r line_in; do
-    # IFS=$'\t' read -r  x y z rest_of_line <<< $line_in
-    echo ${line_in} | sed 's/ /\t/g' > "${TMPDIR}/del_gen2"
-
     # Extract the "deletion_gene" reads from our universe of retained reads, built above.
-    bedops --element-of 1 "${TMPDIR}/filter_csv.bed3" "${TMPDIR}/del_gen2" > "${TMPDIR}/del_gen_reads"
-
-    # Now get the reads that are in the deletion range.
-    bedops --element-of 1 "${TMPDIR}/del_gen_reads" "${deletion_range_f}" > "${TMPDIR}/del_range_reads_out"
+    # Then get the reads that are in the deletion range.
+    echo ${line_in} | sed 's/ /\t/g' |
+    bedops --element-of 1 "${TMPDIR}/sorted_speciesReadCoords.bed3" - |
+    bedops --element-of 1 - "${deletion_range_f}" > "${TMPDIR}/del_range_reads_out"
 
     num_lines=$(wc -l < "${TMPDIR}/del_range_reads_out")
     echo -e "    Number of [${deletion_gene} ${line_in}] reads in the Deletion Range:\t${num_lines}" >> \
             "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-done < "${TMPDIR}/del_gen1"
+done < "${TMPDIR}/deletion_gene_boundary_reads"
 
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
