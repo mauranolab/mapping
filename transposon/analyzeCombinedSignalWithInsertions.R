@@ -15,7 +15,7 @@ outbase <- argv[2]
 
 
 cat("\n\nAnalysis of mapped integration site\n")
-sampleData <- read(paste0(outbase, ".mapped.txt"), header=T)
+sampleData <- read(paste0(outbase, ".mapped.txt"), header=T, nrows=20000)
 colnames(sampleData)[colnames(sampleData)=="X.chrom"] <- "chrom"
 
 cat("Loaded", nrow(sampleData), "sites\n")
@@ -157,7 +157,7 @@ write.table(results.DistToNearestCTCF, file=paste0(outbase, '.DistToNearestCTCF.
 
 cat("\n\nOverlap between libraries by read depth\n")
 #Note based on the AllBCs file
-data <- read(paste0(outbase, ".AllBCs.txt"), header=T)
+data <- read(paste0(outbase, ".AllBCs.txt"), header=T, nrows=5000)
 
 if(useDNA) {
 	data$DNA.bin <- cut.pretty(data[,"DNA"], breaks=unique(quantile(data[,"DNA"], probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, pretty.labels="left")
