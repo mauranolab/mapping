@@ -352,7 +352,6 @@ if [ "${clear_logs}" = "True" ]; then
 fi
 mkdir -p ${sampleOutdir}/log
 
-
 ########################################################
 # Make a directory structure to hold files passed between jobs.
 # It is built within ${sampleOutdir} so it can be persistent.
@@ -421,12 +420,7 @@ for BAM_N in $(seq 1 2); do
     fi
 
     while read chrom;  do
-        cutOff_bam=${BAM%.bam}          # Cut off the trailing "bam"
-        getGenotype=${cutOff_bam##*.}   # Assign the base to getGenotype. This will be one of genotypes, like "hg38_full"
-        long_name=${cutOff_bam%.${getGenotype}} # Cut off the trailing ${getGenotype}
-        short_name=${long_name##*/}     # The remaining base is the short name.
-
-        BAM_OUT="${INTERMEDIATEDIR}/sorted_bams/${short_name}.${chrom}.${BAM_N}.bam"
+        BAM_OUT="${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${chrom}.${BAM_N}.bam"
         echo ${BAM_OUT} >> "${INTERMEDIATEDIR}/sorted_bams/chr_list_${BAM_N}"
     done < "${sampleOutdir}/log/${sample_name}.chrom_list${BAM_N}_simple"
 done

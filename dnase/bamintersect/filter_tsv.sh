@@ -36,18 +36,17 @@ IFS='-' read -r r1 r2 <<< "${range}"
 echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${deletion_range_f}
 #####################################################################################
 
-universeOfAllBam1ChrReads="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed"  # The universe of all reads from a bam1 chromosome, in bed12 format
-                                                                                 # [chr start end readID flag +/-] x 2
-
 filter_csv_output="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed"
 
 # Maybe we want to filter out some of the reads from our universe:
 if [ ${exclude_regions_from_counts} = "NA" ];then
     # We're not deleting any reads in this scenario, so sort and move on.
     # The "NA" is assigned in merge_bamintersect.sh when the "exclude_regions_from_counts" input file field is blank.
-    sort-bed "${universeOfAllBam1ChrReads}" > "${filter_csv_output}"
+    # "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" = The universe of all reads from a bam1 chromosome, in bed12 format
+                                                        # [chr start end readID flag +/-] x 2
+    sort-bed "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" > "${filter_csv_output}"
 else
-    # We want to delete universeOfAllBam1ChrReads reads that overlap the ranges in this bed3 file.
+    # We want to delete "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" reads that overlap the ranges in this bed3 file.
     exclude_regions_filename=${exclude_regions_from_counts##*/}
 
     # Remove the ".bed", and append "_sorted.bed"
@@ -66,7 +65,7 @@ else
     # 4) Now put the surviving bam1 reads back on the left hand side,
     # 5) and sort.
 
-    sort-bed ${universeOfAllBam1ChrReads} | bedops --not-element-of 1 - "${TMPDIR}/${sorted_exclude_regions_filename}" | \
+    sort-bed "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" | bedops --not-element-of 1 - "${TMPDIR}/${sorted_exclude_regions_filename}" | \
     awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
     sort-bed - | bedops --not-element-of 1 - "${TMPDIR}/outer_HAs.bed" | \
     awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
@@ -155,7 +154,7 @@ BEGIN{FS="\t"; OFS="\t"}
 }
 END{}
 AWK_HEREDOC_03
-) > "${TMPDIR}/deletion_gene_boundary_reads" || true
+) > "${TMPDIR}/deletion_gene_boundary_reads.bed" || true
 
 echo -e "${main_chrom} (Exclude_Regions file: ${exclude_regions_from_counts}):" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
@@ -169,7 +168,7 @@ while read -r line_in; do
     num_lines=$(wc -l < "${TMPDIR}/del_range_reads_out")
     echo -e "    Number of [${deletion_gene} ${line_in}] reads in the Deletion Range:\t${num_lines}" >> \
             "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-done < "${TMPDIR}/deletion_gene_boundary_reads"
+done < "${TMPDIR}/deletion_gene_boundary_reads.bed"
 
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
