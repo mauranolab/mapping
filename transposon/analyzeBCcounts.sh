@@ -25,8 +25,8 @@ zcat ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz | ${src}/removeOverrepresente
 
 
 #Doesn't count length if the BC has been masked to ""
-minUMILength=`zcat -f ${TMPDIR}/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($3)}' | uniq | sort -n | awk 'NR==1'`
-minCellBCLength=`zcat -f ${TMPDIR}/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($4)}' | uniq | sort -n | awk 'NR==1'`
+minUMILength=`zcat -f ${TMPDIR}/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($3)}' | uniq | sort -n | awk 'BEGIN {ret=0} NR==1 {ret=$0} END {print ret}'`
+minCellBCLength=`zcat -f ${TMPDIR}/${sample}.barcodes.txt | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($4)}' | uniq | sort -n | awk 'BEGIN {ret=0} NR==1 {ret=$0} END {print ret}'`
 
 
 echo
@@ -193,7 +193,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     #TODO parameterize and do more precise filtering of 10x whitelist BCs. we do miss some by not allowing mismatches but it's pretty few reads
     #TODO report high-count cellBCs not on whitelist, mainly in case umi_tools dedup is not working well
     fgrep -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.whitelist.txt |
-    fgrep -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.readcounts.excluded.txt |
+    fgrep -v -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.readcounts.excluded.txt |
     fgrep -v -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.pSB.excluded.txt |
     awk 'BEGIN {OFS="\t"; print "BC", "cellBC", "count"} {print}' > ${OUTDIR}/${sample}.barcode.counts.byCell.txt
     
