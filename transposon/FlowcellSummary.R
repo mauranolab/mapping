@@ -66,6 +66,7 @@ for (i in 1:length(analysisFiles)) {
 	} else {
 		data[i, "Type"] <- gsub('.*_|\\.o.*', '', analysisFiles[i])
 	}
+	#NB there are some exit routes that print Done!!! but don't print data below
 	if(tail(Sample, 2)[1]=="Done!!!") {
 		data[i, "Total read pairs"] <- as.numeric(splitLines('Number of total reads', '\t')$X3)
 		data[i, "Total barcodes"] <- as.numeric(splitLines('Number of total read barcodes', '\t')$X3)
