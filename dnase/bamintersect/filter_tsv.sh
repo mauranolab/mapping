@@ -47,7 +47,7 @@ if [ ${exclude_regions_from_counts} = "NA" ];then
     sort-bed "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" > "${filter_csv_output}"
 else
     # We want to delete "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" reads that overlap the ranges in this bed3 file.
-    exclude_regions_filename=${exclude_regions_from_counts##*/}
+    exclude_regions_filename=$(basename exclude_regions_from_counts)
 
     # Remove the ".bed", and append "_sorted.bed"
     sorted_exclude_regions_filename="${exclude_regions_filename%.bed}_sorted.bed"
