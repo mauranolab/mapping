@@ -23,6 +23,7 @@ An example of how to call submit_bamintersect.sh:
 ./submit_bamintersect.sh \
        --outdir /vol/mauranolab/cadlej01/projects/bamintersect_test/BI6_Cast_dSox2_LP131b_Clone1-BS03022A.LP131b_vs_mm10 \
        --sample_name BI6_Cast_dSox2_LP131b_Clone1-BS03022A \
+       --integrationsite Sox2_1_5 \
        --bam1 /vol/cegs/mapped/FCHGMYJBGXB/capture/BI6_Cast_dSox2_LP131b_Clone1-BS03022A/BI6_Cast_dSox2_LP131b_Clone1-BS03022A.cegsvectors_LP131.bam \
        --bam1genome LP131b \
        --bam2 /vol/cegs/mapped/FCHGMYJBGXB/capture/BI6_Cast_dSox2_LP131b_Clone1-BS03022A/BI6_Cast_dSox2_LP131b_Clone1-BS03022A.mm10.bam \

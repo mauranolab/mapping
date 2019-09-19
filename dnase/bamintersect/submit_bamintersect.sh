@@ -49,6 +49,7 @@ cat << USAGE
 Usage: $(basename "$0") [Options]
   Required Options:
      --sample_name {sample name}
+     --integrationsite {sitename_HA#1_HA#2   sitename is like HPRT1. HA#s refer to numbers in the HomologyArms.bed file}
      --bam1 {full path to bam file #1}
      --bam1genome {something like LP123, mm10, or hg38. Others are valid as well.}
      --bam2 {full path to bam file #2}
@@ -115,6 +116,7 @@ USAGE
 
 long_arg_list=(
     sample_name:
+    integrationsite:
     outdir:
     bam1:
     bam1genome:
@@ -148,6 +150,7 @@ eval set -- "$CMD_LINE"
     make_table=True
     reads_match=""
     clear_logs=False
+    integrationsite="NA"
     
     # Require read is paired.
     # Require mate is unmapped.
@@ -172,12 +175,14 @@ while true ; do
     case "$1" in
         --sample_name)
             sample_name=$2 ; shift 2 ;;
+        --integrationsite)
+            integrationsite=$2 ; shift 2 ;;
         --outdir)
             sampleOutdir=$2 ; shift 2 ;;
         --bam1)
             bamname1=$2 ; shift 2 ;;
         --bam1genome)
-            cegsgenome=$2 ; shift 2 ;;
+            bam1genome=$2 ; shift 2 ;;
         --bam1_keep_flags)
             bam1_keep_flags=$2 ; shift 2 ;;
         --bam1_exclude_flags)
@@ -185,7 +190,7 @@ while true ; do
         --bam2)
             bamname2=$2 ; shift 2 ;;
         --bam2genome)
-            annotationgenome=$2 ; shift 2 ;;
+            bam2genome=$2 ; shift 2 ;;
         --bam2_keep_flags)
             bam2_keep_flags=$2 ; shift 2 ;;
         --bam2_exclude_flags)
@@ -206,144 +211,64 @@ done
 
 # End of getopt section.
 ################################################
-# We now have:  the standard sample_name, bamname1, bamname2, cegsgenome, annotationgenome
-# Derive some other required values from what we have.
+sample_name="${sample_name}.${bam1genome}_vs_${bam2genome}"
+echo "final sample_name is: ${sample_name}"
+################################################
+# Derive the "excluded regions" from bam1genome and bam2genome: 
 
-    sample_name="${sample_name}.${cegsgenome}_vs_${annotationgenome}"
-    echo "final sample_name is: ${sample_name}"
+# A bed file of ranges to delete at the end of the process.  cegsvector reads that fall in these ranges may actually be
+# a misleading mapping of genomic reads, so they are considered uninformative.
+if echo "${bam1genome}" | grep -q "LP058" ; then
+    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
+    cegsLP=True
+elif echo "${bam1genome}" | grep -q "LP097a" ; then
+    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
+    cegsLP=True
+elif echo "${bam1genome}" | grep -q "LP097b" ; then
+    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
+    cegsLP=True
+elif echo "${bam1genome}" | grep -q "LP131a" ; then
+    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
+    cegsLP=True
+elif echo "${bam1genome}" | grep -q "LP131b" ; then
+    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
+    cegsLP=True
+elif echo "${bam1genome}" | grep -q "LP087" ; then
+    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
+    cegsLP=True
+elif echo "${bam1genome}" | grep -q "LP123" ; then
+    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
+    cegsLP=True
+elif echo "${bam1genome}" | grep -q "LP062" ; then
+    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
+    cegsLP=True
+elif echo "${bam1genome}" | grep -q "pSpCas9" ; then
+    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/pSpCas9_vs_hg38.bed"
+    cegsLP=False
+elif echo "${bam1genome}" | grep -q "PL1" ; then
+    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/PL1_payload_vs_hg38.bed"
+    cegsLP=False
+else
+    # No uninformative regions
+    exclude_regions_from_counts="NA"
+    cegsLP=False
+fi
 
-    # Get the correct HA zones (0-based bed style numbers, not UCSC positions):
-    #     The 5p and 3p outer boundaries of the HPRT1 HAs are as of Mar 29, 2019.
-    #     See: /vol/cegs/sequences/hg38/HPRT1/HPRT1_assembly.bed
-    #
-    #     The 5p and 3p outer boundaries of the Sox2 HAs are as of Aug 9, 2019.
-    #     See: /vol/cegs/sequences/mm10/Sox2/Sox2_assembly.bed
-    #
-    # Also see: \\research-cifs.nyumc.org\Research\CEGS\Sequences\Landing Pads Summary Table.xlsx (8 JUL 2019)
-    #
-    # Also get the name of the deletion gene, which is used with the bedops closest-features function to 
-    # determine which non-cegsvectors reads are candidates for being "informative".
-    if echo "${cegsgenome}" | grep -q "LP058" ; then
-        # HA lengths: 1032/1014 (LP058)
-        bam1_5p_HA="chrX:134458914-134459946"
-        bam1_3p_HA="chrX:134501642-134502656"
-        deletion_gene=HPRT1
-    elif echo "${cegsgenome}" | grep -q "LP087" ; then
-        # HA lengths: 251/250 (LP061)
-        bam1_5p_HA="chrX:134459695-134459946"
-        bam1_3p_HA="chrX:134501642-134501892"
-        deletion_gene=HPRT1
-    elif echo "${cegsgenome}" | grep -q "LP123" ; then
-        # HA lengths: 251/250 (LP061)
-        bam1_5p_HA="chrX:134459695-134459946"
-        bam1_3p_HA="chrX:134501642-134501892"
-        deletion_gene=HPRT1
-    elif echo "${cegsgenome}" | grep -q "LP062" ; then
-        # HA lengths: 100/100 (LP062)
-        bam1_5p_HA="chrX:134459846-134459946"
-        bam1_3p_HA="chrX:134501642-134501742"
-        deletion_gene=HPRT1
-    elif echo "${cegsgenome}" | grep -q "LP097a" ; then
-        # HA lengths: 142/278 (LP097a)
-        bam1_5p_HA="chr3:34631310-34631452"
-        bam1_3p_HA="chr3:34768108-34768386"
-        deletion_gene=Sox2ot
-    elif echo "${cegsgenome}" | grep -q "LP131a" ; then
-        # HA lengths: 142/278 (LP131a)
-        bam1_5p_HA="chr3:34631310-34631452"
-        bam1_3p_HA="chr3:34768108-34768386"
-        deletion_gene=Sox2ot
-    elif echo "${cegsgenome}" | grep -q "LP097b" ; then
-        # HA lengths: 142/183 (LP097b)
-        bam1_5p_HA="chr3:34631310-34631452"
-        bam1_3p_HA="chr3:34774117-34774300"
-        deletion_gene=Sox2ot
-    elif echo "${cegsgenome}" | grep -q "LP131b" ; then
-        # HA lengths: 142/183 (LP131b)
-        bam1_5p_HA="chr3:34631310-34631452"
-        bam1_3p_HA="chr3:34774117-34774300"
-        deletion_gene=Sox2ot
-    else
-        bam1_5p_HA="NA"
-        bam1_3p_HA="NA"
-        deletion_gene="NA"
-        deletion_range="NA"
-        echo "No HA match for ${sample_name}     genome is: ${cegsgenome}"
+
+# Some special cases which modify the above:
+if [ "${cegsLP}" = "True" ]; then
+    if echo "${bam2genome}" | grep -q "pSpCas9" ; then
+        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_pSpCas9.bed"
+    elif echo "${bam2genome}" | grep -q "PL1" ; then
+        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_PL1_payload.bed"
     fi
-
-
-    # Compute deletion range coordinates.
-    # This is still used in filter_tsv.sh, but I'd like to discuss that.
-    if [ "${bam1_5p_HA}" != "NA" ]; then
-        IFS=':' read -ra ADDR <<< "${bam1_5p_HA}"
-        del_chrom=${ADDR[0]}
-        del_range=${ADDR[1]}
-        IFS='-' read -ra ADDR <<< "${del_range}"
-        del_5p=${ADDR[1]}
-
-        IFS=':' read -ra ADDR <<< "${bam1_3p_HA}"
-        del_range=${ADDR[1]}
-        IFS='-' read -ra ADDR <<< "${del_range}"
-        del_3p=${ADDR[0]}
-
-        deletion_range="${del_chrom}:${del_5p}-${del_3p}"
-    fi
-
-
-    # A bed file of ranges to delete at the end of the process.  cegsvector reads that fall in these ranges may actually be
-    # a misleading mapping of genomic reads, so they are considered uninformative.
-    if echo "${cegsgenome}" | grep -q "LP058" ; then
-        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
-        cegsLP=True
-    elif echo "${cegsgenome}" | grep -q "LP097a" ; then
-        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
-        cegsLP=True
-    elif echo "${cegsgenome}" | grep -q "LP097b" ; then
-        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
-        cegsLP=True
-    elif echo "${cegsgenome}" | grep -q "LP131a" ; then
-        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
-        cegsLP=True
-    elif echo "${cegsgenome}" | grep -q "LP131b" ; then
-        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
-        cegsLP=True
-    elif echo "${cegsgenome}" | grep -q "LP087" ; then
-        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
-        cegsLP=True
-    elif echo "${cegsgenome}" | grep -q "LP123" ; then
-        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
-        cegsLP=True
-    elif echo "${cegsgenome}" | grep -q "LP062" ; then
-        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
-        cegsLP=True
-    elif echo "${cegsgenome}" | grep -q "pSpCas9" ; then
-        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/pSpCas9_vs_hg38.bed"
-        cegsLP=False
-    elif echo "${cegsgenome}" | grep -q "PL1" ; then
-        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/PL1_payload_vs_hg38.bed"
-        cegsLP=False
-    else
-        # No uninformative regions
+else
+    if echo "${bam2genome}" | grep -q "mm10" ; then
+        # Arrive here when $bam1genome == pSpCas9, and $bam2genome == mm10
         exclude_regions_from_counts="NA"
-        cegsLP=False
     fi
+fi
 
-
-    # Some special cases which modify the above:
-    if [ "${cegsLP}" = "True" ]; then
-        if echo "${annotationgenome}" | grep -q "pSpCas9" ; then
-            exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_pSpCas9.bed"
-        elif echo "${annotationgenome}" | grep -q "PL1" ; then
-            exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_PL1_payload.bed"
-        fi
-    else
-        if echo "${annotationgenome}" | grep -q "mm10" ; then
-            # Arrive here when $cegsgenome == pSpCas9, and $annotationgenome == mm10
-            exclude_regions_from_counts="NA"
-        fi
-    fi
-
-# Done getting the derived data.
 ########################################################
 # Make some directories to hold the final output for this sample.
 
@@ -503,15 +428,14 @@ echo "${bamname1}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "${bamname2}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
-echo "Deletion Gene: ${deletion_gene}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
-echo "${deletion_gene} Deletion Range is: ${deletion_range}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
-echo "${deletion_gene} HAs:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "    ${bam1_5p_HA}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "    ${bam1_3p_HA}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+if [ ${integrationsite} != "NA" ]; then
+    IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
+    echo "${integrationSiteName} HAs:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
+    grep "${integrationSiteName}_${HA1}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+fi
 
 samtools idxstats ${bamname1} > "${TMPDIR}/${sample_name}.counts.anc_info.txt"
 num_lines=$(wc -l < "${TMPDIR}/${sample_name}.counts.anc_info.txt")
@@ -527,18 +451,14 @@ echo "Submitting merge job"
 
 export_vars="sampleOutdir=${sampleOutdir}"
 export_vars="${export_vars},src=${src}"
-## export_vars="${export_vars},reads_match=${reads_match}"
 export_vars="${export_vars},exclude_regions_from_counts=${exclude_regions_from_counts}"
-export_vars="${export_vars},bam1_5p_HA=${bam1_5p_HA}"
-export_vars="${export_vars},bam1_3p_HA=${bam1_3p_HA}"
 export_vars="${export_vars},sample_name=${sample_name}"
-export_vars="${export_vars},cegsgenome=${cegsgenome}"
-export_vars="${export_vars},annotationgenome=${annotationgenome}"
+export_vars="${export_vars},bam1genome=${bam1genome}"
+export_vars="${export_vars},bam2genome=${bam2genome}"
 export_vars="${export_vars},make_csv=${make_csv}"
 export_vars="${export_vars},make_table=${make_table}"
-export_vars="${export_vars},deletion_gene=${deletion_gene}"
-export_vars="${export_vars},deletion_range=${deletion_range}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
+export_vars="${export_vars},integrationsite=${integrationsite}"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log ${src}/merge_bamintersect.sh
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect

@@ -2,38 +2,29 @@
 set -eu -o pipefail
 
 sampleOutdir=$1
-bam1_5p_HA=$2
-bam1_3p_HA=$3
-sample_name=$4
-cegsgenome=$5
-annotationgenome=$6
-exclude_regions_from_counts=$7
-main_chrom=$8
-deletion_gene=$9
-deletion_range=${10}
-INTERMEDIATEDIR=${11}
+sample_name=$2
+bam2genome=$3
+exclude_regions_from_counts=$4
+main_chrom=$5
+INTERMEDIATEDIR=$6
+integrationsite=$7
 
 echo "main_chrom: ${main_chrom}       TMPDIR is: ${TMPDIR}"
 
 #####################################################################################
-# Parse homology arm boundaries.  These are the regions beyond the edge of the HAs.
-outer_HAs5p="${TMPDIR}/outer_HAs5p.bed"
-outer_HAs3p="${TMPDIR}/outer_HAs3p.bed"
+# Get the homology arm coordinates:
+IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
+HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
+grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${TMPDIR}/outer_HAs_unsorted.bed"
+grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${TMPDIR}/outer_HAs_unsorted.bed"
+sort-bed "${TMPDIR}/outer_HAs_unsorted.bed" > "${TMPDIR}/outer_HAs.bed"
 
-IFS=':' read -r chr range <<< "${bam1_5p_HA}"
-IFS='-' read -r r1 r2 <<< "${range}"
-echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${outer_HAs5p}
+#####################################################################################
+# Get the deletion range coordinates:
+IFS=$'\t' read chrom HA1_5p HA1_3p all_other <<< "$(head -n1 "${TMPDIR}/outer_HAs.bed")"
+IFS=$'\t' read chrom HA2_5p HA2_3p all_other <<< "$(tail -n1 "${TMPDIR}/outer_HAs.bed")"
+echo "${chrom}"$'\t'"${HA1_3p}"$'\t'"${HA2_5p}" > "${TMPDIR}/deletion_range.bed"
 
-IFS=':' read -r chr range <<< "${bam1_3p_HA}"
-IFS='-' read -r r1 r2 <<< "${range}"
-echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${outer_HAs3p}
-
-bedops -u ${outer_HAs5p} ${outer_HAs3p} > "${TMPDIR}/outer_HAs.bed"
-
-deletion_range_f="${TMPDIR}/deletion_range.bed"
-IFS=':' read -r chr range <<< "${deletion_range}"
-IFS='-' read -r r1 r2 <<< "${range}"
-echo "${chr}"$'\t'"${r1}"$'\t'"${r2}" > ${deletion_range_f}
 #####################################################################################
 
 filter_csv_output="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed"
@@ -73,6 +64,8 @@ else
 fi
 # filter_csv.output contains the reads we want to keep, in bed12 format.
 
+echo -e "${main_chrom} (Exclude_Regions file: ${exclude_regions_from_counts}):" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
 #####################################################################################
 # Start building the output table:
 
@@ -83,7 +76,7 @@ cut -f7-9 "${filter_csv_output}" | sort-bed - > "${TMPDIR}/sorted_speciesReadCoo
 bedops --range 500 --merge "${TMPDIR}/sorted_speciesReadCoords.bed3" > "${TMPDIR}/all_regions.bed"
 
 # Find the gene closest to each region:
-if [ ${annotationgenome} = "mm10" ]; then
+if [ ${bam2genome} = "mm10" ]; then
     closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" /vol/isg/annotation/bed/mm10/gencodev17/GencodevM17.gene.bed > "${TMPDIR}/reads_and_geneNames.bed"
 else
     closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" /vol/isg/annotation/bed/hg38/gencodev25/Gencodev25.gene.bed > "${TMPDIR}/reads_and_geneNames.bed"
@@ -142,34 +135,13 @@ else
 fi
 
 #####################################################################################
-#####################################################################################
-# Find the number of "deletion_gene" reads that cross over the edges of the HAs.
+# Find the number of reads in the deletion range.
 
-# Get the boundaries of the "deletion_gene" reads.
-grep "${deletion_gene}" "${TMPDIR}/short_sorted_table_chromName.bed" |
-awk -f <(cat << "AWK_HEREDOC_03"
-BEGIN{FS="\t"; OFS="\t"}
-{
-   print $1,$2,$3
-}
-END{}
-AWK_HEREDOC_03
-) > "${TMPDIR}/deletion_gene_boundary_reads.bed" || true
+bedops --element-of 1 "${TMPDIR}/sorted_speciesReadCoords.bed3" "${TMPDIR}/deletion_range.bed" > \
+                      "${TMPDIR}/del_range_reads_out.bed"
 
-echo -e "${main_chrom} (Exclude_Regions file: ${exclude_regions_from_counts}):" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
-while read -r line_in; do
-    # Extract the "deletion_gene" reads from our universe of retained reads, built above.
-    # Then get the reads that are in the deletion range.
-    echo ${line_in} | sed 's/ /\t/g' |
-    bedops --element-of 1 "${TMPDIR}/sorted_speciesReadCoords.bed3" - |
-    bedops --element-of 1 - "${deletion_range_f}" > "${TMPDIR}/del_range_reads_out"
-
-    num_lines=$(wc -l < "${TMPDIR}/del_range_reads_out")
-    echo -e "    Number of [${deletion_gene} ${line_in}] reads in the Deletion Range:\t${num_lines}" >> \
-            "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-done < "${TMPDIR}/deletion_gene_boundary_reads.bed"
-
+num_lines=$(wc -l < "${TMPDIR}/del_range_reads_out.bed")
+echo -e "    Number of reads in the Deletion Range:\t${num_lines}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
 #####################################################################################

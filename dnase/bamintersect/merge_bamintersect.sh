@@ -48,10 +48,10 @@ rm -f "${sampleOutdir}/${sample_name}.informative.bed"
 while read main_chrom ; do
     bedops --chrom ${main_chrom} --everything "${sampleOutdir}/${sample_name}.bed" > "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed"
 
-    ${src}/filter_tsv.sh ${sampleOutdir} ${bam1_5p_HA} ${bam1_3p_HA} ${sample_name} ${cegsgenome} ${annotationgenome} "NA" ${main_chrom} ${deletion_gene} ${deletion_range} ${INTERMEDIATEDIR}
+    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "NA" ${main_chrom} ${INTERMEDIATEDIR} ${integrationsite}
 
-    ${src}/filter_tsv.sh ${sampleOutdir} ${bam1_5p_HA} ${bam1_3p_HA} ${sample_name} ${cegsgenome} ${annotationgenome} \
-                       ${exclude_regions_from_counts} ${main_chrom} ${deletion_gene} ${deletion_range} ${INTERMEDIATEDIR}
+    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} ${exclude_regions_from_counts} ${main_chrom} \
+                         ${INTERMEDIATEDIR} ${integrationsite}
 
     cat "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed" >> "${sampleOutdir}/${sample_name}.informative.bed"
 
