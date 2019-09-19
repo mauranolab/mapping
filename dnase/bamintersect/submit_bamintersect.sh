@@ -22,6 +22,11 @@ set -eu -o pipefail
 src=$( dirname "${BASH_SOURCE[0]}" )
 echo "src is: ${src}"
 
+# The below is for cases where this script is not being called as part of a larger pipeline.
+# Avoids conflicts should "sample_name" be identical in simultaneous runs of this script.
+if [ ${TMPDIR} = "/tmp" ]; then
+    TMPDIR=`mktemp -d`   # TMPDIR has no trailing slash
+fi
 ############################################################
 
 module load samtools/1.9
@@ -347,7 +352,6 @@ if [ "${clear_logs}" = "True" ]; then
 fi
 mkdir -p ${sampleOutdir}/log
 
-
 ########################################################
 # Make a directory structure to hold files passed between jobs.
 # It is built within ${sampleOutdir} so it can be persistent.
@@ -416,12 +420,7 @@ for BAM_N in $(seq 1 2); do
     fi
 
     while read chrom;  do
-        x=${BAM%.bam}         # Cut off the trailing "bam"
-        y=${x##*.}            # Assign the base to y. This will be one of genotypes, like "hg38_full"
-        z=${x%.${y}}          # Cut off the trailing ${y}
-        short_name=${z##*/}   # The remaining base is the short name.
-
-        BAM_OUT="${INTERMEDIATEDIR}/sorted_bams/${short_name}.${chrom}.${BAM_N}.bam"
+        BAM_OUT="${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${chrom}.${BAM_N}.bam"
         echo ${BAM_OUT} >> "${INTERMEDIATEDIR}/sorted_bams/chr_list_${BAM_N}"
     done < "${sampleOutdir}/log/${sample_name}.chrom_list${BAM_N}_simple"
 done
@@ -481,9 +480,8 @@ num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2_simple")
 
 qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log --qos=low -t 1-${num_lines} ${src}/sort_bamintersect.sh > ${sampleOutdir}/sgeid.sort_bamintersect_2
 
-
 ################################################################################################
-## The big array job:
+# Call bamintersect.py repeatedly via the bamintersect.sh array job:
 echo "Submitting bamintersect job"
 
 n1=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1_simple")
@@ -497,7 +495,6 @@ export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1 ${sampleOutdir}/sgeid.sort_bamintersect_2 | perl -pe 's/\n/,/g;'` --export=ALL,${export_vars} -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${array_size} ${src}/bamintersect.sh > ${sampleOutdir}/sgeid.merge_bamintersect
 rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1 ${sampleOutdir}/sgeid.sort_bamintersect_2
-
 
 ################################################################################################
 ## Send some summary info to the anc file:
@@ -516,14 +513,13 @@ echo "    ${bam1_5p_HA}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "    ${bam1_3p_HA}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
-samtools idxstats ${bamname1} > "${INTERMEDIATEDIR}/${sample_name}.counts.anc_info.txt"
-num_lines=$(wc -l < "${INTERMEDIATEDIR}/${sample_name}.counts.anc_info.txt")
+samtools idxstats ${bamname1} > "${TMPDIR}/${sample_name}.counts.anc_info.txt"
+num_lines=$(wc -l < "${TMPDIR}/${sample_name}.counts.anc_info.txt")
 let "num_lines = num_lines - 1"
 echo "samtools idx output for first bam file: reference sequence name, sequence length, # mapped reads and # unmapped reads." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-head "-${num_lines}" "${INTERMEDIATEDIR}/${sample_name}.counts.anc_info.txt" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+head "-${num_lines}" "${TMPDIR}/${sample_name}.counts.anc_info.txt" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "working file" > "${INTERMEDIATEDIR}/${sample_name}.counts.anc_info.txt"
 
 ################################################################################################
 ## Merge output from the array jobs.
