@@ -107,7 +107,8 @@ loadBCfile <- function(filename, type, thresh) {
 	} else {
 		stop("Do not recognize file type", type)
 	}
-	data <- read(bcfilename, header=F)
+	#Use read.csv to initialize an empty data.frame with the right number of columns in case the file can't be read
+	data <- tryCatch({read(bcfilename, header=F)}, error=function(e) {return(read.csv(text=paste(col.names, collapse=",")))})
 	colnames(data) <- col.names
 	
 	data <- data[data$count >= thresh,]
@@ -154,7 +155,14 @@ comparePair <- function(BCpairs, typeA, typeB, applyThreshold=FALSE) {
 		sampleB <- basename(BCpairs$B[i])
 		
 		#TODO need better sample name than gsub with typeA
-		sample <- gsub(paste0('_', typeA), '', unlist(strsplit(sampleA, split='-'))[2])
+		sample1 <- gsub(paste0('_', typeA), '', unlist(strsplit(sampleA, split='-'))[2])
+		sample2 <- gsub(paste0('_', typeB), '', unlist(strsplit(sampleB, split='-'))[2])
+		if(sample1==sample2) {
+			sample <- sample1
+		} else {
+			sample <- paste0(sample1, ".vs.", sample2)
+		}
+		
 		bsA <- unlist(strsplit(sampleA, split='-'))[1]
 		bsB <- unlist(strsplit(sampleB, split='-'))[1]
 		
