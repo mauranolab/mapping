@@ -8,6 +8,7 @@ exclude_regions_from_counts=$4
 main_chrom=$5
 INTERMEDIATEDIR=$6
 integrationsite=$7
+counts_type=$8
 
 echo "main_chrom: ${main_chrom}       TMPDIR is: ${TMPDIR}"
 
@@ -128,10 +129,15 @@ grep -v $'\t'1$ - > "${TMPDIR}/short_sorted_table.bed" || true
 sed "s/$/\t${main_chrom}/" "${TMPDIR}/short_sorted_table.bed" > "${TMPDIR}/short_sorted_table_chromName.bed"
 
 # Dump data into main output file.
-if [ ${exclude_regions_from_counts} = "NA" ];then
+if [ ${counts_type} = "all_reads_counts" ];then
    cat "${TMPDIR}/short_sorted_table_chromName.bed" >> "${sampleOutdir}/${sample_name}.counts.txt"
 else
-   cat "${TMPDIR}/short_sorted_table_chromName.bed" >> "${sampleOutdir}/${sample_name}.informative.counts.txt"
+   # Here counts_type == "informative_reads_counts"
+   if [ ${exclude_regions_from_counts} = "NA" ]; then
+       echo "No HAs are available for this scenario"  >> "${sampleOutdir}/${sample_name}.informative.counts.txt"
+   else
+       cat "${TMPDIR}/short_sorted_table_chromName.bed" >> "${sampleOutdir}/${sample_name}.informative.counts.txt"
+   fi
 fi
 
 #####################################################################################
