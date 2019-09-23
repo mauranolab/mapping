@@ -218,55 +218,41 @@ echo "final sample_name is: ${sample_name}"
 
 # A bed file of ranges to delete at the end of the process.  cegsvector reads that fall in these ranges may actually be
 # a misleading mapping of genomic reads, so they are considered uninformative.
-if echo "${bam1genome}" | grep -q "LP058" ; then
-    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
-    cegsLP=True
-elif echo "${bam1genome}" | grep -q "LP097a" ; then
-    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
-    cegsLP=True
-elif echo "${bam1genome}" | grep -q "LP097b" ; then
-    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
-    cegsLP=True
-elif echo "${bam1genome}" | grep -q "LP131a" ; then
-    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
-    cegsLP=True
-elif echo "${bam1genome}" | grep -q "LP131b" ; then
-    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_mm10.bed"
-    cegsLP=True
-elif echo "${bam1genome}" | grep -q "LP087" ; then
-    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
-    cegsLP=True
-elif echo "${bam1genome}" | grep -q "LP123" ; then
-    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
-    cegsLP=True
-elif echo "${bam1genome}" | grep -q "LP062" ; then
-    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_hg38.bed"
-    cegsLP=True
-elif echo "${bam1genome}" | grep -q "pSpCas9" ; then
-    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/pSpCas9_vs_hg38.bed"
-    cegsLP=False
-elif echo "${bam1genome}" | grep -q "PL1" ; then
-    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/PL1_payload_vs_hg38.bed"
-    cegsLP=False
+
+if echo "${bam1genome}" | grep -q "^LP[0-9]\+" ; then
+    firstBam="LP"
+elif [ "${bam1genome}" == "pSpCas9" ]; then
+    firstBam="pSpCas9"
+elif [ "${bam1genome}" == "PL1" ]; then
+    firstBam="PL1_payload"
 else
-    # No uninformative regions
-    exclude_regions_from_counts="NA"
-    cegsLP=False
+    # No uninformative regions file exists
+    firstBam="NA"
 fi
 
 
-# Some special cases which modify the above:
-if [ "${cegsLP}" = "True" ]; then
-    if echo "${bam2genome}" | grep -q "pSpCas9" ; then
-        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_pSpCas9.bed"
-    elif echo "${bam2genome}" | grep -q "PL1" ; then
-        exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/LP_vs_PL1_payload.bed"
-    fi
-else
-    if echo "${bam2genome}" | grep -q "mm10" ; then
+if [ "${bam2genome}" == "hg38" ]; then
+    secondBam="hg38"
+elif [ "${bam2genome}" == "mm10" ]; then
+    # Section for special cases which may modify the above:
+    if [ "${firstBam}" == "pSpCas9" ]; then
         # Arrive here when $bam1genome == pSpCas9, and $bam2genome == mm10
-        exclude_regions_from_counts="NA"
+        # No uninformative regions file exists
+        firstBam="NA"
+    else
+        secondBam="mm10"
     fi
+elif [ "${bam2genome}" == "pSpCas9" ]; then
+    secondBam="pSpCas9"
+elif [ "${bam2genome}" == "PL1" ]; then
+    secondBam="PL1_payload"
+fi
+
+
+if [ "${firstBam}" == "NA" ]; then
+    exclude_regions_from_counts="NA"
+else
+    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/${firstBam}_vs_${secondBam}.bed"
 fi
 
 ########################################################
