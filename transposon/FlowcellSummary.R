@@ -50,7 +50,7 @@ getReadsPerSite <- function(Sample) {
 analysisFiles <- list.files('./', pattern='\\.o[0-9]+$', include.dirs = FALSE)
 analysisFiles <- analysisFiles[grep('^submit\\.', analysisFiles, invert=T)]
 analysisFiles <- analysisFiles[file.info(analysisFiles)$size>200]#Removes i with errors
-outputCols <- c("Flowcell", "BS", "Name", "Type", "Total read pairs", "Total barcodes", "BC+UMI", "UMI length", "Unique BC", "BC length", "Complexity", "Mapped reads", "Prop pSB/pTR", "Mapped+BC reads", "Read lengths", "Raw unique sites", "Unique sites", "#BC 1 site", "#BC 2+ sites", "Prop 2+", "Prop Chimeric")
+outputCols <- c("Flowcell", "BS", "Name", "Type", "Total read pairs", "Total barcodes", "BC+UMI", "UMI length", "Unique BC", "BC length", "Complexity", "Mapped reads", "Prop pSB/pTR", "Mapped+BC reads", "Read lengths", "Raw unique sites", "Unique sites", "Prop Sites 2+ BCs", "#BC 1 site", "#BC 2+ sites", "Prop BC 2+ sites", "Prop Reads Chimeric")
 data <- as.data.frame(matrix(ncol=length(outputCols), nrow=length(analysisFiles)))
 colnames(data) <- outputCols
 
@@ -103,13 +103,16 @@ for (i in 1:length(analysisFiles)) {
 			data[i, "Mapped+BC reads"] <- as.numeric(splitLines('Number of reads passing all filters and having barcodes assigned', '\t')$X3)
 			data[i, "Read lengths"] <- gsub(" \\([0-9]+\\)", "", splitLines('Read lengths', '\t')$X3)
 			data[i, "Raw unique sites"] <- as.numeric(splitLines('Number of unique insertion sites before collapsing nearby ones', '\t')$X3[1])
-			data[i, "Unique sites"] <- as.numeric(splitLines('Number of unique insertion sites', '\t')$X3[1])
+			#Note we use tail to get "Number of unique insertion sites" rather than the "before collapsing nearby ones" one
+			data[i, "Unique sites"] <- as.numeric(tail(splitLines('Number of unique insertion sites', '\t'), 1)$X3[1])
+			#BUGBUG value in numerator depends on #BCs at site, e.g. 3 BCs is more than 2
+			data[i, "Prop Sites 2+ BCs"] <- signif(1 - data[i, "Unique sites"] / as.numeric(splitLines('Number of BC+insertions after minimum read cutoff', '\t')$X3[1]), 2)
 			data[i, "#BC 1 site"] <- as.numeric(getInsert(Sample)[1])
 			data[i, "#BC 2+ sites"] <- as.numeric(getInsert(Sample)[2])
-			data[i, "Prop 2+"] <- signif(data[i, "#BC 2+ sites"] / (data[i, "#BC 1 site" ] + data[i, "#BC 2+ sites"]), 2)
-			data[i, "Prop Chimeric"] <- signif(1 - as.numeric(splitLines('Number of BC+insertions passing minPropReadsAtSite cutoff', '\t')$X3[1]) / as.numeric(splitLines('Number of BC+insertions after collapsing nearby ones', '\t')$X3[1]), 2)
+			data[i, "Prop BC 2+ sites"] <- signif(data[i, "#BC 2+ sites"] / (data[i, "#BC 1 site" ] + data[i, "#BC 2+ sites"]), 2)
+			data[i, "Prop Reads Chimeric"] <- signif(1 - as.numeric(splitLines('Number of BC+insertions passing minPropReadsAtSite cutoff', '\t')$X3[1]) / as.numeric(splitLines('Number of BC+insertions after collapsing nearby ones', '\t')$X3[1]), 2)
 		} else if(data[i, "Type"] == "10xRNA") {
-			data[i, "Prop Chimeric"] <- signif(1 - as.numeric(splitLines('Number of reads passing minPropReadsForBC filter', '\t')$X3[1]) / as.numeric(splitLines('Number of reads passing minPropReadsForBC filter', '\t')$X4[1]), 2)
+			data[i, "Prop Reads Chimeric"] <- signif(1 - as.numeric(splitLines('Number of reads passing minPropReadsForBC filter', '\t')$X3[1]) / as.numeric(splitLines('Number of reads passing minPropReadsForBC filter', '\t')$X4[1]), 2)
 			print(t(splitLines('Number of reads passing minPropReadsForBC filter', '\t')))
 		}
 	}
