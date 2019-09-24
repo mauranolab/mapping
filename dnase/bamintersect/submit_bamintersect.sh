@@ -220,39 +220,13 @@ echo "final sample_name is: ${sample_name}"
 # a misleading mapping of genomic reads, so they are considered uninformative.
 
 if echo "${bam1genome}" | grep -q "^LP[0-9]\+" ; then
-    firstBam="LP"
-elif [ "${bam1genome}" == "pSpCas9" ]; then
-    firstBam="pSpCas9"
-elif [ "${bam1genome}" == "PL1" ]; then
-    firstBam="PL1_payload"
+    genome2exclude="/vol/mauranolab/cadlej01/projects/bamintersect/LP_uninformative_regions/LP_vs_${bam2genome}.bed"
 else
-    # No uninformative regions file exists
-    firstBam="NA"
+    genome2exclude="/vol/mauranolab/cadlej01/projects/bamintersect/LP_uninformative_regions/${bam1genome}_vs_${bam2genome}.bed"
 fi
 
-
-if [ "${bam2genome}" == "hg38" ]; then
-    secondBam="hg38"
-elif [ "${bam2genome}" == "mm10" ]; then
-    # Section for special cases which may modify the above:
-    if [ "${firstBam}" == "pSpCas9" ]; then
-        # Arrive here when $bam1genome == pSpCas9, and $bam2genome == mm10
-        # No uninformative regions file exists
-        firstBam="NA"
-    else
-        secondBam="mm10"
-    fi
-elif [ "${bam2genome}" == "pSpCas9" ]; then
-    secondBam="pSpCas9"
-elif [ "${bam2genome}" == "PL1" ]; then
-    secondBam="PL1_payload"
-fi
-
-
-if [ "${firstBam}" == "NA" ]; then
-    exclude_regions_from_counts="NA"
-else
-    exclude_regions_from_counts="/vol/mauranolab/cadlej01/projects/LP_Integration/LP_uninformative_regions/${firstBam}_vs_${secondBam}.bed"
+if [ ! -f ${genome2exclude} ]; then
+    genome2exclude="NA"
 fi
 
 ########################################################
@@ -432,12 +406,29 @@ echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
 ################################################################################################
+# Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
+
+if [ ${integrationsite} != "NA" ]; then
+    # Get the homology arm coordinates. HA1 must be the 5p HA coordinates, and HA2 must be the 3p HA coordinates.
+    IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
+    HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
+    grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/genome1exclude.bed"
+    grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/genome1exclude.bed"
+
+
+    # Get the deletion range coordinates:
+    IFS=$'\t' read chrom HA1_5p HA1_3p all_other <<< "$(head -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
+    IFS=$'\t' read chrom HA2_5p HA2_3p all_other <<< "$(tail -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
+    echo "${chrom}"$'\t'"${HA1_3p}"$'\t'"${HA2_5p}" > "${INTERMEDIATEDIR}/deletion_range.bed"
+fi
+
+################################################################################################
 ## Merge output from the array jobs.
 echo "Submitting merge job"
 
 export_vars="sampleOutdir=${sampleOutdir}"
 export_vars="${export_vars},src=${src}"
-export_vars="${export_vars},exclude_regions_from_counts=${exclude_regions_from_counts}"
+export_vars="${export_vars},genome2exclude=${genome2exclude}"
 export_vars="${export_vars},sample_name=${sample_name}"
 export_vars="${export_vars},bam1genome=${bam1genome}"
 export_vars="${export_vars},bam2genome=${bam2genome}"

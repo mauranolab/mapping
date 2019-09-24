@@ -4,7 +4,7 @@ set -eu -o pipefail
 sampleOutdir=$1
 sample_name=$2
 bam2genome=$3
-exclude_regions_from_counts=$4
+genome2exclude=$4
 main_chrom=$5
 INTERMEDIATEDIR=$6
 integrationsite=$7
@@ -13,59 +13,36 @@ counts_type=$8
 echo "main_chrom: ${main_chrom}       TMPDIR is: ${TMPDIR}"
 
 #####################################################################################
-# Get the homology arm coordinates:
-IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
-HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
-grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${TMPDIR}/outer_HAs_unsorted.bed"
-grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${TMPDIR}/outer_HAs_unsorted.bed"
-sort-bed "${TMPDIR}/outer_HAs_unsorted.bed" > "${TMPDIR}/outer_HAs.bed"
-
-#####################################################################################
-# Get the deletion range coordinates:
-IFS=$'\t' read chrom HA1_5p HA1_3p all_other <<< "$(head -n1 "${TMPDIR}/outer_HAs.bed")"
-IFS=$'\t' read chrom HA2_5p HA2_3p all_other <<< "$(tail -n1 "${TMPDIR}/outer_HAs.bed")"
-echo "${chrom}"$'\t'"${HA1_3p}"$'\t'"${HA2_5p}" > "${TMPDIR}/deletion_range.bed"
-
-#####################################################################################
 
 filter_csv_output="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed"
 
 # Maybe we want to filter out some of the reads from our universe:
-if [ ${exclude_regions_from_counts} = "NA" ];then
-    # We're not deleting any reads in this scenario, so sort and move on.
-    # The "NA" is assigned in merge_bamintersect.sh when the "exclude_regions_from_counts" input file field is blank.
+if [ ${genome2exclude} = "NA" ];then
+    # We're not deleting any reads in this scenario, so copy to the output file and move on.
     # "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" = The universe of all reads from a bam1 chromosome, in bed12 format
-                                                        # [chr start end readID flag +/-] x 2
-    sort-bed "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" > "${filter_csv_output}"
+                                                              # [chr start end readID flag +/-] x 2
+
+    # Don't use mv, because we need this file to survive for the second call to filter_tsv, in which execution will drop into the below "else" section.
+    cp "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" "${filter_csv_output}"
 else
-    # We want to delete "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" reads that overlap the ranges in this bed3 file.
-    exclude_regions_filename=$(basename exclude_regions_from_counts)
-
-    # Remove the ".bed", and append "_sorted.bed"
-    sorted_exclude_regions_filename="${exclude_regions_filename%.bed}_sorted.bed"
-
-    # Get rid of comment lines prior to sorting.
-    grep -v '^#' ${exclude_regions_from_counts} | sort-bed - > "${TMPDIR}/${sorted_exclude_regions_filename}"   # This is a sorted bed3 file of the ranges we want to delete.
-
-
     # Comments for the 5 piped lines below:
-    # 1) Delete reads that overlap the ranges defined in sorted_exclude_regions_filename (which are defined with respect to bam1 coordinates).
+    # 1) Delete reads that overlap the ranges defined in genome2exclude (which are defined with respect to bam1 coordinates).
     # 2) Now delete reads that are in the HAs.
     #     2a) The output of step 1 has 12 columns: [chr start end readID flag +/-] x 2, the bam1 data being in 1-6, and the bam2 data being in 7-12.
     #         The HA coordinates are with respect to bam2, so we need to switch the 6-column halves to use the bedops functions on this file.
-    # 3) Then sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the HAs:
+    # 3) Then sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the genome1exclude's (HAs):
     # 4) Now put the surviving bam1 reads back on the left hand side,
     # 5) and sort.
 
-    sort-bed "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" | bedops --not-element-of 1 - "${TMPDIR}/${sorted_exclude_regions_filename}" | \
+    bedops --not-element-of 1 "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" "${genome2exclude}" | \
     awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
-    sort-bed - | bedops --not-element-of 1 - "${TMPDIR}/outer_HAs.bed" | \
+    sort-bed - | bedops --not-element-of 1 - "${INTERMEDIATEDIR}/genome1exclude.bed" | \
     awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
     sort-bed - > "${filter_csv_output}"
 fi
 # filter_csv.output contains the reads we want to keep, in bed12 format.
 
-echo -e "${main_chrom} (Exclude_Regions file: ${exclude_regions_from_counts}):" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo -e "${main_chrom} (Exclude_Regions file: ${genome2exclude}):" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
 #####################################################################################
 # Start building the output table:
@@ -133,7 +110,7 @@ if [ ${counts_type} = "all_reads_counts" ];then
    cat "${TMPDIR}/short_sorted_table_chromName.bed" >> "${sampleOutdir}/${sample_name}.counts.txt"
 else
    # Here counts_type == "informative_reads_counts"
-   if [ ${exclude_regions_from_counts} = "NA" ]; then
+   if [ ${genome2exclude} = "NA" ]; then
        echo "No HAs are available for this scenario"  >> "${sampleOutdir}/${sample_name}.informative.counts.txt"
    else
        cat "${TMPDIR}/short_sorted_table_chromName.bed" >> "${sampleOutdir}/${sample_name}.informative.counts.txt"
@@ -143,7 +120,7 @@ fi
 #####################################################################################
 # Find the number of reads in the deletion range.
 
-bedops --element-of 1 "${TMPDIR}/sorted_speciesReadCoords.bed3" "${TMPDIR}/deletion_range.bed" > \
+bedops --element-of 1 "${TMPDIR}/sorted_speciesReadCoords.bed3" "${INTERMEDIATEDIR}/deletion_range.bed" > \
                       "${TMPDIR}/del_range_reads_out.bed"
 
 num_lines=$(wc -l < "${TMPDIR}/del_range_reads_out.bed")

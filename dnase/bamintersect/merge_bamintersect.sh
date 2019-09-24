@@ -50,7 +50,7 @@ while read main_chrom ; do
 
     ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "NA" ${main_chrom} ${INTERMEDIATEDIR} ${integrationsite} all_reads_counts
 
-    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} ${exclude_regions_from_counts} ${main_chrom} \
+    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} ${genome2exclude} ${main_chrom} \
                          ${INTERMEDIATEDIR} ${integrationsite} informative_reads_counts
 
     cat "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed" >> "${sampleOutdir}/${sample_name}.informative.bed"
