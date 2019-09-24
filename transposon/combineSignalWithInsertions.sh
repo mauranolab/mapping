@@ -70,16 +70,10 @@ cat ${OUTBASE}.AllBCs.txt | wc -l
 
 OUTPUT=${OUTBASE}.mapped.txt
 
-#TODO move to pipeline
-#Remove iPCR insertions with more than one location
-cat ${ipcrfile} | awk -F "\t" 'BEGIN {OFS="\t"} {print $4}' | sort | uniq -c | sort -nk1 | awk '$1==1 {print $2}' > $TMPDIR/${PREFIX}.singleIns.txt
-
 echo
 echo "Creating bed file for all BCs with a single integration site"
 header="#chrom\tchromStart\tchromEnd\tBC\tvalue\tstrand\tDNA\tRNA\tiPCR"
 cat $TMPDIR/AllBCs.txt | awk  -F "\t" 'BEGIN {OFS="\t"} $1!="NA" && $1!="chrY" && $1!="chrM" {print $1, $2, $3, $4, 0, $5, $6, $7, $8}' |
-#Retains barcodes from $OUTPUT that are present in $TMPDIR/${PREFIX}.singleIns.txt
-awk -F "\t" 'BEGIN {OFS="\t"} NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${PREFIX}.singleIns.txt - |
 sort-bed - > $OUTPUT.new 
 mv $OUTPUT.new $OUTPUT
 
