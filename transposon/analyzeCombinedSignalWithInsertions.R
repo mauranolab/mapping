@@ -14,6 +14,61 @@ prefix <- argv[1]
 outbase <- argv[2]
 
 
+#Basic filtering
+filterSampleData <- function(data, useDNA=TRUE) {
+	#iPCR filters
+	cat("Thresholding iPCR counts\n")
+	#This is redundant as barcodes.coords.bed was already thresholded
+	data  <- subset(data, iPCR >= 2 & !is.na(iPCR))
+	
+	#DNA filters
+	if(useDNA) {
+		cat("Thresholding and normalizing DNA counts\n")
+		#For normalizing to counts per 1M reads
+		numDNAreads <- sum(data[,"DNA"], na.rm=T)
+	
+		#DNA/RNA counts are not already thresholded
+		cat("Removing", length(which(data$DNA < 10 | is.na(data$DNA))), "sites\n")
+		data  <- subset(data, DNA >= 10 & !is.na(DNA))
+	
+		data[,"DNA"] <- data[,"DNA"] / numDNAreads * 10^6
+	}
+	
+	
+	#RNA filters
+	cat("Normalizing RNA counts\n")
+	numRNAreads <- sum(data[,"RNA"], na.rm=T)
+	data[,"RNA"] <- data[,"RNA"] / numRNAreads * 10^6
+	
+	
+	#throwing away sites at same position, opposite strand for now (but don't see much of this): data[,"strand"]
+	#TODO properly merge these
+	cat("Removing", length(which(duplicaterows(paste(data[,"chrom"], data[,"chromStart"])))), "duplicate sites\n")
+	data <- data[!duplicaterows(paste(data[,"chrom"], data[,"chromStart"])),]
+	
+	
+	if(useDNA) {
+		#Don't think zeroing NAs is so good for 10x data, at least at current coverage
+		cat("Zeroing NAs at", length(which(is.na(data[,"RNA"]))), "sites with no RNA reads\n")
+		data[is.na(data[,"RNA"]), "RNA"] <- 0
+	} else {
+		cat("Removing", length(which(is.na(data$RNA))), "sites\n")
+		data  <- subset(data, !is.na(RNA))
+	}
+	
+	
+	if(useDNA) {
+		data$expression <- (data[,"RNA"])/data[,"DNA"]
+	} else {
+		data$expression <- data[,"RNA"]
+	}
+	#Add pseudocount. The as.numeric strips attr that messes up further analysis
+	data$zscore <- as.numeric(scale(log(data[,"expression"]+1, base=2)))
+	
+	return(data)
+}
+
+
 cat("\n\nAnalysis of mapped integration site\n")
 sampleData <- read(paste0(outbase, ".mapped.txt"), header=T, nrows=20000)
 colnames(sampleData)[colnames(sampleData)=="X.chrom"] <- "chrom"
@@ -30,61 +85,9 @@ if(all(is.na(sampleData$DNA))) {
 }
 
 
-###Basic filtering
-#iPCR filters
-cat("Thresholding iPCR counts\n")
-#This is redundant as barcodes.coords.bed was already thresholded
-sampleData  <- subset(sampleData, iPCR >= 2 & !is.na(iPCR))
-
-#DNA filters
-if(useDNA) {
-	cat("Thresholding and normalizing DNA counts\n")
-	#For normalizing to counts per 1M reads
-	numDNAreads <- sum(sampleData[,"DNA"], na.rm=T)
-	
-	#DNA/RNA counts are not already thresholded
-	cat("Removing", length(which(sampleData$DNA < 10 | is.na(sampleData$DNA))), "sites\n")
-	sampleData  <- subset(sampleData, DNA >= 10 & !is.na(DNA))
-	
-	sampleData[,"DNA"] <- sampleData[,"DNA"] / numDNAreads * 10^6
-}
-
-
-#RNA filters
-cat("Normalizing RNA counts\n")
-numRNAreads <- sum(sampleData[,"RNA"], na.rm=T)
-sampleData[,"RNA"] <- sampleData[,"RNA"] / numRNAreads * 10^6
-
-
-#NB throws away sites with the same coords. There's not a ton of these, and I assume they are odd sequencing errors, but some have high read counts
-#Only check this after we've filtered sites (many of the duplicate iPCR sites don't match anything in RNA/DNA libraries
-#throwing away sites at same position, opposite strand for now (but don't see much of this): sampleData[,"strand"]
-#TODO properly merge these
-cat("Removing", length(which(duplicaterows(paste(sampleData[,"chrom"], sampleData[,"chromStart"])))), "duplicate sites\n")
-sampleData <- sampleData[!duplicaterows(paste(sampleData[,"chrom"], sampleData[,"chromStart"])),]
-
-
-if(useDNA) {
-	#Don't think zeroing NAs is so good for 10x data, at least at current coverage
-	cat("Zeroing NAs at", length(which(is.na(sampleData[,"RNA"]))), "sites with no RNA reads\n")
-	sampleData[is.na(sampleData[,"RNA"]), "RNA"] <- 0
-} else {
-	cat("Removing", length(which(is.na(sampleData$RNA))), "sites\n")
-	sampleData  <- subset(sampleData, !is.na(RNA))
-}
-
+sampleData <- filterSampleData(sampleData, useDNA)
 cat("Finished filtering.\n")
 cat(prefix, "\tTotal sites remaining:\t", nrow(sampleData), "\n")
-
-
-if(useDNA) {
-	sampleData$expression <- (sampleData[,"RNA"])/sampleData[,"DNA"]
-} else {
-	sampleData$expression <- sampleData[,"RNA"]
-}
-#Add pseudocount. The as.numeric strips attr that messes up further analysis
-sampleData$zscore <- as.numeric(scale(log(sampleData[,"expression"]+1, base=2)))
-
 
 
 cat("\n\nCompare adjacent insertions\n")
