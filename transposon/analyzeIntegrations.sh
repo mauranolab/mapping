@@ -212,11 +212,9 @@ echo "Histogram of number of reads per barcode"
 cat $TMPDIR/${sample}.barcodes.coords.collapsed.bed | cut -f5 | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 
 
-#Drop BCs which have less than 1% of the reads at each site
-cat $TMPDIR/${sample}.barcodes.coords.collapsed.bed | bedmap --exact --delim '\t' --prec 0 --echo --sum - | awk -v minPropReadsAtSite=0.01 -F "\t" 'BEGIN {OFS="\t"} $5/$7>minPropReadsAtSite' | cut -f1-6 > $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed
+#Drop BCs which have less than 10% of the reads at each site
+cat $TMPDIR/${sample}.barcodes.coords.collapsed.bed | bedmap --exact --delim '\t' --prec 0 --echo --sum - | awk -v minPropReadsAtSite=0.1 -F "\t" 'BEGIN {OFS="\t"} $5/$7>minPropReadsAtSite' | cut -f1-6 > $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed
 #columns: chrom, start, end, readname, strand, BC seq, count (coords are of integration site)
-
-#TODO make second dedup pass after collapsing nearby sites? Or perhaps change group column above to include BCs at sites within maxstep?
 
 echo
 echo -n -e "${sample}\tNumber of BC+insertions passing minPropReadsAtSite cutoff\t"
@@ -227,11 +225,28 @@ echo "Histogram of number of reads per barcode"
 cat $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed | cut -f5 | awk -v cutoff=10 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 
 
-cat $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' > $OUTDIR/${sample}.barcodes.coords.bed
+#TODO make second dedup pass after collapsing nearby sites? Or perhaps change group column above to include BCs at sites within maxstep?
 
-echo
-echo -n -e "${sample}\tNumber of BC+insertions after minimum read cutoff\t"
-cat $OUTDIR/${sample}.barcodes.coords.bed | wc -l
+
+#Enforce minimum read cutoff
+cat $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' > $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed
+
+
+#Remove iPCR insertions with more than one location
+cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {print $4}' | sort | uniq -c | sort -nk1 | awk '$1==1 {print $2}' > $TMPDIR/${sample}.singleIns.txt
+
+#Remove insertion sites with more than one BC
+cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq -c | awk 'BEGIN {OFS="\t"} $1==1 {print $2, $3, $4, $5, $6, $7}' | sort-bed - > $TMPDIR/${sample}.singleBC.bed
+
+cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed |
+#Remove BCs with more than one location
+awk -F "\t" 'BEGIN {OFS="\t"} NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${sample}.singleIns.txt - |
+#Remove insertion sites with more than one BC
+bedmap --delim "|" --multidelim "|" --bp-ovr 1 --skip-unmapped --echo --echo-map - $TMPDIR/${sample}.singleBC.bed | awk -F "|" 'BEGIN {OFS="\t"} {split($0, main, "\t"); for(i=2; i<=NF; i++) {split($0, singleBC, "\t"); if(main[6]==singleBC[6]) {print $1; next}}}' > $OUTDIR/${sample}.barcodes.coords.bed
+
+
+#NB retains strand so a few sites are represented twice
+cat $OUTDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq | sort-bed - > $OUTDIR/${sample}.uniqcoords.bed
 
 
 echo
@@ -242,8 +257,10 @@ echo "track name=${sample} description=${sample}-integrations db=hg38 color=$tra
 echo "${UCSCbaseURL}/${sample}.barcodes.coords.bed"
 
 
-#NB retains strand so a few sites are represented twice
-cat $OUTDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq | sort-bed - > $OUTDIR/${sample}.uniqcoords.bed
+###Analysis
+echo
+echo -n -e "${sample}\tNumber of BC+insertions after minimum read cutoff\t"
+cat $OUTDIR/${sample}.barcodes.coords.bed | wc -l
 
 
 echo
