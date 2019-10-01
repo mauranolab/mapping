@@ -222,7 +222,7 @@ for(curdir in mappeddirs) {
 				message("[samplesforTrackhub] ", "WARNING don't recognize sampleType: ", sampleType)
 			}
 			
-            data$Name[i] <- SampleIDsplit[1]
+			data$Name[i] <- SampleIDsplit[1]
 			
 			data[i, "SampleID"] <- SampleIDsplit[length(SampleIDsplit)]
 			
