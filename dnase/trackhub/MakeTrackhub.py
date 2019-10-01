@@ -61,8 +61,6 @@ def cleanFactorForSubGroup(label):
     return label.replace(' ', '').replace('=', '')
 
 def createSubGroup(subGroups, subGroupNames, keys, label):
-    # print("[MakeTrackhub.py]", label, sep="", file=sys.stderr)
-
     name = internalSubgroupName(label)
     
     #What does natural_key do?
