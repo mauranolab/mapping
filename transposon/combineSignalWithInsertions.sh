@@ -112,6 +112,7 @@ unstarch /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noal
 bedops -u /home/mauram01/scratch/hybridmice/dnase/lineagemcv/all.lineage.dhs.unmerged.starch - |
 bedmap  --delim '\t' --skip-unmapped --echo --fraction-ref 1.0 --count  /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch - | 
 awk 'BEGIN {OFS="\t"} {print $1, $2, $3, NR, $4}' > $TMPDIR/DHS_MCV.bed
+
 closest-features --delim '\t' --dist --closest $OUTPUT $TMPDIR/DHS_MCV.bed | awk '{print $(NF-1)}' | paste $OUTPUT - > $OUTPUT.new
 mv $OUTPUT.new $OUTPUT
 
@@ -126,10 +127,36 @@ mv $OUTPUT.new $OUTPUT
 echo 'doing distance to nearest DHS (excluding CTCF sites)'
 bedops -n -1 /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch /vol/isg/encode/CTCF_maurano_cell_reports_2015/ctcf.bycelltype.K562.hg38.starch > $TMPDIR/K562-DS9764.noctcf.hg38_noalt.fdr0.01.pks.bed
 
+
 header="$header\tDistToNearestDHSnoCTCF"
 sort-bed $OUTPUT | closest-features --closest --dist --no-ref - $TMPDIR/K562-DS9764.noctcf.hg38_noalt.fdr0.01.pks.bed |
 awk -F'|' 'BEGIN {OFS="\t"} {print $2}' | paste $OUTPUT - > $OUTPUT.new
 mv $OUTPUT.new $OUTPUT
+
+
+echo 'doing number of DHSs within +/-100 kbp'
+header="$header\tNumDHS100kb"
+bedmap --delim '\t' --range 100000 --echo --count $OUTPUT /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
+echo 'doing number of CTCF sites within +/-10 kbp'
+header="$header\tNumCTCF10kb"
+bedmap --delim '\t' --range 10000 --echo --count $OUTPUT /vol/isg/encode/CTCF_maurano_cell_reports_2015/ctcf.bycelltype.K562.hg38.starch > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
+echo 'doing number of CTCF sites within +/-50 kbp'
+header="$header\tNumCTCF50kb"
+bedmap --delim '\t' --range 50000 --echo --count $OUTPUT /vol/isg/encode/CTCF_maurano_cell_reports_2015/ctcf.bycelltype.K562.hg38.starch > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
+echo 'doing number of CTCF sites within +/-100 kbp'
+header="$header\tNumCTCF100kb"
+bedmap --delim '\t' --range 100000 --echo --count $OUTPUT /vol/isg/encode/CTCF_maurano_cell_reports_2015/ctcf.bycelltype.K562.hg38.starch > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
 
 
 #Print to file
