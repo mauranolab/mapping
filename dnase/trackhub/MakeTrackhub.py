@@ -58,7 +58,7 @@ def internalSubgroupName(label):
     return label.lower().replace(' ', '_').replace('=', '')
 
 def cleanFactorForSubGroup(label):
-    return label.replace(' ', '').replace('=', '')
+    return label.replace(' ', '_').replace('=', '')
 
 def createSubGroup(subGroups, subGroupNames, keys, label):
     name = internalSubgroupName(label)
