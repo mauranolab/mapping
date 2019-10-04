@@ -42,7 +42,7 @@ else
 fi
 # filter_csv.output contains the reads we want to keep, in bed12 format.
 
-echo -e "${main_chrom} (Exclude_Regions file: ${genome2exclude}):" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "${main_chrom} (Exclude_Regions file is $(basename ${genome2exclude})):" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
 #####################################################################################
 # Start building the output table:

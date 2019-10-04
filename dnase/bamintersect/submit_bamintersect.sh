@@ -225,10 +225,6 @@ else
     genome2exclude="/vol/mauranolab/cadlej01/projects/bamintersect/LP_uninformative_regions/${bam1genome}_vs_${bam2genome}.bed"
 fi
 
-if [ ! -f ${genome2exclude} ]; then
-    genome2exclude="NA"
-fi
-
 ########################################################
 # Make some directories to hold the final output for this sample.
 
@@ -276,7 +272,6 @@ else
     cp "${sampleOutdir}/log/${sample_name}.chrom_list1" "${sampleOutdir}/log/${sample_name}.chrom_list1_simple"
     chrom_list1_input_to_samtools="NA"   # To avoid a pipefail.
 fi
-
 
 samtools idxstats ${bamname2} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/${sample_name}.chrom_list2"
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2")
@@ -384,19 +379,44 @@ rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1 ${sampleOutdir}/sgeid.sort_bamin
 ################################################################################################
 ## Send some summary info to the anc file:
 echo "bam files:" > "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "${bamname1}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "${bamname2}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "First:  ${bamname1}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "Second: ${bamname2}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
-if [ ${integrationsite} != "NA" ]; then
+# Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
+if [ "${integrationsite}" != "null" ] && [ "${integrationsite}" != "NA" ]; then
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
     echo "${integrationSiteName} HAs:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
     grep "${integrationSiteName}_${HA1}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+    grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/genome1exclude.bed"
+    grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/genome1exclude.bed"
+
+    # Get the deletion range coordinates:
+    IFS=$'\t' read chrom HA1_5p HA1_3p all_other <<< "$(head -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
+    IFS=$'\t' read chrom HA2_5p HA2_3p all_other <<< "$(tail -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
+    echo "${chrom}"$'\t'"${HA1_3p}"$'\t'"${HA2_5p}" > "${INTERMEDIATEDIR}/deletion_range.bed"
+else
+    echo "integrationsite is null/NA" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "No HAs are available, and so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+    integrationsite="NA"
+    touch "${INTERMEDIATEDIR}/genome1exclude.bed"
+    touch "${INTERMEDIATEDIR}/deletion_range.bed"
 fi
 
+if [ ! -f ${genome2exclude} ]; then
+    touch "${INTERMEDIATEDIR}/empty_file.bed"
+    genome2exclude="${INTERMEDIATEDIR}/empty_file.bed"
+fi
+echo "The Exclude Regions file is: $(basename ${genome2exclude})  [${genome2exclude}]" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+################################################################################################
 samtools idxstats ${bamname1} > "${TMPDIR}/${sample_name}.counts.anc_info.txt"
 num_lines=$(wc -l < "${TMPDIR}/${sample_name}.counts.anc_info.txt")
 let "num_lines = num_lines - 1"
@@ -404,23 +424,6 @@ echo "samtools idx output for first bam file: reference sequence name, sequence 
 head "-${num_lines}" "${TMPDIR}/${sample_name}.counts.anc_info.txt" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
-################################################################################################
-# Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
-
-if [ ${integrationsite} != "NA" ]; then
-    # Get the homology arm coordinates. HA1 must be the 5p HA coordinates, and HA2 must be the 3p HA coordinates.
-    IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
-    HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
-    grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/genome1exclude.bed"
-    grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/genome1exclude.bed"
-
-
-    # Get the deletion range coordinates:
-    IFS=$'\t' read chrom HA1_5p HA1_3p all_other <<< "$(head -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
-    IFS=$'\t' read chrom HA2_5p HA2_3p all_other <<< "$(tail -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
-    echo "${chrom}"$'\t'"${HA1_3p}"$'\t'"${HA2_5p}" > "${INTERMEDIATEDIR}/deletion_range.bed"
-fi
 
 ################################################################################################
 ## Merge output from the array jobs.
