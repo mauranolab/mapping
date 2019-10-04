@@ -55,10 +55,10 @@ def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
 def internalSubgroupName(label):
-    return label.lower().replace(' ', '_').replace('=', '')
+    return label.lower().replace(' ', '_')
 
 def cleanFactorForSubGroup(label):
-    return label.replace(' ', '').replace('=', '')
+    return label.replace(' ', '_')
 
 def createSubGroup(subGroups, subGroupNames, keys, label):
     name = internalSubgroupName(label)
@@ -454,7 +454,7 @@ for assay_type in assays:
             
             ####Set up subgroups
             #BUGBUG get error "Subgroup SampleID exceeds maximum 1000 members" for some of the ENCODE tracks
-            sampleSubgroups = dict(sample=cleanFactorForSubGroup(sampleName) + ('-' + curSample['SampleID'] if args.includeSampleIDinSampleCol else ''))
+            sampleSubgroups = dict(sample=sampleName + ('-' + curSample['SampleID'] if args.includeSampleIDinSampleCol else ''))
             for subGroupLabel in ['SampleID', 'Assay'] + customSubGroupNames:
                 if subGroupLabel in subGroupNames:
                     sampleSubgroups[internalSubgroupName(subGroupLabel)] = cleanFactorForSubGroup(curSample[subGroupLabel])
