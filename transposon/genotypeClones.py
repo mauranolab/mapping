@@ -4,8 +4,12 @@ import sys
 import argparse
 import os
 import csv
-import networkx as nx
 import statistics
+
+import networkx as nx
+from networkx import drawing
+from networkx.drawing.nx_pylab import draw_networkx
+from networkx import edge_betweenness_centrality as betweenness
 
 import matplotlib
 matplotlib.use('agg')
@@ -13,9 +17,13 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.colors as mcolors
 import matplotlib.cm as cmx
-from networkx import drawing
-from networkx.drawing.nx_pylab import draw_networkx
-from networkx import edge_betweenness_centrality as betweenness
+#Make pyplot export text as truetype 2 for illustrator
+#http://jonathansoma.com/lede/data-studio/matplotlib/exporting-from-matplotlib-to-open-in-adobe-illustrator/
+matplotlib.rcParams['pdf.fonttype'] = 42
+#Otherwise default is DejaVuSans
+#BUGBUG seems to have no effect
+matplotlib.rc('font', family='sans-serif')
+matplotlib.rc('font', serif='Helvetica')
 
 
 #BUGBUG don't think connected_component_subgraphs presents subgraphs in deterministic order
