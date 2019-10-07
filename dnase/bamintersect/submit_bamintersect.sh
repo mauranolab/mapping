@@ -55,7 +55,6 @@ Usage: $(basename "$0") [Options]
      --bam2 {full path to bam file #2}
      --bam2genome {something like LP123, mm10, or hg38. Others are valid as well.}
      --outdir {outdir} output directory
-     --cegsGenomeShort {something like LP131 or pSpCas9}
 
   Optional Options:
           --bam1_keep_flags {a sam format flag value required of all bam1 reads to be 
@@ -126,7 +125,6 @@ long_arg_list=(
     reads_match
     do_not_make_csv
     do_not_make_table
-    cegsGenomeShort:
     help
 )
 
@@ -197,8 +195,6 @@ while true ; do
             make_csv="" ; shift 1 ;;
         --do_not_make_table)
             make_table=False ; shift 1 ;;
-        --cegsGenomeShort)
-            cegsGenomeShort=$2 ; shift 2 ;;
         -h|--help) usage; shift ; exit 0 ;;
         --) shift ; break ;;
         *) echo "getopt internal error!" ; exit 1 ;;
@@ -230,7 +226,7 @@ mkdir -p "${sampleOutdir}/log"
 # Make a directory structure to hold files passed between jobs.
 # It is built within ${sampleOutdir} so it can be persistent.
 # It gets removed at the end of the merge_bamintersect.sh script.
-INTERMEDIATEDIR="${sampleOutdir}/tmp.${sample_name}.${cegsGenomeShort}"   # INTERMEDIATEDIR contains no trailing slash.
+INTERMEDIATEDIR="${sampleOutdir}/tmp.${sample_name}.${bam1genome}"   # INTERMEDIATEDIR contains no trailing slash.
 mkdir ${INTERMEDIATEDIR}
 
 # Subdirectories will hold output from bamintersect.py
