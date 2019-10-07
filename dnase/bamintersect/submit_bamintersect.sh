@@ -442,6 +442,22 @@ head "-${num_lines}" "${TMPDIR}/${sample_name}.counts.anc_info.txt" >> "${sample
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
+if [ ! -f ${genome2exclude} ]; then
+    touch "${INTERMEDIATEDIR}/empty_file.bed"
+    genome2exclude="${INTERMEDIATEDIR}/empty_file.bed"
+fi
+echo "The Exclude Regions file is: $(basename ${genome2exclude})  [${genome2exclude}]" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+################################################################################################
+samtools idxstats ${bamname1} > "${TMPDIR}/${sample_name}.counts.anc_info.txt"
+num_lines=$(wc -l < "${TMPDIR}/${sample_name}.counts.anc_info.txt")
+let "num_lines = num_lines - 1"
+echo "samtools idx output for first bam file: reference sequence name, sequence length, # mapped reads and # unmapped reads." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+head "-${num_lines}" "${TMPDIR}/${sample_name}.counts.anc_info.txt" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
 ################################################################################################
 ## Merge output from the array jobs.
 echo "Submitting merge job"
