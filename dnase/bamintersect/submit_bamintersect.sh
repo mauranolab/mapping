@@ -95,10 +95,6 @@ Usage: $(basename "$0") [Options]
                  # Output a "counts.txt" table summarizing results (unset), or no table (set).
                  # The default is to have it unset.
 
-           --clear_logs {no argument}  [no longer working]
-                 # If set, clears out the log file subdirectories, since they can accumulate logs from previous runs.
-                 # The default is to have it unset.
-
            -h,--help    Print this help message.
 
 USAGE
@@ -131,7 +127,6 @@ long_arg_list=(
     do_not_make_csv
     do_not_make_table
     cegsGenomeShort:
-    clear_logs
     help
 )
 
@@ -151,7 +146,6 @@ eval set -- "$CMD_LINE"
     make_csv="--make_csv"
     make_table=True
     reads_match=""
-    clear_logs=False
     integrationsite="NA"
     
     # Require read is paired.
@@ -205,17 +199,11 @@ while true ; do
             make_table=False ; shift 1 ;;
         --cegsGenomeShort)
             cegsGenomeShort=$2 ; shift 2 ;;
-        --clear_logs)
-            clear_logs=True ; shift 1 ;;
         -h|--help) usage; shift ; exit 0 ;;
         --) shift ; break ;;
         *) echo "getopt internal error!" ; exit 1 ;;
     esac
 done
-
-
-# clear_logs no longer works,  as the log directory is used as an output location for qsub.
-
 
 # End of getopt section.
 ################################################
@@ -236,13 +224,8 @@ fi
 ########################################################
 # Make some directories to hold the final output for this sample.
 
-# Can't do this anymore. The directory is reserved for qsub output. 
-# if [ "${clear_logs}" = "True" ]; then
-#     rm -rf "${sampleOutdir}/log"  # Clear out the log directory, if it's there.  Avoids piling up old log files during development.
-# fi
-
 logdir="${sampleOutdir}/log"
-mkdir -p "${logdir}"
+mkdir -p "${sampleOutdir}/log"
 
 ########################################################
 # Make a directory structure to hold files passed between jobs.
@@ -260,45 +243,45 @@ mkdir ${INTERMEDIATEDIR}/sorted_bams
 ########################################################
 # Make the chromosome lists which will eventually drive the array jobs.
 
-samtools idxstats ${bamname1} | awk '$1 != "*" {print $1}' > "${logdir}/${sample_name}.chrom_list1"
-num_lines=$(wc -l < "${logdir}/${sample_name}.chrom_list1")
+samtools idxstats ${bamname1} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/${sample_name}.chrom_list1"
+num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1")
 
 if [ "${num_lines}" -ge "5" ]; then
     ## Apply the simple chromosome name mask
-    grep -E '^chr[0-9]*$|^chr[XYM]$' "${logdir}/${sample_name}.chrom_list1" | sed 's/^/^/' | sed 's/$/$/' |
-    grep -v -f - "${logdir}/${sample_name}.chrom_list1" > "${TMPDIR}/${sample_name}.chrom_list1_long"
+    grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list1" | sed 's/^/^/' | sed 's/$/$/' |
+    grep -v -f - "${sampleOutdir}/log/${sample_name}.chrom_list1" > "${TMPDIR}/${sample_name}.chrom_list1_long"
     
     ## We'll strip the pipes out in sort_bamintersect.sh
     chrom_list1_input_to_samtools=$(cat "${TMPDIR}/${sample_name}.chrom_list1_long" | paste -sd "|" -)
     
     ## Get simple chromosome names
-    grep -E '^chr[0-9]*$|^chr[XYM]$' "${logdir}/${sample_name}.chrom_list1" >  "${logdir}/${sample_name}.chrom_list1_simple"
+    grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list1" >  "${sampleOutdir}/log/${sample_name}.chrom_list1_simple"
     num_lines=$(wc -l < "${TMPDIR}/${sample_name}.chrom_list1_long")
     if [ "${num_lines}" -ge "1" ]; then
-        echo "all_other" >> "${logdir}/${sample_name}.chrom_list1_simple"
+        echo "all_other" >> "${sampleOutdir}/log/${sample_name}.chrom_list1_simple"
     fi
 else
     # A small number of chromosomes is an indicator that this is a LP/PL file.
     # There will be no "all_other" in this file.
-    cp "${logdir}/${sample_name}.chrom_list1" "${logdir}/${sample_name}.chrom_list1_simple"
+    cp "${sampleOutdir}/log/${sample_name}.chrom_list1" "${sampleOutdir}/log/${sample_name}.chrom_list1_simple"
     chrom_list1_input_to_samtools="NA"   # To avoid a pipefail.
 fi
 
-samtools idxstats ${bamname2} | awk '$1 != "*" {print $1}' > "${logdir}/${sample_name}.chrom_list2"
-num_lines=$(wc -l < "${logdir}/${sample_name}.chrom_list2")
+samtools idxstats ${bamname2} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/${sample_name}.chrom_list2"
+num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2")
 
 ## Apply the simple chromosome name mask
-grep -E '^chr[0-9]*$|^chr[XYM]$' "${logdir}/${sample_name}.chrom_list2" | sed 's/^/^/' | sed 's/$/$/' |
-grep -v -f - "${logdir}/${sample_name}.chrom_list2" > "${TMPDIR}/${sample_name}.chrom_list2_long"
+grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list2" | sed 's/^/^/' | sed 's/$/$/' |
+grep -v -f - "${sampleOutdir}/log/${sample_name}.chrom_list2" > "${TMPDIR}/${sample_name}.chrom_list2_long"
 
 ## We'll strip the pipes out in sort_bamintersect.sh
 chrom_list2_input_to_samtools=$(cat "${TMPDIR}/${sample_name}.chrom_list2_long" | paste -sd "|" -)
 
 ## Get simple chromosome names
-grep -E '^chr[0-9]*$|^chr[XYM]$' "${logdir}/${sample_name}.chrom_list2" >  "${logdir}/${sample_name}.chrom_list2_simple"
+grep -E '^chr[0-9]*$|^chr[XYM]$' "${sampleOutdir}/log/${sample_name}.chrom_list2" >  "${sampleOutdir}/log/${sample_name}.chrom_list2_simple"
 num_lines=$(wc -l < "${TMPDIR}/${sample_name}.chrom_list2_long")
 if [ "${num_lines}" -ge "1" ]; then
-    echo "all_other" >> "${logdir}/${sample_name}.chrom_list2_simple"
+    echo "all_other" >> "${sampleOutdir}/log/${sample_name}.chrom_list2_simple"
 fi
 
 ################################################################################################
@@ -314,7 +297,7 @@ for BAM_N in $(seq 1 2); do
     while read chrom;  do
         BAM_OUT="${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${chrom}.${BAM_N}.bam"
         echo ${BAM_OUT} >> "${INTERMEDIATEDIR}/sorted_bams/chr_list_${BAM_N}"
-    done < "${logdir}/${sample_name}.chrom_list${BAM_N}_simple"
+    done < "${sampleOutdir}/log/${sample_name}.chrom_list${BAM_N}_simple"
 done
 
 
@@ -351,9 +334,9 @@ export_vars="${export_vars},BAM_N=1"
 export_vars="${export_vars},input_to_samtools2=${chrom_list1_input_to_samtools}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
 export_vars="${export_vars},sample_name=${sample_name}"
-export_vars="${export_vars},logdir=${logdir}"
+export_vars="${export_vars},logdir=${sampleOutdir}/log"
 
-num_lines=$(wc -l < "${logdir}/${sample_name}.chrom_list1_simple")
+num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1_simple")
 
 # /vol/mauranolab/cadlej01/projects/Sud_mm10_rn6/test_java contains code and comments regarding java thread
 # problems generated by multiple calls of sort_bamintersect. qos=low probably is good enough to handle the issues.
@@ -369,9 +352,9 @@ export_vars="${export_vars},BAM_N=2"
 export_vars="${export_vars},input_to_samtools2=${chrom_list2_input_to_samtools}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
 export_vars="${export_vars},sample_name=${sample_name}"
-export_vars="${export_vars},logdir=${logdir}"
+export_vars="${export_vars},logdir=${sampleOutdir}/log"
 
-num_lines=$(wc -l < "${logdir}/${sample_name}.chrom_list2_simple")
+num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2_simple")
 
 qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log --qos=low -t 1-${num_lines} ${src}/sort_bamintersect.sh > ${sampleOutdir}/sgeid.sort_bamintersect_2
 
@@ -381,8 +364,8 @@ echo done with 2nd sort_
 # Call bamintersect.py repeatedly via the bamintersect.sh array job:
 echo "Submitting bamintersect job"
 
-n1=$(wc -l < "${logdir}/${sample_name}.chrom_list1_simple")
-n2=$(wc -l < "${logdir}/${sample_name}.chrom_list2_simple")
+n1=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1_simple")
+n2=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2_simple")
 let "array_size = ${n1} * ${n2}"
 
 export_vars="src=${src}"
@@ -472,7 +455,7 @@ export_vars="${export_vars},make_csv=${make_csv}"
 export_vars="${export_vars},make_table=${make_table}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
 export_vars="${export_vars},integrationsite=${integrationsite}"
-export_vars="${export_vars},logdir=${logdir}"
+export_vars="${export_vars},logdir=${sampleOutdir}/log"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log ${src}/merge_bamintersect.sh
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect
