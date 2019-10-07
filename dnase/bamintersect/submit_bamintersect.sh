@@ -224,7 +224,6 @@ fi
 ########################################################
 # Make some directories to hold the final output for this sample.
 
-logdir="${sampleOutdir}/log"
 mkdir -p "${sampleOutdir}/log"
 
 ########################################################
