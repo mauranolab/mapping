@@ -454,7 +454,7 @@ for assay_type in assays:
             
             ####Set up subgroups
             #BUGBUG get error "Subgroup SampleID exceeds maximum 1000 members" for some of the ENCODE tracks
-            sampleSubgroups = dict(sample=cleanFactorForSubGroup(sampleName)+('-'+curSample['SampleID']) if args.includeSampleIDinSampleCol else '')
+            sampleSubgroups = dict(sample=cleanFactorForSubGroup(sampleName + ('-'+curSample['SampleID'] if args.includeSampleIDinSampleCol else '') ))
             for subGroupLabel in ['SampleID', 'Assay'] + customSubGroupNames:
                 if subGroupLabel in subGroupNames:
                     sampleSubgroups[internalSubgroupName(subGroupLabel)] = cleanFactorForSubGroup(curSample[subGroupLabel])
