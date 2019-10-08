@@ -63,7 +63,9 @@ while read main_chrom ; do
     n2=$(wc -l < "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed")
 
     echo -e "Mapped reads with unmapped mates from ${main_chrom}:\t${n1}\tof which\t${n2}\tpassed through the Exclude Regions filters and over the HAs (if any), and are potentially informative.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    
 done < "${sampleOutdir}/log/${sample_name}.chrom_list1"
+
 
 #############################################################################
 ## Cleanup
