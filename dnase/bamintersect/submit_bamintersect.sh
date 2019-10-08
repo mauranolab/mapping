@@ -329,7 +329,6 @@ export_vars="${export_vars},BAM_N=1"
 export_vars="${export_vars},input_to_samtools2=${chrom_list1_input_to_samtools}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
 export_vars="${export_vars},sample_name=${sample_name}"
-export_vars="${export_vars},logdir=${sampleOutdir}/log"
 
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1_simple")
 
@@ -347,7 +346,6 @@ export_vars="${export_vars},BAM_N=2"
 export_vars="${export_vars},input_to_samtools2=${chrom_list2_input_to_samtools}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
 export_vars="${export_vars},sample_name=${sample_name}"
-export_vars="${export_vars},logdir=${sampleOutdir}/log"
 
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2_simple")
 
@@ -450,7 +448,6 @@ export_vars="${export_vars},make_csv=${make_csv}"
 export_vars="${export_vars},make_table=${make_table}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
 export_vars="${export_vars},integrationsite=${integrationsite}"
-export_vars="${export_vars},logdir=${sampleOutdir}/log"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log ${src}/merge_bamintersect.sh
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect
