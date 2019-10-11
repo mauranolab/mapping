@@ -13,6 +13,48 @@ old <- theme_update(panel.border = element_blank(), strip.background = element_b
 #Try to work around "unable to start device PNG" on ISG cluster
 options(bitmapType="cairo") 
 
+
+#read() -- smarter wrapper around read.table
+#BUGBUG who knows why i'm getting "zcat: stdout: Broken pipe" on first read.table
+#TODO seems I need to use gzcat on the mac and zcat on linux
+read <- function(filename, nrows=100, header=F, col.classes=NULL, stringsAsFactors=F, sep="\t", comment.char="", ...) {
+	#BUGBUG should print example line of file upon failure
+	#TODO can't use a pipe or specify which columns to use
+	#BUGBUG when the first column is all characters, R tries to use it as row names. But this goofs up my hardcoded colClasses. row.names=NULL doesn't work in the function, though it works interactively.
+	
+	filename <- Sys.glob(filename)
+	if(length(filename) == 0 || !file.exists(filename)) {
+		stop("ERROR read() -- ", filename, " does not exist!\n")
+	} else if(length(filename) > 1) {
+		stop("ERROR read() -- Multiple files were matched: ",  paste(filename, collapse=", "), "!\n")
+	}
+	readCmd <- paste("zcat -f \"", filename, "\"", sep="")
+#	cat("reading with:", readCmd, "\n")
+
+	#Let UNIX tell us how much memory to allocate
+	wcpipe <- pipe(paste(readCmd, " | wc -l | awk '{print $1}' ", sep=""))
+	num.lines <- as.integer(readLines(wcpipe))
+	close(wcpipe)
+	
+	if(num.lines==0) {
+		message("WARNING read() -- input file had zero lines")
+		return(NULL)
+	} else {
+		if(is.null(col.classes)) {
+			#Let R estimate the column classes so we can hardcode it later
+			#Hijack nrows parameter for the number of rows upon which to estimate classes (the real number of rows is used for the final read.table)
+		
+			shortcopy <- read.table(pipe(readCmd), sep=sep, comment.char = comment.char, quote = "", strip.white = TRUE, stringsAsFactors = F, nrows=nrows, header=header, ...)
+			guessed.classes <- lapply(shortcopy, typeof)
+		} else {
+			guessed.classes <- col.classes
+		}
+		
+		return(read.table(pipe(readCmd), sep=sep, comment.char = comment.char, quote = "", strip.white = TRUE, stringsAsFactors = stringsAsFactors, nrows=num.lines, colClasses=guessed.classes, header=header, ...))
+	}
+}
+
+
 if(length(commandArgs(TRUE)) >= 1) {
 	maxlength <- as.integer(commandArgs(TRUE)[1])
 } else {
