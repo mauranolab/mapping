@@ -50,7 +50,7 @@ RnHoxa_bait)
 HTRA1_CH17-165I6_bait)
     grep -w "CH17-165I6" /vol/cegs/sequences/hg38/HTRA1/HTRA1_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
-LP058_bait|LP087_bait|LP097_bait|LP131_bait|PL1_bait)
+LP058_bait|LP087_bait|LP097_bait|LP131_bait|LP140_bait|PL1_bait|pSpCas9_bait)
     #TODO not counting backbone since we don't support multiple chromosomes
     cat /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes | awk -v bait=${bait/_bait/} -F "\t" 'BEGIN {OFS="\t"} $1==bait {print $1, 0, $2}' > $TMPDIR/target.bed
     ;;
@@ -82,7 +82,7 @@ for covfile in `find ${dirs} -name "*.${mappedgenome}.coverage.binned.starch"`; 
     bamfile=`echo ${covfile} | perl -pe 's/\.coverage.binned.starch$/.bam/g;'`
     
     analysisFile=`dirname ${covfile} | xargs -I {} find {} -name "analysis.*.${mappedgenome}.o*"`
-    sequencedReads=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="Num_sequenced_reads" {print $2; exit} END {print "NA"}' ${analysisFile}`
+    sequencedReads=`awk -F "\t" 'BEGIN {OFS="\t"; numreads="NA"} $1=="Num_sequenced_reads" {numreads=$2} END {print numreads}' ${analysisFile}`
     echo -n -e "${sequencedReads}\t"
     
     #Nonredundant_reads_analyzed
