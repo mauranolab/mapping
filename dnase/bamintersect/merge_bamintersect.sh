@@ -63,9 +63,33 @@ while read main_chrom ; do
     n2=$(wc -l < "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed")
 
     echo -e "Mapped reads with unmapped mates from ${main_chrom}:\t${n1}\tof which\t${n2}\tpassed through the Exclude Regions filters and over the HAs (if any), and are potentially informative.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    
-done < "${sampleOutdir}/log/${sample_name}.chrom_list1"
 
+
+    # Subset bam files for UCSC loading:
+    cut -f4 "${sampleOutdir}/${sample_name}.informative.bed" > "${INTERMEDIATEDIR}/${sample_name}.readNames.txt"
+
+    if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
+        samtools view -H ${bamname1} > "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.sam"
+        samtools view ${bamname1} | grep --file="${INTERMEDIATEDIR}/${sample_name}.readNames.txt" >> "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.sam"
+        samtools view -b "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.sam" > "${sampleOutdir}/${sample_name}.bam1_informative_reads.bam"
+        samtools index "${sampleOutdir}/${sample_name}.bam1_informative_reads.bam"
+    
+        samtools view -H ${bamname2} > "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.sam"
+        samtools view ${bamname2} | grep --file="${INTERMEDIATEDIR}/${sample_name}.readNames.txt" >> "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.sam"
+        samtools view -b "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.sam" > "${sampleOutdir}/${sample_name}.bam2_informative_reads.bam"
+        samtools index "${sampleOutdir}/${sample_name}.bam2_informative_reads.bam"
+
+        echo "bam files with informative reads are at:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+        echo "    ${sampleOutdir}/${sample_name}.bam1_informative_reads.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+        echo "    ${sampleOutdir}/${sample_name}.bam2_informative_reads.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+        echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    else
+        # No informative reads
+        echo "For ${sample_name}, there are no bam files with informative reads." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+        echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    fi
+
+done < "${sampleOutdir}/log/${sample_name}.chrom_list1"
 
 #############################################################################
 ## Cleanup

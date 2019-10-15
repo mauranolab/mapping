@@ -212,9 +212,9 @@ echo "final sample_name is: ${sample_name}"
 # a misleading mapping of genomic reads, so they are considered uninformative.
 
 if echo "${bam1genome}" | grep -q "^LP[0-9]\+" ; then
-    genome2exclude="/vol/mauranolab/cadlej01/projects/bamintersect/LP_uninformative_regions/LP_vs_${bam2genome}.bed"
+    genome2exclude="${src}/LP_uninformative_regions/LP_vs_${bam2genome}.bed"
 else
-    genome2exclude="/vol/mauranolab/cadlej01/projects/bamintersect/LP_uninformative_regions/${bam1genome}_vs_${bam2genome}.bed"
+    genome2exclude="${src}/LP_uninformative_regions/${bam1genome}_vs_${bam2genome}.bed"
 fi
 
 ########################################################
@@ -418,22 +418,6 @@ head "-${num_lines}" "${TMPDIR}/${sample_name}.counts.anc_info.txt" >> "${sample
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
-if [ ! -f ${genome2exclude} ]; then
-    touch "${INTERMEDIATEDIR}/empty_file.bed"
-    genome2exclude="${INTERMEDIATEDIR}/empty_file.bed"
-fi
-echo "The Exclude Regions file is: $(basename ${genome2exclude})  [${genome2exclude}]" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
-################################################################################################
-samtools idxstats ${bamname1} > "${TMPDIR}/${sample_name}.counts.anc_info.txt"
-num_lines=$(wc -l < "${TMPDIR}/${sample_name}.counts.anc_info.txt")
-let "num_lines = num_lines - 1"
-echo "samtools idx output for first bam file: reference sequence name, sequence length, # mapped reads and # unmapped reads." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-head "-${num_lines}" "${TMPDIR}/${sample_name}.counts.anc_info.txt" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
 ################################################################################################
 ## Merge output from the array jobs.
 echo "Submitting merge job"
@@ -448,6 +432,8 @@ export_vars="${export_vars},make_csv=${make_csv}"
 export_vars="${export_vars},make_table=${make_table}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
 export_vars="${export_vars},integrationsite=${integrationsite}"
+export_vars="${export_vars},bamname1=${bamname1}"
+export_vars="${export_vars},bamname2=${bamname2}"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log ${src}/merge_bamintersect.sh
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}

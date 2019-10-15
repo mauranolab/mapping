@@ -102,8 +102,10 @@ AWK_HEREDOC_01
 sort -V -t $'\t' -k 6,6rn -k 1,1 -k 2,2n - |
 grep -v $'\t'1$ - > "${TMPDIR}/short_sorted_table.bed" || true
 
-# Append the bam1 chromosome name onto the last column.
-sed "s/$/\t${main_chrom}/" "${TMPDIR}/short_sorted_table.bed" > "${TMPDIR}/short_sorted_table_chromName.bed"
+# Append the bam1 chromosome name and the short sample name onto the last column.
+IFS='.' read -r -a array <<< "${sample_name}"    # Needed because: sample_name="${sample_name}.${bam1genome}_vs_${bam2genome}"
+short_sample_name="${array[0]}"
+sed "s/$/\t${main_chrom}\t${short_sample_name}/" "${TMPDIR}/short_sorted_table.bed" > "${TMPDIR}/short_sorted_table_chromName.bed"
 
 # Dump data into main output file.
 if [ ${counts_type} = "all_reads_counts" ];then
