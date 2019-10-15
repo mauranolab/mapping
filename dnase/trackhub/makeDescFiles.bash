@@ -109,7 +109,12 @@ find_readcounts () {
         
         # Fill up target_vec:
         if [ ${dir_base} = "/vol/cegs/mapped/" ] || [ ${dir_base} = "/vol/mauranolab/mapped/" ] ; then
-            subdir_names=($(ls -d ${dir_base}${flowcell}*/))    # These are full paths, with trailing slashes.
+            subdir_names=($(ls -d ${dir_base}${flowcell}*/ 2> /dev/null))    # These are full paths, with trailing slashes.
+            numElements="${#subdir_names[@]}"
+            if [ "${numElements}" = "0" ]; then
+                echo "[makeDescFiles.bash] WARNING No subdirectories in ${dir_base}${flowcell}"
+                continue
+            fi
             target_vec=()
             find_targets  "${subdir_names[@]}"
         else
