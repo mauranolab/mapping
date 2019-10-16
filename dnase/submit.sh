@@ -124,8 +124,9 @@ fi
 if [ ${runBamIntersect} -eq 1 ]; then
     sampleAnnotationGeneticModification=`echo "${sampleAnnotation}" | awk -v key="Genetic_Modification" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
     
-    mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | grep -v "^cegsvectors_"`
-    cegsGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | grep "^cegsvectors_"`
+    mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0!~/^cegsvectors_/'`
+    cegsGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0~/^cegsvectors_/'`
+    echo "$mammalianGenomes $mammalianGenomes"
     for mammalianGenome in ${mammalianGenomes}; do
         for cegsGenome in ${cegsGenomes}; do
             cegsGenomeShort="${cegsGenome/cegsvectors_/}"
@@ -149,6 +150,7 @@ if [ ${runBamIntersect} -eq 1 ]; then
 fi
 
 
+#Always run analysis job, but specifying none will have analysis.sh skip most analyses
 for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     analysisname="${name}.${curGenome}"
     
