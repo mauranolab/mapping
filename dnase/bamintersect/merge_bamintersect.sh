@@ -5,6 +5,8 @@ set -eu -o pipefail
 ##########################################################################################################
 ## Merge the bam_intersect output files:
 
+echo "here merge 01"
+
 # First check for the "no reads to merge" problem. Also deal with the usual pipefail issue via "true".
 dir_names=($(ls -d ${INTERMEDIATEDIR}/bamintersectPyOut/*/ 2> /dev/null || true))      ## These have a trailing /
 numElements="${#dir_names[@]}"
@@ -24,6 +26,8 @@ if [ "${numElements}" = "0" ]; then
     exit 0
 fi
 
+echo "here merge 02"
+
 first="True"
 for i in ${dir_names[@]}; do
     if [ ${first} = "True" ]; then
@@ -34,10 +38,14 @@ for i in ${dir_names[@]}; do
     fi
 done
 
+echo "here merge 03"
+
 date
 echo Sorting...
 sort-bed "${INTERMEDIATEDIR}/unsorted_dsgrep.bed" > "${sampleOutdir}/${sample_name}.bed"
 date
+
+echo "here merge 04"
 
 ##########################################################################################################
 ## Create the final output tables.
@@ -54,6 +62,8 @@ if [ ${make_table} != "True" ]; then
     exit 0
 fi
 
+echo "here merge 05"
+
 # Initialize the counts output file with a header.
 echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
 echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
@@ -61,9 +71,17 @@ echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_R
 # Make sure this has not been left over from a previous run.
 rm -f "${sampleOutdir}/${sample_name}.informative.bed"
 
+echo "here merge 06"
+
 # Merge the output related to each bam1 chromosome:
 while read main_chrom ; do
+    echo "while read main_chrom ${main_chrom} 01"
+
     bedops --chrom ${main_chrom} --everything "${sampleOutdir}/${sample_name}.bed" > "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed"
+
+    echo "while read main_chrom ${main_chrom} 02"
+
+    echo "Working on:  ${main_chrom}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
     echo "Running filter_tsv without filters." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "NA" ${main_chrom} ${INTERMEDIATEDIR} ${integrationsite} all_reads_counts
@@ -71,6 +89,8 @@ while read main_chrom ; do
     echo "Running filter_tsv with HA filters (if any) and with the Exclude Regions file (which may be empty)." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} ${genome2exclude} ${main_chrom} \
                          ${INTERMEDIATEDIR} ${integrationsite} informative_reads_counts
+
+    echo "while read main_chrom ${main_chrom} 03"
 
     cat "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed" >> "${sampleOutdir}/${sample_name}.informative.bed"
 
@@ -81,32 +101,49 @@ while read main_chrom ; do
 
     echo -e "Mapped reads with unmapped mates from ${main_chrom}:\t${n1}\tof which\t${n2}\tpassed through the Exclude Regions filters and over the HAs (if any), and are potentially informative.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
-
-    # Subset bam files for UCSC loading:
-    cut -f4 "${sampleOutdir}/${sample_name}.informative.bed" > "${INTERMEDIATEDIR}/${sample_name}.readNames.txt"
-
-    if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
-        samtools view -H ${bamname1} > "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.sam"
-        samtools view ${bamname1} | grep --file="${INTERMEDIATEDIR}/${sample_name}.readNames.txt" >> "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.sam"
-        samtools view -b "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.sam" > "${sampleOutdir}/${sample_name}.bam1_informative_reads.bam"
-        samtools index "${sampleOutdir}/${sample_name}.bam1_informative_reads.bam"
-    
-        samtools view -H ${bamname2} > "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.sam"
-        samtools view ${bamname2} | grep --file="${INTERMEDIATEDIR}/${sample_name}.readNames.txt" >> "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.sam"
-        samtools view -b "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.sam" > "${sampleOutdir}/${sample_name}.bam2_informative_reads.bam"
-        samtools index "${sampleOutdir}/${sample_name}.bam2_informative_reads.bam"
-
-        echo "bam files with informative reads are at:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-        echo "    ${sampleOutdir}/${sample_name}.bam1_informative_reads.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-        echo "    ${sampleOutdir}/${sample_name}.bam2_informative_reads.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-        echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    else
-        # No informative reads
-        echo "For ${sample_name}, there are no bam files with informative reads." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-        echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    fi
-
 done < "${sampleOutdir}/log/${sample_name}.chrom_list1"
+
+echo "out of read main_chrom while loop"
+
+
+# Subset bam files for uploading UCSC custom tracks:
+cut -f4 "${sampleOutdir}/${sample_name}.informative.bed" > "${INTERMEDIATEDIR}/${sample_name}.readNames.txt"
+
+if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
+    echo "here merge 07"
+
+    samtools view -H ${bamname1} > "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.sam"
+    samtools view -F ${BAM_E1} ${bamname1} | "${src}/subsetBAM.py" "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" >> "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.sam"
+    samtools view -b "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.sam" > "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
+    samtools sort -o "${sampleOutdir}/${sample_name}.bam1_informative_reads.bam" "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
+    samtools index "${sampleOutdir}/${sample_name}.bam1_informative_reads.bam"
+	rm "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
+	
+    echo "here merge 08"
+
+    samtools view -H ${bamname2} > "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.sam"
+    samtools view -F ${BAM_E2} ${bamname2} | "${src}/subsetBAM.py" "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" >> "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.sam"
+    samtools view -b "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.sam" > "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
+    samtools sort -o "${sampleOutdir}/${sample_name}.bam2_informative_reads.bam" "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
+    samtools index "${sampleOutdir}/${sample_name}.bam2_informative_reads.bam"
+	rm "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
+		
+    echo "here merge 09"
+
+    echo "bam files with informative reads are at:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "    ${sampleOutdir}/${sample_name}.bam1_informative_reads.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "    ${sampleOutdir}/${sample_name}.bam2_informative_reads.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+else
+    echo "here merge 07a"
+
+    # No informative reads
+    echo "For ${sample_name}, there are no bam files with informative reads." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+fi
+
+echo "here merge 10"
 
 #############################################################################
 ## Cleanup

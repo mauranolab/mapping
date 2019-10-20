@@ -26,10 +26,16 @@ echo ${outdir}      # "${INTERMEDIATEDIR}/bamintersectPyOut/${BASE1}___${BASE2}"
 ## reads_match=False means that we are looking to pair up read1's with read2's.
 "${src}/bamintersect.py" --bam1 ${bam1} --bam2 ${bam2} --outdir ${TMPDIR} ${reads_match} ${make_csv}
 
+echo out of python
+
 ## See if there is anything in dsgrep_out.csv, which is produced by bamintersect.py
 ## If not, then let TMPDIR die. This reduces the number of merge operations needed in merge_bamintersect.sh
 if [ -s "${TMPDIR}/dsgrep_out.csv" ]; then
+    echo in if blcok
     mkdir "${outdir}"
     mv "${TMPDIR}/dsgrep_out.csv" ${outdir}
+   echo leaving if block
 fi
+
+echo leaving bamintersect.sh
 

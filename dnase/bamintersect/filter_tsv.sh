@@ -50,16 +50,23 @@ echo "${main_chrom} (Exclude_Regions file is $(basename ${genome2exclude})):" >>
 # Get just the hg38/mm10 bed3 part, then sort it:
 cut -f7-9 "${filter_csv_output}" | sort-bed - > "${TMPDIR}/sorted_speciesReadCoords.bed3"
 
+echo "here filter 01"
+
 # The below makes +/- 500 bps regions around each hg38/mm10 read, and merges them when possible. It will return bed3 output.
 bedops --range 500 --merge "${TMPDIR}/sorted_speciesReadCoords.bed3" > "${TMPDIR}/all_regions.bed"
+
+echo "here filter 02"
 
 # Find the gene closest to each region:
 if [ ${bam2genome} = "mm10" ]; then
     closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" /vol/isg/annotation/bed/mm10/gencodev17/GencodevM17.gene.bed > "${TMPDIR}/reads_and_geneNames.bed"
+elif [ ${bam2genome} = "rn6" ]; then
+    closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" /vol/isg/annotation/bed/rn6/ensembl96/Ensemblv96_Rnor.gene.bed > "${TMPDIR}/reads_and_geneNames.bed"
 else
     closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" /vol/isg/annotation/bed/hg38/gencodev25/Gencodev25.gene.bed > "${TMPDIR}/reads_and_geneNames.bed"
 fi
 
+echo "here filter 03"
 
 # Cut out just the gene name column, then look for blank gene names.
 # Sometimes the gene name is blank (like when the region is not one of the usual chr types). 
@@ -102,6 +109,8 @@ AWK_HEREDOC_01
 sort -V -t $'\t' -k 6,6rn -k 1,1 -k 2,2n - |
 grep -v $'\t'1$ - > "${TMPDIR}/short_sorted_table.bed" || true
 
+echo "here filter 04"
+
 # Append the bam1 chromosome name and the short sample name onto the last column.
 IFS='.' read -r -a array <<< "${sample_name}"    # Needed because: sample_name="${sample_name}.${bam1genome}_vs_${bam2genome}"
 short_sample_name="${array[0]}"
@@ -122,12 +131,18 @@ fi
 #####################################################################################
 # Find the number of reads in the deletion range.
 
+echo "here filter 05"
+
 bedops --element-of 1 "${TMPDIR}/sorted_speciesReadCoords.bed3" "${INTERMEDIATEDIR}/deletion_range.bed" > \
                       "${TMPDIR}/del_range_reads_out.bed"
+
+echo "here filter 06"
 
 num_lines=$(wc -l < "${TMPDIR}/del_range_reads_out.bed")
 echo -e "    Number of reads in the Deletion Range:\t${num_lines}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+echo "here filter 07 leaving filter"
 
 #####################################################################################
 #####################################################################################

@@ -381,17 +381,27 @@ if [ "${integrationsite}" != "null" ] && [ "${integrationsite}" != "NA" ]; then
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
     echo "${integrationSiteName} HAs:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
-    grep "${integrationSiteName}_${HA1}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
-    grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/genome1exclude.bed"
-    grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/genome1exclude.bed"
+    if [ -s "${HA_file}" ]; then
+        grep "${integrationSiteName}_${HA1}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+        echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
-    # Get the deletion range coordinates:
-    IFS=$'\t' read chrom HA1_5p HA1_3p all_other <<< "$(head -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
-    IFS=$'\t' read chrom HA2_5p HA2_3p all_other <<< "$(tail -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
-    echo "${chrom}"$'\t'"${HA1_3p}"$'\t'"${HA2_5p}" > "${INTERMEDIATEDIR}/deletion_range.bed"
+        grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/genome1exclude.bed"
+        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/genome1exclude.bed"
+
+        # Get the deletion range coordinates:
+        IFS=$'\t' read chrom HA1_5p HA1_3p all_other <<< "$(head -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
+        IFS=$'\t' read chrom HA2_5p HA2_3p all_other <<< "$(tail -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
+        echo "${chrom}"$'\t'"${HA1_3p}"$'\t'"${HA2_5p}" > "${INTERMEDIATEDIR}/deletion_range.bed"
+    else
+        echo "No HA file exists for integrationsite: ${integrationsite}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+        echo "No HAs are available, and so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+        echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+        touch "${INTERMEDIATEDIR}/genome1exclude.bed"
+        touch "${INTERMEDIATEDIR}/deletion_range.bed"
+    fi
 else
     echo "integrationsite is null/NA" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "No HAs are available, and so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
@@ -434,6 +444,8 @@ export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
 export_vars="${export_vars},integrationsite=${integrationsite}"
 export_vars="${export_vars},bamname1=${bamname1}"
 export_vars="${export_vars},bamname2=${bamname2}"
+export_vars="${export_vars},BAM_E1=${bam1_exclude_flags}"
+export_vars="${export_vars},BAM_E2=${bam2_exclude_flags}"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log ${src}/merge_bamintersect.sh
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
