@@ -94,6 +94,9 @@ Usage: $(basename "$0") [Options]
                  # Output a "counts.txt" table summarizing results (unset), or no table (set).
                  # The default is to have it unset.
 
+           --verbose {no argument}
+                 # Prints out debugging statements
+
            -h,--help    Print this help message.
 
 USAGE
@@ -125,6 +128,7 @@ long_arg_list=(
     reads_match
     do_not_make_csv
     do_not_make_table
+    verbose
     help
 )
 
@@ -163,6 +167,8 @@ eval set -- "$CMD_LINE"
     # Exclude supplementary aligments.
     bam2_exclude_flags="3076"
 
+    verbose=False
+
 
 # Extract options and their arguments into variables.
 while true ; do
@@ -195,6 +201,8 @@ while true ; do
             make_csv="" ; shift 1 ;;
         --do_not_make_table)
             make_table=False ; shift 1 ;;
+        --verbose)
+            verbose=True ; shift 1 ;;
         -h|--help) usage; shift ; exit 0 ;;
         --) shift ; break ;;
         *) echo "getopt internal error!" ; exit 1 ;;
@@ -446,6 +454,7 @@ export_vars="${export_vars},bamname1=${bamname1}"
 export_vars="${export_vars},bamname2=${bamname2}"
 export_vars="${export_vars},BAM_E1=${bam1_exclude_flags}"
 export_vars="${export_vars},BAM_E2=${bam2_exclude_flags}"
+export_vars="${export_vars},verbose=${verbose}"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log ${src}/merge_bamintersect.sh
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
