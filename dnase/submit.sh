@@ -84,7 +84,7 @@ mkdir -p ${src}
 find ${srcbase} -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}
 #Only get bamintersect subdir
 mkdir -p ${src}/bamintersect
-find ${srcbase}/bamintersect -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}/bamintersect
+find ${srcbase}/bamintersect -maxdepth 0 -type d | xargs -I {} cp -pr {} ${src}/bamintersect
 
 
 if [[ "${analysisType}" =~ ^map ]]; then
