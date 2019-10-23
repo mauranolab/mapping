@@ -262,6 +262,8 @@ if (__name__ == '__main__'):
 
     args = parser.parse_args()
 
+    print("[bamintersect.py] Parameters:", args, file=sys.stderr)
+
     bam_intersect_out = bam_intersect_f(args.bam1, args.bam2, args.outdir, args.same, args.make_csv)
     sys.exit(bam_intersect_out[0])
 

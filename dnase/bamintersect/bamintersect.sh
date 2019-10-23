@@ -8,17 +8,9 @@ set -eu -o pipefail
 ## INTERMEDIATEDIR is passed in via an sbatch export ($INTERMEDIATEDIR/sorted_bams contains output of sort_bamintersect.sh)
 ########################################################
 
-echo "SLURM_ARRAY_JOB_ID=$SLURM_ARRAY_JOB_ID"
-echo "SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID"
-echo
-
 ## The "|| true" prevents the SIGPIPE signal problem. It's only needed when set -eo pipefail is enabled.
 bam_intersect_data=$(tail -n+${SLURM_ARRAY_TASK_ID} "${INTERMEDIATEDIR}/sorted_bams/inputs.array_list.txt" | head -n 1) || true
-
 read -r bam1 bam2 outdir <<< ${bam_intersect_data}
-echo ${bam1}
-echo ${bam2}
-echo ${outdir}      # "${INTERMEDIATEDIR}/bamintersectPyOut/${BASE1}___${BASE2}"
 
 ####################################################################################################################
 ## reads_match=True means that we are looking to pair up read1's with read1's, and read2's with read2's.
@@ -32,4 +24,7 @@ if [ -s "${TMPDIR}/dsgrep_out.csv" ]; then
     mkdir "${outdir}"
     mv "${TMPDIR}/dsgrep_out.csv" ${outdir}
 fi
+
+echo "Done!!!"
+date
 
