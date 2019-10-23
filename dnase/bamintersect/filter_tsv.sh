@@ -20,7 +20,7 @@ debug_fa() {
 }
 #####################################################################################
 
-debug_fa echo "main_chrom: ${main_chrom}       TMPDIR is: ${TMPDIR}"
+debug_fa "main_chrom: ${main_chrom}       TMPDIR is: ${TMPDIR}"
 
 filter_csv_output="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed"
 
