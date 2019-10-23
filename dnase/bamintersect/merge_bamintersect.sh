@@ -6,13 +6,13 @@ set -eu -o pipefail
 ## This function implements verbose output for debugging purposes.
 debug_fa() {
     if [ ${verbose} = "True" ]; then
-        echo "${1}"
+        echo "[DEBUG] ${1}"
     fi
 }
 ##########################################################################################################
 ## Merge the bam_intersect output files:
 
-echo "Starting merge_bamintersect.sh"
+debug_fa "Starting merge_bamintersect.sh"
 
 # First check for the "no reads to merge" problem. Also deal with the usual pipefail issue via "true".
 dir_names=($(ls -d ${INTERMEDIATEDIR}/bamintersectPyOut/*/ 2> /dev/null || true))      ## These have a trailing /
@@ -28,8 +28,8 @@ if [ "${numElements}" = "0" ]; then
 
     ## Cleanup
     rm -r ${INTERMEDIATEDIR}
+    echo "Done!!!"
     date
-    echo "Done with merge_bamintersect.sh"
     exit 0
 fi
 
@@ -43,10 +43,7 @@ for i in ${dir_names[@]}; do
     fi
 done
 
-date
-echo Sorting...
 sort-bed "${INTERMEDIATEDIR}/unsorted_dsgrep.bed" > "${sampleOutdir}/${sample_name}.bed"
-date
 
 debug_fa "Finished sorting dsgrep.bed"
 
@@ -114,24 +111,20 @@ cut -f4 "${sampleOutdir}/${sample_name}.informative.bed" > "${INTERMEDIATEDIR}/$
 if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
     debug_fa "${sample_name}.readNames.txt was found"
 
-    samtools view -H ${bamname1} > "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.sam"
-    samtools view -F ${BAM_E1} ${bamname1} | "${src}/subsetBAM.py" "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" >> "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.sam"
-    samtools view -b "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.sam" > "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
+    "${src}/subsetBAM.py" --flags ${BAM_E1} --readNames "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" --bamFile_in ${bamname1} --bamFile_out "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
     samtools sort -o "${sampleOutdir}/${sample_name}.bam1_informative_reads.bam" "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
     samtools index "${sampleOutdir}/${sample_name}.bam1_informative_reads.bam"
 	rm "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
 	
     debug_fa "Completed samtools lines for bam1"
-
-    samtools view -H ${bamname2} > "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.sam"
-    samtools view -F ${BAM_E2} ${bamname2} | "${src}/subsetBAM.py" "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" >> "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.sam"
-    samtools view -b "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.sam" > "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
+	
+    "${src}/subsetBAM.py" --flags ${BAM_E2} --readNames "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" --bamFile_in ${bamname2} --bamFile_out "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
     samtools sort -o "${sampleOutdir}/${sample_name}.bam2_informative_reads.bam" "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
     samtools index "${sampleOutdir}/${sample_name}.bam2_informative_reads.bam"
 	rm "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
 		
     debug_fa "Completed samtools lines for bam2"
-
+	
     echo "bam files with informative reads are at:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "    ${sampleOutdir}/${sample_name}.bam1_informative_reads.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "    ${sampleOutdir}/${sample_name}.bam2_informative_reads.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
@@ -152,6 +145,6 @@ debug_fa "Done with the samtools section."
 rm -r ${INTERMEDIATEDIR}
 #############################################################################
 
+echo "Done!!!"
 date
-echo "Leaving merge_bamintersect.sh"
 

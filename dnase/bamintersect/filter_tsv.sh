@@ -15,12 +15,12 @@ verbose=$9
 ## This function implements verbose output for debugging purposes.
 debug_fa() {
     if [ ${verbose} = "True" ]; then
-        echo "${1}"
+        echo "[DEBUG] ${1}"
     fi
 }
 #####################################################################################
 
-echo "main_chrom: ${main_chrom}       TMPDIR is: ${TMPDIR}"
+debug_fa echo "main_chrom: ${main_chrom}       TMPDIR is: ${TMPDIR}"
 
 filter_csv_output="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed"
 
@@ -144,7 +144,8 @@ num_lines=$(wc -l < "${TMPDIR}/del_range_reads_out.bed")
 echo -e "    Number of reads in the Deletion Range:\t${num_lines}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
-echo "Leaving filter_tsv"
+echo "Done!!!"
+date
 
 #####################################################################################
 #####################################################################################
