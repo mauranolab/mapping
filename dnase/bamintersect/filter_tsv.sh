@@ -9,10 +9,18 @@ main_chrom=$5
 INTERMEDIATEDIR=$6
 integrationsite=$7
 counts_type=$8
-
-echo "main_chrom: ${main_chrom}       TMPDIR is: ${TMPDIR}"
+verbose=$9
 
 #####################################################################################
+## This function implements verbose output for debugging purposes.
+debug_fa() {
+    if [ ${verbose} = "True" ]; then
+        echo "[DEBUG] ${1}"
+    fi
+}
+#####################################################################################
+
+debug_fa "main_chrom: ${main_chrom}       TMPDIR is: ${TMPDIR}"
 
 filter_csv_output="${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed"
 
@@ -50,16 +58,23 @@ echo "${main_chrom} (Exclude_Regions file is $(basename ${genome2exclude})):" >>
 # Get just the hg38/mm10 bed3 part, then sort it:
 cut -f7-9 "${filter_csv_output}" | sort-bed - > "${TMPDIR}/sorted_speciesReadCoords.bed3"
 
+debug_fa "Making 500 bps ranges with bedops."
+
 # The below makes +/- 500 bps regions around each hg38/mm10 read, and merges them when possible. It will return bed3 output.
 bedops --range 500 --merge "${TMPDIR}/sorted_speciesReadCoords.bed3" > "${TMPDIR}/all_regions.bed"
+
+debug_fa "Starting call to closest-features"
 
 # Find the gene closest to each region:
 if [ ${bam2genome} = "mm10" ]; then
     closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" /vol/isg/annotation/bed/mm10/gencodev17/GencodevM17.gene.bed > "${TMPDIR}/reads_and_geneNames.bed"
+elif [ ${bam2genome} = "rn6" ]; then
+    closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" /vol/isg/annotation/bed/rn6/ensembl96/Ensemblv96_Rnor.gene.bed > "${TMPDIR}/reads_and_geneNames.bed"
 else
     closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" /vol/isg/annotation/bed/hg38/gencodev25/Gencodev25.gene.bed > "${TMPDIR}/reads_and_geneNames.bed"
 fi
 
+debug_fa "closest-features complete."
 
 # Cut out just the gene name column, then look for blank gene names.
 # Sometimes the gene name is blank (like when the region is not one of the usual chr types). 
@@ -102,8 +117,10 @@ AWK_HEREDOC_01
 sort -V -t $'\t' -k 6,6rn -k 1,1 -k 2,2n - |
 grep -v $'\t'1$ - > "${TMPDIR}/short_sorted_table.bed" || true
 
-# Append the bam1 chromosome name onto the last column.
-sed "s/$/\t${main_chrom}/" "${TMPDIR}/short_sorted_table.bed" > "${TMPDIR}/short_sorted_table_chromName.bed"
+# Append the bam1 chromosome name and the short sample name onto the last column.
+IFS='.' read -r -a array <<< "${sample_name}"    # Needed because: sample_name="${sample_name}.${bam1genome}_vs_${bam2genome}"
+short_sample_name="${array[0]}"
+sed "s/$/\t${main_chrom}\t${short_sample_name}/" "${TMPDIR}/short_sorted_table.bed" > "${TMPDIR}/short_sorted_table_chromName.bed"
 
 # Dump data into main output file.
 if [ ${counts_type} = "all_reads_counts" ];then
@@ -126,6 +143,9 @@ bedops --element-of 1 "${TMPDIR}/sorted_speciesReadCoords.bed3" "${INTERMEDIATED
 num_lines=$(wc -l < "${TMPDIR}/del_range_reads_out.bed")
 echo -e "    Number of reads in the Deletion Range:\t${num_lines}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+echo "Done!!!"
+date
 
 #####################################################################################
 #####################################################################################

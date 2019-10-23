@@ -14,8 +14,6 @@ else
     input_to_samtools=${chrom}
 fi
 
-echo Starting to sort chrom: ${chrom}
-
 BAM_OUT="${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${chrom}.${BAM_N}.bam"
 
 ## Replace pipes with spaces.
@@ -47,5 +45,6 @@ java -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -Dpicard.useLegacyParser=false 
      -QUIET=true \
      -SORT_ORDER=queryname
 
-echo "Done with ${chrom}"
+echo "Done!!!"
+date
 
