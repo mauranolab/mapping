@@ -80,12 +80,11 @@ mkdir -p ${sampleOutdir}
 srcbase="/vol/mauranolab/mapped/src/dnase"
 src=`pwd`/${sampleOutdir}/.src
 mkdir -p ${src}
+#Avoid slowing things down by copying just the files in the base directory (i.e. not the trackhub directory)
 #use cp -p to preserve timestamps
 find ${srcbase} -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}
-#Only get bamintersect subdir
-mkdir -p ${src}/bamintersect
-find ${srcbase}/bamintersect -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}/bamintersect
-
+#Only subdir we need is bamintersect
+cp -rp ${srcbase}/bamintersect ${src}
 
 if [[ "${analysisType}" =~ ^map ]]; then
     grep ${BS} inputs.txt > ${sampleOutdir}/inputs.map.txt
