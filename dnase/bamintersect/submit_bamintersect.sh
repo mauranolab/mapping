@@ -4,6 +4,13 @@
 
 set -eu -o pipefail
 
+shopt -s expand_aliases
+alias bedops='bedops --ec --header'
+alias bedmap='bedmap --ec --header --sweep-all'
+#alias starch='starch --header'
+alias closest-features='closest-features --header'
+
+
 ############################################################
 # Where is this file located? We use this info to find and set other resources.
 #
@@ -244,7 +251,7 @@ mkdir ${INTERMEDIATEDIR}/sorted_bams
 ########################################################
 # Make the chromosome lists which will eventually drive the array jobs.
 
-samtools idxstats ${bamname1} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/${sample_name}.chrom_list1"
+samtools idxstats ${bamname1} | awk -F "\t" '$1 != "*" {print $1}' > "${sampleOutdir}/log/${sample_name}.chrom_list1"
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1")
 
 if [ "${num_lines}" -ge "5" ]; then

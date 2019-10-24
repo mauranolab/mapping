@@ -1,8 +1,12 @@
 #!/bin/bash
 set -eu -o pipefail
 
-## Variables are passed in via sbatch export.
-##########################################################################################################
+shopt -s expand_aliases
+alias bedops='bedops --ec --header'
+alias bedmap='bedmap --ec --header --sweep-all'
+#alias starch='starch --header'
+alias closest-features='closest-features --header'
+
 ## This function implements verbose output for debugging purposes.
 debug_fa() {
     if [ ${verbose} = "True" ]; then
@@ -10,6 +14,10 @@ debug_fa() {
     fi
 }
 ##########################################################################################################
+
+
+## Variables are passed in via sbatch export.
+
 ## Merge the bam_intersect output files:
 
 debug_fa "Starting merge_bamintersect.sh"
@@ -80,14 +88,12 @@ while read main_chrom ; do
     echo "Working on:  ${main_chrom}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
     echo "Running filter_tsv without filters." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "NA" ${main_chrom} ${INTERMEDIATEDIR} ${integrationsite} \
-                         all_reads_counts ${verbose}
+    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "NA" ${main_chrom} ${INTERMEDIATEDIR} ${integrationsite} all_reads_counts ${verbose}
 
     debug_fa "Completed filter_tsv for all_reads_counts"
 
     echo "Running filter_tsv with HA filters (if any) and with the Exclude Regions file (which may be empty)." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} ${genome2exclude} ${main_chrom} \
-                         ${INTERMEDIATEDIR} ${integrationsite} informative_reads_counts ${verbose}
+    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} ${genome2exclude} ${main_chrom} ${INTERMEDIATEDIR} ${integrationsite} informative_reads_counts ${verbose}
 
     debug_fa "Completed filter_tsv for informative_reads_counts"
 
