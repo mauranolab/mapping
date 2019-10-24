@@ -6,7 +6,8 @@ set -eu -o pipefail
 ########################################################
 
 ## The "|| true" prevents the SIGPIPE signal problem. It's only needed when set -eo pipefail is enabled.
-chrom=$(tail -n+${SLURM_ARRAY_TASK_ID} "${sampleOutdir}/log/${sample_name}.chrom_list${BAM_N}_simple" | head -n 1) || true
+jobid=$SLURM_ARRAY_TASK_ID
+chrom=`awk -v jobid=$jobid 'NR==jobid' ${sampleOutdir}/log/${sample_name}.chrom_list${BAM_N}_simple`
 
 if [ ${chrom} = "all_other" ]; then
     input_to_samtools=${input_to_samtools2}
