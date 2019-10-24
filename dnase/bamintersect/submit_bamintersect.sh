@@ -412,9 +412,9 @@ else
     touch "${INTERMEDIATEDIR}/deletion_range.bed"
 fi
 
-if [ ! -f ${genome2exclude} ]; then
-    touch "${INTERMEDIATEDIR}/empty_file.bed"
-    genome2exclude="${INTERMEDIATEDIR}/empty_file.bed"
+if [[ "${genome2exclude}" != "NA" ]] && [ ! -f "${genome2exclude}" ]; then
+    echo "WARNING: Can't find ${genome2exclude}; will run without region mask";
+    genome2exclude="NA"
 fi
 echo "The Exclude Regions file is: $(basename ${genome2exclude})  [${genome2exclude}]" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
