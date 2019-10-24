@@ -83,8 +83,7 @@ mkdir -p ${src}
 #use cp -p to preserve timestamps
 find ${srcbase} -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}
 #Only get bamintersect subdir
-mkdir -p ${src}/bamintersect
-find ${srcbase}/bamintersect -maxdepth 0 -type d | xargs -I {} cp -pr {} ${src}/bamintersect
+find ${srcbase}/bamintersect -maxdepth 0 -type d | xargs -I {} cp -pr {} ${src}
 
 
 if [[ "${analysisType}" =~ ^map ]]; then
