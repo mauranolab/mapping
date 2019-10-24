@@ -42,9 +42,9 @@ else
     # 4) Now put the surviving bam1 reads back on the left hand side,
     # 5) and sort.
 
-    bedops --not-element-of 1 "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" "${genome2exclude}" | \
+    bedops -n 1 "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed" "${genome2exclude}" | \
     awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
-    sort-bed - | bedops --not-element-of 1 - "${INTERMEDIATEDIR}/genome1exclude.bed" | \
+    sort-bed - | bedops -n 1 - "${INTERMEDIATEDIR}/genome1exclude.bed" | \
     awk 'BEGIN {OFS="\t"} ; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
     sort-bed - > "${filter_csv_output}"
 fi
@@ -61,18 +61,27 @@ cut -f7-9 "${filter_csv_output}" | sort-bed - > "${TMPDIR}/sorted_speciesReadCoo
 debug_fa "Making 500 bps ranges with bedops."
 
 # The below makes +/- 500 bps regions around each hg38/mm10 read, and merges them when possible. It will return bed3 output.
-bedops --range 500 --merge "${TMPDIR}/sorted_speciesReadCoords.bed3" > "${TMPDIR}/all_regions.bed"
+bedops --range 500 -m "${TMPDIR}/sorted_speciesReadCoords.bed3" > "${TMPDIR}/all_regions.bed"
 
 debug_fa "Starting call to closest-features"
 
 # Find the gene closest to each region:
-if [ ${bam2genome} = "mm10" ]; then
-    closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" /vol/isg/annotation/bed/mm10/gencodev17/GencodevM17.gene.bed > "${TMPDIR}/reads_and_geneNames.bed"
-elif [ ${bam2genome} = "rn6" ]; then
-    closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" /vol/isg/annotation/bed/rn6/ensembl96/Ensemblv96_Rnor.gene.bed > "${TMPDIR}/reads_and_geneNames.bed"
-else
-    closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" /vol/isg/annotation/bed/hg38/gencodev25/Gencodev25.gene.bed > "${TMPDIR}/reads_and_geneNames.bed"
-fi
+case "${bam2genome}" in
+mm10)
+    geneAnnotationFile=/vol/isg/annotation/bed/mm10/gencodev17/GencodevM17.gene.bed
+    ;;
+rn6)
+    geneAnnotationFile=/vol/isg/annotation/bed/rn6/ensembl96/Ensemblv96_Rnor.gene.bed
+    ;;
+hg38)
+    geneAnnotationFile=/vol/isg/annotation/bed/hg38/gencodev25/Gencodev25.gene.bed
+    ;;
+*)
+    echo "ERROR: Don't recognize genome ${bam2genome}";
+    exit 1;;
+esac
+closest-features --delim "\t" --closest "${TMPDIR}/all_regions.bed" ${geneAnnotationFile} > "${TMPDIR}/reads_and_geneNames.bed"
+
 
 debug_fa "closest-features complete."
 

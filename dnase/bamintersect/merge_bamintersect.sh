@@ -75,7 +75,7 @@ debug_fa "Starting the main_chrom while loop"
 while read main_chrom ; do
     debug_fa "Top of the main_chrom while loop"
 
-    bedops --chrom ${main_chrom} --everything "${sampleOutdir}/${sample_name}.bed" > "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed"
+    bedops --chrom ${main_chrom} -u "${sampleOutdir}/${sample_name}.bed" > "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed"
 
     echo "Working on:  ${main_chrom}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
