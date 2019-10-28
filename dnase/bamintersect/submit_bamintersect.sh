@@ -63,6 +63,10 @@ Usage: $(basename "$0") [Options]
      --outdir {outdir} output directory
 
   Optional Options:
+          --max_mismatches {The max number of mismatches a read is allowed to have vs the reference. The value is in the read's NM tag.}
+
+          --ReqFullyAligned {If set, required reads to be fully aligned. Default = Not set}
+
           --bam1_keep_flags {a sam format flag value required of all bam1 reads to be 
                              included in the analysis. Default = 9}
                             
@@ -131,6 +135,8 @@ long_arg_list=(
     bam2genome:
     bam2_keep_flags:
     bam2_exclude_flags:
+    max_mismatches:
+    ReqFullyAligned
     reads_match
     do_not_make_csv
     do_not_make_table
@@ -175,6 +181,9 @@ eval set -- "$CMD_LINE"
 
     verbose=False
 
+    max_mismatches=0
+    ReqFullyAligned=""
+
 
 # Extract options and their arguments into variables.
 while true ; do
@@ -201,6 +210,10 @@ while true ; do
             bam2_keep_flags=$2 ; shift 2 ;;
         --bam2_exclude_flags)
             bam2_exclude_flags=$2 ; shift 2 ;;
+        --max_mismatches)
+            max_mismatches=$2 ; shift 2 ;;
+        --ReqFullyAligned)
+            ReqFullyAligned="--ReqFullyAligned" ; shift 1 ;;
         --reads_match)
             reads_match="--same" ; shift 1 ;;
         --do_not_make_csv)
@@ -372,6 +385,8 @@ export_vars="src=${src}"
 export_vars="${export_vars},reads_match=${reads_match}"
 export_vars="${export_vars},make_csv=${make_csv}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
+export_vars="${export_vars},max_mismatches=${max_mismatches}"
+export_vars="${export_vars},ReqFullyAligned=${ReqFullyAligned}"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` --export=ALL,${export_vars} -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${array_size} ${src}/bamintersect.sh > ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
 rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
