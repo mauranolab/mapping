@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eu -o pipefail
 
+#NB submit.sh must be called with a full path so we can infer srcbase
+
 #Limit thread usage by python processes using OPENBLAS (esp. scipy). Set here and will be inherited by spawned jobs
 #https://stackoverflow.com/questions/51256738/multiple-instances-of-python-running-simultaneously-limited-to-35
 export OPENBLAS_NUM_THREADS=1
@@ -77,7 +79,7 @@ name=`basename ${sampleOutdir}`
 mkdir -p ${sampleOutdir}
 
 #Run the job from a local copy of the pipeline for archival and to prevent contention issues if the main tree is modified mid-job
-srcbase="/vol/mauranolab/mapped/src/dnase"
+srcbase=$( dirname "${BASH_SOURCE[0]}" )
 src=`pwd`/${sampleOutdir}/.src
 mkdir -p ${src}
 #Avoid slowing things down by copying just the files in the base directory (i.e. not the trackhub directory)
