@@ -65,7 +65,7 @@ Usage: $(basename "$0") [Options]
   Optional Options:
           --max_mismatches {The max number of mismatches a read is allowed to have vs the reference. The value is in the read's NM tag.}
 
-          --ReqFullyAligned {If set, required reads to be fully aligned. Default = Not set}
+          --noReqFullyAligned {If set, the default requirement that reads must be fully aligned is disabled. Default = Not set}
 
           --bam1_keep_flags {a sam format flag value required of all bam1 reads to be 
                              included in the analysis. Default = 9}
@@ -136,7 +136,7 @@ long_arg_list=(
     bam2_keep_flags:
     bam2_exclude_flags:
     max_mismatches:
-    ReqFullyAligned
+    noReqFullyAligned
     reads_match
     do_not_make_csv
     do_not_make_table
@@ -182,7 +182,7 @@ eval set -- "$CMD_LINE"
     verbose=False
 
     max_mismatches=0
-    ReqFullyAligned=""
+    ReqFullyAligned="--ReqFullyAligned"
 
 
 # Extract options and their arguments into variables.
@@ -212,8 +212,8 @@ while true ; do
             bam2_exclude_flags=$2 ; shift 2 ;;
         --max_mismatches)
             max_mismatches=$2 ; shift 2 ;;
-        --ReqFullyAligned)
-            ReqFullyAligned="--ReqFullyAligned" ; shift 1 ;;
+        --noReqFullyAligned)
+            ReqFullyAligned="" ; shift 1 ;;
         --reads_match)
             reads_match="--same" ; shift 1 ;;
         --do_not_make_csv)

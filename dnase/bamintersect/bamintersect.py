@@ -148,7 +148,10 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv, max_mismatches
         file1_read = next(file1_file)  # Reads lines in file1_file in same order as they are in the file.
         file1_readID = file1_read.query_name
     except:
-        return [3]
+        # It has happened that the "LP backbone" has no mapped reads, for which returning an error here causes 
+        # a "set -e" exception in the calling bash script, even if the "LP" chromosome is OK. So don't return an error here either.
+        # return [3]
+        return [0]
 
     try:
         # Returns an exception when the number of mapped reads for the chromosome is zero.
