@@ -117,23 +117,38 @@ cut -f4 "${sampleOutdir}/${sample_name}.informative.bed" > "${INTERMEDIATEDIR}/$
 if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
     debug_fa "${sample_name}.readNames.txt was found"
 
+    # sample_name is in the form of:    sample_name=zzzzz.xxx_vs_yyy
+    #                                              =<sample>.<first genome>_vs_<second genome>
+    #
+    two_genomes=${sample_name##*.}                        # = xxx_vs_yyy
+    second_genome=${two_genomes##*_}                      # = yyy
+    first_genome=${two_genomes%"_vs_${second_genome}"}    # = xxx 
+
     "${src}/subsetBAM.py" --flags ${BAM_E1} --readNames "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" --bamFile_in ${bamname1} --bamFile_out "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
-    samtools sort -o "${sampleOutdir}/${sample_name}.bam1_informative_reads.bam" "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
-    samtools index "${sampleOutdir}/${sample_name}.bam1_informative_reads.bam"
+    samtools sort -o "${sampleOutdir}/${sample_name}.informative.${first_genome}.bam" "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
+    samtools index "${sampleOutdir}/${sample_name}.informative.${first_genome}.bam"
 	rm "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
 	
     debug_fa "Completed samtools lines for bam1"
 	
     "${src}/subsetBAM.py" --flags ${BAM_E2} --readNames "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" --bamFile_in ${bamname2} --bamFile_out "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
-    samtools sort -o "${sampleOutdir}/${sample_name}.bam2_informative_reads.bam" "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
-    samtools index "${sampleOutdir}/${sample_name}.bam2_informative_reads.bam"
+    samtools sort -o "${sampleOutdir}/${sample_name}.informative.${second_genome}.bam" "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
+    samtools index "${sampleOutdir}/${sample_name}.informative.${second_genome}.bam"
 	rm "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
 		
     debug_fa "Completed samtools lines for bam2"
 	
-    echo "bam files with informative reads are at:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    echo "    ${sampleOutdir}/${sample_name}.bam1_informative_reads.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    echo "    ${sampleOutdir}/${sample_name}.bam2_informative_reads.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+    echo "Paths for custom tracks to bam files with informative reads:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    full_path_to_FC_directory=$(pwd)
+    URL="https://cegs@cascade.isg.med.nyu.edu$(echo ${full_path_to_FC_directory} | sed -e "s/\/vol//")/${sampleOutdir}/${sample_name}.informative.${first_genome}.bam"
+    echo "track type=bam name=\"${sample_name}.${first_genome}\" description=\"${first_genome} Informative reads\" bigDataUrl=${URL}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+    echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    URL="https://cegs@cascade.isg.med.nyu.edu$(echo ${full_path_to_FC_directory} | sed -e "s/\/vol//")/${sampleOutdir}/${sample_name}.informative.${second_genome}.bam"
+    echo "track type=bam name=\"${sample_name}.${second_genome}\" description=\"${second_genome} Informative reads\" bigDataUrl=${URL}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 else
