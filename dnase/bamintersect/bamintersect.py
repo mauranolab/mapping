@@ -4,6 +4,7 @@ import sys
 import argparse
 import pysam
 import csv
+import re
 
 
 def reads_match(fileA_read, fileB_read, same):
@@ -18,6 +19,29 @@ def reads_match(fileA_read, fileB_read, same):
             return True
         else:
             return False
+
+
+def OK_to_write(max_mismatches, ReqFullyAligned, file1_read, file2_read):
+
+    # Before writing the read info to output, make sure they are both exact matches to the reference.
+    tags = dict(file1_read.tags)
+    if (tags.get('NM') > max_mismatches):
+        return False
+    
+    tags = dict(file2_read.tags)
+    if (tags.get('NM') > max_mismatches):
+        return False
+
+
+    if ReqFullyAligned:
+        # Before writing the read info to output, make sure they are both fully aligned.
+        if re.search('[HSPDI]', file1_read.cigarstring) is not None:
+            return False
+
+        if re.search('[HSPDI]', file2_read.cigarstring) is not None:
+            return False
+
+    return True
 
 
 def write_to_csv(dsgrep_writer, file1_file, file2_file, file1_read, file2_read, make_csv, bam_out1, bam_out2):
@@ -73,7 +97,7 @@ def write_to_csv(dsgrep_writer, file1_file, file2_file, file1_read, file2_read, 
                            [file2_readID] + [read_flag_2] + [strand_2] )
 
 
-def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv):
+def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv, max_mismatches, ReqFullyAligned):
 
     # Get iterator handles for bam input files #1 and #2.
     try:
@@ -124,7 +148,10 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv):
         file1_read = next(file1_file)  # Reads lines in file1_file in same order as they are in the file.
         file1_readID = file1_read.query_name
     except:
-        return [3]
+        # It has happened that the "LP backbone" has no mapped reads, for which returning an error here causes 
+        # a "set -e" exception in the calling bash script, even if the "LP" chromosome is OK. So don't return an error here either.
+        # return [3]
+        return [0]
 
     try:
         # Returns an exception when the number of mapped reads for the chromosome is zero.
@@ -164,7 +191,8 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv):
             elif file1_readID == file2_readID:
                 if reads_match(file1_read, file2_read, same):
                     # Found a match. Print, then get new file1 and file2 reads.
-                    write_to_csv(dsgrep_writer, file1_file, file2_file, file1_read, file2_read, make_csv, bam_out1, bam_out2)
+                    if OK_to_write(max_mismatches, ReqFullyAligned, file1_read, file2_read):
+                        write_to_csv(dsgrep_writer, file1_file, file2_file, file1_read, file2_read, make_csv, bam_out1, bam_out2)
 
                     try: file1_read = next(file1_file)
                     except: break  # All done
@@ -198,7 +226,8 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv):
                         # We were able to get a new read from file1, and it matches the previous file1 readID.
                         # Let's see if it has the desired read1/read2 value.
                         if reads_match(file1_read, old_file2_read, same):
-                            write_to_csv(dsgrep_writer, file1_file, file2_file, file1_read, old_file2_read, make_csv, bam_out1, bam_out2)
+                            if OK_to_write(max_mismatches, ReqFullyAligned, file1_read, file2_read):
+                                write_to_csv(dsgrep_writer, file1_file, file2_file, file1_read, old_file2_read, make_csv, bam_out1, bam_out2)
 
                             # It did, and we wrote the reads to the csv file.
                             # Now get a new read for the next cycle of the while loop.
@@ -213,7 +242,8 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv):
                         # We were able to get a new read from file2, and it matches the previous file2 readID.
                         # Let's see if it has the desired read1/read2 value.
                         if reads_match(old_file1_read, file2_read, same):
-                            write_to_csv(dsgrep_writer, file1_file, file2_file, old_file1_read, file2_read, make_csv, bam_out1, bam_out2)
+                            if OK_to_write(max_mismatches, ReqFullyAligned, file1_read, file2_read):
+                                write_to_csv(dsgrep_writer, file1_file, file2_file, old_file1_read, file2_read, make_csv, bam_out1, bam_out2)
 
                             # It did, and we wrote the reads to the csv file.
                             # Now get a new read for the next cycle of the while loop.
@@ -260,10 +290,14 @@ if (__name__ == '__main__'):
     # Do we want to make the 12 column bed file, or 2 bam files?
     parser.add_argument('--make_csv', action='store_true', help='True if output should be the 12 column bed file. False if we want the 2 bam files')
 
+    parser.add_argument('--max_mismatches', action='store', type=int, help='Maximum number of mismatches a read is allowed to have. The number of mismatches is the value of the read NM tag')
+
+    parser.add_argument('--ReqFullyAligned', action='store_true', help='If set, require reads to be fully aligned.')
+
     args = parser.parse_args()
 
     print("[bamintersect.py] Parameters:", args, file=sys.stderr)
 
-    bam_intersect_out = bam_intersect_f(args.bam1, args.bam2, args.outdir, args.same, args.make_csv)
+    bam_intersect_out = bam_intersect_f(args.bam1, args.bam2, args.outdir, args.same, args.make_csv, args.max_mismatches, args.ReqFullyAligned)
     sys.exit(bam_intersect_out[0])
 
