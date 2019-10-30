@@ -128,22 +128,24 @@ if [ ${runBamIntersect} -eq 1 ]; then
     mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0!~/^cegsvectors_/'`
     cegsGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0~/^cegsvectors_/'`
     for mammalianGenome in ${mammalianGenomes}; do
+        #Same as genomeinfo.sh
+        mammalianAnnotationGenome=`echo ${mammalianGenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
         for cegsGenome in ${cegsGenomes}; do
             cegsGenomeShort="${cegsGenome/cegsvectors_/}"
             #Limit this to references listed as genetic modifications
             if [[ ${sampleAnnotationGeneticModification} =~ ${cegsGenomeShort} ]]; then
                 #Parse each genetic modification on separate line, and move part in [] to $2
                 integrationsite=`echo "${sampleAnnotationGeneticModification}" | perl -pe 's/,/\n/g;' | perl -pe 's/\[/\t/g;' -e 's/\]/\t/g;' | awk -v genome=${cegsGenomeShort} -F "\t" '$1==genome {print $2}'`
-                echo "${cegsGenomeShort}[${integrationsite}] vs. ${mammalianGenome} bamintersect"
+                echo "${cegsGenomeShort}[${integrationsite}] vs. ${mammalianAnnotationGenome} bamintersect"
                 
                 if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
-                    bamIntersectHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${name}.${mammalianGenome} ${sampleOutdir}/sgeid.merge.${name}.${cegsGenome} | perl -pe 's/\n/,/g;'`"
+                    bamIntersectHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${name}.${mammalianAnnotationGenome} ${sampleOutdir}/sgeid.merge.${name}.${cegsGenome} | perl -pe 's/\n/,/g;'`"
                 else
                     bamIntersectHold=""
                 fi
                 
                 mkdir -p ${sampleOutdir}/bamintersect/log
-                qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${bamIntersectHold} -o ${sampleOutdir}/bamintersect/log -N submit_bamintersect.${name}.${cegsGenomeShort}_vs_${mammalianGenome} "${src}/bamintersect/submit_bamintersect.sh --sample_name ${name} --outdir ${sampleOutdir}/bamintersect --bam1 ${sampleOutdir}/${name}.${cegsGenome}.bam --bam1genome ${cegsGenomeShort} --bam2 ${sampleOutdir}/${name}.${mammalianGenome}.bam --bam2genome ${mammalianGenome} --integrationsite ${integrationsite}" > /dev/null
+                qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${bamIntersectHold} -o ${sampleOutdir}/bamintersect/log -N submit_bamintersect.${name}.${cegsGenomeShort}_vs_${mammalianAnnotationGenome} "${src}/bamintersect/submit_bamintersect.sh --sample_name ${name} --outdir ${sampleOutdir}/bamintersect --bam1 ${sampleOutdir}/${name}.${cegsGenome}.bam --bam1genome ${cegsGenomeShort} --bam2 ${sampleOutdir}/${name}.${mammalianGenome}.bam --bam2genome ${mammalianAnnotationGenome} --integrationsite ${integrationsite}" > /dev/null
             fi
         done
     done
