@@ -57,9 +57,9 @@ Usage: $(basename "$0") [Options]
      --sample_name {sample name}
      --integrationsite {sitename_HA#1_HA#2   sitename is like HPRT1. HA#s refer to numbers in the HomologyArms.bed file}
      --bam1 {full path to bam file #1}
-     --bam1genome {something like LP123, mm10, or hg38. Others are valid as well.}
+     --bam1genome [ LP123, mm10, hg38, rn6, ... ] Mammalian genomes should be the annotationgenome name (hg38, not hg38_full)
      --bam2 {full path to bam file #2}
-     --bam2genome {something like LP123, mm10, or hg38. Others are valid as well.}
+     --bam2genome [ LP123, mm10, hg38, rn6, ... ] Mammalian genomes should be the annotationgenome name (hg38, not hg38_full)
      --outdir {outdir} output directory
 
   Optional Options:

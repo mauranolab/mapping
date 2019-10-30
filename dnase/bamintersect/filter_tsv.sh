@@ -75,7 +75,7 @@ mm10)
 rn6)
     geneAnnotationFile=/vol/isg/annotation/bed/rn6/ensembl96/Ensemblv96_Rnor.gene.bed
     ;;
-hg38_noalt|hg38_full)
+hg38)
     geneAnnotationFile=/vol/isg/annotation/bed/hg38/gencodev31/Gencodev31.gene.bed
     ;;
 *)
