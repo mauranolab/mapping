@@ -117,23 +117,16 @@ cut -f4 "${sampleOutdir}/${sample_name}.informative.bed" > "${INTERMEDIATEDIR}/$
 if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
     debug_fa "${sample_name}.readNames.txt was found"
 
-    # sample_name is in the form of:    sample_name=zzzzz.xxx_vs_yyy
-    #                                              =<sample>.<first genome>_vs_<second genome>
-    #
-    two_genomes=${sample_name##*.}                        # = xxx_vs_yyy
-    second_genome=${two_genomes##*_}                      # = yyy
-    first_genome=${two_genomes%"_vs_${second_genome}"}    # = xxx 
-
     "${src}/subsetBAM.py" --flags ${BAM_E1} --readNames "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" --bamFile_in ${bamname1} --bamFile_out "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
-    samtools sort -o "${sampleOutdir}/${sample_name}.informative.${first_genome}.bam" "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
-    samtools index "${sampleOutdir}/${sample_name}.informative.${first_genome}.bam"
+    samtools sort -o "${sampleOutdir}/${sample_name}.informative.${bam1genome}.bam" "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
+    samtools index "${sampleOutdir}/${sample_name}.informative.${bam1genome}.bam"
 	rm "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
 	
     debug_fa "Completed samtools lines for bam1"
 	
     "${src}/subsetBAM.py" --flags ${BAM_E2} --readNames "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" --bamFile_in ${bamname2} --bamFile_out "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
-    samtools sort -o "${sampleOutdir}/${sample_name}.informative.${second_genome}.bam" "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
-    samtools index "${sampleOutdir}/${sample_name}.informative.${second_genome}.bam"
+    samtools sort -o "${sampleOutdir}/${sample_name}.informative.${bam2genome}.bam" "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
+    samtools index "${sampleOutdir}/${sample_name}.informative.${bam2genome}.bam"
 	rm "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
 		
     debug_fa "Completed samtools lines for bam2"
@@ -141,13 +134,29 @@ if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
     echo "Paths for custom tracks to bam files with informative reads:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    full_path_to_FC_directory=$(pwd)
-    URL="https://cegs@cascade.isg.med.nyu.edu$(echo ${full_path_to_FC_directory} | sed -e "s/\/vol//")/${sampleOutdir}/${sample_name}.informative.${first_genome}.bam"
-    echo "track type=bam name=\"${sample_name}.${first_genome}\" description=\"${first_genome} Informative reads\" bigDataUrl=${URL}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+    #Prep for UCSC track links
+    #Remove "new" from the end of path so that we can reprocess data without affecting live data
+    projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab|isg\/encode)\///g;' | perl -pe 's/\/new$//g;'`
+    if [[ `pwd` =~ ^\/vol\/cegs\/ ]]; then
+        UCSCbase="bigDataUrl=https://cegs@cascade.isg.med.nyu.edu/cegs/${projectdir}/${sampleOutdir}"
+    elif [[ `pwd` =~ ^\/vol\/isg\/encode\/ ]]; then
+        UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/${projectdir}/${sampleOutdir}"
+    else
+        UCSCbase="bigDataUrl=https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/${projectdir}/${sampleOutdir}"
+    fi
+
+#   Need to get this working ???
+#    if [[ "${annotationgenome}" != "cegsvectors" ]]; then
+#        #db parameter does not work for track hub assemblies
+#        UCSCbase="db=${annotationgenome} ${UCSCbase}"
+#    fi
+
+    echo "track name=\"${sample_name}.${bam1genome}-reads\" description=\"${sample_name}.${bam1genome} Reads\" visibility=dense visibility=pack pairEndsByName=T maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.${bam1genome}.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    URL="https://cegs@cascade.isg.med.nyu.edu$(echo ${full_path_to_FC_directory} | sed -e "s/\/vol//")/${sampleOutdir}/${sample_name}.informative.${second_genome}.bam"
-    echo "track type=bam name=\"${sample_name}.${second_genome}\" description=\"${second_genome} Informative reads\" bigDataUrl=${URL}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+    echo "track name=\"${sample_name}.${bam2genome}-reads\" description=\"${sample_name}.${bam2genome} Reads\" visibility=dense visibility=pack pairEndsByName=T maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.${bam2genome}.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
