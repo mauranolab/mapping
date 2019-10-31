@@ -24,8 +24,18 @@ args = parser.parse_args()
 with open(args.readNames, 'r') as readNameFile:
     readNameSet = set(readName.rstrip('\r\n') for readName in readNameFile)
 
+# Open the existing bam file.
 bamFile_in = pysam.AlignmentFile(args.bamFile_in, "rb")
-bamFile_out = pysam.AlignmentFile(args.bamFile_out, "wb", template=bamFile_in)
+
+# Get the old header and make a new header and PG tag from it.
+header = pysam.AlignmentFile(args.bamFile_in,'rb').header
+headerDict = header.to_dict()
+version="1.0"
+pg={'ID':'subsetBAM.py', 'PP':header['PG'][-1]['ID'], 'PN':'subsetBAM.py', 'VN':version, 'CL':' '.join(sys.argv)}
+headerDict['PG'].append(pg)
+
+# Open the new bam file with the new header.
+bamFile_out = pysam.AlignmentFile(args.bamFile_out, "wb", header=headerDict)
 
 # Read the bamfile, line by line.
 while True:

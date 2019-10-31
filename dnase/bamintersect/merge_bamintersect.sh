@@ -27,8 +27,8 @@ dir_names=($(ls -d ${INTERMEDIATEDIR}/bamintersectPyOut/*/ 2> /dev/null || true)
 numElements="${#dir_names[@]}"
 if [ "${numElements}" = "0" ]; then
     # Don't generate an error. Create some appropriately empty output files.
-    echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
-    echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
+    echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
+    echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
     echo "" > "${sampleOutdir}/${sample_name}.bed"
     echo "" > "${sampleOutdir}/${sample_name}.informative.bed"
     echo "There are no reads with unmapped mates to analyze." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
@@ -71,8 +71,8 @@ if [ ${make_table} != "True" ]; then
 fi
 
 # Initialize the counts output file with a header.
-echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
-echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
+echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
+echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
 
 # Make sure this has not been left over from a previous run.
 rm -f "${sampleOutdir}/${sample_name}.informative.bed"
@@ -118,22 +118,46 @@ if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
     debug_fa "${sample_name}.readNames.txt was found"
 
     "${src}/subsetBAM.py" --flags ${BAM_E1} --readNames "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" --bamFile_in ${bamname1} --bamFile_out "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
-    samtools sort -o "${sampleOutdir}/${sample_name}.bam1_informative_reads.bam" "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
-    samtools index "${sampleOutdir}/${sample_name}.bam1_informative_reads.bam"
+    samtools sort -o "${sampleOutdir}/${sample_name}.informative.${bam1genome}.bam" "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
+    samtools index "${sampleOutdir}/${sample_name}.informative.${bam1genome}.bam"
 	rm "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
 	
     debug_fa "Completed samtools lines for bam1"
 	
     "${src}/subsetBAM.py" --flags ${BAM_E2} --readNames "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" --bamFile_in ${bamname2} --bamFile_out "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
-    samtools sort -o "${sampleOutdir}/${sample_name}.bam2_informative_reads.bam" "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
-    samtools index "${sampleOutdir}/${sample_name}.bam2_informative_reads.bam"
+    samtools sort -o "${sampleOutdir}/${sample_name}.informative.${bam2genome}.bam" "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
+    samtools index "${sampleOutdir}/${sample_name}.informative.${bam2genome}.bam"
 	rm "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
 		
     debug_fa "Completed samtools lines for bam2"
 	
-    echo "bam files with informative reads are at:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    echo "    ${sampleOutdir}/${sample_name}.bam1_informative_reads.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    echo "    ${sampleOutdir}/${sample_name}.bam2_informative_reads.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+    echo "Paths for custom tracks to bam files with informative reads:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+    #Prep for UCSC track links
+    #Remove "new" from the end of path so that we can reprocess data without affecting live data
+    projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab|isg\/encode)\///g;' | perl -pe 's/\/new$//g;'`
+    if [[ `pwd` =~ ^\/vol\/cegs\/ ]]; then
+        UCSCbase="bigDataUrl=https://cegs@cascade.isg.med.nyu.edu/cegs/${projectdir}/${sampleOutdir}"
+    elif [[ `pwd` =~ ^\/vol\/isg\/encode\/ ]]; then
+        UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/${projectdir}/${sampleOutdir}"
+    else
+        UCSCbase="bigDataUrl=https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/${projectdir}/${sampleOutdir}"
+    fi
+
+#   Need to get this working ???
+#    if [[ "${annotationgenome}" != "cegsvectors" ]]; then
+#        #db parameter does not work for track hub assemblies
+#        UCSCbase="db=${annotationgenome} ${UCSCbase}"
+#    fi
+
+    echo "track name=\"${sample_name}.${bam1genome}-reads\" description=\"${sample_name}.${bam1genome} Reads\" visibility=dense visibility=pack pairEndsByName=T maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.${bam1genome}.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+    echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+    echo "track name=\"${sample_name}.${bam2genome}-reads\" description=\"${sample_name}.${bam2genome} Reads\" visibility=dense visibility=pack pairEndsByName=T maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.${bam2genome}.bam" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 else
