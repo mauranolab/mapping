@@ -108,12 +108,35 @@ sort -V -t $'\t' -k 6,6rn -k 1,1 -k 2,2n - |
 # Append the bam1 chromosome name and the short sample name onto the last column.
 awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -v main_chrom=${main_chrom} -F "\t" 'BEGIN {OFS="\t"} {print $0, main_chrom, short_sample_name}' > ${TMPDIR}/short_sorted_table.bed
 
-if [ ${counts_type} = "all_reads_counts" ];then
-    cat ${TMPDIR}/short_sorted_table.bed >> ${sampleOutdir}/${sample_name}.counts.txt
-else
-    cat ${TMPDIR}/short_sorted_table.bed >> ${sampleOutdir}/${sample_name}.informative.counts.txt
-fi
 
+#########################################################################################
+# Get cluster range of the other chromosome.
+
+# Avoid appending to old files.
+rm -f ${TMPDIR}/short_sorted_table2.bed
+
+while read line_in ; do
+    read chromosome_bam2 Start_Pos End_Pos Width Nearest_Gene Post_filter_Reads chromosome_bam1 Sample <<< "${line_in}"
+ 
+    echo -e "${chromosome_bam2}\t${Start_Pos}\t${End_Pos}" > "${TMPDIR}/cluster_1" 
+
+    awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' < "${filter_csv_output}" | \
+    sort-bed - | bedops -e 1 - "${TMPDIR}/cluster_1" | cut -f8-9 > ${TMPDIR}/cols_8_9
+
+    min=`awk 'NR==1{min = $1 + 0; next} {if ($1 < min) min = $1;} END{print min}' ${TMPDIR}/cols_8_9`
+    max=`awk 'NR==1{max = $2 + 0; next} {if ($2 > max) max = $2;} END{print max}' ${TMPDIR}/cols_8_9`
+
+    echo -e "${chromosome_bam2}\t${Start_Pos}\t${End_Pos}\t${Width}\t${Nearest_Gene}\t${Post_filter_Reads}\t${chromosome_bam1}\t${min}\t${max}\t${Sample}" >> ${TMPDIR}/short_sorted_table2.bed
+
+done < "${TMPDIR}/short_sorted_table.bed"
+
+#####################################################################################
+
+if [ ${counts_type} = "all_reads_counts" ];then
+    cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.counts.txt
+else
+    cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.informative.counts.txt
+fi
 
 #####################################################################################
 # Find the number of reads in the deletion range.

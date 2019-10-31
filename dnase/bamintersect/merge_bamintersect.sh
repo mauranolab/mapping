@@ -27,8 +27,8 @@ dir_names=($(ls -d ${INTERMEDIATEDIR}/bamintersectPyOut/*/ 2> /dev/null || true)
 numElements="${#dir_names[@]}"
 if [ "${numElements}" = "0" ]; then
     # Don't generate an error. Create some appropriately empty output files.
-    echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
-    echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
+    echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
+    echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
     echo "" > "${sampleOutdir}/${sample_name}.bed"
     echo "" > "${sampleOutdir}/${sample_name}.informative.bed"
     echo "There are no reads with unmapped mates to analyze." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
@@ -71,8 +71,8 @@ if [ ${make_table} != "True" ]; then
 fi
 
 # Initialize the counts output file with a header.
-echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
-echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
+echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
+echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
 
 # Make sure this has not been left over from a previous run.
 rm -f "${sampleOutdir}/${sample_name}.informative.bed"
