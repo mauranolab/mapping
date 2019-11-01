@@ -132,7 +132,7 @@ done < "${TMPDIR}/short_sorted_table.bed"
 
 #####################################################################################
 
-if [ ${counts_type} = "all_reads_counts" ];then
+if [ ${counts_type} = "all_reads_counts" ]; then
     cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.counts.txt
 else
     cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.informative.counts.txt

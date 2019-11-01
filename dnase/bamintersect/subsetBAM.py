@@ -10,7 +10,7 @@ import argparse
 import pysam
 
 parser = argparse.ArgumentParser(prog = "subsetBAM.py",
-                                 description = "Returns a sam file subsetted by a list of read names.",
+                                 description = "Returns a BAM file subsetted by a list of read names.",
                                  add_help = True)
 
 parser.add_argument('--flags', action='store', type=int, help='SAM flags to filter out certain reads.')

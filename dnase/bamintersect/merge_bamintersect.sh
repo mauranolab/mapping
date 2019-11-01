@@ -22,18 +22,21 @@ debug_fa() {
 
 debug_fa "Starting merge_bamintersect.sh"
 
+# Initialize the counts output file with a header.
+echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > ${sampleOutdir}/${sample_name}.counts.txt
+cp ${sampleOutdir}/${sample_name}.counts.txt ${sampleOutdir}/${sample_name}.informative.counts.txt
+
+
 # First check for the "no reads to merge" problem. Also deal with the usual pipefail issue via "true".
 dir_names=($(ls -d ${INTERMEDIATEDIR}/bamintersectPyOut/*/ 2> /dev/null || true))      ## These have a trailing /
 numElements="${#dir_names[@]}"
 if [ "${numElements}" = "0" ]; then
     # Don't generate an error. Create some appropriately empty output files.
-    echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
-    echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
     echo "" > "${sampleOutdir}/${sample_name}.bed"
     echo "" > "${sampleOutdir}/${sample_name}.informative.bed"
-    echo "There are no reads with unmapped mates to analyze." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "There are no reads with unmapped mates to analyze." >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
     # Not generating bam files for this case.
-
+    
     ## Cleanup
     rm -r ${INTERMEDIATEDIR}
     echo "Done!!!"
@@ -69,10 +72,6 @@ if [ ${make_table} != "True" ]; then
     echo "LP integration table not required."
     exit 0
 fi
-
-# Initialize the counts output file with a header.
-echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
-echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
 
 # Make sure this has not been left over from a previous run.
 rm -f "${sampleOutdir}/${sample_name}.informative.bed"
@@ -117,20 +116,16 @@ cut -f4 "${sampleOutdir}/${sample_name}.informative.bed" > "${INTERMEDIATEDIR}/$
 if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
     debug_fa "${sample_name}.readNames.txt was found"
 
-    "${src}/subsetBAM.py" --flags ${BAM_E1} --readNames "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" --bamFile_in ${bamname1} --bamFile_out "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
-    samtools sort -o "${sampleOutdir}/${sample_name}.informative.${bam1genome}.bam" "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
-    samtools index "${sampleOutdir}/${sample_name}.informative.${bam1genome}.bam"
-	rm "${INTERMEDIATEDIR}/${sample_name}.bam1_informative_reads.unsorted.bam"
-	
+    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${INTERMEDIATEDIR}/${sample_name}.readNames.txt --bamFile_in ${bamname1} --bamFile_out ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.informative.${bam1genome}.bam ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
+    samtools index ${sampleOutdir}/${sample_name}.informative.${bam1genome}.bam
     debug_fa "Completed samtools lines for bam1"
-	
-    "${src}/subsetBAM.py" --flags ${BAM_E2} --readNames "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" --bamFile_in ${bamname2} --bamFile_out "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
-    samtools sort -o "${sampleOutdir}/${sample_name}.informative.${bam2genome}.bam" "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
-    samtools index "${sampleOutdir}/${sample_name}.informative.${bam2genome}.bam"
-	rm "${INTERMEDIATEDIR}/${sample_name}.bam2_informative_reads.unsorted.bam"
-		
+
+    ${src}/subsetBAM.py --flags ${BAM_E2} --readNames ${INTERMEDIATEDIR}/${sample_name}.readNames.txt --bamFile_in ${bamname2} --bamFile_out ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.informative.${bam2genome}.bam ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
+    samtools index ${sampleOutdir}/${sample_name}.informative.${bam2genome}.bam
     debug_fa "Completed samtools lines for bam2"
-	
+
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
     echo "Paths for custom tracks to bam files with informative reads:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
