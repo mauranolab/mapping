@@ -70,7 +70,7 @@ cut -f7-9 "${filter_csv_output}" | sort-bed - > ${TMPDIR}/sorted_speciesReadCoor
 # Find the gene closest to each region:
 case "${bam2genome}" in
 mm10)
-    geneAnnotationFile=/vol/isg/annotation/bed/mm10/gencodev17/GencodevM17.gene.bed
+    geneAnnotationFile=/vol/isg/annotation/bed/mm10/gencodev23/GencodevM23.gene.bed
     ;;
 rn6)
     geneAnnotationFile=/vol/isg/annotation/bed/rn6/ensembl96/Ensemblv96_Rnor.gene.bed
@@ -87,7 +87,10 @@ esac
 # The below makes +/- 500 bps regions around each hg38/mm10 read, and merges them when possible. It will return bed3 output.
 bedops --range 500 -m ${TMPDIR}/sorted_speciesReadCoords.bed3 > ${TMPDIR}/all_regions.bed
 
-awk -F "\t" 'BEGIN {OFS="\t"} $7=="protein_coding"' ${geneAnnotationFile} |
+cat ${geneAnnotationFile} |
+awk -F "\t" 'BEGIN {OFS="\t"} $7=="protein_coding"' |
+#Restrict to level 1 genes if available
+awk -F "\t" 'BEGIN {OFS="\t"} $5==1 || $5=="."' |
 closest-features --delim "|" --closest ${TMPDIR}/all_regions.bed - |
 # Sometimes the gene name is blank (like when the region is not one of the usual chr types); Replace the blank with a dash.
 awk -F "|" 'BEGIN {OFS="\t"} {split($2, gene, "\t"); if(gene[4]=="") {gene[4]="-"} print $1, gene[4]}' |
