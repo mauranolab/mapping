@@ -49,44 +49,29 @@ message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", opt$
 #opt=list(file="/vol/isg/encode/mouseencode_chipseq_2018/SampleIDs.tsv",out="/vol/isg/encode/mouseencode_chipseq_2018/SamplesForTrackhub.tsv")
 
 ##############################################################
-getinputSampleIDs <- function(inputfile) {
+getInputSampleIDs <- function(inputfile) {
 	inputSampleIDs <- as.data.frame(fread(inputfile))
-
-	# Translate column names that may have been set for ENCODE.
-	colnames(inputSampleIDs)[colnames(inputSampleIDs)=="Sample Name"] <- "Name"  # This needs to be one of the "outputCols" labels.
-	colnames(inputSampleIDs)[colnames(inputSampleIDs)=="Sample #"] <- "DS"       # The column with the SampleID needs to be labeled "DS"
-
+	
+	# Translate column names from LIMS, if present
+	colnames(inputSampleIDs)[colnames(inputSampleIDs)=="Sample Name"] <- "Name"
+	colnames(inputSampleIDs)[colnames(inputSampleIDs)=="Sample #"] <- "DS"
+	
 	if(is.null(inputSampleIDs$DS)) {
 		stop("[samplesforTrackhub] DS column is required in provided inputfile", call.=FALSE)
-	} else {
-		inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$DS),]
-		message("[samplesforTrackhub] Merging annotation from inputfile ", inputfile, ": ", nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
-		message("[samplesforTrackhub] Number of unique DS numbers: ", length(unique(inputSampleIDs$DS)))
-        return(inputSampleIDs)
-	}
+	} 
+	
+	inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$DS),]
+	message("[samplesforTrackhub] Merging annotation from inputfile ", inputfile, ": ", nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
+	message("[samplesforTrackhub] Number of unique DS numbers: ", length(unique(inputSampleIDs$DS)))
+	return(inputSampleIDs)
 }
-##############################################################
-# sampleannotation logic for non-flowcells
-#
-# make_tracks.bash calls this R script once for each directory found in /vol/cegs/aggregations or in /vol/cegs/publicdata.
-# Each of these directories may contain a unique sampleannotation.txt file. If so, opt$inputfile is set to equal sampleannotation.txt  
-#                                                                           If not, opt$inputfile is not set.
-# All the samples found within the aggrgations/publicdata directory utilize the same sampleannotation.txt file, which is found by make_tracks.bash at the time it
-# also finds the directory.  args.project is not set in these cases.
-#
-# The structure of the flowcell directories is different.
-# For the flowcells, make_tracks.bash calls this R script only once when args.project equals "byFC", and only once when it equals "CEGS_byLocus". 
-# args.inputfile is not set in these two cases, as there could be many sampleannotation.txt files in the deeper flowcell directory structure.
-# In these two cases, further below, the /vol/cegs/mapped/<FCcode>/<capture,dna,...>/ directories are scanned for sampleannotation.txt files.
-# Multiple sampleannotation.txt files may be found - possibly one in each <capture,dna,...> directory. 
-# So another version of the inputfile related code in the below if block is embedded in the "for(curdir in mappeddirs)" loop found further down in this code.
+
 if(!is.null(opt$inputfile)) {
 	if(opt$inputfile == "-") {
-		inputfile <- "file:///dev/stdin"
+		inputSampleIDs <- getInputSampleIDs("file:///dev/stdin")
 	} else {
-		inputfile <- opt$inputfile
+		inputSampleIDs <- getInputSampleIDs(opt$inputfile)
 	}
-	inputSampleIDs <- getinputSampleIDs(inputfile)
 } else {
 	inputSampleIDs <- NULL
 }
@@ -197,11 +182,12 @@ for(curdir in mappeddirs) {
 		next # Nothing follows here except for the long 'for(analysisFile...' loop.
 	}
 	
-	# sampleannotation logic for flowcells
-	if(((opt$project=="byFC") | (opt$project=="CEGS_byLocus")) & (is.null(opt$inputfile))) {
-		inputfile=paste0(pwd, '/', dirname(curdir), "/sampleannotation.txt")
+	#make_tracks.bash calls this R script only once when args.project equals "byFC", and only once when it equals "CEGS_byLocus". Each of the directories traversed may contain a unique sampleannotation.txt file so we need to look for it here rather than in make_tracks.bash
+	if(opt$project %in% c("byFC", "CEGS_byLocus") & is.null(opt$inputfile)) {
+		inputfile <- paste0(pwd, '/', dirname(curdir), "/sampleannotation.txt")
 		if(file.exists(inputfile)){
-			inputSampleIDs <- getinputSampleIDs(inputfile)
+			message("[samplesforTrackhub] Reading custom annotation from ", inputfile)
+			inputSampleIDs <- getInputSampleIDs(inputfile)
 		} else {
 			inputSampleIDs <- NULL
 		}
@@ -451,4 +437,3 @@ write.table(data, file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)
 # message("[samplesforTrackhub] ", warnings())
 
 message("[samplesforTrackhub] ", "Done!!!")
-
