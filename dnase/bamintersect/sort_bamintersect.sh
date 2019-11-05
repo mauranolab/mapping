@@ -36,6 +36,11 @@ input_to_samtools3=${input_to_samtools//|/ }
 ## The various memory adjustments can allow for a small amount of extra SortSam jobs, but does not seem to be
 ## material in solving the thread problem, which occurs when other jobs are running on the cluster.
 
+echo "Beginning sort"
+date
+echo
+
+
 ## Sort bam file by read name.  picard does it lexigraphically.  samtools does it "naturally".
 ## See: https://github.com/samtools/hts-specs/pull/361 for clarification and pointers to background about this.
 samtools view -h -b -f ${BAM_K} -F ${BAM_E} ${BAM} ${input_to_samtools3} | \
