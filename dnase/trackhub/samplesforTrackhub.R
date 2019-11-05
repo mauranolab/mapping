@@ -48,19 +48,29 @@ message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", opt$
 #opt=list(file="/vol/isg/encode/dnase/SampleIDs.tsv", out="/vol/isg/encode/dnase/SamplesForTrackhub.tsv")
 #opt=list(file="/vol/isg/encode/mouseencode_chipseq_2018/SampleIDs.tsv",out="/vol/isg/encode/mouseencode_chipseq_2018/SamplesForTrackhub.tsv")
 
-if(!is.null(opt$inputfile)) {
-	if(opt$inputfile == "-") {
-		inputfile <- "file:///dev/stdin"
-	} else {
-		inputfile <- opt$inputfile
-	}
+##############################################################
+getInputSampleIDs <- function(inputfile) {
 	inputSampleIDs <- as.data.frame(fread(inputfile))
-	message("[samplesforTrackhub] Merging annotation from inputfile ", inputfile, ": ", nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
+	
+	# Translate column names from LIMS, if present
+	colnames(inputSampleIDs)[colnames(inputSampleIDs)=="Sample Name"] <- "Name"
+	colnames(inputSampleIDs)[colnames(inputSampleIDs)=="Sample #"] <- "DS"
+	
 	if(is.null(inputSampleIDs$DS)) {
 		stop("[samplesforTrackhub] DS column is required in provided inputfile", call.=FALSE)
+	} 
+	
+	inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$DS),]
+	message("[samplesforTrackhub] Merging annotation from inputfile ", inputfile, ": ", nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
+	message("[samplesforTrackhub] Number of unique DS numbers: ", length(unique(inputSampleIDs$DS)))
+	return(inputSampleIDs)
+}
+
+if(!is.null(opt$inputfile)) {
+	if(opt$inputfile == "-") {
+		inputSampleIDs <- getInputSampleIDs("file:///dev/stdin")
 	} else {
-		inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$DS),]
-		message("[samplesforTrackhub] Number of unique DS numbers: ", length(unique(inputSampleIDs$DS)))
+		inputSampleIDs <- getInputSampleIDs(opt$inputfile)
 	}
 } else {
 	inputSampleIDs <- NULL
@@ -170,6 +180,17 @@ for(curdir in mappeddirs) {
 	if(length(analysisFiles)==0) {
 		message("[samplesforTrackhub] ", "WARNING No analysis files found in ", curdir)
 		next # Nothing follows here except for the long 'for(analysisFile...' loop.
+	}
+	
+	#make_tracks.bash calls this R script only once when args.project equals "byFC", and only once when it equals "CEGS_byLocus". Each of the directories traversed may contain a unique sampleannotation.txt file so we need to look for it here rather than in make_tracks.bash
+	if(opt$project %in% c("byFC", "CEGS_byLocus") & is.null(opt$inputfile)) {
+		inputfile <- paste0(pwd, '/', dirname(curdir), "/sampleannotation.txt")
+		if(file.exists(inputfile)){
+			message("[samplesforTrackhub] Reading custom annotation from ", inputfile)
+			inputSampleIDs <- getInputSampleIDs(inputfile)
+		} else {
+			inputSampleIDs <- NULL
+		}
 	}
 	
 	for(analysisFile in analysisFiles) {
@@ -416,4 +437,3 @@ write.table(data, file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)
 # message("[samplesforTrackhub] ", warnings())
 
 message("[samplesforTrackhub] ", "Done!!!")
-
