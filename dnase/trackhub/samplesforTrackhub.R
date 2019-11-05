@@ -48,6 +48,7 @@ message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", opt$
 #opt=list(file="/vol/isg/encode/dnase/SampleIDs.tsv", out="/vol/isg/encode/dnase/SamplesForTrackhub.tsv")
 #opt=list(file="/vol/isg/encode/mouseencode_chipseq_2018/SampleIDs.tsv",out="/vol/isg/encode/mouseencode_chipseq_2018/SamplesForTrackhub.tsv")
 
+# sampleannotation logic for non-flowcells
 if(!is.null(opt$inputfile)) {
 	if(opt$inputfile == "-") {
 		inputfile <- "file:///dev/stdin"
@@ -170,6 +171,29 @@ for(curdir in mappeddirs) {
 	if(length(analysisFiles)==0) {
 		message("[samplesforTrackhub] ", "WARNING No analysis files found in ", curdir)
 		next # Nothing follows here except for the long 'for(analysisFile...' loop.
+	}
+
+	# sampleannotation logic for flowcells
+	if(((opt$project=="byFC") | (opt$project=="CEGS_byLocus")) & (is.null(opt$inputfile))) {
+		inputfile=paste0(pwd, '/', dirname(curdir), "/sampleannotation.txt")
+		if(file.exists(inputfile)){
+			inputSampleIDs <- as.data.frame(fread(inputfile))
+			
+            # A kluge for now, since there is only one case of this event in byFC:
+			colnames(inputSampleIDs)[colnames(inputSampleIDs)=="Sample Name"] <- "Name"  # This needs to be one of the "outputCols" labels.  See line #153
+			colnames(inputSampleIDs)[colnames(inputSampleIDs)=="Sample #"] <- "DS"       # The column with the SampleID needs to be labeled "DS"
+			# Take the above out once we can edit: /vol/cegs/mapped/FCHGVJTBGXB/dna/sampleannotation.txt
+			
+			if(is.null(inputSampleIDs$DS)) {
+				stop("[samplesforTrackhub] DS column is required in provided inputfile", call.=FALSE)
+			} else {
+				inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$DS),]
+            	message("[samplesforTrackhub] Merging annotation from inputfile ", inputfile, ": ", nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
+				message("[samplesforTrackhub] Number of unique DS numbers: ", length(unique(inputSampleIDs$DS)))
+			}
+		} else {
+			inputSampleIDs <- NULL
+		}
 	}
 	
 	for(analysisFile in analysisFiles) {
