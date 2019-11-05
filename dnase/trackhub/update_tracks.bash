@@ -313,7 +313,7 @@ echo
 
 if [ ${ierr} -eq 0 ]; then
    echo "Removing TMP directory."
-    rm -rf ${TMPDIR}
+   rm -rf ${TMPDIR}
    echo "Done!"
 else
    echo "Retaining TMPDIR."
