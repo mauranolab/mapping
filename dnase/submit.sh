@@ -139,7 +139,7 @@ if [ ${runBamIntersect} -eq 1 ]; then
                 echo "${cegsGenomeShort}[${integrationsite}] vs. ${mammalianAnnotationGenome} bamintersect"
                 
                 if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
-                    bamIntersectHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${name}.${mammalianAnnotationGenome} ${sampleOutdir}/sgeid.merge.${name}.${cegsGenome} | perl -pe 's/\n/,/g;'`"
+                    bamIntersectHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${name}.${mammalianGenome} ${sampleOutdir}/sgeid.merge.${name}.${cegsGenome} | perl -pe 's/\n/,/g;'`"
                 else
                     bamIntersectHold=""
                 fi
