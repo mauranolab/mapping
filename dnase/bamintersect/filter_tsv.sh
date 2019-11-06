@@ -133,12 +133,13 @@ while read line_in ; do
 
 done < "${TMPDIR}/short_sorted_table.bed"
 
-#####################################################################################
 
-if [ ${counts_type} = "all_reads_counts" ]; then
-    cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.counts.txt
-else
-    cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.informative.counts.txt
+if [ -f "${TMPDIR}/short_sorted_table2.bed" ]; then
+    if [ ${counts_type} = "all_reads_counts" ]; then
+        cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.counts.txt
+    else
+        cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.informative.counts.txt
+    fi
 fi
 
 #####################################################################################
