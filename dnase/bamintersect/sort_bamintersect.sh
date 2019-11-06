@@ -51,6 +51,10 @@ java -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -Dpicard.useLegacyParser=false 
      -QUIET=true \
      -SORT_ORDER=queryname
 
+#NB Java doesn't define the exit code for an uncaught exception and Picard does not appear
+#to handle exceptions by returning a nonzero code. This might contribute to zombie cluster
+#jobs when java has failed.
+
 echo "Done!!!"
 date
 
