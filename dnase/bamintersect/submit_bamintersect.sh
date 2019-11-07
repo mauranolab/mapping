@@ -314,7 +314,7 @@ for BAM_N in $(seq 1 2); do
     else
         BAM=${bamname2}
     fi
-
+    
     while read chrom;  do
         BAM_OUT="${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${chrom}.${BAM_N}.bam"
         echo ${BAM_OUT} >> "${INTERMEDIATEDIR}/sorted_bams/chr_list_${BAM_N}"
@@ -329,17 +329,17 @@ while read -r bam1s; do
     while read -r bam2s; do
         BASE1=${bam1s##*/}    ## Get rid of the path before the bam file name.
         BASE2=${bam2s##*/}
-
+        
         BASE1=${BASE1#*\.}   ## Get rid of the sample name.
         BASE2=${BASE2#*\.}
-
+        
         # Not sure if this is a problem.  Got inconsistent results.  Once saw the
         # merge sbatch have "Dependency never satisfied".  But then it went away next 
         # time.  Maybe due to buffering here? stdbuf should flush all the non-sbatch output
         # from here and above, if it becomes a problem. The sbatch's will flush when they exit.
         # stdbuf --output=0 echo ${bam1s} ${bam2s} "${INTERMEDIATEDIR}/bamintersectPyOut/${BASE1}___${BASE2}"  >> "${TMPDIR}/TMPDIR_bams/inputs.array_list.txt"
         echo ${bam1s} ${bam2s} "${INTERMEDIATEDIR}/bamintersectPyOut/${BASE1}___${BASE2}"  >> "${INTERMEDIATEDIR}/sorted_bams/inputs.array_list.txt"
-
+    
     done < "${INTERMEDIATEDIR}/sorted_bams/chr_list_2"
 done < "${INTERMEDIATEDIR}/sorted_bams/chr_list_1"
 
@@ -372,7 +372,8 @@ export_vars="${export_vars},sample_name=${sample_name}"
 
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2_simple")
 
-qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log --qos=low -t 1-${num_lines} ${src}/sort_bamintersect.sh > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+#Request 2 slots per job to avoid java thread usage problems
+qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log --qos=low -pe threads 2 -t 1-${num_lines} ${src}/sort_bamintersect.sh > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 ################################################################################################
 # Call bamintersect.py repeatedly via the bamintersect.sh array job:
@@ -403,15 +404,15 @@ if [ "${integrationsite}" != "null" ] && [ "${integrationsite}" != "NA" ]; then
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
     echo "${integrationSiteName} HAs:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
-
+    
     if [ -s "${HA_file}" ]; then
         grep "${integrationSiteName}_${HA1}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
+        
         grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/genome1exclude.bed"
         grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/genome1exclude.bed"
-
+        
         # Get the deletion range coordinates:
         IFS=$'\t' read chrom HA1_5p HA1_3p all_other <<< "$(head -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
         IFS=$'\t' read chrom HA2_5p HA2_3p all_other <<< "$(tail -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
@@ -420,7 +421,7 @@ if [ "${integrationsite}" != "null" ] && [ "${integrationsite}" != "NA" ]; then
         echo "No HA file exists for integrationsite: ${integrationsite}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         echo "No HAs are available, and so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
+        
         touch "${INTERMEDIATEDIR}/genome1exclude.bed"
         touch "${INTERMEDIATEDIR}/deletion_range.bed"
     fi
@@ -428,7 +429,7 @@ else
     echo "integrationsite is null/NA" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "No HAs are available, and so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
+    
     integrationsite="NA"
     touch "${INTERMEDIATEDIR}/genome1exclude.bed"
     touch "${INTERMEDIATEDIR}/deletion_range.bed"
