@@ -56,7 +56,7 @@ fi
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
-if [[ "${processingCommand}" != "none" ]] && [[ "${processingCommand}" != "aggregate" ]] && [[ "${processingCommand}" != "aggregateRemarkDups" ]] && [[ "${processingCommand}" != "mapBwaAln" ]] && [[ "${processingCommand}" != "mapBwaMem" ]]; then
+if [[ "${processingCommand}" != "none" ]] && [[ "${processingCommand}" != "aggregate" ]] && [[ "${processingCommand}" != "aggregateRemarkDups" ]] && [[ "${processingCommand}" != "mapBwaAln" ]] && [[ "${processingCommand}" != "mapBwaMem" ]] && [[ "${processingCommand}" != "bamintersect" ]]; then
     echo "ERROR submit: unknown processing command ${processingCommand} in analysisType ${analysisType}"
     exit 1
 fi
@@ -88,7 +88,7 @@ find ${srcbase} -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}
 #Only subdir we need is bamintersect
 cp -rp ${srcbase}/bamintersect ${src}
 
-if [[ "${analysisType}" =~ ^map ]]; then
+if [[ "${processingCommand}" =~ ^map ]]; then
     grep ${BS} inputs.txt > ${sampleOutdir}/inputs.map.txt
     n=`cat ${sampleOutdir}/inputs.map.txt | wc -l`
     mapname="${name}.${genomesToMap}"
@@ -107,10 +107,11 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggrega
         mergeHold=""
     fi
     
+    echo
+    echo "Merge"
     for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         mergename="${name}.${curGenome}"
-        echo
-        echo "${mergename} merge"
+        echo "+ ${mergename}"
         #NB compression threads are multithreaded. However, samblaster and index are not; former is ~1/4 of time and latter is trivial
         qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mergeThreads} -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sampleOutdir} ${BS} ${curGenome}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
     done
@@ -123,6 +124,9 @@ fi
 
 #bamintersect
 if [ ${runBamIntersect} -eq 1 ]; then
+    echo
+    echo "bamintersect"
+    
     sampleAnnotationGeneticModification=`echo "${sampleAnnotation}" | awk -v key="Genetic_Modification" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
     
     mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0!~/^cegsvectors_/'`
@@ -136,7 +140,7 @@ if [ ${runBamIntersect} -eq 1 ]; then
             if [[ ${sampleAnnotationGeneticModification} =~ ${cegsGenomeShort} ]]; then
                 #Parse each genetic modification on separate line, and move part in [] to $2
                 integrationsite=`echo "${sampleAnnotationGeneticModification}" | perl -pe 's/,/\n/g;' | perl -pe 's/\[/\t/g;' -e 's/\]/\t/g;' | awk -v genome=${cegsGenomeShort} -F "\t" '$1==genome {print $2}'`
-                echo "${cegsGenomeShort}[${integrationsite}] vs. ${mammalianAnnotationGenome} bamintersect"
+                echo "+ ${cegsGenomeShort}[${integrationsite}] vs. ${mammalianAnnotationGenome}"
                 
                 if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
                     bamIntersectHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${name}.${mammalianGenome} ${sampleOutdir}/sgeid.merge.${name}.${cegsGenome} | perl -pe 's/\n/,/g;'`"
@@ -153,23 +157,29 @@ fi
 
 
 #Always run analysis job, but specifying none will have analysis.sh skip most analyses
+if [[ "${processingCommand}" != bamintersect ]]; then
+    echo
+    echo "analysis"
+fi
+
 for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     analysisname="${name}.${curGenome}"
     
-    #Submit job even if none so that the read count stats get run
-    if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
-        analysisHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${analysisname}`"
-    else
-        analysisHold=""
+    #Always submit analysis job, unless we are just running bamintersect. If processingCommand is none, analysis.sh will just run the read count stats and nothing else
+    if [[ "${processingCommand}" != bamintersect ]]; then
+        if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
+            analysisHold="-hold_jid `cat ${sampleOutdir}/sgeid.merge.${analysisname}`"
+        else
+            analysisHold=""
+        fi
+        
+        echo "+ ${analysisname}"
+        qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sampleOutdir} ${BS} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
+        
+        cat ${sampleOutdir}/sgeid.analysis.${analysisname} >> `dirname ${sampleOutdir}`/sgeid.analysis
+        
+        rm -f ${sampleOutdir}/sgeid.analysis.${analysisname}
     fi
-    
-    echo
-    echo "${analysisname} analysis"
-    qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sampleOutdir} ${BS} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
-    
-    cat ${sampleOutdir}/sgeid.analysis.${analysisname} >> `dirname ${sampleOutdir}`/sgeid.analysis
-    
-    rm -f ${sampleOutdir}/sgeid.analysis.${analysisname}
     
     #Clean up sgeid even if we don't run analysis
     rm -f ${sampleOutdir}/sgeid.merge.${analysisname}
