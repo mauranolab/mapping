@@ -138,8 +138,11 @@ if [ ${runBamIntersect} -eq 1 ]; then
             cegsGenomeShort="${cegsGenome/cegsvectors_/}"
             #Limit this to references listed as genetic modifications
             if [[ ${sampleAnnotationGeneticModification} =~ ${cegsGenomeShort} ]]; then
+                #Parse out integration site. If we can't find it for whatever reason, use null
+                #NB for assemblons this yields the LP name rather looking up the LP integrationsite
+                #TODO Take only first three (MenDel) fields in case there are comments/constructs (unofficial for now)
                 #Parse each genetic modification on separate line, and move part in [] to $2
-                integrationsite=`echo "${sampleAnnotationGeneticModification}" | perl -pe 's/,/\n/g;' | perl -pe 's/\[/\t/g;' -e 's/\]/\t/g;' | awk -v genome=${cegsGenomeShort} -F "\t" '$1==genome {print $2}'`
+                integrationsite=`echo "${sampleAnnotationGeneticModification}" | perl -pe 's/,/\n/g;' | perl -pe 's/\[/\t/g;' -e 's/\]/\t/g;' | awk -v genome=${cegsGenomeShort} -F "\t" 'BEGIN {integrationsite="null"} $1==genome {integrationsite=$2} END {print integrationsite}'`
                 echo "+ ${cegsGenomeShort}[${integrationsite}] vs. ${mammalianAnnotationGenome}"
                 
                 if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
