@@ -55,7 +55,7 @@ cat << USAGE
 Usage: $(basename "$0") [Options]
   Required Options:
      --sample_name {sample name}
-     --integrationsite {sitename_HA#1_HA#2   sitename is like HPRT1. HA#s refer to numbers in the HomologyArms.bed file}
+     --integrationsite {sitename_HA#1_HA#2   Must be canonical name (sitename e.g. "HPRT1"; HA#s refer to numbers in the HomologyArms.bed file) or null.}
      --bam1 {full path to bam file #1}
      --bam1genome [ LP123, mm10, hg38, rn6, ... ] Mammalian genomes should be the annotationgenome name (hg38, not hg38_full)
      --bam2 {full path to bam file #2}
@@ -151,7 +151,7 @@ long_args=$(printf "%s," "${long_arg_list[@]}")   # Turn the arg array into a st
 long_args=$(echo ${long_args} | sed 's/,$/ /')    # Get rid of final comma.
 
 # There must be at least one option associated with "-o", or you need to deal with getopt's default behavior.
-CMD_LINE=$(getopt -o h --long "${long_args}" -n "$(basename "$0")" -- "$@")
+CMD_LINE=$(getopt -o h --long "${long_args}" -n "[submit_bamintersect] ERROR" -- "$@")
 # Catch getopt errors here if not using "set -e"
 
 eval set -- "$CMD_LINE"
@@ -224,7 +224,7 @@ while true ; do
             verbose=True ; shift 1 ;;
         -h|--help) usage; shift ; exit 0 ;;
         --) shift ; break ;;
-        *) echo "getopt internal error!" ; exit 1 ;;
+        *) echo "ERROR getopt internal error $1!" ; exit 1 ;;
     esac
 done
 
@@ -418,8 +418,7 @@ if [ "${integrationsite}" != "null" ] && [ "${integrationsite}" != "NA" ]; then
         IFS=$'\t' read chrom HA2_5p HA2_3p all_other <<< "$(tail -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
         echo "${chrom}"$'\t'"${HA1_3p}"$'\t'"${HA2_5p}" > "${INTERMEDIATEDIR}/deletion_range.bed"
     else
-        echo "No HA file exists for integrationsite: ${integrationsite}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-        echo "No HAs are available, and so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+        echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         
         touch "${INTERMEDIATEDIR}/genome1exclude.bed"
@@ -427,7 +426,7 @@ if [ "${integrationsite}" != "null" ] && [ "${integrationsite}" != "NA" ]; then
     fi
 else
     echo "integrationsite is null/NA" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    echo "No HAs are available, and so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "No HAs were provided, and so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     
     integrationsite="NA"
