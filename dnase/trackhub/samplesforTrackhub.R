@@ -259,8 +259,8 @@ for(curdir in mappeddirs) {
 			#Parse SampleAnnotation as a list of values with the key as name
 			if(any(grep('^SampleAnnotation\t', analysisFileContents))) {
 				SampleAnnotation <- strsplit(analysisFileContents[grep('^SampleAnnotation\t', analysisFileContents)], '\t')[[1]][2]
-				#Split up comma-delimited key/value pairs
-				SampleAnnotation <- strsplit(SampleAnnotation, ",")[[1]]
+				#Split up semicolon-delimited key/value pairs
+				SampleAnnotation <- strsplit(SampleAnnotation, ";")[[1]]
 				#Split up key/value
 				SampleAnnotation <- sapply(SampleAnnotation, USE.NAMES=F, FUN=function(x) {
 					ret=list()
