@@ -176,28 +176,44 @@ def getBwaPipelineOutdir(sampleType):
     return(bwaPipelineOutdir)
 
 
+def checkForCEGSreferences(requestedReferencesForMapping, warn=False):
+    genomesToMap = []
+    for curRequestedReference in requestedReferencesForMapping:
+        #Note if geneticModification/customReference are empty strings, then the list will contain an empty string
+        if curRequestedReference != '':
+            #Genome must match entire contents of a field (e.g., HPRT1 doesn't match dHPRT1), excepting the square brackets denoting integration site
+            if curRequestedReference in cegsGenomes:
+                #Add the genome including the cegsvectors_ prefix
+                genomesToMap.append("cegsvectors_" + curRequestedReference)
+            else:
+                if warn and curRequestedReference not in ["rTTA",'dHoxa', 'dSox2', 'dPiga', 'dHPRT1']:
+                    print("WARNING could not find reference for '" + curRequestedReference, "'", sep="", file=sys.stderr)
+    return(genomesToMap)
+
+
 def addCEGSgenomes(line):
     if line['Lab'] != "CEGS":
         return []
     else:
         sampleName = line["#Sample Name"]
         
-#        Disable finding reference from name -- only support getting it through google sheets
+#        Disable finding reference from name -- only support getting it through LIMS annotation
 #        if re.search(r'_(Amplicon|BAC|Yeast)$', sampleName) is not None:
 #            return ",cegsvectors_" + "_".join(sampleName.split("_")[0:3])
         
-        additionalGenomesToMap = []
-        geneticModification = getValueFromLIMS(lims, line['Original Sample #'], 'Genetic Modification')
-        customReference = getValueFromLIMS(lims, line['Original Sample #'], 'Custom Reference')
-        #Note if geneticModification/customReference are empty strings, then the list will contain an empty string, but since we only look for cegsvectors_*, it will never match anything
-        for curGeneticModification in geneticModification.split(",") + customReference.split(","):
-            for curCegsGenome in cegsGenomes:
-                #Genome must match entire contents of a field (e.g., HPRT1 doesn't match dHPRT1), excepting the square brackets denoting integration site
-                if curCegsGenome == re.sub(r'\[.+\]$', '', curGeneticModification):
-                    #Add the genome including the cegsvectors_ prefix
-                    additionalGenomesToMap.append("cegsvectors_" + curCegsGenome)
-                    #Not possible to match any further genomes since wildcards are not allowed
-                    break
+        geneticModifications = getValueFromLIMS(lims, line['Original Sample #'], 'Genetic Modification').split(",")
+        geneticModifications = [ re.sub(r'\[.+\]$', '', cur) for cur in geneticModifications ]
+        #Take only first three (MenDel) fields in case there are comments/constructs (unofficial for now)
+        geneticModifications = [ "_".join(cur.split("_")[0:3]) for cur in geneticModifications ]
+        
+        customReferences = getValueFromLIMS(lims, line['Original Sample #'], 'Custom Reference').split(",")
+        
+        if args.verbose:
+            print("\nWill look for genetic modifications ", ','.join(geneticModifications), " and custom references ",  ','.join(customReferences), sep="", file=sys.stderr)
+        
+        additionalGenomesToMap = checkForCEGSreferences(geneticModifications, warn=False)
+        additionalGenomesToMap = additionalGenomesToMap + checkForCEGSreferences(customReferences, warn=True)
+        
         return additionalGenomesToMap
 
 def bwaPipeline(line):
@@ -250,7 +266,9 @@ def bwaPipeline(line):
     if geneticModification is not "":
         sampleAnnotation.append("Genetic_Modification=" + geneticModification)
     
-    submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["#Sample Name"] + " " + line["Sample #"] + " \"" + ';'.join(sampleAnnotation) + "\""
+    submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["#Sample Name"] + " " + line["Sample #"]
+    if len(sampleAnnotation) > 0:
+        submitCommand += " \"" + ';'.join(sampleAnnotation) + "\""
     
     global doBwaCleanup
     doBwaCleanup = True
@@ -339,6 +357,9 @@ limsWks, lims, limsMask = getLIMSsheet("LIMS")
 
 #Will map to these custom genomes when specified, stored as they appear in LIMS (without cegsvectors_ prefix)
 cegsGenomes = [ re.sub(r'^cegsvectors_', '', os.path.basename(x)) for x in glob.glob("/vol/cegs/sequences/cegsvectors_*") ]
+if args.verbose:
+    print("\nFound custom references:" + ','.join(cegsGenomes), file=sys.stderr)
+
 
 doBwaCleanup = False
 doDNACaptureCleanup = False
