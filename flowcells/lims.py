@@ -31,6 +31,7 @@ def getValueFromLIMS(lims, bs, colname):
         if len(matches) > 1:
             #Multiple matches should never occur if BS numbers are unique
             raise Exception("Found multiple LIMS entries for " + bs)
+#        print('LIMS: ', bs, ":", colname, '=>', matches[0], ".", sep="")
         return matches[0]
 
 #Pull the LIMS sheet from google using the service account secrets file and spreadsheet ID.
@@ -62,8 +63,8 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask):
     numMissingSamples = 0
     numMultipleSamples = 0
     #Iterate through the sequencing sheet
-    for i in seq.index.values[seqMask]:
-        curSeq = seq.iloc[i]
+    for seqRow in seq.index.values[seqMask]:
+        curSeq = seq.iloc[seqRow]
         bs = curSeq['Sample #']
         SampleName = curSeq['Sample Name']
         curLims = lims[limsMask & lims['Sample #'].isin([bs])]
@@ -81,6 +82,12 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask):
                         print("WARNING", "missing info", SampleName, bs, col, curLims[col].item(), curSeq[col], sep=",")
                     else:
                         print("ERROR", "inconsistent info", SampleName, bs, col, curLims[col].item(), curSeq[col], sep=",")
+            for col in set(seq.columns.values):
+                if isinstance(curSeq[col], str) and curSeq[col] != curSeq[col].strip():
+                    print("WARNING", "leading/trailing whitespace", SampleName, bs, col, "", curSeq[col], sep=",")
+            for col in set(lims.columns.values):
+                if str(curLims[col].item()) != str(curLims[col].item()).strip():
+                    print("WARNING", "leading/trailing whitespace", SampleName, bs, col, curLims[col].item(), "", sep=",")
     
     print(str(numMissingSamples) + " total samples missing from LIMS sheet")
     print(str(numMultipleSamples) + " total samples matching multiple entries in LIMS sheet")
