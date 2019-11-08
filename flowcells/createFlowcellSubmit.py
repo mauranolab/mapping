@@ -186,7 +186,7 @@ def checkForCEGSreferences(requestedReferencesForMapping, warn=False):
                 #Add the genome including the cegsvectors_ prefix
                 genomesToMap.append("cegsvectors_" + curRequestedReference)
             else:
-                if warn and curRequestedReference not in ["rTTA",'dHoxa', 'dSox2', 'dPiga', 'dHPRT1']:
+                if warn:
                     print("WARNING could not find reference for '" + curRequestedReference, "'", sep="", file=sys.stderr)
     return(genomesToMap)
 
