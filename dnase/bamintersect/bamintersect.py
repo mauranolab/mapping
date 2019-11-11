@@ -5,6 +5,8 @@ import argparse
 import pysam
 import csv
 import re
+from ctypes import CDLL
+
 
 
 def reads_match(fileA_read, fileB_read, same):
@@ -97,7 +99,39 @@ def write_to_csv(dsgrep_writer, file1_file, file2_file, file1_read, file2_read, 
                            [file2_readID] + [read_flag_2] + [strand_2] )
 
 
-def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv, max_mismatches, ReqFullyAligned):
+def testReads(cCode, read1, operator, read2):
+    read1_b = read1.encode('utf-8')
+    read2_b = read2.encode('utf-8')
+
+    retValue = cCode.strnum_cmp(read1_b, read2_b)
+
+    if operator == ">":
+        if retValue > 0:
+            return True
+        else:
+            return False
+    elif operator == "<":
+        if retValue < 0:
+            return True
+        else:
+            return False
+    else:
+        # operator must be "="
+        if retValue == 0:
+            return True
+        else:
+            return False
+
+
+def bam_intersect_f(src, bam_name1, bam_name2, outdir, same, make_csv, max_mismatches, ReqFullyAligned):
+
+    # Get our custom strnum_cmp c library:
+    try:
+        cCode = CDLL(src + r"/samtools_strnum_cmp.so")
+        cCode.connect()   # Confirm connection was established.
+    except:
+        print("[bamintersect.py] Can't connect to samtools_strnum_cmp.so")
+        return [207]
 
     # Get iterator handles for bam input files #1 and #2.
     try:
@@ -183,7 +217,7 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv, max_mismatches
 
     try:
         while True:
-            if file1_readID < file2_readID:
+            if testReads(cCode, file1_readID, "<", file2_readID):
                 # The file1 readID is less than the file2 readID. Get another file1 line, and check again.
                 try: file1_read = next(file1_file)
                 except: break  # All done
@@ -294,10 +328,13 @@ if (__name__ == '__main__'):
 
     parser.add_argument('--ReqFullyAligned', action='store_true', help='If set, require reads to be fully aligned.')
 
+    # src directory (needed to locate the C shared library).
+    parser.add_argument('--src', action='store', type=str, help='Full path to source code directory.')
+
     args = parser.parse_args()
 
     print("[bamintersect.py] Parameters:", args, file=sys.stderr)
 
-    bam_intersect_out = bam_intersect_f(args.bam1, args.bam2, args.outdir, args.same, args.make_csv, args.max_mismatches, args.ReqFullyAligned)
+    bam_intersect_out = bam_intersect_f(args.src, args.bam1, args.bam2, args.outdir, args.same, args.make_csv, args.max_mismatches, args.ReqFullyAligned)
     sys.exit(bam_intersect_out[0])
 
