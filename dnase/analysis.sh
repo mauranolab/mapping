@@ -298,7 +298,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
         echo "Collecting picard metrics"
         mkdir -p ${sampleOutdir}/picardmetrics
         #TODO should we exclude flag 512 like for CollectWgsMetrics?
-        java -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectMultipleMetrics -INPUT ${sampleOutdir}/${name}.${mappedgenome}.bam -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome} -PROGRAM CollectGcBiasMetrics -VERBOSITY WARNING
+        java -XX:ParallelGCThreads=2 -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectMultipleMetrics -INPUT ${sampleOutdir}/${name}.${mappedgenome}.bam -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome} -PROGRAM CollectGcBiasMetrics -VERBOSITY WARNING
         #Can use CollectHsMetrics but needs bait coordinates
         
         echo
@@ -306,7 +306,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
         #Need to make second pass as CollectWgsMetrics can't be run by CollectMultipleMetrics
         #Exclude flag 512 rather than it's default MAPQ/BQ filters
         #NB I often see this using 4-5% of memory, about twice the available per-job average
-        samtools view -h -u ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | java -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectWgsMetrics -INPUT /dev/stdin -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics -VERBOSITY WARNING -COUNT_UNPAIRED=true
+        samtools view -h -u ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | java -XX:ParallelGCThreads=2 -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectWgsMetrics -INPUT /dev/stdin -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics -VERBOSITY WARNING -COUNT_UNPAIRED=true
         
         #NB included reads doesn't exactly match our -F 512 or duplicates
         #but don't have binned coverage track yet

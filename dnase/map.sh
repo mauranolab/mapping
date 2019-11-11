@@ -198,7 +198,7 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     
     #seems to have fairly heavy memory requirements
     #java.lang.OutOfMemoryError: unable to create new native thread if run with just 2 threads
-    java org.usadellab.trimmomatic.TrimmomaticPE ${trimmomaticBaseOpts} $TMPDIR/${sample1}.pretrim.fastq.gz $TMPDIR/${sample2}.pretrim.fastq.gz $TMPDIR/${sample1}.fastq $TMPDIR/${sample1}.unpaired.fastq $TMPDIR/${sample2}.fastq $TMPDIR/${sample2}.unpaired.fastq ${trimmomaticSteps}
+    java -XX:ParallelGCThreads=2 org.usadellab.trimmomatic.TrimmomaticPE ${trimmomaticBaseOpts} $TMPDIR/${sample1}.pretrim.fastq.gz $TMPDIR/${sample2}.pretrim.fastq.gz $TMPDIR/${sample1}.fastq $TMPDIR/${sample1}.unpaired.fastq $TMPDIR/${sample2}.fastq $TMPDIR/${sample2}.unpaired.fastq ${trimmomaticSteps}
     #TODO why does this output uncompressed fastq? I think it's just so one can test with -s below
     #BUGBUG java doesn't set nonzero exit code on trimmomatic exception
     
@@ -243,7 +243,7 @@ else
     
     #BUGBUG missing filterNextSeqReadsForPolyG.py for SE data
     #BUGBUG wrong adapter files
-    java org.usadellab.trimmomatic.TrimmomaticSE ${trimmomaticBaseOpts} ${readsFq} $TMPDIR/${sample1}.fastq ${trimmomaticSteps}
+    java -XX:ParallelGCThreads=2 org.usadellab.trimmomatic.TrimmomaticSE ${trimmomaticBaseOpts} ${readsFq} $TMPDIR/${sample1}.fastq ${trimmomaticSteps}
     #BUGBUG java doesn't set nonzero exit code on trimmomatic exception
     
     
@@ -393,7 +393,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     
     #Not populating -SPECIES=Human
     #ParallelGCThreads is for java.lang.OutOfMemoryError: unable to create new native thread
-    java -XX:ParallelGCThreads=2 -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CreateSequenceDictionary -O=$TMPDIR/${curfile}.${curGenome}.dict -R=${referencefasta} -GENOME_ASSEMBLY=${annotationgenome}
+    java -XX:ParallelGCThreads=1 -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CreateSequenceDictionary -O=$TMPDIR/${curfile}.${curGenome}.dict -R=${referencefasta} -GENOME_ASSEMBLY=${annotationgenome}
     
     samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${curfile}.sortbyname -l 1 -n $TMPDIR/${curfile}.${curGenome}.bwaout.bam |
     #not much gain other than avoiding disk IO doing this in a pipe as I don't think sort prints any intermediate results. Perhaps sorting fastq before mapping would be faster? https://www.biostars.org/p/15011/
@@ -431,7 +431,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     echo "Mean quality by cycle"
     date
     #BUGBUG performs badly for SRR jobs -- some assumption not met?
-    java -Xmx3g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MeanQualityByCycle -INPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -OUTPUT $TMPDIR/${curfile}.baseQ.txt -CHART_OUTPUT $TMPDIR/${curfile}.baseQ.pdf -VALIDATION_STRINGENCY LENIENT
+    java -XX:ParallelGCThreads=2 -Xmx3g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MeanQualityByCycle -INPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -OUTPUT $TMPDIR/${curfile}.baseQ.txt -CHART_OUTPUT $TMPDIR/${curfile}.baseQ.pdf -VALIDATION_STRINGENCY LENIENT
     
     instrument=`bam2instrument ${sampleOutdir}/${curfile}.${curGenome}.bam | uniq | awk 'values[$0] != 1 {print; values[$0]=1}' | perl -pe 's/\n$//g;' | perl -pe 's/\n/;/g;'`
     awk -v instrument=${instrument} -v fc=${fc} -v sample=${curfile} -v ds=${BS} -v genome=${curGenome} -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $0!="" {if($1=="CYCLE") {$0=tolower($0); $(NF+1)="instrument\tfc\tsample\tDS\tgenome"} else {$(NF+1)=instrument "\t" fc "\t" sample "\t" ds "\t" genome;} print}' $TMPDIR/${curfile}.baseQ.txt > ${sampleOutdir}/${curfile}.${curGenome}.baseQ.txt
