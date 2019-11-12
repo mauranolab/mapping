@@ -112,7 +112,7 @@ def samtoolsCmpReadnames(cCode, read1, operator, read2):
     elif operator == "=":
         return retValue == 0:
     else:
-        raise NameError('testReads was called with an invalid operator.')
+        raise NameError('samtoolsCmpReadnames was called with an invalid operator.')
 
 
 def bam_intersect_f(src, bam_name1, bam_name2, outdir, same, make_csv, max_mismatches, ReqFullyAligned):
