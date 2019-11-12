@@ -1,6 +1,5 @@
 #include <stdio.h>    // Needed for printf
 #include <ctype.h>    // Needed for isdigit
-// The above can be found in /usr/include
 
 void connect()
 {
@@ -8,7 +7,8 @@ void connect()
 }
 
 
-// Exact copy of the samtools strnum_cmp function:
+// Below is an exact copy of the samtools strnum_cmp function.
+// Source code can be found here:  https://github.com/samtools/samtools/blob/develop/bam_sort.c (starts on line 102)
 int strnum_cmp(const char *_a, const char *_b)
 {
     const unsigned char *a = (const unsigned char*)_a, *b = (const unsigned char*)_b;
