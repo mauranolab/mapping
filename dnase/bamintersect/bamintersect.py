@@ -99,28 +99,20 @@ def write_to_csv(dsgrep_writer, file1_file, file2_file, file1_read, file2_read, 
                            [file2_readID] + [read_flag_2] + [strand_2] )
 
 
-def testReads(cCode, read1, operator, read2):
+def samtoolsCmpReadnames(cCode, read1, operator, read2):
     read1_b = read1.encode('utf-8')
     read2_b = read2.encode('utf-8')
 
     retValue = cCode.strnum_cmp(read1_b, read2_b)
 
     if operator == ">":
-        if retValue > 0:
-            return True
-        else:
-            return False
+        return retValue > 0:
     elif operator == "<":
-        if retValue < 0:
-            return True
-        else:
-            return False
+        return retValue < 0:
+    elif operator == "=":
+        return retValue == 0:
     else:
-        # operator must be "="
-        if retValue == 0:
-            return True
-        else:
-            return False
+        raise NameError('testReads was called with an invalid operator.')
 
 
 def bam_intersect_f(src, bam_name1, bam_name2, outdir, same, make_csv, max_mismatches, ReqFullyAligned):
@@ -217,7 +209,7 @@ def bam_intersect_f(src, bam_name1, bam_name2, outdir, same, make_csv, max_misma
 
     try:
         while True:
-            if testReads(cCode, file1_readID, "<", file2_readID):
+            if samtoolsCmpReadnames(cCode, file1_readID, "<", file2_readID):
                 # The file1 readID is less than the file2 readID. Get another file1 line, and check again.
                 try: file1_read = next(file1_file)
                 except: break  # All done

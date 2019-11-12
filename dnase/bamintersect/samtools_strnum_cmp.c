@@ -1,5 +1,6 @@
-#include <stdio.h>
-#include <ctype.h>    // isdigit
+#include <stdio.h>    // Needed for printf
+#include <ctype.h>    // Needed for isdigit
+// The above can be found in /usr/include
 
 void connect()
 {

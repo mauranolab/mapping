@@ -13,6 +13,7 @@ CC = gcc
 CFLAGS = -Wall -Wno-unused-function -fPIC -shared -O3
 
 samtools_strnum_cmp.so: samtools_strnum_cmp.c
+		module load gcc/6.2.0; \
 		$(CC) $(CFLAGS) -o samtools_strnum_cmp.so samtools_strnum_cmp.c
 
 clean:
