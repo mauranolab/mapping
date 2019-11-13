@@ -106,11 +106,11 @@ def samtoolsCmpReadnames(cCode, read1, operator, read2):
     retValue = cCode.strnum_cmp(read1_b, read2_b)
 
     if operator == ">":
-        return retValue > 0:
+        return retValue > 0
     elif operator == "<":
-        return retValue < 0:
+        return retValue < 0
     elif operator == "=":
-        return retValue == 0:
+        return retValue == 0
     else:
         raise NameError('samtoolsCmpReadnames was called with an invalid operator.')
 
