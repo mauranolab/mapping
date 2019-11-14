@@ -39,10 +39,10 @@ HPRT1_bait)
     grep -w "HPRT1_assembly" /vol/cegs/sequences/hg38/HPRT1/HPRT1_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
 Piga_bait)
-    awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $4~/_assembly$/' /vol/cegs/sequences/mm10/Piga/Piga_assembly.bed | bedops -m - > $TMPDIR/target.bed
+    awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $4~/^RP23\-32H22$/' /vol/cegs/sequences/mm10/Piga/Piga_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
 Sox2_bait)
-    awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $4~/_assembly$/' /vol/cegs/sequences/mm10/Sox2/Sox2_assembly.bed | bedops -m - > $TMPDIR/target.bed
+    awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $4~/^Sox2\-143kb_WT_assembly$/' /vol/cegs/sequences/mm10/Sox2/Sox2_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
 RnHoxa_bait)
     grep -w "RnHoxa_assembly" /vol/cegs/sequences/rn6/RnHoxa/RnHoxa_assembly.bed | bedops -m - > $TMPDIR/target.bed
@@ -50,7 +50,7 @@ RnHoxa_bait)
 HTRA1_CH17-165I6_bait)
     grep -w "CH17-165I6" /vol/cegs/sequences/hg38/HTRA1/HTRA1_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
-LP058_bait|LP087_bait|LP097_bait|LP131_bait|LP140_bait|PL1_bait|pSpCas9_bait)
+LP*_bait|PL1_bait|pSpCas9_bait)
     #TODO not counting backbone since we don't support multiple chromosomes
     cat /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes | awk -v bait=${bait/_bait/} -F "\t" 'BEGIN {OFS="\t"} $1==bait {print $1, 0, $2}' > $TMPDIR/target.bed
     ;;
