@@ -87,12 +87,12 @@ while read main_chrom ; do
     echo "Working on:  ${main_chrom}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
     echo "Running filter_tsv without filters." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "NA" ${main_chrom} ${INTERMEDIATEDIR} ${integrationsite} all_reads_counts ${verbose}
+    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "NA" ${main_chrom} ${INTERMEDIATEDIR} all_reads_counts ${verbose}
 
     debug_fa "Completed filter_tsv for all_reads_counts"
 
     echo "Running filter_tsv with HA filters (if any) and with the Exclude Regions file (which may be empty)." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} ${genome2exclude} ${main_chrom} ${INTERMEDIATEDIR} ${integrationsite} informative_reads_counts ${verbose}
+    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} ${genome2exclude} ${main_chrom} ${INTERMEDIATEDIR} informative_reads_counts ${verbose}
 
     debug_fa "Completed filter_tsv for informative_reads_counts"
 

@@ -304,24 +304,24 @@ if (__name__ == '__main__'):
                                      add_help = True)
 
     # bam file names - full paths (bam2 comes in via stdin).
-    parser.add_argument('--bam1', action='store', type=str, help='A full path bam file name, or stdin')
-    parser.add_argument('--bam2', action='store', type=str, help='A full path bam file name, or stdin')
+    parser.add_argument('--bam1', action='store', type=str, help='A full path bam file name, or stdin', required = True)
+    parser.add_argument('--bam2', action='store', type=str, help='A full path bam file name, or stdin', required = True)
 
     # Output directory
-    parser.add_argument('--outdir', action='store', type=str, help='Full path to output directory. Files output: dsgrep_out.csv, dsgrep_out1.bam, dsgrep_out2.bam')
+    parser.add_argument('--outdir', action='store', type=str, help='Full path to output directory. Files output: dsgrep_out.csv, dsgrep_out1.bam, dsgrep_out2.bam', required = True)
 
     # Type of read matching we want.
-    parser.add_argument('--same', action='store_true', help='True if looking to match read1/read1, or if the reads are unpaired. False if looking to match read1/read2.')
+    parser.add_argument('--same', action='store_true', help='True if looking to match read1/read1, or if the reads are unpaired. False if looking to match read1/read2.', required = True)
 
     # Do we want to make the 12 column bed file, or 2 bam files?
-    parser.add_argument('--make_csv', action='store_true', help='True if output should be the 12 column bed file. False if we want the 2 bam files')
+    parser.add_argument('--make_csv', action='store_true', help='True if output should be the 12 column bed file. False if we want the 2 bam files', required = True)
 
-    parser.add_argument('--max_mismatches', action='store', type=int, help='Maximum number of mismatches a read is allowed to have. The number of mismatches is the value of the read NM tag')
+    parser.add_argument('--max_mismatches', action='store', type=int, help='Maximum number of mismatches a read is allowed to have. The number of mismatches is the value of the read NM tag', required = True)
 
-    parser.add_argument('--ReqFullyAligned', action='store_true', help='If set, require reads to be fully aligned.')
+    parser.add_argument('--ReqFullyAligned', action='store_true', help='If set, require reads to be fully aligned.', required = True)
 
     # src directory (needed to locate the C shared library).
-    parser.add_argument('--src', action='store', type=str, help='Full path to source code directory.')
+    parser.add_argument('--src', action='store', type=str, help='Full path to source code directory.', required = True)
 
     args = parser.parse_args()
 
