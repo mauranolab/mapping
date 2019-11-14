@@ -119,7 +119,7 @@ def transposonSamples(line):
         elif sampleType == "Transposon RNA":
             bcread = "R1"
         else:
-            raise Exception("IMPOSSIBLE")
+            raise Exception("ERROR: IMPOSSIBLE")
     elif sampleType == "Transposon iPCR":
         bcread = "R1"
         BCreadSeq = "CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBGCTAGTTGTGGGATC" #Shorter sequence ends at the DpnII site
