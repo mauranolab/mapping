@@ -67,10 +67,8 @@ $0!~/^#/ && $1!="" { \
 }' info.txt
 
 
-#TODO not sure how to get a single quote inside
 cat info.txt | awk -F "\t" 'BEGIN {OFS="\t"; inheader=1; lastBSnum=0} \
 $1=="#Sample Name" && inheader==1 { inheader=0; next } \
-inheader==0 && $1~/[\-%\(\)\"\/\. ]/ { print "WARNING: Sample name for " $1 "-" $2 " contains invalid characters"; } \
 inheader==0 { \
     curBSnum=substr($2, 3, 5); \
     if(curBSnum < lastBSnum) { \
@@ -78,6 +76,19 @@ inheader==0 { \
     } \
     lastBSnum=curBSnum; \
 }'
+
+
+#TODO not sure how to get a single quote inside
+#BUGBUG false alarm for - in chipseq samples
+cat info.txt | awk -F "\t" 'BEGIN {OFS="\t"; inheader=1; lastBSnum=0} \
+$1=="#Sample Name" && inheader==1 { inheader=0; next } \
+inheader==0 && $1~/[\-%\(\)\"\/\. ]/ { print "WARNING: Sample name for " $1 "-" $2 " contains invalid characters"; }'
+
+
+cat info.txt | awk -F "\t" 'BEGIN {OFS="\t"; inheader=1; lastBSnum=0} \
+$1=="#Sample Name" && inheader==1 { inheader=0; next } \
+inheader==0 && $1!~/\-/ && $5=="ChIP-seq" { print "WARNING: Sample name for " $1 "-" $2 " missing ChIP-seq epitope"; }'
+
 
 echo "Finished validation"
 
