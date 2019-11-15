@@ -18,6 +18,7 @@ version="1.5"
 parser = argparse.ArgumentParser(prog = "createFlowcellSubmit", description = "Outputs submit commands for all samples from the info.txt located in the flowcell data folder", allow_abbrev=False)
 
 parser.add_argument('--flowcellIDs', action='store', type = str, help='Flowcell IDs (will look for /vol/mauranolab/flowcells/FCxxx/info.txt, multiple FCs separated by comma)', required=True)
+parser.add_argument('--samplenames', action='store', type = str, help='Only process samples with matching names (multiple samples separated by comma, done as string matching)', required=False)
 parser.add_argument('--samples', action='store', type = str, help='Only process samples matching this BS number (multiple samples separated by comma, done as string matching)', required=False)
 parser.add_argument('--projects', action='store', type = str, help='Only process samples in these projects (multiple projects separated by comma)', required=False)
 parser.add_argument('--people', action='store', type = str, help='Only process samples made by these people (multiple names separated by comma)', required=False)
@@ -60,6 +61,11 @@ if args.samples is None:
     samples = None
 else:
     samples = args.samples.split(",")
+
+if args.samplenames is None:
+    samplenames = None
+else:
+    samplenames = args.samplenames.split(",")
 
 
 ###Utility functions
@@ -317,6 +323,9 @@ if people is not None:
 if samples is not None:
     #Do partial string matching rather than exact equality to allow flexible subsetting of certain sublibraries or of all sublibraries for a given BS number
     flowcellFile = flowcellFile[flowcellFile['Sample #'].apply(lambda bs: any([s in bs for s in samples]))]
+if samplenames is not None:
+    #Do partial string matching rather than exact equality to allow flexible subsetting of certain sublibraries or of all sublibraries for a given BS number
+    flowcellFile = flowcellFile[flowcellFile['#Sample Name'].apply(lambda bs: any([s in bs for s in samplenames]))]
 
 
 #Initialize inputs.txt - must be done before we drop duplicate sample rows
