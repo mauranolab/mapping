@@ -300,7 +300,7 @@ def bam_intersect_f(src, bam_name1, bam_name2, outdir, same, make_csv, max_misma
 
 if (__name__ == '__main__'):
     parser = argparse.ArgumentParser(prog = "bam_intersect.py",
-                                     description = "Given 2 lexicographically sorted bam files (Picard, not samtools sort), produces a bed12 file which pairs read1 from bam file #1 with read2 from bam file #2 (with the same read IDs), and vice versa.",
+                                     description = "Given 2 bam files sorted by name (samtools sort, not picard or lexographical sort), produces a bed12 file which pairs read1 from bam file #1 with read2 from bam file #2 (with the same read IDs), and vice versa.",
                                      add_help = True)
 
     # bam file names - full paths (bam2 comes in via stdin).
