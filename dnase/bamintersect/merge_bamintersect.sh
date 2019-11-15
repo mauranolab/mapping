@@ -170,6 +170,7 @@ debug_fa "Done with the samtools section."
 rm -r ${INTERMEDIATEDIR}
 #############################################################################
 
+echo
 echo "Done!!!"
 date
 
