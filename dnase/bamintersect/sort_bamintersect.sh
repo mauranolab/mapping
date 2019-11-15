@@ -38,7 +38,9 @@ echo
 #     Numeric sorts do not entail character by character comparisons.  The entire subfield is considered as one integer, and
 #     the integer values of the two subfields are compared.  Leading zeroes are only used as tie breakers. The subfield with
 #     more leading zeroes is placed before the subfield with fewer leading zeroes. 
-samtools view -h -b -f ${BAM_K} -F ${BAM_E} ${BAM} ${input_to_samtools3} | samtools sort -n -o ${BAM_OUT}
+
+#Since the next set of jobs will be reading this heavily, might be worthwhile to use high compression (-l 9) for big bam files
+samtools view -h -u -f ${BAM_K} -F ${BAM_E} ${BAM} ${input_to_samtools3} | samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/sortbyname -l 1 -n -o ${BAM_OUT}
 
 echo "Done!!!"
 date
