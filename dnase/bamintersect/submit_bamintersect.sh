@@ -36,12 +36,6 @@ fi
 ############################################################
 
 module load samtools/1.9
-
-module load picard/2.18.15 1>/dev/null
-# Redirects this output from picard:
-#     Loading picard/2.18.15
-#       Loading requirement: jdk/jdk1.8.0_101
-
 module load bedops/2.4.35
 
 ############################################################

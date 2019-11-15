@@ -316,7 +316,7 @@ if (__name__ == '__main__'):
     # Do we want to make the 12 column bed file, or 2 bam files?
     parser.add_argument('--make_csv', action='store_true', help='True if output should be the 12 column bed file. False if we want the 2 bam files')
 
-    parser.add_argument('--max_mismatches', action='store', type=int, help='Maximum number of mismatches a read is allowed to have. The number of mismatches is the value of the read NM tag', required = True)
+    parser.add_argument('--max_mismatches', action='store', type=int, help='Maximum number of mismatches a read is allowed to have. The number of mismatches is the value of the read NM tag', default=0)
 
     parser.add_argument('--ReqFullyAligned', action='store_true', help='If set, require reads to be fully aligned.')
 
