@@ -252,7 +252,7 @@ def bam_intersect_f(src, bam_name1, bam_name2, outdir, same, make_csv, max_misma
                         # We were able to get a new read from file1, and it matches the previous file1 readID.
                         # Let's see if it has the desired read1/read2 value.
                         if reads_match(file1_read, old_file2_read, same):
-                            if OK_to_write(max_mismatches, ReqFullyAligned, file1_read, file2_read):
+                            if OK_to_write(max_mismatches, ReqFullyAligned, file1_read, old_file2_read):
                                 write_to_csv(dsgrep_writer, file1_file, file2_file, file1_read, old_file2_read, make_csv, bam_out1, bam_out2)
 
                             # It did, and we wrote the reads to the csv file.
@@ -268,7 +268,7 @@ def bam_intersect_f(src, bam_name1, bam_name2, outdir, same, make_csv, max_misma
                         # We were able to get a new read from file2, and it matches the previous file2 readID.
                         # Let's see if it has the desired read1/read2 value.
                         if reads_match(old_file1_read, file2_read, same):
-                            if OK_to_write(max_mismatches, ReqFullyAligned, file1_read, file2_read):
+                            if OK_to_write(max_mismatches, ReqFullyAligned, old_file1_read, file2_read):
                                 write_to_csv(dsgrep_writer, file1_file, file2_file, old_file1_read, file2_read, make_csv, bam_out1, bam_out2)
 
                             # It did, and we wrote the reads to the csv file.
