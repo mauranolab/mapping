@@ -36,12 +36,6 @@ fi
 ############################################################
 
 module load samtools/1.9
-
-module load picard/2.18.15 1>/dev/null
-# Redirects this output from picard:
-#     Loading picard/2.18.15
-#       Loading requirement: jdk/jdk1.8.0_101
-
 module load bedops/2.4.35
 
 ############################################################
@@ -144,6 +138,23 @@ long_arg_list=(
     help
 )
 
+# These arguments are required arguments, as opposed to the options with required arguments described above:
+rqd_arg_names=(
+    sample_name
+    integrationsite
+    outdir
+    bam1
+    bam1genome
+    bam2
+    bam2genome
+)
+
+declare -A rqd_arg_status
+for i in "${rqd_arg_names[@]}"; do
+    # We start by assuming the argument is not there ("0").
+    rqd_arg_status["${i}"]="0"
+done
+
 ############################################################
 # Parsing the getopt arguments:
 
@@ -151,16 +162,22 @@ long_args=$(printf "%s," "${long_arg_list[@]}")   # Turn the arg array into a st
 long_args=$(echo ${long_args} | sed 's/,$/ /')    # Get rid of final comma.
 
 # There must be at least one option associated with "-o", or you need to deal with getopt's default behavior.
+# Default behavior: The first parameter of getopt that does not start with a '-' (and is not an option argument) is used as the short options string. 
 CMD_LINE=$(getopt -o h --long "${long_args}" -n "[submit_bamintersect] ERROR" -- "$@")
 # Catch getopt errors here if not using "set -e"
 
+echo "The command line: $0 ${CMD_LINE}"
+
+# This makes the positional parameters consistent with the output of getopt ("CMD_LINE").
+# getopt removes unmanaged input parameters, which could be used elsewhere, but does not sync the change with the positional parameters.
+# This is the standard implementation of getopt.
 eval set -- "$CMD_LINE"
 
 # getopt default values:
     make_csv="--make_csv"
     make_table=True
     reads_match=""
-    integrationsite="NA"
+    integrationsite="null"
     
     # Require read is paired.
     # Require mate is unmapped.
@@ -189,23 +206,23 @@ eval set -- "$CMD_LINE"
 while true ; do
     case "$1" in
         --sample_name)
-            sample_name=$2 ; shift 2 ;;
+            sample_name=$2 ; shift 2 ; rqd_arg_status[sample_name]="1" ;;
         --integrationsite)
-            integrationsite=$2 ; shift 2 ;;
+            integrationsite=$2 ; shift 2 ; rqd_arg_status[integrationsite]="1" ;;
         --outdir)
-            sampleOutdir=$2 ; shift 2 ;;
+            sampleOutdir=$2 ; shift 2 ; rqd_arg_status[outdir]="1" ;;
         --bam1)
-            bamname1=$2 ; shift 2 ;;
+            bamname1=$2 ; shift 2 ; rqd_arg_status[bam1]="1" ;;
         --bam1genome)
-            bam1genome=$2 ; shift 2 ;;
+            bam1genome=$2 ; shift 2 ; rqd_arg_status[bam1genome]="1" ;;
         --bam1_keep_flags)
             bam1_keep_flags=$2 ; shift 2 ;;
         --bam1_exclude_flags)
             bam1_exclude_flags=$2 ; shift 2 ;;
         --bam2)
-            bamname2=$2 ; shift 2 ;;
+            bamname2=$2 ; shift 2 ; rqd_arg_status[bam2]="1" ;;
         --bam2genome)
-            bam2genome=$2 ; shift 2 ;;
+            bam2genome=$2 ; shift 2 ; rqd_arg_status[bam2genome]="1" ;;
         --bam2_keep_flags)
             bam2_keep_flags=$2 ; shift 2 ;;
         --bam2_exclude_flags)
@@ -227,6 +244,23 @@ while true ; do
         *) echo "ERROR getopt internal error $1!" ; exit 1 ;;
     esac
 done
+
+
+# Check that all required arguments have been provided.
+ierr=0
+for i in "${rqd_arg_names[@]}"; do
+    if [ ${rqd_arg_status["${i}"]} != "1" ]; then
+        echo "Missing required arg to submit_bamintersect.sh :  ${i}"
+        ierr=1
+    fi
+done
+
+if [ ${ierr} = "1" ]; then
+    # We are missing at least one required argument.
+    exit 1
+else
+    echo "All required arguments have been provided."
+fi
 
 # End of getopt section.
 ################################################
@@ -400,7 +434,7 @@ echo "Second: ${bamname2}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.tx
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
 # Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
-if [ "${integrationsite}" != "null" ] && [ "${integrationsite}" != "NA" ]; then
+if [ "${integrationsite}" != "null" ]; then
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
     echo "${integrationSiteName} HAs:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
@@ -425,11 +459,10 @@ if [ "${integrationsite}" != "null" ] && [ "${integrationsite}" != "NA" ]; then
         touch "${INTERMEDIATEDIR}/deletion_range.bed"
     fi
 else
-    echo "integrationsite is null/NA" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "integrationsite is null" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "No HAs were provided, and so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     
-    integrationsite="NA"
     touch "${INTERMEDIATEDIR}/genome1exclude.bed"
     touch "${INTERMEDIATEDIR}/deletion_range.bed"
 fi
@@ -462,7 +495,6 @@ export_vars="${export_vars},bam2genome=${bam2genome}"
 export_vars="${export_vars},make_csv=${make_csv}"
 export_vars="${export_vars},make_table=${make_table}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
-export_vars="${export_vars},integrationsite=${integrationsite}"
 export_vars="${export_vars},bamname1=${bamname1}"
 export_vars="${export_vars},bamname2=${bamname2}"
 export_vars="${export_vars},BAM_E1=${bam1_exclude_flags}"

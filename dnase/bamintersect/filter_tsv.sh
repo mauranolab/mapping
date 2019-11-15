@@ -23,9 +23,8 @@ bam2genome=$3
 genome2exclude=$4
 main_chrom=$5
 INTERMEDIATEDIR=$6
-integrationsite=$7
-counts_type=$8
-verbose=$9
+counts_type=$7
+verbose=$8
 
 
 debug_fa "main_chrom: ${main_chrom}       TMPDIR is: ${TMPDIR}"
