@@ -162,16 +162,17 @@ long_args=$(printf "%s," "${long_arg_list[@]}")   # Turn the arg array into a st
 long_args=$(echo ${long_args} | sed 's/,$/ /')    # Get rid of final comma.
 
 # There must be at least one option associated with "-o", or you need to deal with getopt's default behavior.
-# Default behavior: The first parameter of getopt that does not start with a '-' (and is not an option argument) is used as the short options string. 
-CMD_LINE=$(getopt -o h --long "${long_args}" -n "[submit_bamintersect] ERROR" -- "$@")
+# Default behavior: The first parameter of getopt that does not start with a '-' (and is not an option argument) is used as the short options string.
+# getopt returns a string where unmanaged input parameters are removed (which could be used elsewhere), and arguments for options are filled in
+options=$(getopt -o h --long "${long_args}" -n "[submit_bamintersect] ERROR" -- "$@")
 # Catch getopt errors here if not using "set -e"
 
-echo "The command line: $0 ${CMD_LINE}"
+echo "Parameters: ${options}"
+echo
 
-# This makes the positional parameters consistent with the output of getopt ("CMD_LINE").
-# getopt removes unmanaged input parameters, which could be used elsewhere, but does not sync the change with the positional parameters.
-# This is the standard implementation of getopt.
-eval set -- "$CMD_LINE"
+
+#Reset the positional parameters based on the output of getopt
+eval set -- "${options}"
 
 # getopt default values:
     make_csv="--make_csv"
@@ -195,9 +196,9 @@ eval set -- "$CMD_LINE"
     # Exclude PCR or optical duplicates.
     # Exclude supplementary aligments.
     bam2_exclude_flags="3076"
-
+    
     verbose=False
-
+    
     max_mismatches=0
     ReqFullyAligned="--ReqFullyAligned"
 
@@ -206,43 +207,44 @@ eval set -- "$CMD_LINE"
 while true ; do
     case "$1" in
         --sample_name)
-            sample_name=$2 ; shift 2 ; rqd_arg_status[sample_name]="1" ;;
+            sample_name=$2 ; shift 1 ; rqd_arg_status[sample_name]="1" ;;
         --integrationsite)
-            integrationsite=$2 ; shift 2 ; rqd_arg_status[integrationsite]="1" ;;
+            integrationsite=$2 ; shift 1 ; rqd_arg_status[integrationsite]="1" ;;
         --outdir)
-            sampleOutdir=$2 ; shift 2 ; rqd_arg_status[outdir]="1" ;;
+            sampleOutdir=$2 ; shift 1 ; rqd_arg_status[outdir]="1" ;;
         --bam1)
-            bamname1=$2 ; shift 2 ; rqd_arg_status[bam1]="1" ;;
+            bamname1=$2 ; shift 1 ; rqd_arg_status[bam1]="1" ;;
         --bam1genome)
-            bam1genome=$2 ; shift 2 ; rqd_arg_status[bam1genome]="1" ;;
+            bam1genome=$2 ; shift 1 ; rqd_arg_status[bam1genome]="1" ;;
         --bam1_keep_flags)
-            bam1_keep_flags=$2 ; shift 2 ;;
+            bam1_keep_flags=$2 ; shift 1 ;;
         --bam1_exclude_flags)
-            bam1_exclude_flags=$2 ; shift 2 ;;
+            bam1_exclude_flags=$2 ; shift 1 ;;
         --bam2)
-            bamname2=$2 ; shift 2 ; rqd_arg_status[bam2]="1" ;;
+            bamname2=$2 ; shift 1 ; rqd_arg_status[bam2]="1" ;;
         --bam2genome)
-            bam2genome=$2 ; shift 2 ; rqd_arg_status[bam2genome]="1" ;;
+            bam2genome=$2 ; shift 1 ; rqd_arg_status[bam2genome]="1" ;;
         --bam2_keep_flags)
-            bam2_keep_flags=$2 ; shift 2 ;;
+            bam2_keep_flags=$2 ; shift 1 ;;
         --bam2_exclude_flags)
-            bam2_exclude_flags=$2 ; shift 2 ;;
+            bam2_exclude_flags=$2 ; shift 1 ;;
         --max_mismatches)
-            max_mismatches=$2 ; shift 2 ;;
+            max_mismatches=$2 ; shift 1 ;;
         --noReqFullyAligned)
-            ReqFullyAligned="" ; shift 1 ;;
+            ReqFullyAligned="" ;;
         --reads_match)
-            reads_match="--same" ; shift 1 ;;
+            reads_match="--same" ;;
         --do_not_make_csv)
-            make_csv="" ; shift 1 ;;
+            make_csv="" ;;
         --do_not_make_table)
-            make_table=False ; shift 1 ;;
+            make_table=False ;;
         --verbose)
-            verbose=True ; shift 1 ;;
-        -h|--help) usage; shift ; exit 0 ;;
+            verbose=True ;;
+        -h|--help) usage; exit 0 ;;
         --) shift ; break ;;
         *) echo "ERROR getopt internal error $1!" ; exit 1 ;;
     esac
+    shift
 done
 
 
@@ -250,16 +252,15 @@ done
 ierr=0
 for i in "${rqd_arg_names[@]}"; do
     if [ ${rqd_arg_status["${i}"]} != "1" ]; then
-        echo "Missing required arg to submit_bamintersect.sh :  ${i}"
+        echo "ERROR Missing required arg to submit_bamintersect.sh :  ${i}"
         ierr=1
     fi
 done
 
 if [ ${ierr} = "1" ]; then
     # We are missing at least one required argument.
+    echo "ERROR Missing required required argument."
     exit 1
-else
-    echo "All required arguments have been provided."
 fi
 
 # End of getopt section.
@@ -290,10 +291,10 @@ INTERMEDIATEDIR="${sampleOutdir}/tmp.${sample_name}.${bam1genome}"   # INTERMEDI
 mkdir ${INTERMEDIATEDIR}
 
 # Subdirectories will hold output from bamintersect.py
-mkdir ${INTERMEDIATEDIR}/bamintersectPyOut
+mkdir -p ${INTERMEDIATEDIR}/bamintersectPyOut
 
 # Make a directory for all the small sorted, chromosome bam files generated by sort_bamintersect.sh
-mkdir ${INTERMEDIATEDIR}/sorted_bams
+mkdir -p ${INTERMEDIATEDIR}/sorted_bams
 
 ########################################################
 # Make the chromosome lists which will eventually drive the array jobs.
@@ -391,9 +392,7 @@ export_vars="${export_vars},sample_name=${sample_name}"
 
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1_simple")
 
-# /vol/mauranolab/cadlej01/projects/Sud_mm10_rn6/test_java contains code and comments regarding java thread
-# problems generated by multiple calls of sort_bamintersect. qos=low probably is good enough to handle the issues.
-qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log --qos=low -t 1-${num_lines} ${src}/sort_bamintersect.sh > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
+qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -pe threads 2 -t 1-${num_lines} ${src}/sort_bamintersect.sh > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
 
 export_vars="sampleOutdir=${sampleOutdir}"
 export_vars="${export_vars},BAM=${bamname2}"
@@ -406,8 +405,7 @@ export_vars="${export_vars},sample_name=${sample_name}"
 
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2_simple")
 
-#Request 2 slots per job to avoid java thread usage problems
-qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log --qos=low -pe threads 2 -t 1-${num_lines} ${src}/sort_bamintersect.sh > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -pe threads 2 -t 1-${num_lines} ${src}/sort_bamintersect.sh > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 ################################################################################################
 # Call bamintersect.py repeatedly via the bamintersect.sh array job:
@@ -501,9 +499,10 @@ export_vars="${export_vars},BAM_E1=${bam1_exclude_flags}"
 export_vars="${export_vars},BAM_E2=${bam2_exclude_flags}"
 export_vars="${export_vars},verbose=${verbose}"
 
-qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log ${src}/merge_bamintersect.sh
+qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log ${src}/merge_bamintersect.sh > /dev/null
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
 
+echo
 echo "Done!!!"
 date
 
