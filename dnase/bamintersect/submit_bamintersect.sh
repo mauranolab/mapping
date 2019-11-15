@@ -144,6 +144,7 @@ long_arg_list=(
     help
 )
 
+# These arguments are required arguments, as opposed to the options with required arguments described above:
 rqd_arg_names=(
     sample_name
     integrationsite
@@ -154,9 +155,9 @@ rqd_arg_names=(
     bam2genome
 )
 
-
 declare -A rqd_arg_status
 for i in "${rqd_arg_names[@]}"; do
+    # We start by assuming the argument is not there ("0").
     rqd_arg_status["${i}"]="0"
 done
 
@@ -166,12 +167,12 @@ done
 long_args=$(printf "%s," "${long_arg_list[@]}")   # Turn the arg array into a string with commas.
 long_args=$(echo ${long_args} | sed 's/,$/ /')    # Get rid of final comma.
 
-echo "submit_bamintersect args: ${long_args}"
-
 # There must be at least one option associated with "-o", or you need to deal with getopt's default behavior.
 # Default behavior: The first parameter of getopt that does not start with a '-' (and is not an option argument) is used as the short options string. 
 CMD_LINE=$(getopt -o h --long "${long_args}" -n "[submit_bamintersect] ERROR" -- "$@")
 # Catch getopt errors here if not using "set -e"
+
+echo "The command line: $0 ${CMD_LINE}"
 
 # This makes the positional parameters consistent with the output of getopt ("CMD_LINE").
 # getopt removes unmanaged input parameters, which could be used elsewhere, but does not sync the change with the positional parameters.
@@ -251,16 +252,20 @@ while true ; do
 done
 
 
+# Check that all required arguments have been provided.
 ierr=0
 for i in "${rqd_arg_names[@]}"; do
-    if [ rqd_arg_status["${i}"] != "1" ]; then
+    if [ ${rqd_arg_status["${i}"]} != "1" ]; then
         echo "Missing required arg to submit_bamintersect.sh :  ${i}"
         ierr=1
     fi
 done
 
 if [ ${ierr} = "1" ]; then
+    # We are missing at least one required argument.
     exit 1
+else
+    echo "All required arguments have been provided."
 fi
 
 # End of getopt section.
