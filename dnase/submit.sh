@@ -123,7 +123,7 @@ fi
 
 
 #bamintersect
-if [ ${runBamIntersect} -eq 1 ]; then
+if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" != "bamintersect" ]] || [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]); then
     echo
     echo "bamintersect"
     
