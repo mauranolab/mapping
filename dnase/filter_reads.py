@@ -324,7 +324,7 @@ if reheader is not None:
     finally:
         reheaderFile.close()
 
-#Set PP tag to last @PG entry listed (should be bwa, but technically order is not specified)
+#Set PP tag to last @PG entry listed (should be bwa, but technically order is not specified), also makes no attempt to follow PG chain in case it is run on a merged bam file.
 newheader['PG'].append({'ID':'filter_reads.py', 'PP':newheader['PG'][-1]['ID'], 'PN':'filter_reads.py', 'VN':version, 'CL':' '.join(sys.argv)})
 
 filtered_reads = pysam.AlignmentFile(args.filtered_alignment, "wbu", header = newheader)

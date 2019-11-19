@@ -11,6 +11,7 @@ analysisType=$1
 sampleOutdir=$2
 BS=$3
 mappedgenome=$4
+src=$5
 
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 #analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
@@ -105,7 +106,7 @@ else
     fi
     
     #TODO this has massive memory usage for large runs (e.g. a full mouse genome uses 90% of 256 GB)
-    #would -p be worth it for map runs to clean up the superfluous @PG tags in header?
+    #does not generate its own PG tag, possibly because technically the spec requires a separate merge tag for each existing @PG tag https://github.com/samtools/hts-specs/issues/275
     samtools merge -c -@ $NSLOTS ${mergeOpts} ${sampleOutdir}/${name}.${mappedgenome}.bam ${files}
 fi
 
@@ -119,13 +120,22 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggrega
     #BUGBUG Can make huge log files despite these options
     #http://sourceforge.net/p/samtools/mailman/message/32910359/
     #java -Xmx6g -jar /home/maurano/bin/picard-tools/MarkDuplicates.jar INPUT=${name}.${mappedgenome}.bam OUTPUT=${name}.markedDups.bam METRICS_FILE=$TMPDIR/${name}.picardDups.txt QUIET=TRUE VERBOSITY=ERROR COMPRESSION_LEVEL=9 ASSUME_SORTED=TRUE VALIDATION_STRINGENCY=LENIENT && mv ${name}.markedDups.bam ${name}.${mappedgenome}.bam
-
+    #BUGBUG samblaster is faster because it makes a single pass and doesn't pick dup with lowest BQ sum -- https://github.com/CCDG/Pipeline-Standardization/blob/master/PipelineStandard.md
+    #TODO maybe go back to picard, but using bam sorted by name? Like this:
+    #java -XX:ParallelGCThreads=2 -Xmx6g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MarkDuplicates -INPUT=/dev/stdin -OUTPUT=$TMPDIR/${name}.${mappedgenome}.markedDups.bam -METRICS_FILE=$TMPDIR/${name}.picardDups.txt -QUIET=TRUE -VERBOSITY=ERROR -COMPRESSION_LEVEL=0 -ASSUME_SORT_ORDER=queryname
+    #Would need to handle addMateTags functionality
+    #Or try sambamba -- https://github.com/FrickTobias/BLR/issues/113
+    
     ###Samblaster is faster
     #samblaster used an average of 1GB memory mapping ENCODE DNase data to hg38. 10/889 jobs used >5GB.
     samtools view -h ${sampleOutdir}/${name}.${mappedgenome}.bam |
     samblaster --addMateTags |
     #BUGBUG samblaster does not add a PP field in its @PG tag; when we are merging after map PP should just be bwa, but would be the prior tag SAMBLASTER when doing aggregateRemarkDups
-    samtools view -Sb - > $TMPDIR/${name}.${mappedgenome}.markedDups.bam
+    #BUGBUG samblaster blindly adds new @PG     ID:SAMBLASTER record even if it exists, causing strict (picard) validation errors
+    #https://github.com/GregoryFaust/samblaster/blob/master/samblaster.cpp
+    ${src}/fixDupSAMHeaderPG.py - - >$TMPDIR/${name}.${mappedgenome}.markedDups.bam
+#    samtools view -b - > $TMPDIR/${name}.${mappedgenome}.markedDups.bam
+    
     samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${name}.sort -l 9 $TMPDIR/${name}.${mappedgenome}.markedDups.bam > ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam && mv ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
 fi
 
