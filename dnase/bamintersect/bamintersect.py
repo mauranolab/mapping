@@ -236,9 +236,6 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv, max_mismatches
                 except:
                     break  # All done
                 file2_readID = file2_read.query_name
-#    except:
-    #BUBGUG what was caught here?
-#        return [1]
     finally:
         file1_file.close()
         file2_file.close()
