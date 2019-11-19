@@ -113,7 +113,7 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggrega
         mergename="${name}.${curGenome}"
         echo "+ ${mergename}"
         #NB compression threads are multithreaded. However, samblaster and index are not; former is ~1/4 of time and latter is trivial
-        qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mergeThreads} -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sampleOutdir} ${BS} ${curGenome}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
+        qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mergeThreads} -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sampleOutdir} ${BS} ${curGenome} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
     done
 fi
 #Clean up sgeid even if we don't run merge
