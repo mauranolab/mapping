@@ -17,7 +17,7 @@ def revcomp(seq):
     return "".join(complement.get(base, base) for base in reversed(seq))
 
 
-def checkReadAgainstRefSequence(readseq, refseq, editDistTotals, mismatchByPos):
+def checkReadAgainstRefSequence(readseq, refseq, editDistTotals, mismatchByPos, maxEditDistRate):
     #Permit readthrough into barcode region by excising any BC from both readseq and refseq
 #    print("DEBUG raw readseq=", readseq, "; refseq=", refseq, file=sys.stderr, sep="")
     bc_pos_match = re.search('B+', refseq)
@@ -35,7 +35,7 @@ def checkReadAgainstRefSequence(readseq, refseq, editDistTotals, mismatchByPos):
     mismatchPosition = [i for i in range(minLen) if readseq[i] != refseq[i]]
     editDist = edit_distance(readseq[0:minLen].encode(), refseq[0:minLen].encode())
     
-    readEditDistPassed = editDist <= (maxEditDist * minLen)
+    readEditDistPassed = editDist <= (maxEditDistRate * minLen)
     
     editDistTotals[editDist] += 1
     
@@ -108,7 +108,7 @@ if enforcePlasmidRead:
     plasmidRefSeqLength = len(plasmidRefSeq)
     numWrongPlasmidSeq = 0
 
-maxEditDist = args.maxEditDist
+maxEditDistRate = args.maxEditDist
 
 print("Extract barcodes\nParameters:", file=sys.stderr)
 print(args, file=sys.stderr)
@@ -243,9 +243,9 @@ try:
                 print("Alignment results: ", alignedLen, " total nt aligned (", propAligned *100, "%, read length ", curReadLen, "): ", alignedLenLeftOfBC, " nt left of BC, ", alignedLenRightOfBC, " nt right of BC; alignment offset=", offset, "; BCreadOffset=", BCreadOffset, ", bcRefSeqOffset=", bcRefSeqOffset, ".", file=sys.stderr, sep="")
         
         
-        BCeditDist, readBCreadEditDistPassed = checkReadAgainstRefSequence(BCread[1][BCreadOffset:], bcRefSeq[bcRefSeqOffset:], BCeditDistTotals, BCmismatchByPos)
+        BCeditDist, readBCreadEditDistPassed = checkReadAgainstRefSequence(BCread[1][BCreadOffset:], bcRefSeq[bcRefSeqOffset:], BCeditDistTotals, BCmismatchByPos, maxEditDistRate)
         if enforcePlasmidRead:
-            plasmidEditDist, readPlasmidReadEditDistPassed = checkReadAgainstRefSequence(PLread[1], plasmidRefSeq, PlasmidEditDistTotals, PlasmidMismatchByPos)
+            plasmidEditDist, readPlasmidReadEditDistPassed = checkReadAgainstRefSequence(PLread[1], plasmidRefSeq, PlasmidEditDistTotals, PlasmidMismatchByPos, maxEditDistRate)
         
         
         #Extract BC and check length
