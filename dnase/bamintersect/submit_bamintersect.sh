@@ -36,7 +36,7 @@ fi
 ############################################################
 
 module load samtools/1.9
-module load bedops/2.4.35
+module load bedops/2.4.37
 
 ############################################################
 # Start of "getopt" section
@@ -445,16 +445,20 @@ if [ "${integrationsite}" != "null" ]; then
         grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/genome1exclude.bed"
         grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/genome1exclude.bed"
         
-        # Get the deletion range coordinates:
+        # Get the HA coordinates:
         IFS=$'\t' read chrom HA1_5p HA1_3p all_other <<< "$(head -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
         IFS=$'\t' read chrom HA2_5p HA2_3p all_other <<< "$(tail -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
-        echo "${chrom}"$'\t'"${HA1_3p}"$'\t'"${HA2_5p}" > "${INTERMEDIATEDIR}/deletion_range.bed"
+
+        HA5p="${chrom}:${HA1_5p}-${HA1_3p}"
+        HA3p="${chrom}:${HA2_5p}-${HA2_3p}"
     else
         echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         
         touch "${INTERMEDIATEDIR}/genome1exclude.bed"
-        touch "${INTERMEDIATEDIR}/deletion_range.bed"
+
+        HA5p=null
+        HA3p=null
     fi
 else
     echo "integrationsite is null" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
@@ -462,14 +466,18 @@ else
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     
     touch "${INTERMEDIATEDIR}/genome1exclude.bed"
-    touch "${INTERMEDIATEDIR}/deletion_range.bed"
+
+    HA5p=null
+    HA3p=null
 fi
 
-if [[ "${genome2exclude}" != "NA" ]] && [ ! -f "${genome2exclude}" ]; then
-    echo "WARNING: Can't find ${genome2exclude}; will run without region mask";
-    genome2exclude="NA"
+if [[ "${genome2exclude}" != "null" ]] && [ ! -f "${genome2exclude}" ]; then
+    echo "WARNING: Can't find ${genome2exclude}; will run without region mask"
+    echo "WARNING: Can't find ${genome2exclude}; will run without region mask" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    genome2exclude="HA_only"
+else
+    echo "The Exclude Regions file is: $(basename ${genome2exclude})  [${genome2exclude}]" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 fi
-echo "The Exclude Regions file is: $(basename ${genome2exclude})  [${genome2exclude}]" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
 ################################################################################################
@@ -498,6 +506,8 @@ export_vars="${export_vars},bamname2=${bamname2}"
 export_vars="${export_vars},BAM_E1=${bam1_exclude_flags}"
 export_vars="${export_vars},BAM_E2=${bam2_exclude_flags}"
 export_vars="${export_vars},verbose=${verbose}"
+export_vars="${export_vars},HA5p=${HA5p}"
+export_vars="${export_vars},HA3p=${HA3p}"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log ${src}/merge_bamintersect.sh > /dev/null
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
