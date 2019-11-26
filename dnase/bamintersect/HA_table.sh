@@ -77,14 +77,15 @@ grep -v -F -f "${TMPDIR}/p5HA_noHdr.sam" "${TMPDIR}/allp5.sam" | sort >> "${TMPD
 cp "${TMPDIR}/header.sam" "${TMPDIR}/p3mates.sam"
 grep -v -F -f "${TMPDIR}/p3HA_noHdr.sam" "${TMPDIR}/allp3.sam" | sort >> "${TMPDIR}/p3mates.sam"
 
-# Now call python to build the bed12 file
-samfile_HA="${TMPDIR}/p5HA.sam"
-samfile_mates="${TMPDIR}/p5mates.sam"
-outputFile="${sampleOutdir}/${sample_name}_p5HA_output.bed12"
-${src}/build_HAfile.py --samfile_HA ${samfile_HA} --samfile_mates ${samfile_mates} --outputFile ${outputFile}
 
-samfile_HA="${TMPDIR}/p3HA.sam"
-samfile_mates="${TMPDIR}/p3mates.sam"
-outputFile="${sampleOutdir}/${sample_name}_p3HA_output.bed12"
-${src}/build_HAfile.py --samfile_HA ${samfile_HA} --samfile_mates ${samfile_mates} --outputFile ${outputFile}
+# Now call python to build the bed12 file
+samtools view -b "${TMPDIR}/p5HA.sam" > "${TMPDIR}/bamfile_HA.bam"
+samtools view -b "${TMPDIR}/p5mates.sam" > "${TMPDIR}/bamfile_mates.bam"
+${src}/bamintersect.py --src ${src} --bam1 "${TMPDIR}/bamfile_HA.bam" --bam2 "${TMPDIR}/bamfile_mates.bam" --outdir ${TMPDIR} --max_mismatches 0 --make_csv --ReqFullyAligned
+mv "${TMPDIR}/dsgrep_out.csv" "${sampleOutdir}/${sample_name}_p5HA_output.bed12"
+
+samtools view -b "${TMPDIR}/p3HA.sam" > "${TMPDIR}/bamfile_HA.bam"
+samtools view -b "${TMPDIR}/p3mates.sam" > "${TMPDIR}/bamfile_mates.bam"
+${src}/bamintersect.py --src ${src} --bam1 "${TMPDIR}/bamfile_HA.bam" --bam2 "${TMPDIR}/bamfile_mates.bam" --outdir ${TMPDIR} --max_mismatches 0 --make_csv --ReqFullyAligned
+mv "${TMPDIR}/dsgrep_out.csv" "${sampleOutdir}/${sample_name}_p3HA_output.bed12"
 

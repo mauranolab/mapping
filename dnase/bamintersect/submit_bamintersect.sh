@@ -473,7 +473,6 @@ fi
 
 if [[ "${genome2exclude}" != "null" ]] && [ ! -f "${genome2exclude}" ]; then
     echo "WARNING: Can't find ${genome2exclude}; will run without region mask"
-    echo "WARNING: Can't find ${genome2exclude}; will run without region mask" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     genome2exclude="HA_only"
 else
     echo "The Exclude Regions file is: $(basename ${genome2exclude})  [${genome2exclude}]" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"

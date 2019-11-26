@@ -78,9 +78,6 @@ echo "Running filter_tsv without filters." >> "${sampleOutdir}/${sample_name}.co
 ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "${sampleOutdir}/${sample_name}.bed" all_reads_counts ${HA5p} ${HA3p} null
 
 # Second call to filter_tsv. Here we just use informative reads (not in the HAs, and not in the genome2exclude ranges.
-#########
-######### Should bother doing this if there are no HA filters, or no HA filters AND no Exclude Regions file ???  bam files get generated if we call it.
-#########
 echo "Running filter_tsv with HA filters (if any) and with the Exclude Regions file (which may be empty)." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "${sampleOutdir}/${sample_name}.bed" informative_reads_counts ${HA5p} ${HA3p} ${genome2exclude}
 
