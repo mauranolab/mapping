@@ -83,12 +83,16 @@ ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "${sampleOutdi
 
 # HA analysis:
 if [ "${HA5p}" != "null" ]; then
-    echo -e "Starting HA analysis runs.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo -e "Starting HA analysis.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     ${src}/HA_table.sh ${bamname2} 3076 ${sampleOutdir} ${sample_name} ${HA5p} ${HA3p} ${src}
-    ${src}/filter_tsv.sh ${sampleOutdir} "${sample_name}_p5HA" ${bam2genome} "${sampleOutdir}/${sample_name}_p5HA_output.bed12" all_reads_counts ${HA5p} ${HA3p} null
-    ${src}/filter_tsv.sh ${sampleOutdir} "${sample_name}_p3HA" ${bam2genome} "${sampleOutdir}/${sample_name}_p3HA_output.bed12" all_reads_counts ${HA5p} ${HA3p} null
+    ${src}/filter_tsv.sh ${sampleOutdir} "${sample_name}_HA" ${bam2genome} "${sampleOutdir}/${sample_name}_HA.bed" all_reads_counts ${HA5p} ${HA3p} null
 else
-    echo -e "No HAs available, so there are no HA analysis runs.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo -e "No HAs available, so there will be no HA analysis.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+
+    # Create empty files.
+    touch "${sampleOutdir}/${sample_name}_HA.bed"
+    touch "${sampleOutdir}/${sample_name}_HA.counts.txt"
+    touch "${sampleOutdir}/${sample_name}_HA.counts.anc_info.txt"
 fi
 
 ## Number of reads
