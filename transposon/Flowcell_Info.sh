@@ -301,7 +301,7 @@ echo "weblogo for Cell Barcode sequence"
 mkdir -p $OUTDIR/Weblogos_CellBC
 find ${dirs} -maxdepth 1 -name "*cellBCs.png" | xargs --no-run-if-empty cp -t $OUTDIR/Weblogos_CellBC
 for i in `ls $OUTDIR/Weblogos_CellBC/*cellBCs.png | sort | awk -F "/" '{print $NF}'`; do echo '<a href="'${i}'"><img src="'${i}'" height="120"></a>' ; done | awk ' {print;} NR % 1 == 0 { print "<br>"; }'> $OUTDIR/Weblogos_CellBC/index.html
-
+#BUGBUG for loop prints "ls: cannot access /home/mauram01/public_html/flowcellInfo//FCHKMFTBGX2/Weblogos_CellBC/*cellBCs.png: No such file or directory" if no files found, but continues
 
 #####
 echo
