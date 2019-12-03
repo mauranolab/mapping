@@ -51,17 +51,19 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     mv ${TMPDIR}/${sample}.barcodes.txt.new ${TMPDIR}/${sample}.barcodes.txt
 fi
 
+
+echo
+echo "Sorting and compressing"
+date
+sort -k1,1 -k3,3 -k4,4 ${TMPDIR}/${sample}.barcodes.txt | pigz -p ${NSLOTS} -c -9 - > ${OUTDIR}/${sample}.barcodes.txt.gz
+
+
 if [ `cat ${TMPDIR}/${sample}.barcodes.txt | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | wc -l` -eq 0 ]; then
     echo "analyzeBCcounts.sh WARNING: no barcodes left, so exiting!"
     echo "Done!!!"
     exit 0
 fi
 
-
-echo
-echo "Sorting and compressing"
-date
-sort -k1,1 -k3,3 -k4,4 ${TMPDIR}/${sample}.barcodes.txt | pigz -p ${NSLOTS} -c -9 - > ${OUTDIR}/${sample}.barcodes.txt.gz
 
 #Empty BCs haven't been filtered yet for non-UMI data
 #Already sorted by BC, UMI, CellBC
