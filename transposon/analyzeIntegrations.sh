@@ -386,7 +386,7 @@ EOF
 
 echo
 echo "doing DisttoDpn"
-cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/Dpn/Dpn.bed | awk -F "\t" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if ($6=="+") print $1, $2, $3, $17, $20}' > $OUTDIR/DistDpn.bed
+cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/Dpn/Dpn.starch | awk -F "\t" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if ($6=="+") print $1, $2, $3, $17, $20}' > $OUTDIR/DistDpn.bed
 
 R --quiet --no-save << EOF
 #Work around "unable to start device PNG" on ISG cluster
@@ -415,7 +415,7 @@ EOF
 
 echo
 echo "doing DisttoMspI"
-cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/MspI/MspI.bed | awk -F "\t" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if ($6=="+") print $1, $2, $3, $17, $20}' > $OUTDIR/DistDpn.bed
+cat $OUTDIR/${sample}.uniqcoords.bed | closest-features --dist  --delim '\t' - /vol/isg/annotation/bed/hg38/REsites/MspI/MspI.starch | awk -F "\t" 'BEGIN {OFS="\t"} function abs(value) {return (value<0?-value:value);} {if ($6=="-") print $1, $2, $3, $10, abs($13); else if ($6=="+") print $1, $2, $3, $17, $20}' > $OUTDIR/DistDpn.bed
 
 R --quiet --no-save << EOF
 #Work around "unable to start device PNG" on ISG cluster
