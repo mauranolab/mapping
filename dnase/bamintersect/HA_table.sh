@@ -10,23 +10,8 @@ exclude_flags=$2
 
 sampleOutdir=$3
 sample_name=$4
-HA5p=$5
-HA3p=$6
-src=$7
-
-######################################################################
-mkdir -p ${sampleOutdir}
-TMPDIR=`mktemp -d`   # TMPDIR has no trailing slash
-######################################################################
-# Convert HA coordinates from bed to positional:
-
-IFS=$':' read chrom coords <<< "${HA5p}"
-IFS=$'-' read coord1 coord2 <<< "${coords}"
-echo -e "${chrom}\t${coord1}\t${coord2}" > "${TMPDIR}/HA_BEDfile.bed"
-
-IFS=$':' read chrom coords <<< "${HA3p}"
-IFS=$'-' read coord1 coord2 <<< "${coords}"
-echo -e "${chrom}\t${coord1}\t${coord2}" >> "${TMPDIR}/HA_BEDfile.bed"
+INTERMEDIATEDIR=$5
+src=$6
 
 ######################################################################
 # Get the header.
@@ -34,11 +19,10 @@ samtools view -H ${bamfile} > "${TMPDIR}/header.sam"
 
 # Gets reads from both HAs, where both mates are mapped:
 let "exclude_flags_plus_unmapped = ${exclude_flags} | 8" # 8 means mate is unmapped.
-samtools view -F ${exclude_flags_plus_unmapped} -L "${TMPDIR}/HA_BEDfile.bed" ${bamfile} > "${TMPDIR}/all_HA_reads.sam"
+samtools view -F ${exclude_flags_plus_unmapped} -L "${INTERMEDIATEDIR}/genome1exclude.bed" ${bamfile} > "${TMPDIR}/all_HA_reads.sam"
 
 # Get the read IDs with only one read in a HA:
-cut -f1 "${TMPDIR}/all_HA_reads.sam" | sort | uniq -c | sed 's/^ *//g' | grep "^1 " | sed 's/^1 *//g' > "${TMPDIR}/Reads.txt"
-
+cut -f1 "${TMPDIR}/all_HA_reads.sam" | sort | uniq -c | awk '$1=$1; $1==1 {print $2}' > "${TMPDIR}/Reads.txt"
 # Reads.txt is all the reads with mapped mates, and only one read in a HA.
 
 # Get the records for the read IDs with only one end in a HA.
@@ -57,7 +41,7 @@ samtools index "${TMPDIR}/subsetBAM_output_sorted.bam"
 samtools view "${TMPDIR}/subsetBAM_output_sorted.bam" > "${TMPDIR}/all.sam"
 
 # Get only the reads inside the HAs.
-samtools view -L "${TMPDIR}/HA_BEDfile.bed" "${TMPDIR}/subsetBAM_output_sorted.bam" | sort > "${TMPDIR}/HA_noHdr.sam"
+samtools view -L "${INTERMEDIATEDIR}/genome1exclude.bed" "${TMPDIR}/subsetBAM_output_sorted.bam" | sort > "${TMPDIR}/HA_noHdr.sam"
 
 # Build sam files with headers for the reads inside the HAs.
 cp "${TMPDIR}/header.sam" "${TMPDIR}/HA.sam"

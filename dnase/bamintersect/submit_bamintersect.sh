@@ -449,16 +449,17 @@ if [ "${integrationsite}" != "null" ]; then
         IFS=$'\t' read chrom HA1_5p HA1_3p all_other <<< "$(head -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
         IFS=$'\t' read chrom HA2_5p HA2_3p all_other <<< "$(tail -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
 
-        HA5p="${chrom}:${HA1_5p}-${HA1_3p}"
-        HA3p="${chrom}:${HA2_5p}-${HA2_3p}"
+        echo -e "${chrom}\t${HA1_5p}\t${HA1_3p}" > "${INTERMEDIATEDIR}/genome1exclude.bed"
+        echo -e "${chrom}\t${HA2_5p}\t${HA2_3p}" >> "${INTERMEDIATEDIR}/genome1exclude.bed"
+
+        # Get the deletion range coordinates:
+        echo -e "${chrom}\t${HA1_3p}\t${HA2_5p}" > "${INTERMEDIATEDIR}/deletion_range.bed"
     else
         echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         
         touch "${INTERMEDIATEDIR}/genome1exclude.bed"
-
-        HA5p=null
-        HA3p=null
+        touch "${INTERMEDIATEDIR}/deletion_range.bed"
     fi
 else
     echo "integrationsite is null" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
@@ -466,9 +467,7 @@ else
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     
     touch "${INTERMEDIATEDIR}/genome1exclude.bed"
-
-    HA5p=null
-    HA3p=null
+    touch "${INTERMEDIATEDIR}/deletion_range.bed"
 fi
 
 if [[ "${genome2exclude}" != "null" ]] && [ ! -f "${genome2exclude}" ]; then
@@ -505,8 +504,6 @@ export_vars="${export_vars},bamname2=${bamname2}"
 export_vars="${export_vars},BAM_E1=${bam1_exclude_flags}"
 export_vars="${export_vars},BAM_E2=${bam2_exclude_flags}"
 export_vars="${export_vars},verbose=${verbose}"
-export_vars="${export_vars},HA5p=${HA5p}"
-export_vars="${export_vars},HA3p=${HA3p}"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log ${src}/merge_bamintersect.sh > /dev/null
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}

@@ -8,52 +8,30 @@ alias bedmap='bedmap --ec --header --sweep-all'
 alias closest-features='closest-features --header'
 
 #####################################################################################
-TMPDIR=`mktemp -d`   # TMPDIR has no trailing slash
-#####################################################################################
 
 sampleOutdir=$1
 sample_name=$2
 bam2genome=$3
 HAtableOutputBED12=$4
 counts_type=$5
-HAp5=$6
-HAp3=$7
-genome2exclude=$8
+INTERMEDIATEDIR=$6
+genome2exclude=$7
 
-#####################################################################################
-# Get the deletion range coordinates:
-if [ "${HAp5}" != "null" ]; then
-    IFS=':' read chrom rng_p5 <<< "${HAp5}"
-    IFS=':' read chrom rng_p3 <<< "${HAp3}"
-
-    IFS='-' read HAp5_1 HAp5_2 <<< "${rng_p5}"
-    IFS='-' read HAp3_1 HAp3_2 <<< "${rng_p3}"
-
-    echo "${chrom}"$'\t'"${HAp5_2}"$'\t'"${HAp3_1}" > "${TMPDIR}/deletion_range.bed"
-
-    # Make a HA file for filtering below.
-    echo "${chrom}"$'\t'"${HAp5_1}"$'\t'"${HAp5_2}" > "${TMPDIR}/genome1exclude.bed"
-    echo "${chrom}"$'\t'"${HAp3_1}"$'\t'"${HAp3_2}" >> "${TMPDIR}/genome1exclude.bed"
-else
-    touch "${TMPDIR}/genome1exclude.bed"
-    touch "${TMPDIR}/deletion_range.bed" 
-fi
 #####################################################################################
 # Get reads that are in the deletion zone.
 
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' < "${HAtableOutputBED12}" | sort-bed - | tee "${TMPDIR}/sorted_bam2onLeft.bed12" | \
-bedops -e 1 - "${TMPDIR}/deletion_range.bed" > "${TMPDIR}/del_range_reads_out.bed"
+bedops -e 1 - "${INTERMEDIATEDIR}/deletion_range.bed" > "${TMPDIR}/del_range_reads_out.bed"
 
 filter_csv_output="${TMPDIR}/noDZreads.bed12"
 
-bedops -n 1 "${TMPDIR}/sorted_bam2onLeft.bed12" "${TMPDIR}/deletion_range.bed" | \
+bedops -n 1 "${TMPDIR}/sorted_bam2onLeft.bed12" "${INTERMEDIATEDIR}/deletion_range.bed" | \
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' > ${filter_csv_output}
-
-num_lines=$(wc -l < "${TMPDIR}/del_range_reads_out.bed")
 
 echo -e "${sample_name}:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
-if [ "${HAp5}" != "null" ]; then
+if [ -s "${INTERMEDIATEDIR}/deletion_range.bed" ]; then
+    num_lines=$(wc -l < "${TMPDIR}/del_range_reads_out.bed")
     echo -e "    Number of reads in the Deletion Range:\t${num_lines}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 else
     echo -e "    There are no HAs, so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
@@ -74,14 +52,14 @@ if [ "${genome2exclude}" != "null" ];then
 
     if [ "${genome2exclude}" = "HA_only" ]; then
         awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' "${filter_csv_output}" | \
-        sort-bed - | bedops -n 1 - "${TMPDIR}/genome1exclude.bed" | \
+        sort-bed - | bedops -n 1 - "${INTERMEDIATEDIR}/genome1exclude.bed" | \
         awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
         sort-bed - > "${filter_csv_output}_tmp"
         mv "${filter_csv_output}_tmp" "${filter_csv_output}"
     else
         sort-bed "${filter_csv_output}" | bedops -n 1 - "${genome2exclude}" | \
         awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
-        sort-bed - | bedops -n 1 - "${TMPDIR}/genome1exclude.bed" | \
+        sort-bed - | bedops -n 1 - "${INTERMEDIATEDIR}/genome1exclude.bed" | \
         awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
         sort-bed - > "${filter_csv_output}_tmp"
         mv "${filter_csv_output}_tmp" "${filter_csv_output}"
@@ -110,6 +88,9 @@ esac
 
 # Loop over the bam1 chromosome names.
 cut -f1 "${filter_csv_output}" | sort | uniq > "${TMPDIR}/bam1_chroms"
+
+# Clear this, which may exist due to previous calls to filter_tsv
+rm -f ${TMPDIR}/short_sorted_table2.bed
 
 while read main_chrom ; do
     # Get just the hg38/mm10/rn6 bed3 part, then sort it:
@@ -142,7 +123,6 @@ while read main_chrom ; do
     sort -V -t $'\t' -k 6,6rn -k 1,1 -k 2,2n - |
     # Append the bam1 chromosome name and the short sample name onto the last column.
     awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -v main_chrom=${main_chrom} -F "\t" 'BEGIN {OFS="\t"} {print $0, main_chrom, short_sample_name}' > ${TMPDIR}/short_sorted_table.bed
-
 
     # Get cluster range of the bam1 chromosome.
     while read line_in ; do
