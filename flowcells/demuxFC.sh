@@ -35,6 +35,10 @@ bcl2fastq --fastq-compression-level 9 --no-lane-splitting --minimum-trimmed-read
 #BUGBUG seems to set nonzero exit code?
 
 
+echo "Restricting permissions on non-mauranolab/CEGS projects"
+find ../../fastq/${fc}  -maxdepth 1 -name "Project_*" -type d  -not -name "Project_Maurano" -not -name "Project_CEGS" -print0 | xargs -0 --no-run-if-empty echo chgrp mauranolab-seq
+
+
 #Running fastqc
 #cd ../../fastq/${fc}
 #mkdir -p fastqc
