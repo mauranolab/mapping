@@ -43,6 +43,7 @@ echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 if [ "${genome2exclude}" != "null" ];then
     # Comments for the 5 piped lines in the "else" part of the below if statement:
     # 1) Delete reads that overlap the ranges defined in genome2exclude (which are defined with respect to bam1 coordinates).
+    #    These were attached to the genome1exclude.bed file via bedops -u in submit_bamintrsect.sh
     # 2) Now delete reads that are in the HAs.
     #     2a) The output of step 1 has 12 columns: [chr start end readID flag +/-] x 2, the bam1 data being in 1-6, and the bam2 data being in 7-12.
     #         The HA coordinates are with respect to bam2, so we need to switch the 6-column halves to use the bedops functions on this file.
@@ -57,7 +58,7 @@ if [ "${genome2exclude}" != "null" ];then
         sort-bed - > "${filter_csv_output}_tmp"
         mv "${filter_csv_output}_tmp" "${filter_csv_output}"
     else
-        sort-bed "${filter_csv_output}" | bedops -n 1 - "${genome2exclude}" | \
+        sort-bed "${filter_csv_output}" | bedops -n 1 - "${INTERMEDIATEDIR}/genome1exclude.bed" | \
         awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
         sort-bed - | bedops -n 1 - "${INTERMEDIATEDIR}/genome1exclude.bed" | \
         awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
