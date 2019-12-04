@@ -73,41 +73,36 @@ if [ ${make_table} != "True" ]; then
     exit 0
 fi
 
-# Make sure this has not been left over from a previous run.
-rm -f "${sampleOutdir}/${sample_name}.informative.bed"
+# First call to filter_tsv. Here we use all the reads.
+echo "Running filter_tsv without filters." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "${sampleOutdir}/${sample_name}.bed" all_reads_counts ${INTERMEDIATEDIR} null
 
-debug_fa "Starting the main_chrom while loop"
+# Second call to filter_tsv. Here we just use informative reads (not in the HAs, and not in the genome2exclude ranges.
+echo "Running filter_tsv with HA filters (if any) and with the Exclude Regions file (which may be empty)." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "${sampleOutdir}/${sample_name}.bed" informative_reads_counts ${INTERMEDIATEDIR} ${genome2exclude}
 
-# Merge the output related to each bam1 chromosome:
-while read main_chrom ; do
-    debug_fa "Top of the main_chrom while loop"
+# HA analysis:
+if [ -s "${INTERMEDIATEDIR}/genome1exclude.bed" ]; then
+    echo -e "Starting HA analysis.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    ${src}/HA_table.sh ${bamname2} 3076 ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src}
+    ${src}/filter_tsv.sh ${sampleOutdir} "${sample_name}_HA" ${bam2genome} "${sampleOutdir}/${sample_name}_HA.bed" all_reads_counts ${INTERMEDIATEDIR} null
+else
+    echo -e "No HAs available, so there will be no HA analysis.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
-    bedops --chrom ${main_chrom} -u "${sampleOutdir}/${sample_name}.bed" > "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed"
+    # Create empty files.
+    touch "${sampleOutdir}/${sample_name}_HA.bed"
+    touch "${sampleOutdir}/${sample_name}_HA.counts.txt"
+    touch "${sampleOutdir}/${sample_name}_HA.counts.anc_info.txt"
+fi
 
-    echo "Working on:  ${main_chrom}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+## Number of reads
+n1=$(wc -l < "${sampleOutdir}/${sample_name}.bed")
+## Number of informative reads
+n2=$(wc -l < "${sampleOutdir}/${sample_name}.informative.bed")
 
-    echo "Running filter_tsv without filters." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} "NA" ${main_chrom} ${INTERMEDIATEDIR} all_reads_counts ${verbose}
-
-    debug_fa "Completed filter_tsv for all_reads_counts"
-
-    echo "Running filter_tsv with HA filters (if any) and with the Exclude Regions file (which may be empty)." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    ${src}/filter_tsv.sh ${sampleOutdir} ${sample_name} ${bam2genome} ${genome2exclude} ${main_chrom} ${INTERMEDIATEDIR} informative_reads_counts ${verbose}
-
-    debug_fa "Completed filter_tsv for informative_reads_counts"
-
-    cat "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed" >> "${sampleOutdir}/${sample_name}.informative.bed"
-
-    ## Number of reads
-    n1=$(wc -l < "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.bed")
-    ## Number of informative reads
-    n2=$(wc -l < "${INTERMEDIATEDIR}/${sample_name}.${main_chrom}.informative.bed")
-
-    echo -e "Mapped reads with unmapped mates from ${main_chrom}:\t${n1}\tof which\t${n2}\tpassed through the Exclude Regions filters and over the HAs (if any), and are potentially informative.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
-done < "${sampleOutdir}/log/${sample_name}.chrom_list1"
-
-debug_fa "Out of the main_chrom while loop"
+echo -e "Summary:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tpassed through the Exclude Regions filters and over the HAs (if any), and are potentially informative." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo -e "May include backbone reads, and reads not on the integration site chromosome. Some or all may not be in the \"informative.counts\" table, if they are over 500 bps from the nearest other informative read.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
 
 # Subset bam files for uploading UCSC custom tracks:

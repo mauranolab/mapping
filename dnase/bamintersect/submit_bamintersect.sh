@@ -36,7 +36,7 @@ fi
 ############################################################
 
 module load samtools/1.9
-module load bedops/2.4.35
+module load bedops/2.4.37
 
 ############################################################
 # Start of "getopt" section
@@ -433,6 +433,7 @@ echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
 # Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
 if [ "${integrationsite}" != "null" ]; then
+    # In the next line we rely on HA1 being the 5p side HA.
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
     echo "${integrationSiteName} HAs:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
@@ -442,18 +443,17 @@ if [ "${integrationsite}" != "null" ]; then
         grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         
-        grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/genome1exclude.bed"
-        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/genome1exclude.bed"
+        # Get the HA coordinates:
+        grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/HA_coords.bed"
+        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/HA_coords.bed"
         
         # Get the deletion range coordinates:
-        IFS=$'\t' read chrom HA1_5p HA1_3p all_other <<< "$(head -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
-        IFS=$'\t' read chrom HA2_5p HA2_3p all_other <<< "$(tail -n1 "${INTERMEDIATEDIR}/genome1exclude.bed")"
-        echo "${chrom}"$'\t'"${HA1_3p}"$'\t'"${HA2_5p}" > "${INTERMEDIATEDIR}/deletion_range.bed"
+        cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${INTERMEDIATEDIR}/deletion_range.bed
     else
         echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
         
-        touch "${INTERMEDIATEDIR}/genome1exclude.bed"
+        touch "${INTERMEDIATEDIR}/HA_coords.bed"
         touch "${INTERMEDIATEDIR}/deletion_range.bed"
     fi
 else
@@ -461,15 +461,18 @@ else
     echo "No HAs were provided, and so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
     
-    touch "${INTERMEDIATEDIR}/genome1exclude.bed"
+    touch "${INTERMEDIATEDIR}/HA_coords.bed"
     touch "${INTERMEDIATEDIR}/deletion_range.bed"
 fi
 
-if [[ "${genome2exclude}" != "NA" ]] && [ ! -f "${genome2exclude}" ]; then
-    echo "WARNING: Can't find ${genome2exclude}; will run without region mask";
-    genome2exclude="NA"
+if [ ! -f "${genome2exclude}" ]; then
+    echo "WARNING: Can't find ${genome2exclude}; will run without region mask"
+    genome2exclude="HA_only"
+    cp ${INTERMEDIATEDIR}/HA_coords.bed ${INTERMEDIATEDIR}/genome1exclude.bed
+else
+    echo "The Exclude Regions file is: $(basename ${genome2exclude})  [${genome2exclude}]" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    bedops -u ${genome2exclude} ${INTERMEDIATEDIR}/HA_coords.bed > ${INTERMEDIATEDIR}/genome1exclude.bed
 fi
-echo "The Exclude Regions file is: $(basename ${genome2exclude})  [${genome2exclude}]" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
 ################################################################################################
