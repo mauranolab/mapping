@@ -203,7 +203,9 @@ else:
 
 input_data = inputfile.readlines()
 input_data = [line.rstrip("\n").split('\t') for line in input_data]
-
+if groupcols is not None:
+    max_gp = max(groupcols)
+    input_data = [ l for l in input_data if len(l) > max_gp ]
 
 if args.output=="-":
     outfile = sys.stdout
