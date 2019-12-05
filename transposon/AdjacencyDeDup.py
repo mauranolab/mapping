@@ -219,27 +219,25 @@ numGroupsRead = 0
 numUniqueBCs = 0
 numUniqueBCsAfterDedup = 0
 
-if groupcols is None:
-    process_lines(input_data, wr)
-else:
-    startRow = 0
-    lastGroup = None
-    for index in range(len(input_data)):
-        line = input_data[index]
-        
-        #Make key by concatenating contents from all groupcols specified
-        curGroup = "+".join([ str(line[groupcol]) for groupcol in groupcols ])
-        
-        #index points to the first record in input_data of the next group (not the one we are processing)
-        if curGroup != lastGroup:
-            if index > 0:
-                numGroupsRead += 1
-                process_lines_byGroup(lastGroup, startRow, index, wr)
-            lastGroup = curGroup
-            startRow = index
-    #Do last BC (index+1 because this would be done one past the last iteration)
-    process_lines_byGroup(lastGroup, startRow, index+1, wr)
-
+if len(input_data) > 0:
+    if groupcols is None:
+        process_lines(input_data, wr)
+    else:
+        startRow = 0
+        lastGroup = None
+        for index in range(len(input_data)):
+            line = input_data[index]
+            #Make key by concatenating contents from all groupcols specified
+            curGroup = "+".join([ str(line[groupcol]) for groupcol in groupcols ])
+            #index points to the first record in input_data of the next group (not the one we are processing)
+            if curGroup != lastGroup:
+                if index > 0:
+                    numGroupsRead += 1
+                    process_lines_byGroup(lastGroup, startRow, index, wr)
+                lastGroup = curGroup
+                startRow = index
+        #Do last BC (index+1 because this would be done one past the last iteration)
+        process_lines_byGroup(lastGroup, startRow, index+1, wr)
 
 print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + " lines processed, " + str(numNonEmptyBClinesProcessed) + " with non-empty BCs)", file=sys.stderr)
 print("[AdjacencyDeDup] Number of unique BCs pre-deduplication:", numUniqueBCs, file=sys.stderr)
