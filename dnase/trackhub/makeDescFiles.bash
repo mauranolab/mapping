@@ -57,28 +57,6 @@ make_html () {
 ##############################################################################
 # These functions makes html versions of the readcounts files, by genome.
 
-find_targets () {
-    # This function loads target_vec for the flowcell directories.
-    
-    local subdir_names=("$@")
-    local target
-    local BASE
-    local BASE2
-    
-    for i in "${subdir_names[@]}"; do
-        BASE2=${i%/}       # Kill trailing slash
-        BASE=${BASE2##*/}  # Get subdir name
-        
-        if [ "${BASE}" = "trash" ] || [ "${BASE}" = "bak" ] || \
-           [ "${BASE}" = "trash2" ] || [ "${BASE}" = "trash.oops" ] ; then
-             continue
-        fi
-        
-        target="${i}readcounts.summary.txt"
-        target_vec+=( ${target} )
-    done
-}
-
 find_readcounts () {
     local dir_base=$1
     local suffix=$2
@@ -102,46 +80,48 @@ find_readcounts () {
     # Each flowcell directory may be associated with a readcounts file.
     # Get the data from the readcounts file if it is there, and make a table from the data.
     for flowcell in "${dir_names[@]}"; do
-        # No readcounts files exist in these two directories.
-        # If encountered, the subsequent $target test will fail, and we move on to the next flowcell.
-        #     /vol/mauranolab/mapped/src/
-        #     /vol/mauranolab/mapped/trackhub/
-        
-        # Fill up target_vec:
+        # Fill up target_vec with directory names that house readcounts.summary.txt:
         if [ ${dir_base} = "/vol/cegs/mapped/" ] || [ ${dir_base} = "/vol/mauranolab/mapped/" ] ; then
-            subdir_names=($(ls -d ${dir_base}${flowcell}*/))    # These are full paths, with trailing slashes.
-            target_vec=()
-            find_targets  "${subdir_names[@]}"
+            mapfile -t target_vec < <( \
+                find ${dir_base}${flowcell} -maxdepth 2 \( -path "${dir_base}${flowcell}*/trash" \
+                                                        -o -path "${dir_base}${flowcell}*/trash2" \
+                                                        -o -path "${dir_base}${flowcell}*/bak" \
+                                                        -o -path "${dir_base}${flowcell}*/trash.oops" \) \
+                     -prune -o -type f -name "readcounts.summary.txt" -print )
         else
             # For non-flowcell directories, there is only one place for the readcounts file to be:
-            target=${dir_base}${flowcell}${suffix}
-            target_vec=()
-            target_vec+=( ${target} )
+            mapfile -t target_vec < <( find ${dir_base}${flowcell} -maxdepth 1 -type f -name "readcounts.summary.txt" )
+        fi
+
+        numElements="${#target_vec[@]}"
+        if [ "${numElements}" = "0" ]; then
+            echo "[makeDescFiles.bash] WARNING No subdirectories with a readcounts file in ${dir_base}${flowcell}"
+            continue
         fi
         
+        # Find a date to associate with the flowcell from the info.txt file
+        info_file="/vol/mauranolab/flowcells/data/"${flowcell}"info.txt"
+        
+        # Make sure the file is there:
+        if [ ! -f ${info_file} ]; then
+            # It is not.
+            ierr=0
+        else
+            # It is, but is the date there?
+            ierr=$(grep -c '#Load date' ${info_file})
+        fi
+        
+        if (( ierr == 0)); then
+            ymd="00000000"
+        else
+            d_out=$(grep '#Load date' ${info_file})
+            yyyy=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f1)
+            mm=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f2)
+            dd=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f3)
+            ymd=${yyyy}${mm}${dd}
+        fi
+
         for target in ${target_vec[@]}; do
-            # Find a date to associate with the flowcell from the info.txt file
-            info_file="/vol/mauranolab/flowcells/data/"${flowcell}"info.txt"
-            
-            # Make sure the file is there:
-            if [ ! -f ${info_file} ]; then
-                # It is not.
-                ierr=0
-            else
-                # It is, but is the date there?
-                ierr=$(grep -c '#Load date' ${info_file})
-            fi
-            
-            if (( ierr == 0)); then
-                ymd="00000000"
-            else
-                d_out=$(grep '#Load date' ${info_file})
-                yyyy=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f1)
-                mm=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f2)
-                dd=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f3)
-                ymd=${yyyy}${mm}${dd}
-            fi
-            
             # We now have a date. Next, construct a genome related filename for the output.
             if [ "${ymd}" = "00000000" ]; then
                 tmp_flowcell="/"${flowcell%/}
@@ -158,58 +138,38 @@ find_readcounts () {
             fi
             # tmp_flowcell will be used in the for loop below.
             
-            if [ -f ${target} ]; then
-                # There is a readcounts file in the flowcell directory.
-                echo ${target}
-                
-                # Initialize the output files with header lines.
-                head -n1 ${target} > "${TMPDIR}/tmp_header"
-                
-                # Use the header we just made to initialize the genome specific output files.
-                # Break up the readcounts files into their genomic subsections.
-                for i in "${genome_array[@]}"; do
-                    declare "${i}"="${TMPDIR}${tmp_flowcell}_${i}"
-                    ref="${i}"
-                    cat "${TMPDIR}/tmp_header" > ${!ref}
-                    grep ${i} ${target} >> ${!ref}
-                    
-                    BASE=${target%readcounts.summary.txt}       # Kill trailing readcounts.summary.txt
-                    desc_file="${BASE}description.html"
-                    
-                    declare "${i}_desc"="${TMPDIR}${tmp_flowcell}_${i}_desc"
-                    ref2="${i}_desc"
-                    
-                    if [ -f ${desc_file} ]; then
-                        cat ${desc_file} >  ${!ref2}
-                    else
-                        # Make sure ref2 does not exist. Maybe unnecessary ?
-                        rm -f ${!ref2}
-                    fi
-                done
-                
-                for i in "${genome_array[@]}"; do
-                    ref="${i}"
-                    ref2="${i}_desc"
-                    make_html ${!ref} ${!ref2} ${target}
-                done
-            else
-                # No readcounts file exists. UCSC browser description area is just
-                # blank if there is no file, or a bad url. No error msg pops up.
-                echo ${target} does not exist
+            echo ${target}
+            
+            # Initialize the output files with header lines.
+            head -n1 ${target} > "${TMPDIR}/tmp_header"
+            
+            # Use the header we just made to initialize the genome specific output files.
+            # Break up the readcounts files into their genomic subsections.
+            for i in "${genome_array[@]}"; do
+                declare "${i}"="${TMPDIR}${tmp_flowcell}_${i}"
+                ref="${i}"
+                cat "${TMPDIR}/tmp_header" > ${!ref}
+                grep ${i} ${target} >> ${!ref}
                 
                 BASE=${target%readcounts.summary.txt}       # Kill trailing readcounts.summary.txt
                 desc_file="${BASE}description.html"
                 
+                declare "${i}_desc"="${TMPDIR}${tmp_flowcell}_${i}_desc"
+                ref2="${i}_desc"
+                
                 if [ -f ${desc_file} ]; then
-                    for i in "${genome_array[@]}"; do
-                        infile="${TMPDIR}${tmp_flowcell}_${i}"
-                        echo "<pre>" > "${infile}.html"
-                        cat "${desc_file}" >> "${infile}.html"
-                        echo "</pre>" >> "${infile}.html"
-                        echo "<hr>" >> "${infile}.html"
-                    done
+                    cat ${desc_file} >  ${!ref2}
+                else
+                    # Make sure ref2 does not exist. Maybe unnecessary ?
+                    rm -f ${!ref2}
                 fi
-            fi
+            done
+            
+            for i in "${genome_array[@]}"; do
+                ref="${i}"
+                ref2="${i}_desc"
+                make_html ${!ref} ${!ref2} ${target}
+            done
         done
     done
 }
