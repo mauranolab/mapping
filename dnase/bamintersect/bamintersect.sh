@@ -21,7 +21,7 @@ ${src}/bamintersect.py --src ${src} --bam1 ${bam1} --bam2 ${bam2} --outdir ${TMP
 ## See if there is anything in dsgrep_out.csv, which is produced by bamintersect.py
 ## If not, then let TMPDIR die. This reduces the number of merge operations needed in merge_bamintersect.sh
 if [ -s "${TMPDIR}/dsgrep_out.csv" ]; then
-    mkdir "${outdir}"
+    mkdir -p "${outdir}"
     mv "${TMPDIR}/dsgrep_out.csv" ${outdir}
 fi
 

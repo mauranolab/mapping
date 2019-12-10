@@ -23,7 +23,7 @@ debug_fa() {
 debug_fa "Starting merge_bamintersect.sh"
 
 # Initialize the counts output file with a header.
-echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tSample" > ${sampleOutdir}/${sample_name}.counts.txt
+echo -e "chrom_bam2\tchromStart_bam2\tchromEnd_bam2\tWidth_bam2\tNearestGene_bam2\tPost-filter_Reads\tchrom_bam1\tchromStart_bam1\tchromEnd_bam1\tSample" > ${sampleOutdir}/${sample_name}.counts.txt
 cp ${sampleOutdir}/${sample_name}.counts.txt ${sampleOutdir}/${sample_name}.informative.counts.txt
 
 
