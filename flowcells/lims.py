@@ -55,9 +55,12 @@ def getLIMSsheet(sheet):
 
 
 #Verify consistency in common entries between Sample Sheet and LIMS sheets
-def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask):
+#Projects argument suppresses less important inconsistencies unless project is on that comma-separated list
+def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maurano,CEGS"):
+    projectList = projects.split(",")
+    
     #TODO sort order
-    print("Check sequencing sheet for consistency with LIMS")
+    print("#Check sequencing sheet for consistency with LIMS. Projects=", projects, sep="")
     print("Level", "Description", "Sample Name", "Sample #", "Key", "LIMS_value", "SampleSheet_value", sep=",")
     commonCols = set(lims.columns.values).intersection(set(seq.columns.values))
     numMissingSamples = 0
@@ -76,18 +79,19 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask):
             print("ERROR", "found " + str(numEntriesInLIMS) + " entries in LIMS!", SampleName, bs, "", "", "", sep=",")
             numMultipleSamples += 1
         else:
-            for col in commonCols:
-                if curSeq[col] != curLims[col].item():
-                    if curSeq[col] == "" or curLims[col].item() == "":
-                        print("WARNING", "missing info", SampleName, bs, col, curLims[col].item(), curSeq[col], sep=",")
-                    else:
-                        print("ERROR", "inconsistent info", SampleName, bs, col, curLims[col].item(), curSeq[col], sep=",")
-            for col in set(seq.columns.values):
-                if isinstance(curSeq[col], str) and curSeq[col] != curSeq[col].strip():
-                    print("WARNING", "leading/trailing whitespace", SampleName, bs, col, "", curSeq[col], sep=",")
-            for col in set(lims.columns.values):
-                if str(curLims[col].item()) != str(curLims[col].item()).strip():
-                    print("WARNING", "leading/trailing whitespace", SampleName, bs, col, curLims[col].item(), "", sep=",")
+            if projectList is '' or curLims['Lab'].item() in projectList:
+                for col in commonCols:
+                    if curSeq[col] != curLims[col].item():
+                        if curSeq[col] == "" or curLims[col].item() == "":
+                            print("WARNING", "missing info", SampleName, bs, col, curLims[col].item(), curSeq[col], sep=",")
+                        else:
+                            print("ERROR", "inconsistent info", SampleName, bs, col, curLims[col].item(), curSeq[col], sep=",")
+                for col in set(seq.columns.values):
+                    if isinstance(curSeq[col], str) and curSeq[col] != curSeq[col].strip():
+                        print("WARNING", "leading/trailing whitespace", SampleName, bs, col, "", curSeq[col], sep=",")
+                for col in set(lims.columns.values):
+                    if str(curLims[col].item()) != str(curLims[col].item()).strip():
+                        print("WARNING", "leading/trailing whitespace", SampleName, bs, col, curLims[col].item(), "", sep=",")
     
     print(str(numMissingSamples) + " total samples missing from LIMS sheet")
     print(str(numMultipleSamples) + " total samples matching multiple entries in LIMS sheet")
