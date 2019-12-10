@@ -288,7 +288,6 @@ mkdir -p "${sampleOutdir}/log"
 # It is built within ${sampleOutdir} so it can be persistent.
 # It gets removed at the end of the merge_bamintersect.sh script.
 INTERMEDIATEDIR="${sampleOutdir}/tmp.${sample_name}.${bam1genome}"   # INTERMEDIATEDIR contains no trailing slash.
-mkdir ${INTERMEDIATEDIR}
 
 # Subdirectories will hold output from bamintersect.py
 mkdir -p ${INTERMEDIATEDIR}/bamintersectPyOut
