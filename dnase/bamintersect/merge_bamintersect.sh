@@ -22,9 +22,10 @@ debug_fa() {
 
 debug_fa "Starting merge_bamintersect.sh"
 
-# Initialize the counts output file with a header.
-echo -e "chrom_bam2\tchromStart_bam2\tchromEnd_bam2\tWidth_bam2\tNearestGene_bam2\tPost-filter_Reads\tchrom_bam1\tchromStart_bam1\tchromEnd_bam1\tSample" > ${sampleOutdir}/${sample_name}.counts.txt
+# Initialize the counts output files with a header.
+echo -e "#chrom_bam2\tchromStart_bam2\tchromEnd_bam2\tWidth_bam2\tNearestGene_bam2\tPost-filter_Reads\tchrom_bam1\tchromStart_bam1\tchromEnd_bam1\tWidth_bam1\tSample" > ${sampleOutdir}/${sample_name}.counts.txt
 cp ${sampleOutdir}/${sample_name}.counts.txt ${sampleOutdir}/${sample_name}.informative.counts.txt
+cp ${sampleOutdir}/${sample_name}.counts.txt ${sampleOutdir}/${sample_name}_HA.counts.txt
 
 
 # First check for the "no reads to merge" problem. Also deal with the usual pipefail issue via "true".
@@ -91,7 +92,6 @@ else
 
     # Create empty files.
     touch "${sampleOutdir}/${sample_name}_HA.bed"
-    touch "${sampleOutdir}/${sample_name}_HA.counts.txt"
     touch "${sampleOutdir}/${sample_name}_HA.counts.anc_info.txt"
 fi
 

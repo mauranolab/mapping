@@ -147,18 +147,9 @@ done < "${TMPDIR}/bam1_chroms"
 # Output the final counts files.
 if [ -f "${TMPDIR}/short_sorted_table2.bed" ]; then
     if [ ${counts_type} = "all_reads_counts" ]; then
-        echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tWidth\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
         cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.counts.txt
     else
-        echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tWidth\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
         cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.informative.counts.txt
-    fi
-else
-    # Generate blank files when there are no reads.
-    if [ ${counts_type} = "all_reads_counts" ]; then
-        echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tWidth\tSample" > "${sampleOutdir}/${sample_name}.counts.txt"
-    else
-        echo -e "chromosome-bam2\tStart_Pos\tEnd_Pos\tWidth\tNearest_Gene\tPost-filter_Reads\tchromosome-bam1\tStart_Pos\tEnd_Pos\tWidth\tSample" > "${sampleOutdir}/${sample_name}.informative.counts.txt"
     fi
 fi
 
