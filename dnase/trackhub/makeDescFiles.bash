@@ -93,12 +93,6 @@ find_readcounts () {
             mapfile -t target_vec < <( find ${dir_base}${flowcell} -maxdepth 1 -type f -name "readcounts.summary.txt" )
         fi
 
-        numElements="${#target_vec[@]}"
-        if [ "${numElements}" = "0" ]; then
-            echo "[makeDescFiles.bash] WARNING No subdirectories with a readcounts file in ${dir_base}${flowcell}"
-            continue
-        fi
-        
         # Find a date to associate with the flowcell from the info.txt file
         info_file="/vol/mauranolab/flowcells/data/"${flowcell}"info.txt"
         
@@ -111,6 +105,7 @@ find_readcounts () {
             ierr=$(grep -c '#Load date' ${info_file})
         fi
         
+        # Find a date to associate with the flowcell from the info.txt file
         if (( ierr == 0)); then
             ymd="00000000"
         else
@@ -119,6 +114,33 @@ find_readcounts () {
             mm=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f2)
             dd=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f3)
             ymd=${yyyy}${mm}${dd}
+        fi
+
+        numElements="${#target_vec[@]}"
+        if [ "${numElements}" = "0" ]; then
+            echo "[makeDescFiles.bash] WARNING No subdirectories with a readcounts file in ${dir_base}${flowcell}"
+            # But print the data directory path:
+
+            if [ "${ymd}" = "00000000" ]; then
+                tmp_flowcell="/"${flowcell%/}
+            else
+                tmp_flowcell="/"${ymd}"_"${flowcell%/}
+            fi
+
+            subdir_names=($(ls -d ${dir_base}${flowcell}*/))
+            for j in "${subdir_names[@]}"; do
+                BASE=${j%/}        # Strip trailing slash
+                BASE2=${BASE##*/}  # Get subdir name
+
+                for i in "${genome_array[@]}"; do
+                    echo "<pre>" > "${TMPDIR}${tmp_flowcell}_${BASE2}_${i}.html"
+                    echo "Source data located in: ${dir_base}${flowcell}" >> "${TMPDIR}${tmp_flowcell}_${BASE2}_${i}.html"
+                    echo " " >> "${TMPDIR}${tmp_flowcell}_${BASE2}_${i}.html"
+                    echo "</pre>" >> "${TMPDIR}${tmp_flowcell}_${BASE2}_${i}.html"
+                    echo "<hr>" >> "${TMPDIR}${tmp_flowcell}_${BASE2}_${i}.html"
+                done
+            done
+            continue
         fi
 
         for target in ${target_vec[@]}; do
@@ -168,7 +190,7 @@ find_readcounts () {
             for i in "${genome_array[@]}"; do
                 ref="${i}"
                 ref2="${i}_desc"
-                make_html ${!ref} ${!ref2} ${target}
+                make_html ${!ref} ${!ref2} ${target} 
             done
         done
     done

@@ -154,8 +154,12 @@ for genome in "${genome_dirs[@]}"; do
         continue
     fi
 
-    if [[ ${genome} == "${assmbly_type1}_"* ]]; then
+    if [[ "${genome}" == "${assmbly_type1}_"* ]]; then
         # New ${assmbly_type} directories are being added to /vol/[cegs or mauranolab]/sequences - Ignore them.
+        continue
+    elif [[ "${genome}" == "backbones/" ]]; then
+        # backbones - tmp kludge for empty directory, until we enable it.
+        echo "Skipping backbones/"
         continue
     elif [ "${genome}" = "${assmbly_type1}/" ]; then
         chrom_sizes="/vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes"
