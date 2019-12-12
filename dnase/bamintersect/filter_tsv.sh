@@ -20,12 +20,15 @@ alias closest-features='closest-features --header'
 # three header files which were created in merge_bamintersect, depending on the settings of the
 # sample_name and counts_type input variables.
 #
-# Output files can be:
-#    <sampleName>.counts.txt
-#    <sampleName>.informative.counts.txt
-#    <sampleName_HA>.counts.txt
+# The output file can be one of:                       counts_type
+#    <sampleName>.counts.txt                       "all_reads_counts"
+#    <sampleName>.informative.counts.txt       "informative_reads_counts"
+#    <sampleName_HA>.counts.txt                    "all_reads_counts"
 #
-# "anc_info.txt" files associated with the above are also generated, 
+# sampleName is in the form:       "<sample_name>.<bam1genome>_vs_<bam2genome>"
+# sampleName_HA is in the form:    "<sample_name>.<bam1genome>_vs_<bam2genome>_HA"
+#
+# "anc_info.txt" files associated with the above three files are also generated.
 #
 #####################################################################################
 
