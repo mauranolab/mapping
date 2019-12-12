@@ -204,7 +204,6 @@ else:
 input_data = inputfile.readlines()
 input_data = [line.rstrip("\n").split('\t') for line in input_data]
 
-
 if args.output=="-":
     outfile = sys.stdout
 else:
@@ -224,12 +223,12 @@ if groupcols is None:
 else:
     startRow = 0
     lastGroup = None
+    minCols = max(groupcols)
     for index in range(len(input_data)):
         line = input_data[index]
-        
+        if len(line) < minCols: continue # Skip entries too short
         #Make key by concatenating contents from all groupcols specified
         curGroup = "+".join([ str(line[groupcol]) for groupcol in groupcols ])
-        
         #index points to the first record in input_data of the next group (not the one we are processing)
         if curGroup != lastGroup:
             if index > 0:
@@ -237,9 +236,9 @@ else:
                 process_lines_byGroup(lastGroup, startRow, index, wr)
             lastGroup = curGroup
             startRow = index
-    #Do last BC (index+1 because this would be done one past the last iteration)
-    process_lines_byGroup(lastGroup, startRow, index+1, wr)
-
+    if lastGroup is not None:
+        #Do last BC (index+1 because this would be done one past the last iteration)
+        process_lines_byGroup(lastGroup, startRow, index+1, wr)
 
 print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + " lines processed, " + str(numNonEmptyBClinesProcessed) + " with non-empty BCs)", file=sys.stderr)
 print("[AdjacencyDeDup] Number of unique BCs pre-deduplication:", numUniqueBCs, file=sys.stderr)
