@@ -190,7 +190,7 @@ find_readcounts () {
             for i in "${genome_array[@]}"; do
                 ref="${i}"
                 ref2="${i}_desc"
-                make_html ${!ref} ${!ref2} ${target} 
+                make_html ${!ref} ${!ref2} ${target}
             done
         done
     done
