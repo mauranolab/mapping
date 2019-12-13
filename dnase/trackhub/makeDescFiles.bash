@@ -83,11 +83,7 @@ find_readcounts () {
         # Fill up target_vec with directory names that house readcounts.summary.txt:
         if [ ${dir_base} = "/vol/cegs/mapped/" ] || [ ${dir_base} = "/vol/mauranolab/mapped/" ] ; then
             mapfile -t target_vec < <( \
-                find ${dir_base}${flowcell} -maxdepth 2 \( -path "${dir_base}${flowcell}*/trash" \
-                                                        -o -path "${dir_base}${flowcell}*/trash2" \
-                                                        -o -path "${dir_base}${flowcell}*/bak" \
-                                                        -o -path "${dir_base}${flowcell}*/trash.oops" \) \
-                     -prune -o -type f -name "readcounts.summary.txt" -print )
+                find ${dir_base}${flowcell} -maxdepth 2 \( -name "trash*" -o -name "bak" \) -prune -o -type f -name "readcounts.summary.txt" -print )
         else
             # For non-flowcell directories, there is only one place for the readcounts file to be:
             mapfile -t target_vec < <( find ${dir_base}${flowcell} -maxdepth 1 -type f -name "readcounts.summary.txt" )
