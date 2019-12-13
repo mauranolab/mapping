@@ -90,17 +90,30 @@ else
     touch "${sampleOutdir}/${sample_name}_HA.counts.anc_info.txt"
 fi
 
-## Number of reads
+# Look for reads spanning the assembly and the backbone.
+${src}/assmblyBackbone_table.sh ${bamname1} 3076 ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src}
+${src}/filter_tsv.sh ${sampleOutdir} "${sample_name}_assmblyBackbone" ${bam2genome} "${sampleOutdir}/${sample_name}_assmblyBackbone.bed" all_reads_counts ${INTERMEDIATEDIR} null
+
+# Number of reads
 n1=$(wc -l < "${sampleOutdir}/${sample_name}.bed")
-## Number of informative reads
+# Number of informative reads
 n2=$(wc -l < "${sampleOutdir}/${sample_name}.informative.bed")
 
 echo -e "Summary:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tpassed through the Exclude Regions filters and over the HAs (if any), and are potentially informative." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 echo -e "May include backbone reads, and reads not on the integration site chromosome. Some or all may not be in the \"informative.counts\" table, if they are over 500 bps from the nearest other informative read.\n" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
 
-
+###########################################################################################################################################
 # Subset bam files for uploading UCSC custom tracks:
+cut -f4 "${sampleOutdir}/${sample_name}_assmblyBackbone.bed" > "${INTERMEDIATEDIR}/${sample_name}.readNames.txt"
+
+if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
+    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${INTERMEDIATEDIR}/${sample_name}.readNames.txt --bamFile_in ${bamname1} --bamFile_out ${TMPDIR}/${sample_name}.bam1_assmblyBackbone_reads.unsorted.bam
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.assmblyBackbone.${bam1genome}.bam ${TMPDIR}/${sample_name}.bam1_assmblyBackbone_reads.unsorted.bam
+    samtools index ${sampleOutdir}/${sample_name}.assmblyBackbone.${bam1genome}.bam
+fi
+
+
 cut -f4 "${sampleOutdir}/${sample_name}.informative.bed" > "${INTERMEDIATEDIR}/${sample_name}.readNames.txt"
 
 if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
