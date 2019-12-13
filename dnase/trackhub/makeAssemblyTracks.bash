@@ -141,27 +141,14 @@ OUTFILE="${TMPDIR}/assembly_tracks/output_full_paths"
 # Initialize the error log file where bedToBigBed problems will show up.
 echo Starting calls to bedToBigBed... > make_bigBED.log
 
-# Move to where the assembly sequences are kept, and get the names of the genome directories.
+# This is where the assembly sequences are kept.
 BASE="/vol/${assmbly_type2}/sequences/"
-cd ${BASE}
-genome_dirs=($(ls -d */))   # Elements will look like:  hg38/
 
-# All the elements of "genome_dirs" should be in "genome_array" as well.
-# genome_array could be bigger than genome_dirs though.
-
-for genome in "${genome_dirs[@]}"; do
-    if [[ "${genome}" == "bak"* ]] || [[ "${genome}" == "trash"* ]] || [[ "${genome}" == "src"* ]]; then
-        continue
-    fi
-
-    if [[ "${genome}" == "${assmbly_type1}_"* ]]; then
-        # New ${assmbly_type} directories are being added to /vol/[cegs or mauranolab]/sequences - Ignore them.
-        continue
-    elif [[ "${genome}" == "backbones/" ]]; then
-        # backbones - tmp kludge for empty directory, until we enable it.
-        echo "Skipping backbones/"
-        continue
-    elif [ "${genome}" = "${assmbly_type1}/" ]; then
+# This loop generates the ".bb" files which are found in the trackhub "<genome>/data" directories.
+# genome_array just contains hg38, mm10, rn6, and cegsvectors.
+for genome in "${genome_array[@]}"; do
+    genome=${genome}/
+    if [ "${genome}" = "${assmbly_type1}/" ]; then
         chrom_sizes="/vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes"
         cp "${path_to_main_driver_script}/assets/${hub_type}/trackDb_${assmbly_type1}_Analyses.txt" \
            "${TMPDIR}/assembly_tracks/trackDb_assemblies_${assmbly_type1}.txt"
