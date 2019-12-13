@@ -167,12 +167,24 @@ while read main_chrom ; do
 done < "${TMPDIR}/bam1_chroms"
 
 
+# Initialize the counts output files with a header.
+echo -e "#chrom_bam2\tchromStart_bam2\tchromEnd_bam2\tWidth_bam2\tNearestGene_bam2\tPost-filter_Reads\tchrom_bam1\tchromStart_bam1\tchromEnd_bam1\tWidth_bam1\tSample" > ${TMPDIR}/header.txt
+
 # Output the final counts files.
 if [ -f "${TMPDIR}/short_sorted_table2.bed" ]; then
     if [ ${counts_type} = "all_reads_counts" ]; then
+        mv ${TMPDIR}/header.txt ${sampleOutdir}/${sample_name}.counts.txt
         cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.counts.txt
     else
+        mv ${TMPDIR}/header.txt ${sampleOutdir}/${sample_name}.informative.counts.txt
         cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.informative.counts.txt
+    fi
+else
+    # Make empty output files
+    if [ ${counts_type} = "all_reads_counts" ]; then
+        touch ${sampleOutdir}/${sample_name}.counts.txt
+    else
+        touch ${sampleOutdir}/${sample_name}.informative.counts.txt
     fi
 fi
 
