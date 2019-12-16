@@ -250,12 +250,14 @@ fi
 echo
 echo "Making description files"
 cd ${path_to_main_driver_script}
-./makeDescFiles.bash ${path_to_main_driver_script} ${hub_type} ${hub_target} \
-                     ${TMPDIR} "${genome_array[@]}"
+./makeDescFiles.bash ${path_to_main_driver_script} ${hub_type} ${hub_target} ${TMPDIR} "${genome_array[@]}"
 ######################################################################################
 # Make the hub.txt and genomes.txt files, and populate the structure with 
 # other fixed, hand made assets.
 
+
+echo
+echo "Finalizing trackhub"
 hub_id=${short_label// /_}
 echo "hub hub_id_${hub_id}" > "${hub_target}/hub.txt"
 echo "shortLabel ${short_label}" >> "${hub_target}/hub.txt"
@@ -264,6 +266,9 @@ echo "genomesFile genomes.txt" >> "${hub_target}/hub.txt"
 echo "email cadley.nyulangone@gmail.com" >> "${hub_target}/hub.txt"
 echo "descriptionUrl description.html" >> "${hub_target}/hub.txt"
 
+
+echo
+echo "Deploying trackhub"
 cd ${path_to_main_driver_script}
 
 if [ "${hub_type}" = "CEGS" ]; then
@@ -305,6 +310,8 @@ echo "${URL_path}/${hub_dir}/hub.txt" | tee -a "${hub_target}/README"
 # Check for hub errors.
 # Make sure some version of the ucsckentutils module has already been loaded.
 
+echo
+echo "Running hubCheck"
 hubCheck -noTracks -udcDir=${TMPDIR} "${URL_path}/${hub_dir}/hub.txt"
 ierr=$?
 echo hubCheck error is: ${ierr}
