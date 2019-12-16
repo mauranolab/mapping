@@ -338,5 +338,6 @@ if [ ${hub_type} = "CEGS" ]; then
     done
 fi
 ###############################
+echo
 echo "Done with Daler python code."
 
