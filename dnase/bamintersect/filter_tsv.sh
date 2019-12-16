@@ -14,84 +14,29 @@ alias closest-features='closest-features --header'
 #    [chr start end readID flag +/-] x 2, bam1 data being in 1-6, and bam2 data being in 7-12.
 # The rows are individual reads.
 #
-# Some lines in the bed12 file may be filtered out by filter_tsv, and the remaining lines are
+# Lines in the bed12 file are
 # aggregated to their nearest genes. Some additional values are calculated, such as quantity of
-# reads, widths, and the range of related bam1 reads. The data is formated and appended to one of
-# three header files which were created in merge_bamintersect, depending on the settings of the
-# sample_name and counts_type input variables.
+# reads, widths, and the range of related bam1 reads.
 #
-# The output file can be one of:                       counts_type
-#    <sampleName>.counts.txt                       "all_reads_counts"
-#    <sampleName>.informative.counts.txt       "informative_reads_counts"
-#    <sampleName_HA>.counts.txt                    "all_reads_counts"
+# The output file will be named ${OUTBASE}.counts.txt
 #
 # sampleName is in the form:       "<sample_name>.<bam1genome>_vs_<bam2genome>"
-# sampleName_HA is in the form:    "<sample_name>.<bam1genome>_vs_<bam2genome>_HA"
-#
-# "anc_info.txt" files associated with the above three files are also generated.
 #
 #####################################################################################
 
-sampleOutdir=$1
+OUTBASE=$1
 sample_name=$2
 bam2genome=$3
-HAtableOutputBED12=$4
-counts_type=$5
-INTERMEDIATEDIR=$6
-genome2exclude=$7
+bamintersectBED12=$4
+INTERMEDIATEDIR=$5
 
-#####################################################################################
-# Get reads that are in the deletion zone.
+echo "Running filter_tsv; will output to ${OUTBASE}.counts.txt"
 
-awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' < "${HAtableOutputBED12}" | sort-bed - | tee "${TMPDIR}/sorted_bam2onLeft.bed12" | \
-bedops -e 1 - "${INTERMEDIATEDIR}/deletion_range.bed" > "${TMPDIR}/del_range_reads_out.bed"
 
-filter_csv_output="${TMPDIR}/noDZreads.bed12"
+echo -e -n "Number of total reads:\t"
+cat ${bamintersectBED12} | wc -l
 
-bedops -n 1 "${TMPDIR}/sorted_bam2onLeft.bed12" "${INTERMEDIATEDIR}/deletion_range.bed" | \
-awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' > ${filter_csv_output}
 
-echo -e "${sample_name}:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
-if [ -s "${INTERMEDIATEDIR}/deletion_range.bed" ]; then
-    num_lines=$(wc -l < "${TMPDIR}/del_range_reads_out.bed")
-    echo -e "    Number of reads in the Deletion Range:\t${num_lines}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-else
-    echo -e "    There are no HAs, so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-fi
-echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-
-#####################################################################################
-# Maybe we want to filter out some reads.
-if [ "${genome2exclude}" != "null" ];then
-    # Comments for the 5 piped lines in the "else" part of the below if statement:
-    # 1) Delete reads that overlap the ranges defined in genome2exclude (which are defined with respect to bam1 coordinates).
-    #    These were attached to the genome1exclude.bed file via bedops -u in submit_bamintrsect.sh
-    # 2) Now delete reads that are in the HAs.
-    #     2a) The output of step 1 has 12 columns: [chr start end readID flag +/-] x 2, the bam1 data being in 1-6, and the bam2 data being in 7-12.
-    #         The HA coordinates are with respect to bam2, so we need to switch the 6-column halves to use the bedops functions on this file.
-    # 3) Then sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the genome1exclude's (HAs):
-    # 4) Now put the surviving bam1 reads back on the left hand side,
-    # 5) and sort.
-
-    if [ "${genome2exclude}" = "HA_only" ]; then
-        awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' "${filter_csv_output}" | \
-        sort-bed - | bedops -n 1 - "${INTERMEDIATEDIR}/genome1exclude.bed" | \
-        awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
-        sort-bed - > "${filter_csv_output}_tmp"
-        mv "${filter_csv_output}_tmp" "${filter_csv_output}"
-    else
-        sort-bed "${filter_csv_output}" | bedops -n 1 - "${INTERMEDIATEDIR}/genome1exclude.bed" | \
-        awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
-        sort-bed - | bedops -n 1 - "${INTERMEDIATEDIR}/genome1exclude.bed" | \
-        awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | \
-        sort-bed - > "${filter_csv_output}_tmp"
-        mv "${filter_csv_output}_tmp" "${filter_csv_output}"
-    fi
-
-    cp "${filter_csv_output}" "${sampleOutdir}/${sample_name}.informative.bed"
-fi
-#####################################################################################
 
 # Set the appropriate gene annotation file.
 # Note that hg38_full, etc. was converted to just "hg38" prior to calling bamintersect.
@@ -110,15 +55,16 @@ hg38)
     exit 1;;
 esac
 
-# Loop over the bam1 chromosome names.
-cut -f1 "${filter_csv_output}" | sort | uniq > "${TMPDIR}/bam1_chroms"
 
-# Clear this, which may exist due to previous calls to filter_tsv
-rm -f ${TMPDIR}/short_sorted_table2.bed
+# Initialize the counts output files with a header.
+echo -e "#chrom_bam2\tchromStart_bam2\tchromEnd_bam2\tWidth_bam2\tNearestGene_bam2\tPost-filter_Reads\tchrom_bam1\tchromStart_bam1\tchromEnd_bam1\tWidth_bam1\tSample" > ${OUTBASE}.counts.txt
+
+# Loop over the bam1 chromosome names.
+cut -f1 ${bamintersectBED12} | sort | uniq > "${TMPDIR}/bam1_chroms"
 
 while read main_chrom ; do
     # Get just the hg38/mm10/rn6 bed3 part, then sort it:
-    awk -v mainChrom="${main_chrom}" -F "\t" 'BEGIN {OFS="\t"} $1==mainChrom {print $0; }' "${filter_csv_output}" |
+    awk -v mainChrom="${main_chrom}" -F "\t" 'BEGIN {OFS="\t"} $1==mainChrom {print $0; }' ${bamintersectBED12} |
     cut -f7-9 | sort-bed - > ${TMPDIR}/sorted_speciesReadCoords.bed3
     
     # The below makes +/- 500 bps regions around each hg38/mm10 read, and merges them when possible. It will return bed3 output.
@@ -154,39 +100,18 @@ while read main_chrom ; do
      
         echo -e "${chromosome_bam2}\t${Start_Pos}\t${End_Pos}" > "${TMPDIR}/cluster_1" 
     
-        awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' < "${filter_csv_output}" | \
+        awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' < ${OUTBASE}.bed | \
         sort-bed - | bedops -e 1 - "${TMPDIR}/cluster_1" | cut -f8-9 > ${TMPDIR}/cols_8_9
     
         min=`awk 'NR==1{min = $1 + 0; next} {if ($1 < min) min = $1;} END{print min}' ${TMPDIR}/cols_8_9`
         max=`awk 'NR==1{max = $2 + 0; next} {if ($2 > max) max = $2;} END{print max}' ${TMPDIR}/cols_8_9`
         let "Width1 = ${max} - ${min}"
     
-        echo -e "${chromosome_bam2}\t${Start_Pos}\t${End_Pos}\t${Width2}\t${Nearest_Gene}\t${Post_filter_Reads}\t${chromosome_bam1}\t${min}\t${max}\t${Width1}\t${Sample}" >> ${TMPDIR}/short_sorted_table2.bed
+        echo -e "${chromosome_bam2}\t${Start_Pos}\t${End_Pos}\t${Width2}\t${Nearest_Gene}\t${Post_filter_Reads}\t${chromosome_bam1}\t${min}\t${max}\t${Width1}\t${Sample}" >> ${OUTBASE}.counts.txt
     
     done < "${TMPDIR}/short_sorted_table.bed"
 done < "${TMPDIR}/bam1_chroms"
 
-
-# Initialize the counts output files with a header.
-echo -e "#chrom_bam2\tchromStart_bam2\tchromEnd_bam2\tWidth_bam2\tNearestGene_bam2\tPost-filter_Reads\tchrom_bam1\tchromStart_bam1\tchromEnd_bam1\tWidth_bam1\tSample" > ${TMPDIR}/header.txt
-
-# Output the final counts files.
-if [ -f "${TMPDIR}/short_sorted_table2.bed" ]; then
-    if [ ${counts_type} = "all_reads_counts" ]; then
-        mv ${TMPDIR}/header.txt ${sampleOutdir}/${sample_name}.counts.txt
-        cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.counts.txt
-    else
-        mv ${TMPDIR}/header.txt ${sampleOutdir}/${sample_name}.informative.counts.txt
-        cat ${TMPDIR}/short_sorted_table2.bed >> ${sampleOutdir}/${sample_name}.informative.counts.txt
-    fi
-else
-    # Make empty output files
-    if [ ${counts_type} = "all_reads_counts" ]; then
-        touch ${sampleOutdir}/${sample_name}.counts.txt
-    else
-        touch ${sampleOutdir}/${sample_name}.informative.counts.txt
-    fi
-fi
 
 #####################################################################################
 

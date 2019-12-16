@@ -59,7 +59,7 @@ Usage: $(basename "$0") [Options]
      Mammalian genomes should be the annotationgenome name (hg38, not hg38_full)
 
   Optional Options:
-          --max_mismatches {The max number of mismatches a read is allowed to have vs the reference. The value is in the read's NM tag.}
+          --max_mismatches {The max number of mismatches a read is allowed to have vs the reference. The value is in the read's NM tag. Default = 1}
 
           --noReqFullyAligned {If set, the default requirement that reads must be fully aligned is disabled. Default = Not set}
 
@@ -205,7 +205,7 @@ eval set -- "${options}"
     
     verbose=False
     
-    max_mismatches=0
+    max_mismatches=1
     ReqFullyAligned="--ReqFullyAligned"
 
 
@@ -272,24 +272,11 @@ fi
 # End of getopt section.
 ################################################
 sample_name="${sample_name}.${bam1genome}_vs_${bam2genome}"
-################################################
-# Derive the "excluded regions" from bam1genome and bam2genome: 
 
-# A bed file of ranges to delete at the end of the process.  cegsvector reads that fall in these ranges may actually be
-# a misleading mapping of genomic reads, so they are considered uninformative.
 
-if echo "${bam1genome}" | grep -q "^LP[0-9]\+" ; then
-    genome2exclude="${src}/LP_uninformative_regions/LP_vs_${bam2genome}.bed"
-else
-    genome2exclude="${src}/LP_uninformative_regions/${bam1genome}_vs_${bam2genome}.bed"
-fi
-
-########################################################
 # Make some directories to hold the final output for this sample.
-
 mkdir -p "${sampleOutdir}/log"
 
-########################################################
 # Make a directory structure to hold files passed between jobs.
 # It is built within ${sampleOutdir} so it can be persistent.
 # It gets removed at the end of the merge_bamintersect.sh script.
@@ -431,22 +418,22 @@ rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/s
 
 ################################################################################################
 ## Send some summary info to the anc file:
-echo "bam files:" > "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "First:  ${bamname1}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "Second: ${bamname2}" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "bam files:" > ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+echo "First:  ${bamname1}" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+echo "Second: ${bamname2}" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
 
 # Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
 if [ "${integrationsite}" != "null" ]; then
     # In the next line we rely on HA1 being the 5p side HA.
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
-    echo "${integrationSiteName} HAs:" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "${integrationSiteName} HAs:" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
     HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
     
     if [ -s "${HA_file}" ]; then
-        grep "${integrationSiteName}_${HA1}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-        echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+        grep "${integrationSiteName}_${HA1}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+        echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
         
         # Get the HA coordinates:
         grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/HA_coords.bed"
@@ -455,46 +442,55 @@ if [ "${integrationsite}" != "null" ]; then
         # Get the deletion range coordinates:
         cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${INTERMEDIATEDIR}/deletion_range.bed
     else
-        echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-        echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+        echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+        echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
         
         touch "${INTERMEDIATEDIR}/HA_coords.bed"
         touch "${INTERMEDIATEDIR}/deletion_range.bed"
     fi
 else
-    echo "integrationsite is null" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    echo "No HAs were provided, and so there is no Deletion Range." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+    echo "integrationsite is null" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+    echo "No HAs were provided, and so there is no Deletion Range." >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+    echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
     
     touch "${INTERMEDIATEDIR}/HA_coords.bed"
     touch "${INTERMEDIATEDIR}/deletion_range.bed"
 fi
 
+
+# Derive the "excluded regions" for bam1genome and bam2genome:
+#See if we have a curated uninformative regions file for this combination of genomes
+if echo "${bam1genome}" | grep -q "^LP[0-9]\+" ; then
+    genome2exclude="${src}/LP_uninformative_regions/LP_vs_${bam2genome}.bed"
+else
+    genome2exclude="${src}/LP_uninformative_regions/${bam1genome}_vs_${bam2genome}.bed"
+fi
 if [ ! -f "${genome2exclude}" ]; then
     echo "WARNING: Can't find ${genome2exclude}; will run without region mask"
-    genome2exclude="HA_only"
-    cp ${INTERMEDIATEDIR}/HA_coords.bed ${INTERMEDIATEDIR}/genome1exclude.bed
+    genome2exclude=""
 else
-    echo "The Exclude Regions file is: $(basename ${genome2exclude})  [${genome2exclude}]" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-    bedops -u ${genome2exclude} ${INTERMEDIATEDIR}/HA_coords.bed > ${INTERMEDIATEDIR}/genome1exclude.bed
+    echo "Found uninformative regions file: $(basename ${genome2exclude}) [${genome2exclude}]" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
 fi
-echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+#BUGBUG hardcoded repeatmask for bam2genome
+bedops -u ${genome2exclude} ${INTERMEDIATEDIR}/HA_coords.bed /vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed > ${INTERMEDIATEDIR}/uninformativeRegionFile.bed
+echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+
 
 ################################################################################################
 samtools idxstats ${bamname1} > "${TMPDIR}/${sample_name}.counts.anc_info.txt"
 num_lines=$(wc -l < "${TMPDIR}/${sample_name}.counts.anc_info.txt")
 let "num_lines = num_lines - 1"
-echo "samtools idx output for first bam file: reference sequence name, sequence length, # mapped reads and # unmapped reads." >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-head "-${num_lines}" "${TMPDIR}/${sample_name}.counts.anc_info.txt" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
-echo "" >> "${sampleOutdir}/${sample_name}.counts.anc_info.txt"
+echo "samtools idx output for first bam file: reference sequence name, sequence length, # mapped reads and # unmapped reads." >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+head "-${num_lines}" "${TMPDIR}/${sample_name}.counts.anc_info.txt" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
 
 ################################################################################################
 ## Merge output from the array jobs.
 
 export_vars="sampleOutdir=${sampleOutdir}"
 export_vars="${export_vars},src=${src}"
-export_vars="${export_vars},genome2exclude=${genome2exclude}"
+export_vars="${export_vars},uninformativeRegionFile=${INTERMEDIATEDIR}/uninformativeRegionFile.bed"
 export_vars="${export_vars},sample_name=${sample_name}"
 export_vars="${export_vars},bam1genome=${bam1genome}"
 export_vars="${export_vars},bam2genome=${bam2genome}"
