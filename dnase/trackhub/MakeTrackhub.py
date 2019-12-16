@@ -55,10 +55,10 @@ def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
 def internalSubgroupName(label):
-    return label.lower().replace(' ', '_').replace('=', '')
+    return label.lower().replace(' ', '_').replace('~', '_').replace('=', '')
 
 def cleanFactorForSubGroup(label):
-    return label.replace(' ', '_').replace('=', '')
+    return label.replace(' ', '_').replace('~', '_').replace('=', '')
 
 def createSubGroup(subGroups, subGroupNames, keys, label):
     name = internalSubgroupName(label)
