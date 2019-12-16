@@ -59,7 +59,7 @@ debug_fa "Finished sorting dsgrep.bed"
 if [ ${make_csv} != "--make_csv" ]; then
     # Need the bed file to make the table.
     # Maybe make both bed and bam files, and delete bed file later?
-    echo "Making 2 bam files, so exiting merge_bamintersect.sh prior to calling filter_tsv.bash"
+    echo "Making 2 bam files, so exiting merge_bamintersect.sh prior to calling counts_table.sh"
     exit 0
 fi
 
@@ -69,7 +69,7 @@ if [ ${make_table} != "True" ]; then
 fi
 
 #Unfiltered
-${src}/filter_tsv.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.bed ${INTERMEDIATEDIR}
+${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.bed ${INTERMEDIATEDIR}
 echo
 
 
@@ -92,7 +92,7 @@ if [ "${uninformativeRegionFile}" != "null" ];then
 else
     cp ${sampleOutdir}/${sample_name}.bed ${sampleOutdir}/${sample_name}.informative.bed
 fi
-${src}/filter_tsv.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.informative.bed ${INTERMEDIATEDIR}
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.informative.bed ${INTERMEDIATEDIR}
 echo
 
 
@@ -101,7 +101,7 @@ echo
 if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis."
     ${src}/HA_table.sh ${bamname2} 3076 ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src}
-    ${src}/filter_tsv.sh ${sampleOutdir}/${sample_name}_HA "${sample_name}_HA" ${bam2genome} ${sampleOutdir}/${sample_name}_HA.bed ${INTERMEDIATEDIR}
+    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}_HA "${sample_name}_HA" ${bam2genome} ${sampleOutdir}/${sample_name}_HA.bed ${INTERMEDIATEDIR}
 else
     echo -e "No HAs available, so there will be no HA analysis."
     
@@ -115,7 +115,7 @@ echo
 echo
 echo "Look for reads spanning the assembly and the backbone."
 ${src}/assmblyBackbone_table.sh ${bamname1} 3076 ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src}
-${src}/filter_tsv.sh ${sampleOutdir}/${sample_name}_assmblyBackbone "${sample_name}_assmblyBackbone" ${bam2genome} "${sampleOutdir}/${sample_name}_assmblyBackbone.bed" ${INTERMEDIATEDIR}
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}_assmblyBackbone "${sample_name}_assmblyBackbone" ${bam2genome} "${sampleOutdir}/${sample_name}_assmblyBackbone.bed" ${INTERMEDIATEDIR}
 echo
 
 # Number of reads
