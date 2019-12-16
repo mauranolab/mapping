@@ -55,7 +55,7 @@ def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
 def internalSubgroupName(label):
-    return label.lower().replace(' ', '_').replace('~', '_').replace('=', '')
+    return label.lower().replace(' ', '_').replace('=', '')
 
 def cleanFactorForSubGroup(label):
     return label.replace(' ', '_').replace('~', '_').replace('=', '')
@@ -461,7 +461,7 @@ for assay_type in assays:
             
             #Keep these as short as possible to avoid running over track name maxlength
             if 'Mapped_Genome' in subGroupNames:
-                sampleSubgroups['mapped_genome'] = re.sub(r'^cegsvectors_', '', curSample['Mapped_Genome'])
+                sampleSubgroups['mapped_genome'] = cleanFactorForSubGroup(re.sub(r'^cegsvectors_', '', curSample['Mapped_Genome']))
             
             
             ###shortLabel must be <= 17 printable characters (sampleName + DS)
