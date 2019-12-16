@@ -34,33 +34,39 @@ newheader = unfiltered_reads.header.to_dict()
 #import pprint
 #pprint.pprint(unfiltered_reads.header.to_dict())
 
-visitedProgNames = []
+visitedProgIDs = []
 for prog in newheader['PG']:
-    if prog['ID'] in visitedProgNames:
+    if prog['ID'] in visitedProgIDs:
         while True:
-            newname = prog['ID'] + "-dup" + str(random.getrandbits(16))
-            if newname not in visitedProgNames:
+            newID = prog['ID'] + "-dup" + str(random.getrandbits(16))
+            if newID not in visitedProgIDs:
                 break
-        print("[fixDupSAMHeaderPG] Adjusted duplicate @PG header ID:", prog['ID'], " to ", newname, sep="", file=sys.stderr)
-        prog['ID'] = newname
+        print("[fixDupSAMHeaderPG] Adjusted duplicate @PG header ID:", prog['ID'], " to ", newID, sep="", file=sys.stderr)
+        prog['ID'] = newID
         #NB makes no attempt to fix PP tags referring to this tag
-    visitedProgNames.append(prog['ID'])
+    visitedProgIDs.append(prog['ID'])
 
 
 #Set PP tag to last @PG entry listed
-#BUGBUG makes no attempt to follow PG chain, just ass
-newheader['PG'].append({'ID':'fixDupSAMHeaderPG', 'PP':newheader['PG'][-1]['ID'], 'PN':'fixDupSAMHeaderPG.py', 'VN':version, 'CL':' '.join(sys.argv)})
+#Reuses visitedProgIDs to find a unique ID for fixDupSAMHeaderPG record
+newID = 'fixDupSAMHeaderPG'
+while True:
+    if newID not in visitedProgIDs:
+        break
+    newID = 'fixDupSAMHeaderPG'+ "-dup" + str(random.getrandbits(16))
+
+#BUGBUG makes no attempt to follow PG chain, just assumes it's the last one
+newheader['PG'].append({'ID':newID, 'PP':newheader['PG'][-1]['ID'], 'PN':'fixDupSAMHeaderPG.py', 'VN':version, 'CL':' '.join(sys.argv)})
 
 
 try:
     filtered_reads = pysam.AlignmentFile(args.filtered_alignment, "wbu", header = newheader)
-
+    
     allreads = unfiltered_reads.fetch(until_eof=True) #I believe .next would skip unmapped reads and isn't guaranteed to match file
-    read = next(unfiltered_reads)
     while(1):
-        ret = filtered_reads.write(read)
         try:
             read = next(unfiltered_reads)
+            ret = filtered_reads.write(read)
         except StopIteration:
             break
 finally:
