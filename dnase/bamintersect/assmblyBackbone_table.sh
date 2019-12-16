@@ -52,7 +52,7 @@ fi
 
 # Get the records for the read IDs with only one end in the assmbly.
 # Note that we will get two lines for each such read ID: one in the assmbly, and one in the backbone.
-/vol/mauranolab/cadlej01/git_repositories/mapping/dnase/bamintersect/subsetBAM.py  \
+${src}/subsetBAM.py  \
     --flags ${exclude_flags_plus_unmapped} \
     --readNames "${TMPDIR}/Reads.txt" \
     --bamFile_in ${bamfile} \

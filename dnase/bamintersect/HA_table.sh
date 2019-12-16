@@ -24,7 +24,7 @@ samtools view -F ${exclude_flags_plus_unmapped} -L ${INTERMEDIATEDIR}/HA_coords.
 
 # Get the records for the read IDs with only one end in a HA.
 # Note that we will get two lines for each such read ID: one in the HA, and one outside the HA.
-/vol/mauranolab/cadlej01/git_repositories/mapping/dnase/bamintersect/subsetBAM.py  \
+${src}/subsetBAM.py  \
     --flags ${exclude_flags_plus_unmapped} \
     --readNames "${TMPDIR}/Reads.txt" \
     --bamFile_in ${bamfile} \
