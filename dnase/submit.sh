@@ -123,11 +123,13 @@ fi
 
 
 #bamintersect
-if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" != "bamintersect" ]] || [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]); then
+#shouldn't this read processingCommand}" == "bamintersect" so you can force bamintersect for non-dna/capture samples?
+if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect" ]] || [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]); then
     echo
     echo "bamintersect"
     
     sampleAnnotationGeneticModification=`echo "${sampleAnnotation}" | awk -v key="Genetic_Modification" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
+    #TODO should this also include Custom Reference? That is missing an integration site
     
     mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0!~/^cegsvectors_/'`
     cegsGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0~/^cegsvectors_/'`
