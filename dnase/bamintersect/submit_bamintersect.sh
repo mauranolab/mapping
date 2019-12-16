@@ -51,10 +51,12 @@ Usage: $(basename "$0") [Options]
      --sample_name {sample name}
      --integrationsite {sitename_HA#1_HA#2   Must be canonical name (sitename e.g. "HPRT1"; HA#s refer to numbers in the HomologyArms.bed file) or null.}
      --bam1 {full path to bam file #1}
-     --bam1genome [ LP123, mm10, hg38, rn6, ... ] Mammalian genomes should be the annotationgenome name (hg38, not hg38_full)
+     --bam1genome [ LP123, mm10, hg38, rn6, ... ]
      --bam2 {full path to bam file #2}
-     --bam2genome [ LP123, mm10, hg38, rn6, ... ] Mammalian genomes should be the annotationgenome name (hg38, not hg38_full)
+     --bam2genome [ LP123, mm10, hg38, rn6, ... ]
      --outdir {outdir} output directory
+     
+     Mammalian genomes should be the annotationgenome name (hg38, not hg38_full)
 
   Optional Options:
           --max_mismatches {The max number of mismatches a read is allowed to have vs the reference. The value is in the read's NM tag.}
@@ -64,23 +66,24 @@ Usage: $(basename "$0") [Options]
           --bam1_keep_flags {a sam format flag value required of all bam1 reads to be 
                              included in the analysis. Default = 9}
                             
-          --bam1_exclude_flags {a sam format flag value required of all bam1 reads to be 
-                                excluded from the analysis. Default = 3076}
+          --bam1_exclude_flags {a sam format flag value for bam1 reads to be 
+                                excluded from the analysis. Default = 3078}
                   Examples:
 
                       # Require read is paired.
                       # Require mate is unmapped.
                       bam1_keep_flags="9"
 
+                      # Exclude mapped in propper pair
                       # Exclude read unmapped.
                       # Exclude PCR or optical duplicates.
                       # Exclude supplementary aligments.
-                      bam1_exclude_flags="3076"
+                      bam1_exclude_flags="3078"
 
           --bam2_keep_flags {a sam format flag value required of all bam2 reads to be 
                              included in the analysis. Default = 1}
                             
-          --bam2_exclude_flags {a sam format flag value required of all bam2 reads to be 
+          --bam2_exclude_flags {a sam format flag value for bam2 reads to be 
                                 excluded from the analysis. Default = 3076}
 
           --reads_match {no argument}
@@ -184,18 +187,21 @@ eval set -- "${options}"
     # Require mate is unmapped.
     bam1_keep_flags="9"
     
+    # Exclude mapped in propper pair
     # Exclude read unmapped.
     # Exclude PCR or optical duplicates.
     # Exclude supplementary aligments.
-    bam1_exclude_flags="3076"
+    bam1_exclude_flags="3078"
     
     # Require read is paired.
+    # Require mate is unmapped.
     bam2_keep_flags="1"
     
+    # Exclude mapped in propper pair
     # Exclude read unmapped.
     # Exclude PCR or optical duplicates.
     # Exclude supplementary aligments.
-    bam2_exclude_flags="3076"
+    bam2_exclude_flags="3078"
     
     verbose=False
     
