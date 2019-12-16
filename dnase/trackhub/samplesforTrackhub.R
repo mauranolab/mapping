@@ -318,6 +318,7 @@ for(curdir in mappeddirs) {
 					if(CEGSsampleType %in% c("Yeast", "DNA", "BAC", "RepoBAC", "Ecoli", "Amplicon")) {
 						data$Study[i] <- SampleNameSplit[1]
 						if(CEGSsampleType != "RepoBAC") {
+							#RepoBAC just have a SampleID field which doesn't make it into a specific UCSC field right now
 							data$Project[i] <- SampleNameSplit[2]
 							data$Assembly[i] <- SampleNameSplit[3]
 							data$Info[i] <- SampleNameSplit[4]
