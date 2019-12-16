@@ -61,8 +61,7 @@ getInputSampleIDs <- function(inputfile) {
 	} 
 	
 	inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$DS),]
-	message("[samplesforTrackhub] Merging annotation from inputfile ", inputfile, ": ", nrow(inputSampleIDs), ' rows x ', ncol(inputSampleIDs), ' cols')
-	message("[samplesforTrackhub] Number of unique DS numbers: ", length(unique(inputSampleIDs$DS)))
+	message("[samplesforTrackhub] Merging annotation from ", inputfile, ": ", nrow(inputSampleIDs), " x ", ncol(inputSampleIDs), ", ", length(unique(inputSampleIDs$DS)), " unique DS numbers")
 	return(inputSampleIDs)
 }
 
@@ -186,7 +185,6 @@ for(curdir in mappeddirs) {
 	if(opt$project %in% c("byFC", "CEGS_byLocus") & is.null(opt$inputfile)) {
 		inputfile <- paste0(pwd, '/', dirname(curdir), "/sampleannotation.txt")
 		if(file.exists(inputfile)){
-			message("[samplesforTrackhub] Reading custom annotation from ", inputfile)
 			inputSampleIDs <- getInputSampleIDs(inputfile)
 		} else {
 			inputSampleIDs <- NULL
