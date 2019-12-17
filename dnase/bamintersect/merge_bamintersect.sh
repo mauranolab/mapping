@@ -129,8 +129,8 @@ echo
 
 echo
 echo "Look for reads spanning the assembly and the backbone."
-${src}/assmblyBackbone_table.sh ${bamname1} 3076 ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src}
-${src}/counts_table.sh ${sampleOutdir}/${sample_name}_assmblyBackbone "${sample_name}_assmblyBackbone" ${bam2genome} "${sampleOutdir}/${sample_name}_assmblyBackbone.bed" ${INTERMEDIATEDIR}
+${src}/assemblyBackbone_table.sh ${bamname1} 3076 ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src}
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} "${sampleOutdir}/${sample_name}.assemblyBackbone.bed" ${INTERMEDIATEDIR}
 echo
 
 # Number of reads
@@ -144,12 +144,12 @@ echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tare potentia
 ###########################################################################################################################################
 echo
 echo "Subset bam files for uploading UCSC custom tracks"
-cut -f4 ${sampleOutdir}/${sample_name}_assmblyBackbone.bed > ${TMPDIR}/${sample_name}.assmblyBackbone.readNames.txt
+cut -f4 ${sampleOutdir}/${sample_name}.assemblyBackbone.bed > ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt
 
-if [ -s "${TMPDIR}/${sample_name}.assmblyBackbone.readNames.txt" ]; then
-    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.assmblyBackbone.readNames.txt --bamFile_in ${bamname1} --bamFile_out ${TMPDIR}/${sample_name}.bam1_assmblyBackbone_reads.unsorted.bam
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.assmblyBackbone.${bam1genome}.bam ${TMPDIR}/${sample_name}.bam1_assmblyBackbone_reads.unsorted.bam
-    samtools index ${sampleOutdir}/${sample_name}.assmblyBackbone.${bam1genome}.bam
+if [ -s "${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt" ]; then
+    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt --bamFile_in ${bamname1} --bamFile_out ${TMPDIR}/${sample_name}.bam1.assemblyBackbone_reads.unsorted.bam
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.assemblyBackbone.${bam1genome}.bam ${TMPDIR}/${sample_name}.bam1.assemblyBackbone_reads.unsorted.bam
+    samtools index ${sampleOutdir}/${sample_name}.assemblyBackbone.${bam1genome}.bam
 fi
 
 cut -f4 ${sampleOutdir}/${sample_name}.informative.bed > ${TMPDIR}/${sample_name}.readNames.txt
