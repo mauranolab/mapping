@@ -88,7 +88,7 @@ if [ ! -f "${genome2exclude}" ]; then
     echo "WARNING: Can't find ${genome2exclude}; will run without region mask"
     genome2exclude=""
 else
-    echo "Found uninformative regions file: $(basename ${genome2exclude}) [${genome2exclude}]" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+    echo "Found uninformative regions file: $(basename ${genome2exclude}) [${genome2exclude}]" >> ${sampleOutdir}/${sample_name}.info.txt
 fi
 #Sort exclusion files and strip comments just in case
 #BUGBUG hardcoded repeatmask for bam2genome
@@ -138,30 +138,30 @@ n1=$(wc -l < "${sampleOutdir}/${sample_name}.bed")
 # Number of informative reads
 n2=$(wc -l < "${sampleOutdir}/${sample_name}.informative.bed")
 
-echo -e "Summary:" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tare potentially informative." >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+echo -e "Summary:" >> ${sampleOutdir}/${sample_name}.info.txt
+echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tare potentially informative." >> ${sampleOutdir}/${sample_name}.info.txt
 
 ###########################################################################################################################################
 echo
 echo "Subset bam files for uploading UCSC custom tracks"
-cut -f4 "${sampleOutdir}/${sample_name}_assmblyBackbone.bed" > "${INTERMEDIATEDIR}/${sample_name}.readNames.txt"
+cut -f4 ${sampleOutdir}/${sample_name}_assmblyBackbone.bed > ${TMPDIR}/${sample_name}.assmblyBackbone.readNames.txt
 
-if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
-    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${INTERMEDIATEDIR}/${sample_name}.readNames.txt --bamFile_in ${bamname1} --bamFile_out ${TMPDIR}/${sample_name}.bam1_assmblyBackbone_reads.unsorted.bam
+if [ -s "${TMPDIR}/${sample_name}.assmblyBackbone.readNames.txt" ]; then
+    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.assmblyBackbone.readNames.txt --bamFile_in ${bamname1} --bamFile_out ${TMPDIR}/${sample_name}.bam1_assmblyBackbone_reads.unsorted.bam
     samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.assmblyBackbone.${bam1genome}.bam ${TMPDIR}/${sample_name}.bam1_assmblyBackbone_reads.unsorted.bam
     samtools index ${sampleOutdir}/${sample_name}.assmblyBackbone.${bam1genome}.bam
 fi
 
-cut -f4 "${sampleOutdir}/${sample_name}.informative.bed" > "${INTERMEDIATEDIR}/${sample_name}.readNames.txt"
-if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
+cut -f4 ${sampleOutdir}/${sample_name}.informative.bed > ${TMPDIR}/${sample_name}.readNames.txt
+if [ -s "${TMPDIR}/${sample_name}.readNames.txt" ]; then
     debug_fa "${sample_name}.readNames.txt was found"
     
-    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${INTERMEDIATEDIR}/${sample_name}.readNames.txt --bamFile_in ${bamname1} --bamFile_out ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
+    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bamname1} --bamFile_out ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
     samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.informative.${bam1genome}.bam ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
     samtools index ${sampleOutdir}/${sample_name}.informative.${bam1genome}.bam
     debug_fa "Completed samtools lines for bam1"
     
-    ${src}/subsetBAM.py --flags ${BAM_E2} --readNames ${INTERMEDIATEDIR}/${sample_name}.readNames.txt --bamFile_in ${bamname2} --bamFile_out ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
+    ${src}/subsetBAM.py --flags ${BAM_E2} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bamname2} --bamFile_out ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
     samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.informative.${bam2genome}.bam ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
     samtools index ${sampleOutdir}/${sample_name}.informative.${bam2genome}.bam
     debug_fa "Completed samtools lines for bam2"
@@ -178,10 +178,10 @@ if [ -s "${INTERMEDIATEDIR}/${sample_name}.readNames.txt" ]; then
         UCSCbase="bigDataUrl=https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/${projectdir}/${sampleOutdir}"
     fi
     
-    echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-    echo "Paths for custom tracks to bam files with informative reads:" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-    echo "track name=\"${sample_name}.${bam1genome}-reads\" description=\"${sample_name}.${bam1genome} Reads\" visibility=pack pairEndsByName=F maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.${bam1genome}.bam" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-    echo "track name=\"${sample_name}.${bam2genome}-reads\" description=\"${sample_name}.${bam2genome} Reads\" visibility=pack pairEndsByName=F maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.${bam2genome}.bam" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+    echo "" >> ${sampleOutdir}/${sample_name}.info.txt
+    echo "Paths for custom tracks to bam files with informative reads:" >> ${sampleOutdir}/${sample_name}.info.txt
+    echo "track name=\"${sample_name}.${bam1genome}-reads\" description=\"${sample_name}.${bam1genome} Reads\" visibility=pack pairEndsByName=F maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.${bam1genome}.bam" >> ${sampleOutdir}/${sample_name}.info.txt
+    echo "track name=\"${sample_name}.${bam2genome}-reads\" description=\"${sample_name}.${bam2genome} Reads\" visibility=pack pairEndsByName=F maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.${bam2genome}.bam" >> ${sampleOutdir}/${sample_name}.info.txt
     
 else
     # No informative reads
