@@ -418,22 +418,22 @@ rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/s
 
 ################################################################################################
 ## Send some summary info to the anc file:
-echo "bam files:" > ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-echo "First:  ${bamname1}" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-echo "Second: ${bamname2}" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+echo "bam files:" > ${sampleOutdir}/${sample_name}.anc_info.txt
+echo "First:  ${bamname1}" >> ${sampleOutdir}/${sample_name}.anc_info.txt
+echo "Second: ${bamname2}" >> ${sampleOutdir}/${sample_name}.anc_info.txt
+echo "" >> ${sampleOutdir}/${sample_name}.anc_info.txt
 
 # Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
 if [ "${integrationsite}" != "null" ]; then
     # In the next line we rely on HA1 being the 5p side HA.
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
-    echo "${integrationSiteName} HAs:" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+    echo "${integrationSiteName} HAs:" >> ${sampleOutdir}/${sample_name}.anc_info.txt
     HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
     
     if [ -s "${HA_file}" ]; then
-        grep "${integrationSiteName}_${HA1}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-        echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+        grep "${integrationSiteName}_${HA1}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.anc_info.txt
+        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.anc_info.txt
+        echo "" >> ${sampleOutdir}/${sample_name}.anc_info.txt
         
         # Get the HA coordinates:
         grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/HA_coords.bed"
@@ -442,16 +442,16 @@ if [ "${integrationsite}" != "null" ]; then
         # Get the deletion range coordinates:
         cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${INTERMEDIATEDIR}/deletion_range.bed
     else
-        echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-        echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+        echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> ${sampleOutdir}/${sample_name}.anc_info.txt
+        echo "" >> ${sampleOutdir}/${sample_name}.anc_info.txt
         
         touch "${INTERMEDIATEDIR}/HA_coords.bed"
         touch "${INTERMEDIATEDIR}/deletion_range.bed"
     fi
 else
-    echo "integrationsite is null" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-    echo "No HAs were provided, and so there is no Deletion Range." >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-    echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+    echo "integrationsite is null" >> ${sampleOutdir}/${sample_name}.anc_info.txt
+    echo "No HAs were provided, and so there is no Deletion Range." >> ${sampleOutdir}/${sample_name}.anc_info.txt
+    echo "" >> ${sampleOutdir}/${sample_name}.anc_info.txt
     
     touch "${INTERMEDIATEDIR}/HA_coords.bed"
     touch "${INTERMEDIATEDIR}/deletion_range.bed"
@@ -459,13 +459,13 @@ fi
 
 
 ################################################################################################
-samtools idxstats ${bamname1} > "${TMPDIR}/${sample_name}.counts.anc_info.txt"
-num_lines=$(wc -l < "${TMPDIR}/${sample_name}.counts.anc_info.txt")
+samtools idxstats ${bamname1} > "${TMPDIR}/${sample_name}.anc_info.txt"
+num_lines=$(wc -l < "${TMPDIR}/${sample_name}.anc_info.txt")
 let "num_lines = num_lines - 1"
-echo "samtools idx output for first bam file: reference sequence name, sequence length, # mapped reads and # unmapped reads." >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-head "-${num_lines}" "${TMPDIR}/${sample_name}.counts.anc_info.txt" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+echo "samtools idx output for first bam file: reference sequence name, sequence length, # mapped reads and # unmapped reads." >> ${sampleOutdir}/${sample_name}.anc_info.txt
+head "-${num_lines}" "${TMPDIR}/${sample_name}.anc_info.txt" >> ${sampleOutdir}/${sample_name}.anc_info.txt
+echo "" >> ${sampleOutdir}/${sample_name}.anc_info.txt
+echo "" >> ${sampleOutdir}/${sample_name}.anc_info.txt
 
 ################################################################################################
 ## Merge output from the array jobs.
