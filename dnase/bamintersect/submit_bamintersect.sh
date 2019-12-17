@@ -458,24 +458,6 @@ else
 fi
 
 
-# Derive the "excluded regions" for bam1genome and bam2genome:
-#See if we have a curated uninformative regions file for this combination of genomes
-if echo "${bam1genome}" | grep -q "^LP[0-9]\+" ; then
-    genome2exclude="${src}/LP_uninformative_regions/LP_vs_${bam2genome}.bed"
-else
-    genome2exclude="${src}/LP_uninformative_regions/${bam1genome}_vs_${bam2genome}.bed"
-fi
-if [ ! -f "${genome2exclude}" ]; then
-    echo "WARNING: Can't find ${genome2exclude}; will run without region mask"
-    genome2exclude=""
-else
-    echo "Found uninformative regions file: $(basename ${genome2exclude}) [${genome2exclude}]" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-fi
-#BUGBUG hardcoded repeatmask for bam2genome
-bedops -u ${genome2exclude} ${INTERMEDIATEDIR}/HA_coords.bed /vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed > ${INTERMEDIATEDIR}/uninformativeRegionFile.bed
-echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-
-
 ################################################################################################
 samtools idxstats ${bamname1} > "${TMPDIR}/${sample_name}.counts.anc_info.txt"
 num_lines=$(wc -l < "${TMPDIR}/${sample_name}.counts.anc_info.txt")
@@ -490,7 +472,6 @@ echo "" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
 
 export_vars="sampleOutdir=${sampleOutdir}"
 export_vars="${export_vars},src=${src}"
-export_vars="${export_vars},uninformativeRegionFile=${INTERMEDIATEDIR}/uninformativeRegionFile.bed"
 export_vars="${export_vars},sample_name=${sample_name}"
 export_vars="${export_vars},bam1genome=${bam1genome}"
 export_vars="${export_vars},bam2genome=${bam2genome}"

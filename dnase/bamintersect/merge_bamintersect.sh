@@ -68,30 +68,45 @@ if [ ${make_table} != "True" ]; then
     exit 0
 fi
 
+
 #Unfiltered
 ${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.bed ${INTERMEDIATEDIR}
 echo
 
 
 #With filters
-if [ "${uninformativeRegionFile}" != "null" ];then
-    # Get reads that are in the deletion zone.
-    
-    #Starts out with bam1 coordinates
-    cat ${sampleOutdir}/${sample_name}.bed | 
-    #Remove bam1 reads that overlap the ranges defined in uninformativeRegionFile.bed file via submit_bamintrsect.sh
-    bedops -n 1 - ${uninformativeRegionFile} |
-    #Switch to bam2
-    awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - |
-    #Sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the uninformativeRegionFile:
-    bedops -n 1 - ${uninformativeRegionFile} |
-    #Only apply deletion_range to bam2
-    bedops -n 1 - ${INTERMEDIATEDIR}/deletion_range.bed | 
-    #Switch back to bam1 coordinates
-    awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - > ${sampleOutdir}/${sample_name}.informative.bed
+#Check for a curated uninformative regions file for this combination of genomes
+if echo "${bam1genome}" | grep -q "^LP[0-9]\+" ; then
+    genome2exclude="${src}/LP_uninformative_regions/LP_vs_${bam2genome}.bed"
+#TODO hardcoded for now
+elif echo "${bam1genome}" | grep -q "^Sox2_" ; then
+    genome2exclude="${src}/LP_uninformative_regions/PL_vs_LP.bed"
 else
-    cp ${sampleOutdir}/${sample_name}.bed ${sampleOutdir}/${sample_name}.informative.bed
+    genome2exclude="${src}/LP_uninformative_regions/${bam1genome}_vs_${bam2genome}.bed"
 fi
+if [ ! -f "${genome2exclude}" ]; then
+    echo "WARNING: Can't find ${genome2exclude}; will run without region mask"
+    genome2exclude=""
+else
+    echo "Found uninformative regions file: $(basename ${genome2exclude}) [${genome2exclude}]" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+fi
+#Sort exclusion files and strip comments just in case
+#BUGBUG hardcoded repeatmask for bam2genome
+cat ${genome2exclude} ${INTERMEDIATEDIR}/HA_coords.bed | grep -v "^#" | sort-bed - | bedops -u - /vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed > ${INTERMEDIATEDIR}/uninformativeRegionFile.bed
+
+#Starts out with bam1 coordinates
+cat ${sampleOutdir}/${sample_name}.bed | 
+#Remove bam1 reads that overlap the ranges defined in uninformativeRegionFile.bed file via submit_bamintrsect.sh
+bedops -n 1 - ${INTERMEDIATEDIR}/uninformativeRegionFile.bed |
+#Switch to bam2
+awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - |
+#Sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the uninformativeRegionFile:
+bedops -n 1 - ${INTERMEDIATEDIR}/uninformativeRegionFile.bed |
+#Only apply deletion_range to bam2
+bedops -n 1 - ${INTERMEDIATEDIR}/deletion_range.bed | 
+#Switch back to bam1 coordinates
+awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - > ${sampleOutdir}/${sample_name}.informative.bed
+
 ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.informative.bed ${INTERMEDIATEDIR}
 echo
 
@@ -124,8 +139,7 @@ n1=$(wc -l < "${sampleOutdir}/${sample_name}.bed")
 n2=$(wc -l < "${sampleOutdir}/${sample_name}.informative.bed")
 
 echo -e "Summary:" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tpassed through the Exclude Regions filters and over the HAs (if any), and are potentially informative." >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
-echo -e "May include backbone reads, and reads not on the integration site chromosome. Some or all may not be in the \"informative.counts\" table, if they are over 500 bps from the nearest other informative read.\n" >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
+echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tare potentially informative." >> ${sampleOutdir}/${sample_name}.counts.anc_info.txt
 
 ###########################################################################################################################################
 echo
