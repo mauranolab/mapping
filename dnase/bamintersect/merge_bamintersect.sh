@@ -92,7 +92,7 @@ else
 fi
 #Sort exclusion files and strip comments just in case
 #BUGBUG hardcoded repeatmask for bam2genome
-cat ${genome2exclude} ${INTERMEDIATEDIR}/HA_coords.bed | grep -v "^#" | sort-bed - | bedops -u - /vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed > ${INTERMEDIATEDIR}/uninformativeRegionFile.bed
+cat ${genome2exclude} ${INTERMEDIATEDIR}/HA_coords.bed | awk '$0 !~ /^#/' | sort-bed - | bedops -u - /vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed > ${INTERMEDIATEDIR}/uninformativeRegionFile.bed
 
 #Starts out with bam1 coordinates
 cat ${sampleOutdir}/${sample_name}.bed | 
@@ -157,15 +157,15 @@ if [ -s "${TMPDIR}/${sample_name}.readNames.txt" ]; then
     debug_fa "${sample_name}.readNames.txt was found"
     
     ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bamname1} --bamFile_out ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.informative.${bam1genome}.bam ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
-    samtools index ${sampleOutdir}/${sample_name}.informative.${bam1genome}.bam
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam1genome}.bam ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
     debug_fa "Completed samtools lines for bam1"
     
     ${src}/subsetBAM.py --flags ${BAM_E2} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bamname2} --bamFile_out ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.informative.${bam2genome}.bam ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
-    samtools index ${sampleOutdir}/${sample_name}.informative.${bam2genome}.bam
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam2genome}.bam ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
     debug_fa "Completed samtools lines for bam2"
     
+    samtools merge -@ $NSLOTS -O bam -l 9 ${sampleOutdir}/${sample_name}.informative.bam ${TMPDIR}/${sample_name}.informative.${bam1genome}.bam ${TMPDIR}/${sample_name}.informative.${bam2genome}.bam
+    samtools index ${sampleOutdir}/${sample_name}.informative.bam
     
     #Prep for UCSC track links
     #Remove "new" from the end of path so that we can reprocess data without affecting live data
@@ -180,8 +180,7 @@ if [ -s "${TMPDIR}/${sample_name}.readNames.txt" ]; then
     
     echo "" >> ${sampleOutdir}/${sample_name}.info.txt
     echo "Paths for custom tracks to bam files with informative reads:" >> ${sampleOutdir}/${sample_name}.info.txt
-    echo "track name=\"${sample_name}.${bam1genome}-reads\" description=\"${sample_name}.${bam1genome} Reads\" visibility=pack pairEndsByName=F maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.${bam1genome}.bam" >> ${sampleOutdir}/${sample_name}.info.txt
-    echo "track name=\"${sample_name}.${bam2genome}-reads\" description=\"${sample_name}.${bam2genome} Reads\" visibility=pack pairEndsByName=F maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.${bam2genome}.bam" >> ${sampleOutdir}/${sample_name}.info.txt
+    echo "track name=\"${sample_name}\" description=\"${sample_name} Reads\" visibility=pack pairEndsByName=F maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.bam" >> ${sampleOutdir}/${sample_name}.info.txt
     
 else
     # No informative reads
