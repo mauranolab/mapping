@@ -147,8 +147,8 @@ echo "Subset bam files for uploading UCSC custom tracks"
 cut -f4 ${sampleOutdir}/${sample_name}.assemblyBackbone.bed > ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt
 
 if [ -s "${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt" ]; then
-    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt --bamFile_in ${bam1} --bamFile_out ${TMPDIR}/${sample_name}.bam1.assemblyBackbone_reads.unsorted.bam
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.assemblyBackbone.bam ${TMPDIR}/${sample_name}.bam1.assemblyBackbone_reads.unsorted.bam
+    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt --bamFile_in ${bam1} --bamFile_out - |
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.assemblyBackbone.bam
     samtools index ${sampleOutdir}/${sample_name}.assemblyBackbone.bam
 fi
 
@@ -156,12 +156,12 @@ cut -f4 ${sampleOutdir}/${sample_name}.informative.bed > ${TMPDIR}/${sample_name
 if [ -s "${TMPDIR}/${sample_name}.readNames.txt" ]; then
     debug_fa "${sample_name}.readNames.txt was found"
     
-    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bam1} --bamFile_out ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam1genome}.bam ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
+    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bam1} --bamFile_out - |
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam1genome}.bam
     debug_fa "Completed samtools lines for bam1"
     
-    ${src}/subsetBAM.py --flags ${BAM_E2} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bam2} --bamFile_out ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam2genome}.bam ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
+    ${src}/subsetBAM.py --flags ${BAM_E2} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bam2} --bamFile_out - |
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam2genome}.bam
     debug_fa "Completed samtools lines for bam2"
     
     samtools merge -@ $NSLOTS -O bam -l 9 ${sampleOutdir}/${sample_name}.informative.bam ${TMPDIR}/${sample_name}.informative.${bam1genome}.bam ${TMPDIR}/${sample_name}.informative.${bam2genome}.bam
