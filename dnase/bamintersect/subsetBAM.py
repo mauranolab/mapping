@@ -20,6 +20,9 @@ parser.add_argument('--bamFile_out', action='store', type=str, help='Name of the
 
 args = parser.parse_args()
 
+print("[subsetBAM.py] Parameters:", args, file=sys.stderr)
+
+
 # Open the read name file, strip off any trailing CRLF characters, then put all the read names into a set.
 with open(args.readNames, 'r') as readNameFile:
     readNameSet = set(readName.rstrip('\r\n') for readName in readNameFile)
