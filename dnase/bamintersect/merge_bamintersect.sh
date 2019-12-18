@@ -56,10 +56,10 @@ debug_fa "Finished sorting dsgrep.bed"
 ##########################################################################################################
 ## Create the final output tables.
 
-if [ ${make_csv} != "--make_csv" ]; then
+if [ ${make_bed} != "--make_bed" ]; then
     # Need the bed file to make the table.
     # Maybe make both bed and bam files, and delete bed file later?
-    echo "Making 2 bam files, so exiting merge_bamintersect.sh prior to calling counts_table.sh"
+    echo "Made 2 bam files, so exiting merge_bamintersect.sh"
     exit 0
 fi
 
@@ -70,7 +70,7 @@ fi
 
 
 #Unfiltered
-${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.bed ${INTERMEDIATEDIR}
+${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.bed
 echo
 
 
@@ -92,22 +92,22 @@ else
 fi
 #Sort exclusion files and strip comments just in case
 #BUGBUG hardcoded repeatmask for bam2genome
-cat ${genome2exclude} ${INTERMEDIATEDIR}/HA_coords.bed | awk '$0 !~ /^#/' | sort-bed - | bedops -u - /vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed > ${INTERMEDIATEDIR}/uninformativeRegionFile.bed
+cat ${genome2exclude} ${INTERMEDIATEDIR}/HA_coords.bed | awk '$0 !~ /^#/' | sort-bed - | bedops -u - /vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed > ${TMPDIR}/uninformativeRegionFile.bed
 
 #Starts out with bam1 coordinates
 cat ${sampleOutdir}/${sample_name}.bed | 
 #Remove bam1 reads that overlap the ranges defined in uninformativeRegionFile.bed file via submit_bamintrsect.sh
-bedops -n 1 - ${INTERMEDIATEDIR}/uninformativeRegionFile.bed |
+bedops -n 1 - ${TMPDIR}/uninformativeRegionFile.bed |
 #Switch to bam2
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - |
 #Sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the uninformativeRegionFile:
-bedops -n 1 - ${INTERMEDIATEDIR}/uninformativeRegionFile.bed |
+bedops -n 1 - ${TMPDIR}/uninformativeRegionFile.bed |
 #Only apply deletion_range to bam2
 bedops -n 1 - ${INTERMEDIATEDIR}/deletion_range.bed | 
 #Switch back to bam1 coordinates
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - > ${sampleOutdir}/${sample_name}.informative.bed
 
-${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.informative.bed ${INTERMEDIATEDIR}
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.informative.bed
 echo
 
 
@@ -115,8 +115,8 @@ echo
 echo
 if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis."
-    ${src}/HA_table.sh ${bamname2} 3076 ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src}
-    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}_HA "${sample_name}_HA" ${bam2genome} ${sampleOutdir}/${sample_name}_HA.bed ${INTERMEDIATEDIR}
+    ${src}/HA_table.sh ${bam2} 3076 ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src}
+    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}_HA "${sample_name}_HA" ${bam2genome} ${sampleOutdir}/${sample_name}_HA.bed
 else
     echo -e "No HAs available, so there will be no HA analysis."
     
@@ -129,8 +129,8 @@ echo
 
 echo
 echo "Look for reads spanning the assembly and the backbone."
-${src}/assemblyBackbone_table.sh ${bamname1} 3076 ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src}
-${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} "${sampleOutdir}/${sample_name}.assemblyBackbone.bed" ${INTERMEDIATEDIR}
+${src}/assemblyBackbone_table.sh ${bam1} 3076 ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src}
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
 echo
 
 # Number of reads
@@ -147,20 +147,20 @@ echo "Subset bam files for uploading UCSC custom tracks"
 cut -f4 ${sampleOutdir}/${sample_name}.assemblyBackbone.bed > ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt
 
 if [ -s "${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt" ]; then
-    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt --bamFile_in ${bamname1} --bamFile_out ${TMPDIR}/${sample_name}.bam1.assemblyBackbone_reads.unsorted.bam
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.assemblyBackbone.${bam1genome}.bam ${TMPDIR}/${sample_name}.bam1.assemblyBackbone_reads.unsorted.bam
-    samtools index ${sampleOutdir}/${sample_name}.assemblyBackbone.${bam1genome}.bam
+    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt --bamFile_in ${bam1} --bamFile_out ${TMPDIR}/${sample_name}.bam1.assemblyBackbone_reads.unsorted.bam
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.assemblyBackbone.bam ${TMPDIR}/${sample_name}.bam1.assemblyBackbone_reads.unsorted.bam
+    samtools index ${sampleOutdir}/${sample_name}.assemblyBackbone.bam
 fi
 
 cut -f4 ${sampleOutdir}/${sample_name}.informative.bed > ${TMPDIR}/${sample_name}.readNames.txt
 if [ -s "${TMPDIR}/${sample_name}.readNames.txt" ]; then
     debug_fa "${sample_name}.readNames.txt was found"
     
-    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bamname1} --bamFile_out ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
+    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bam1} --bamFile_out ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
     samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam1genome}.bam ${TMPDIR}/${sample_name}.bam1_informative_reads.unsorted.bam
     debug_fa "Completed samtools lines for bam1"
     
-    ${src}/subsetBAM.py --flags ${BAM_E2} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bamname2} --bamFile_out ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
+    ${src}/subsetBAM.py --flags ${BAM_E2} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bam2} --bamFile_out ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
     samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam2genome}.bam ${TMPDIR}/${sample_name}.bam2_informative_reads.unsorted.bam
     debug_fa "Completed samtools lines for bam2"
     

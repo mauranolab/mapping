@@ -32,11 +32,11 @@ def validateSingleRead(max_mismatches, ReqFullyAligned, read):
     return True
 
 
-def write_output(dsgrep_writer, file1_file, file2_file, file1_read, file2_read, make_csv, bam_out1, bam_out2, max_mismatches, ReqFullyAligned):
+def write_output(dsgrep_writer, file1_file, file2_file, file1_read, file2_read, make_bed, bam_out1, bam_out2, max_mismatches, ReqFullyAligned):
     if not validateBothReads(max_mismatches, ReqFullyAligned, file1_read, file2_read):
         return
     
-    if not make_csv:
+    if not make_bed:
         # Output will be 2 bam files, rather than a single tsv file.
         bam_out1.write(file1_read)
         bam_out2.write(file2_read)
@@ -100,12 +100,12 @@ def samtoolsCmpReadnames(cCode, read1, operator, read2):
         raise NameError('samtoolsCmpReadnames was called with an invalid operator.')
 
 
-def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv, max_mismatches, ReqFullyAligned):
+def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_bed, max_mismatches, ReqFullyAligned):
     # Get iterator handles for bam input files #1 and #2.
     file1_file = pysam.AlignmentFile(bam_name1, "rb")
     file2_file = pysam.AlignmentFile(bam_name2, "rb")
     
-    if make_csv:
+    if make_bed:
         # Normal file handle for the output file.
         dsgrep_out_file = open(outdir + r"/dsgrep_out.csv", 'w', newline='')
         dsgrep_writer = csv.writer(dsgrep_out_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -163,7 +163,7 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv, max_mismatches
             elif file1_readID == file2_readID:
                 if reads_match(file1_read, file2_read, same):
                     # Found a match. Print, then get new file1 and file2 reads.
-                    write_output(dsgrep_writer, file1_file, file2_file, file1_read, file2_read, make_csv, bam_out1, bam_out2, max_mismatches, ReqFullyAligned)
+                    write_output(dsgrep_writer, file1_file, file2_file, file1_read, file2_read, make_bed, bam_out1, bam_out2, max_mismatches, ReqFullyAligned)
                     
                     try: file1_read = next(file1_file)
                     except: break  # All done
@@ -199,7 +199,7 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv, max_mismatches
                         # We were able to get a new read from file1, and it matches the previous file1 readID.
                         # Let's see if it has the desired read1/read2 value.
                         if reads_match(file1_read, old_file2_read, same):
-                            write_output(dsgrep_writer, file1_file, file2_file, file1_read, old_file2_read, make_csv, bam_out1, bam_out2, max_mismatches, ReqFullyAligned)
+                            write_output(dsgrep_writer, file1_file, file2_file, file1_read, old_file2_read, make_bed, bam_out1, bam_out2, max_mismatches, ReqFullyAligned)
                             
                             # It did, and we wrote the reads to the csv file.
                             # Now get a new read for the next cycle of the while loop.
@@ -215,7 +215,7 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv, max_mismatches
                         # We were able to get a new read from file2, and it matches the previous file2 readID.
                         # Let's see if it has the desired read1/read2 value.
                         if reads_match(old_file1_read, file2_read, same):
-                            write_output(dsgrep_writer, file1_file, file2_file, old_file1_read, file2_read, make_csv, bam_out1, bam_out2, max_mismatches, ReqFullyAligned)
+                            write_output(dsgrep_writer, file1_file, file2_file, old_file1_read, file2_read, make_bed, bam_out1, bam_out2, max_mismatches, ReqFullyAligned)
                             
                             # It did, and we wrote the reads to the csv file.
                             # Now get a new read for the next cycle of the while loop.
@@ -240,7 +240,7 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_csv, max_mismatches
         file1_file.close()
         file2_file.close()
         
-        if make_csv:
+        if make_bed:
             dsgrep_out_file.close()
         else:
             bam_out1.close()
@@ -255,8 +255,8 @@ if (__name__ == '__main__'):
     parser.add_argument('--bam1', action='store', type=str, help='A full path bam file name, or stdin', required = True)
     parser.add_argument('--bam2', action='store', type=str, help='A full path bam file name, or stdin', required = True)
     parser.add_argument('--outdir', action='store', type=str, help='Full path to output directory. Files output: dsgrep_out.csv, dsgrep_out1.bam, dsgrep_out2.bam', required = True)
-    parser.add_argument('--same', action='store_true', help='True if looking to match read1/read1, or if the reads are unpaired. False if looking to match read1/read2.')
-    parser.add_argument('--make_csv', action='store_true', help='True if output should be the 12 column bed file. False if we want the 2 bam files')
+    parser.add_argument('--reads_match', action='store_true', help='True if looking to match read1/read1, or if the reads are unpaired. False if looking to match read1/read2.')
+    parser.add_argument('--make_bed', action='store_true', help='True if output should be the 12 column bed file. False if we want the 2 bam files')
     parser.add_argument('--max_mismatches', action='store', type=int, help='Maximum number of mismatches a read is allowed to have. The number of mismatches is the value of the read NM tag', default=0)
     parser.add_argument('--ReqFullyAligned', action='store_true', help='If set, require reads to be fully aligned.')
     parser.add_argument('--src', action='store', type=str, help='Full path to source code directory.', required = True) # src directory (needed to locate the C shared library).
@@ -273,5 +273,5 @@ if (__name__ == '__main__'):
         raise Exception("[bamintersect.py] Can't connect to samtools_strnum_cmp.so")
     
     
-    bam_intersect_f(args.bam1, args.bam2, args.outdir, args.same, args.make_csv, args.max_mismatches, args.ReqFullyAligned)
+    bam_intersect_f(args.bam1, args.bam2, args.outdir, args.reads_match, args.make_bed, args.max_mismatches, args.ReqFullyAligned)
 

@@ -28,7 +28,6 @@ OUTBASE=$1
 sample_name=$2
 bam2genome=$3
 bamintersectBED12=$4
-INTERMEDIATEDIR=$5
 
 echo "Making counts_table from ${bamintersectBED12}; will output to ${OUTBASE}.counts.txt"
 

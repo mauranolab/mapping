@@ -93,11 +93,11 @@ Usage: $(basename "$0") [Options]
                  # Set this option for unpaired reads.
                  # The default is to have it unset.
 
-           --do_not_make_csv {no argument}
+           --no_bed {no argument}
                  # Main output is a single bed file (unset), or 2 bam files (set).
                  # The default is to have it unset.
 
-           --do_not_make_table {no argument}
+           --no_countstable {no argument}
                  # Output a "counts.txt" table summarizing results (unset), or no table (set).
                  # The default is to have it unset.
 
@@ -135,8 +135,8 @@ long_arg_list=(
     max_mismatches:
     noReqFullyAligned
     reads_match
-    do_not_make_csv
-    do_not_make_table
+    no_csv
+    no_countstable
     verbose
     help
 )
@@ -178,7 +178,7 @@ echo
 eval set -- "${options}"
 
 # getopt default values:
-    make_csv="--make_csv"
+    make_bed="--make_bed"
     make_table=True
     reads_match=""
     integrationsite="null"
@@ -219,7 +219,7 @@ while true ; do
         --outdir)
             sampleOutdir=$2 ; shift 1 ; rqd_arg_status[outdir]="1" ;;
         --bam1)
-            bamname1=$2 ; shift 1 ; rqd_arg_status[bam1]="1" ;;
+            bam1=$2 ; shift 1 ; rqd_arg_status[bam1]="1" ;;
         --bam1genome)
             bam1genome=$2 ; shift 1 ; rqd_arg_status[bam1genome]="1" ;;
         --bam1_keep_flags)
@@ -227,7 +227,7 @@ while true ; do
         --bam1_exclude_flags)
             bam1_exclude_flags=$2 ; shift 1 ;;
         --bam2)
-            bamname2=$2 ; shift 1 ; rqd_arg_status[bam2]="1" ;;
+            bam2=$2 ; shift 1 ; rqd_arg_status[bam2]="1" ;;
         --bam2genome)
             bam2genome=$2 ; shift 1 ; rqd_arg_status[bam2genome]="1" ;;
         --bam2_keep_flags)
@@ -239,10 +239,10 @@ while true ; do
         --noReqFullyAligned)
             ReqFullyAligned="" ;;
         --reads_match)
-            reads_match="--same" ;;
-        --do_not_make_csv)
-            make_csv="" ;;
-        --do_not_make_table)
+            reads_match="--reads_match" ;;
+        --no_bed)
+            make_bed="" ;;
+        --no_countstable)
             make_table=False ;;
         --verbose)
             verbose=True ;;
@@ -291,7 +291,7 @@ mkdir -p ${INTERMEDIATEDIR}/sorted_bams
 ########################################################
 # Make the chromosome lists which will eventually drive the array jobs.
 
-samtools idxstats ${bamname1} | awk -F "\t" '$1 != "*" {print $1}' > "${sampleOutdir}/log/${sample_name}.chrom_list1"
+samtools idxstats ${bam1} | awk -F "\t" '$1 != "*" {print $1}' > "${sampleOutdir}/log/${sample_name}.chrom_list1"
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1")
 
 if [ "${num_lines}" -ge "5" ]; then
@@ -315,7 +315,7 @@ else
     chrom_list1_input_to_samtools="NA"   # To avoid a pipefail.
 fi
 
-samtools idxstats ${bamname2} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/${sample_name}.chrom_list2"
+samtools idxstats ${bam2} | awk '$1 != "*" {print $1}' > "${sampleOutdir}/log/${sample_name}.chrom_list2"
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2")
 
 ## Apply the simple chromosome name mask
@@ -332,14 +332,15 @@ if [ "${num_lines}" -ge "1" ]; then
     echo "all_other" >> "${sampleOutdir}/log/${sample_name}.chrom_list2_simple"
 fi
 
+
 ################################################################################################
 # Setup directories and files for the array jobs.
 
 for BAM_N in $(seq 1 2); do
     if [ "${BAM_N}" = "1" ]; then
-        BAM=${bamname1}
+        BAM=${bam1}
     else
-        BAM=${bamname2}
+        BAM=${bam2}
     fi
     
     while read chrom;  do
@@ -370,11 +371,12 @@ while read -r bam1s; do
     done < "${INTERMEDIATEDIR}/sorted_bams/chr_list_2"
 done < "${INTERMEDIATEDIR}/sorted_bams/chr_list_1"
 
+
 ################################################################################################
 ## Create the small chromosome bam files, and sort them:
 
 export_vars="sampleOutdir=${sampleOutdir}"
-export_vars="${export_vars},BAM=${bamname1}"
+export_vars="${export_vars},BAM=${bam1}"
 export_vars="${export_vars},BAM_K=${bam1_keep_flags}"      # Required. Use "0" if necessary.
 export_vars="${export_vars},BAM_E=${bam1_exclude_flags}"   # Required. Use "0" if necessary.
 export_vars="${export_vars},BAM_N=1"
@@ -384,10 +386,11 @@ export_vars="${export_vars},sample_name=${sample_name}"
 
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1_simple")
 
-qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -pe threads 2 -t 1-${num_lines} ${src}/sort_bamintersect.sh > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
+qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -pe threads 2 -t 1-${num_lines} "${src}/sort_bamintersect.sh" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
+
 
 export_vars="sampleOutdir=${sampleOutdir}"
-export_vars="${export_vars},BAM=${bamname2}"
+export_vars="${export_vars},BAM=${bam2}"
 export_vars="${export_vars},BAM_K=${bam2_keep_flags}"      # Required. Use "0" if necessary.
 export_vars="${export_vars},BAM_E=${bam2_exclude_flags}"   # Required. Use "0" if necessary.
 export_vars="${export_vars},BAM_N=2"
@@ -397,7 +400,8 @@ export_vars="${export_vars},sample_name=${sample_name}"
 
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2_simple")
 
-qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -pe threads 2 -t 1-${num_lines} ${src}/sort_bamintersect.sh > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -pe threads 2 -t 1-${num_lines} "${src}/sort_bamintersect.sh" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+
 
 ################################################################################################
 # Call bamintersect.py repeatedly via the bamintersect.sh array job:
@@ -408,32 +412,33 @@ let "array_size = ${n1} * ${n2}"
 
 export_vars="src=${src}"
 export_vars="${export_vars},reads_match=${reads_match}"
-export_vars="${export_vars},make_csv=${make_csv}"
+export_vars="${export_vars},make_bed=${make_bed}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
 export_vars="${export_vars},max_mismatches=${max_mismatches}"
 export_vars="${export_vars},ReqFullyAligned=${ReqFullyAligned}"
 
-qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` --export=ALL,${export_vars} -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${array_size} ${src}/bamintersect.sh > ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
+qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` --export=ALL,${export_vars} -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${array_size} "${src}/bamintersect.sh" > ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
 rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+
 
 ################################################################################################
 ## Send some summary info to the anc file:
-echo "bam files:" > ${sampleOutdir}/${sample_name}.anc_info.txt
-echo "First:  ${bamname1}" >> ${sampleOutdir}/${sample_name}.anc_info.txt
-echo "Second: ${bamname2}" >> ${sampleOutdir}/${sample_name}.anc_info.txt
-echo "" >> ${sampleOutdir}/${sample_name}.anc_info.txt
+echo "bam files:" > ${sampleOutdir}/${sample_name}.info.txt
+echo "First:  ${bam1}" >> ${sampleOutdir}/${sample_name}.info.txt
+echo "Second: ${bam2}" >> ${sampleOutdir}/${sample_name}.info.txt
+echo "" >> ${sampleOutdir}/${sample_name}.info.txt
 
 # Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
 if [ "${integrationsite}" != "null" ]; then
     # In the next line we rely on HA1 being the 5p side HA.
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
-    echo "${integrationSiteName} HAs:" >> ${sampleOutdir}/${sample_name}.anc_info.txt
+    echo "${integrationSiteName} HAs:" >> ${sampleOutdir}/${sample_name}.info.txt
     HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
     
     if [ -s "${HA_file}" ]; then
-        grep "${integrationSiteName}_${HA1}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.anc_info.txt
-        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.anc_info.txt
-        echo "" >> ${sampleOutdir}/${sample_name}.anc_info.txt
+        grep "${integrationSiteName}_${HA1}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.info.txt
+        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.info.txt
+        echo "" >> ${sampleOutdir}/${sample_name}.info.txt
         
         # Get the HA coordinates:
         grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/HA_coords.bed"
@@ -442,16 +447,16 @@ if [ "${integrationsite}" != "null" ]; then
         # Get the deletion range coordinates:
         cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${INTERMEDIATEDIR}/deletion_range.bed
     else
-        echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> ${sampleOutdir}/${sample_name}.anc_info.txt
-        echo "" >> ${sampleOutdir}/${sample_name}.anc_info.txt
+        echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> ${sampleOutdir}/${sample_name}.info.txt
+        echo "" >> ${sampleOutdir}/${sample_name}.info.txt
         
         touch "${INTERMEDIATEDIR}/HA_coords.bed"
         touch "${INTERMEDIATEDIR}/deletion_range.bed"
     fi
 else
-    echo "integrationsite is null" >> ${sampleOutdir}/${sample_name}.anc_info.txt
-    echo "No HAs were provided, and so there is no Deletion Range." >> ${sampleOutdir}/${sample_name}.anc_info.txt
-    echo "" >> ${sampleOutdir}/${sample_name}.anc_info.txt
+    echo "integrationsite is null" >> ${sampleOutdir}/${sample_name}.info.txt
+    echo "No HAs were provided, and so there is no Deletion Range." >> ${sampleOutdir}/${sample_name}.info.txt
+    echo "" >> ${sampleOutdir}/${sample_name}.info.txt
     
     touch "${INTERMEDIATEDIR}/HA_coords.bed"
     touch "${INTERMEDIATEDIR}/deletion_range.bed"
@@ -459,13 +464,14 @@ fi
 
 
 ################################################################################################
-samtools idxstats ${bamname1} > "${TMPDIR}/${sample_name}.anc_info.txt"
-num_lines=$(wc -l < "${TMPDIR}/${sample_name}.anc_info.txt")
+samtools idxstats ${bam1} > "${TMPDIR}/${sample_name}.info.txt"
+num_lines=$(wc -l < "${TMPDIR}/${sample_name}.info.txt")
 let "num_lines = num_lines - 1"
-echo "samtools idx output for first bam file: reference sequence name, sequence length, # mapped reads and # unmapped reads." >> ${sampleOutdir}/${sample_name}.anc_info.txt
-head "-${num_lines}" "${TMPDIR}/${sample_name}.anc_info.txt" >> ${sampleOutdir}/${sample_name}.anc_info.txt
-echo "" >> ${sampleOutdir}/${sample_name}.anc_info.txt
-echo "" >> ${sampleOutdir}/${sample_name}.anc_info.txt
+echo "samtools idx output for first bam file: reference sequence name, sequence length, # mapped reads and # unmapped reads." >> ${sampleOutdir}/${sample_name}.info.txt
+head "-${num_lines}" "${TMPDIR}/${sample_name}.info.txt" >> ${sampleOutdir}/${sample_name}.info.txt
+echo "" >> ${sampleOutdir}/${sample_name}.info.txt
+echo "" >> ${sampleOutdir}/${sample_name}.info.txt
+
 
 ################################################################################################
 ## Merge output from the array jobs.
@@ -475,16 +481,16 @@ export_vars="${export_vars},src=${src}"
 export_vars="${export_vars},sample_name=${sample_name}"
 export_vars="${export_vars},bam1genome=${bam1genome}"
 export_vars="${export_vars},bam2genome=${bam2genome}"
-export_vars="${export_vars},make_csv=${make_csv}"
+export_vars="${export_vars},make_bed=${make_bed}"
 export_vars="${export_vars},make_table=${make_table}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
-export_vars="${export_vars},bamname1=${bamname1}"
-export_vars="${export_vars},bamname2=${bamname2}"
+export_vars="${export_vars},bam1=${bam1}"
+export_vars="${export_vars},bam2=${bam2}"
 export_vars="${export_vars},BAM_E1=${bam1_exclude_flags}"
 export_vars="${export_vars},BAM_E2=${bam2_exclude_flags}"
 export_vars="${export_vars},verbose=${verbose}"
 
-qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log ${src}/merge_bamintersect.sh > /dev/null
+qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh" > /dev/null
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
 
 echo
