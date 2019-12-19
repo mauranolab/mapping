@@ -73,7 +73,6 @@ fi
 ${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.bed
 echo
 
-
 #With filters
 #Check for a curated uninformative regions file for this combination of genomes
 if echo "${bam1genome}" | grep -q "^LP[0-9]\+" ; then
