@@ -171,7 +171,6 @@ options=$(getopt -o h --long "${long_args}" -n "[submit_bamintersect] ERROR" -- 
 # Catch getopt errors here if not using "set -e"
 
 echo "Parameters: ${options}"
-echo
 
 
 #Reset the positional parameters based on the output of getopt
@@ -301,7 +300,7 @@ echo "" >> ${sampleOutdir}/${sample_name}.info.txt
 if [ "${integrationsite}" != "null" ]; then
     # In the next line we rely on HA1 being the 5p side HA.
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
-    echo "${integrationSiteName} HAs:" >> ${sampleOutdir}/${sample_name}.info.txt
+    echo "Looking up HA coordinates for ${integrationsite}:" >> ${sampleOutdir}/${sample_name}.info.txt
     HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
     
     if [ -s "${HA_file}" ]; then
@@ -315,6 +314,9 @@ if [ "${integrationsite}" != "null" ]; then
         
         # Get the deletion range coordinates:
         cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${INTERMEDIATEDIR}/deletion_range.bed
+        
+        echo -n "Found coordinates spanning (bp): " >> ${sampleOutdir}/${sample_name}.info.txt
+        awk -F "\t" 'BEGIN {OFS="\t"} {print $3-$2}' ${INTERMEDIATEDIR}/deletion_range.bed >> ${sampleOutdir}/${sample_name}.info.txt
     else
         echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> ${sampleOutdir}/${sample_name}.info.txt
         echo "" >> ${sampleOutdir}/${sample_name}.info.txt
@@ -323,8 +325,7 @@ if [ "${integrationsite}" != "null" ]; then
         touch "${INTERMEDIATEDIR}/deletion_range.bed"
     fi
 else
-    echo "integrationsite is null" >> ${sampleOutdir}/${sample_name}.info.txt
-    echo "No HAs were provided, and so there is no Deletion Range." >> ${sampleOutdir}/${sample_name}.info.txt
+    echo "No integration site was provided, and so there is no Deletion Range." >> ${sampleOutdir}/${sample_name}.info.txt
     echo "" >> ${sampleOutdir}/${sample_name}.info.txt
     
     touch "${INTERMEDIATEDIR}/HA_coords.bed"
