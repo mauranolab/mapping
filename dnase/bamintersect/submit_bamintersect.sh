@@ -289,6 +289,49 @@ mkdir -p ${INTERMEDIATEDIR}/bamintersectPyOut
 mkdir -p ${INTERMEDIATEDIR}/sorted_bams
 
 
+
+################################################################################################
+## Send some summary info to the anc file:
+echo "bam files:" > ${sampleOutdir}/${sample_name}.info.txt
+echo "bam1: ${bam1}" >> ${sampleOutdir}/${sample_name}.info.txt
+echo "bam2:: ${bam2}" >> ${sampleOutdir}/${sample_name}.info.txt
+echo "" >> ${sampleOutdir}/${sample_name}.info.txt
+
+# Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
+if [ "${integrationsite}" != "null" ]; then
+    # In the next line we rely on HA1 being the 5p side HA.
+    IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
+    echo "${integrationSiteName} HAs:" >> ${sampleOutdir}/${sample_name}.info.txt
+    HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
+    
+    if [ -s "${HA_file}" ]; then
+        grep "${integrationSiteName}_${HA1}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.info.txt
+        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.info.txt
+        echo "" >> ${sampleOutdir}/${sample_name}.info.txt
+        
+        # Get the HA coordinates:
+        grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/HA_coords.bed"
+        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/HA_coords.bed"
+        
+        # Get the deletion range coordinates:
+        cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${INTERMEDIATEDIR}/deletion_range.bed
+    else
+        echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> ${sampleOutdir}/${sample_name}.info.txt
+        echo "" >> ${sampleOutdir}/${sample_name}.info.txt
+        
+        touch "${INTERMEDIATEDIR}/HA_coords.bed"
+        touch "${INTERMEDIATEDIR}/deletion_range.bed"
+    fi
+else
+    echo "integrationsite is null" >> ${sampleOutdir}/${sample_name}.info.txt
+    echo "No HAs were provided, and so there is no Deletion Range." >> ${sampleOutdir}/${sample_name}.info.txt
+    echo "" >> ${sampleOutdir}/${sample_name}.info.txt
+    
+    touch "${INTERMEDIATEDIR}/HA_coords.bed"
+    touch "${INTERMEDIATEDIR}/deletion_range.bed"
+fi
+
+
 ################################################################################################
 # Make a two-column chromosome list for the sort array jobs, where first column is short job name and second is the list of chromsomes for samtools view
 echo
@@ -362,48 +405,6 @@ export_vars="${export_vars},ReqFullyAligned=${ReqFullyAligned}"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` --export=ALL,${export_vars} -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh" > ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
 rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
-
-
-################################################################################################
-## Send some summary info to the anc file:
-echo "bam files:" > ${sampleOutdir}/${sample_name}.info.txt
-echo "bam1: ${bam1}" >> ${sampleOutdir}/${sample_name}.info.txt
-echo "bam2:: ${bam2}" >> ${sampleOutdir}/${sample_name}.info.txt
-echo "" >> ${sampleOutdir}/${sample_name}.info.txt
-
-# Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
-if [ "${integrationsite}" != "null" ]; then
-    # In the next line we rely on HA1 being the 5p side HA.
-    IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
-    echo "${integrationSiteName} HAs:" >> ${sampleOutdir}/${sample_name}.info.txt
-    HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
-    
-    if [ -s "${HA_file}" ]; then
-        grep "${integrationSiteName}_${HA1}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.info.txt
-        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.info.txt
-        echo "" >> ${sampleOutdir}/${sample_name}.info.txt
-        
-        # Get the HA coordinates:
-        grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/HA_coords.bed"
-        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/HA_coords.bed"
-        
-        # Get the deletion range coordinates:
-        cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${INTERMEDIATEDIR}/deletion_range.bed
-    else
-        echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> ${sampleOutdir}/${sample_name}.info.txt
-        echo "" >> ${sampleOutdir}/${sample_name}.info.txt
-        
-        touch "${INTERMEDIATEDIR}/HA_coords.bed"
-        touch "${INTERMEDIATEDIR}/deletion_range.bed"
-    fi
-else
-    echo "integrationsite is null" >> ${sampleOutdir}/${sample_name}.info.txt
-    echo "No HAs were provided, and so there is no Deletion Range." >> ${sampleOutdir}/${sample_name}.info.txt
-    echo "" >> ${sampleOutdir}/${sample_name}.info.txt
-    
-    touch "${INTERMEDIATEDIR}/HA_coords.bed"
-    touch "${INTERMEDIATEDIR}/deletion_range.bed"
-fi
 
 
 ################################################################################################
