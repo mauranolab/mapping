@@ -116,13 +116,9 @@ echo
 if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis."
     ${src}/HA_table.sh ${bam2} 3076 ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src}
-    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}_HA "${sample_name}_HA" ${bam2genome} ${sampleOutdir}/${sample_name}_HA.bed
+    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam2genome} ${sampleOutdir}/${sample_name}.HA.bed
 else
     echo -e "No HAs available, so there will be no HA analysis."
-    
-    # Create empty files.
-    touch ${sampleOutdir}/${sample_name}_HA.counts.txt
-    touch ${sampleOutdir}/${sample_name}_HA.bed
 fi
 echo
 
