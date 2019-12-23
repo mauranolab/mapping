@@ -56,7 +56,7 @@ esac
 
 
 # Initialize the counts output files with a header.
-echo -e "#chrom_bam2\tchromStart_bam2\tchromEnd_bam2\tWidth_bam2\tNearestGene_bam2\tPost-filter_Reads\tchrom_bam1\tchromStart_bam1\tchromEnd_bam1\tWidth_bam1\tSample" > ${OUTBASE}.counts.txt
+echo -e "#chrom_bam2\tchromStart_bam2\tchromEnd_bam2\tWidth_bam2\tNearestGene_bam2\tInformative_Reads\tchrom_bam1\tchromStart_bam1\tchromEnd_bam1\tWidth_bam1\tSample" > ${OUTBASE}.counts.txt
 
 # Loop over the bam1 chromosome names.
 cut -f1 ${bamintersectBED12} | sort | uniq > "${TMPDIR}/bam1_chroms"
@@ -89,14 +89,14 @@ while read main_chrom ; do
        width = $3 - $2 - 1000; \
        print $1, chromStart, chromEnd, width, $4, $5; \
     }' |
-    #Sort by Post-filter_Reads, then chromosome-bam2, then Start_Pos
+    #Sort by Informative_Reads, then chromosome-bam2, then Start_Pos
     sort -V -t $'\t' -k 6,6rn -k 1,1 -k 2,2n - |
     # Append the bam1 chromosome name and the short sample name onto the last column.
     awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -v main_chrom=${main_chrom} -F "\t" 'BEGIN {OFS="\t"} {print $0, main_chrom, short_sample_name}' > ${TMPDIR}/short_sorted_table.bed
 
     # Get cluster range of the bam1 chromosome.
     while read line_in ; do
-        read chromosome_bam2 Start_Pos End_Pos Width2 Nearest_Gene Post_filter_Reads chromosome_bam1 Sample <<< "${line_in}"
+        read chromosome_bam2 Start_Pos End_Pos Width2 Nearest_Gene Informative_Reads chromosome_bam1 Sample <<< "${line_in}"
     
         echo -e "${chromosome_bam2}\t${Start_Pos}\t${End_Pos}" > "${TMPDIR}/cluster_1" 
     
@@ -107,7 +107,7 @@ while read main_chrom ; do
         max=`awk 'NR==1{max = $2 + 0; next} {if ($2 > max) max = $2;} END{print max}' ${TMPDIR}/cols_8_9`
         let "Width1 = ${max} - ${min}"
     
-        echo -e "${chromosome_bam2}\t${Start_Pos}\t${End_Pos}\t${Width2}\t${Nearest_Gene}\t${Post_filter_Reads}\t${chromosome_bam1}\t${min}\t${max}\t${Width1}\t${Sample}" >> ${OUTBASE}.counts.txt
+        echo -e "${chromosome_bam2}\t${Start_Pos}\t${End_Pos}\t${Width2}\t${Nearest_Gene}\t${Informative_Reads}\t${chromosome_bam1}\t${min}\t${max}\t${Width1}\t${Sample}" >> ${OUTBASE}.counts.txt
     
     done < "${TMPDIR}/short_sorted_table.bed"
 done < "${TMPDIR}/bam1_chroms"
