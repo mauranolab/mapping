@@ -42,14 +42,14 @@ fi
 first="True"
 for i in ${dir_names[@]}; do
     if [ ${first} = "True" ]; then
-        cp "${i}dsgrep_out.csv" "${INTERMEDIATEDIR}/unsorted_dsgrep.bed"
+        cp "${i}dsgrep_out.csv" "${TMPDIR}/unsorted_dsgrep.bed"
         first="False"
     else
-        cat "${i}dsgrep_out.csv" >> "${INTERMEDIATEDIR}/unsorted_dsgrep.bed"
+        cat "${i}dsgrep_out.csv" >> "${TMPDIR}/unsorted_dsgrep.bed"
     fi
 done
 
-sort-bed ${INTERMEDIATEDIR}/unsorted_dsgrep.bed > ${sampleOutdir}/${sample_name}.bed
+sort-bed ${TMPDIR}/unsorted_dsgrep.bed > ${sampleOutdir}/${sample_name}.bed
 
 debug_fa "Finished sorting dsgrep.bed"
 
@@ -168,8 +168,6 @@ if [ -s "${TMPDIR}/${sample_name}.readNames.txt" ]; then
     projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab|isg\/encode)\///g;' | perl -pe 's/\/new$//g;'`
     if [[ `pwd` =~ ^\/vol\/cegs\/ ]]; then
         UCSCbase="bigDataUrl=https://cegs@cascade.isg.med.nyu.edu/cegs/${projectdir}/${sampleOutdir}"
-    elif [[ `pwd` =~ ^\/vol\/isg\/encode\/ ]]; then
-        UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/${projectdir}/${sampleOutdir}"
     else
         UCSCbase="bigDataUrl=https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/${projectdir}/${sampleOutdir}"
     fi
