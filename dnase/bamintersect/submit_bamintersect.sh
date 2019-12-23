@@ -425,6 +425,7 @@ export_vars="${export_vars},bam2=${bam2}"
 export_vars="${export_vars},BAM_E1=${bam1_exclude_flags}"
 export_vars="${export_vars},BAM_E2=${bam2_exclude_flags}"
 export_vars="${export_vars},verbose=${verbose}"
+export_vars="${export_vars},ReqFullyAligned=${ReqFullyAligned}"
 
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh" > /dev/null
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
