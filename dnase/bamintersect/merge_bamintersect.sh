@@ -116,7 +116,7 @@ echo
 if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis."
     ${src}/HA_table.sh ${bam2} 3076 ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} ${ReqFullyAligned}
-    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}_HA "${sample_name}.HA" ${bam2genome} ${sampleOutdir}/${sample_name}_HA.bed
+    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam2genome} ${sampleOutdir}/${sample_name}.HA.bed
 else
     echo -e "No HAs available, so there will be no HA analysis."
 fi
@@ -134,7 +134,7 @@ n1=$(wc -l < "${sampleOutdir}/${sample_name}.bed")
 # Number of informative reads
 n2=$(wc -l < "${sampleOutdir}/${sample_name}.informative.bed")
 
-echo -e "Summary:" >> ${sampleOutdir}/${sample_name}.info.txt
+echo >> ${sampleOutdir}/${sample_name}.info.txt
 echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tare potentially informative." >> ${sampleOutdir}/${sample_name}.info.txt
 
 ###########################################################################################################################################
