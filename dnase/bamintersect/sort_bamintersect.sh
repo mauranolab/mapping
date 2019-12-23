@@ -31,7 +31,7 @@ echo
 #     more leading zeroes is placed before the subfield with fewer leading zeroes. 
 
 #Since the next set of jobs will be reading this heavily, might be worthwhile to use high compression (-l 9) for big bam files
-samtools view -h -u -f ${BAM_K} -F ${BAM_E} ${BAM} ${chroms} | samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/sortbyname -l 1 -n -o ${BAM_OUT}
+samtools view -h -u -f ${BAM_K} -F ${BAM_E} ${BAM} ${chroms} | samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/sortbyname -l 1 -n -o ${BAM_OUT}
 
 echo "Done!!!"
 date

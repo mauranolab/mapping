@@ -2,7 +2,7 @@
 ##################################################################################################################
 # Usage:
 #
-# subsetBAM.py --flags <int> --readNames <text file containing a list of readnames> --bamFile_in <inputFile.bam> --bamFile_out <outputFile.bam>
+# subsetBAM.py --exclude_flags <int> --readNames <text file containing a list of readnames> --bamFile_in <inputFile.bam> --bamFile_out <outputFile.bam>
 ##################################################################################################################
 
 import sys
@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(prog = "subsetBAM.py",
                                  description = "Returns a BAM file subsetted by a list of read names.",
                                  add_help = True)
 
-parser.add_argument('--flags', action='store', type=int, help='SAM flags to filter out certain reads.')
+parser.add_argument('--exclude_flags', action='store', type=int, help='SAM flags to filter out certain reads.')
 parser.add_argument('--readNames', action='store', type=str, help='Name of a file containing readnames to be extracted from bamFile_in.')
 parser.add_argument('--bamFile_in', action='store', type=str, help='Name of the bam file from which bam lines will be retrieved.')
 parser.add_argument('--bamFile_out', action='store', type=str, help='Name of the bam file to which subsetted bam lines will be written.')
@@ -46,7 +46,7 @@ while True:
         bamFileRead = next(bamFile_in)
 
         # Exclude some reads.
-        if (bamFileRead.flag & args.flags) > 0:
+        if (bamFileRead.flag & args.exclude_flags) > 0:
             continue
 
         bamFileQname = bamFileRead.query_name
