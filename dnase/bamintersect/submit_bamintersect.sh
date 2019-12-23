@@ -386,7 +386,7 @@ export_vars="${export_vars},sample_name=${sample_name}"
 
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list1_simple")
 
-qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -pe threads 2 -t 1-${num_lines} "${src}/sort_bamintersect.sh" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
+qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
 
 
 export_vars="sampleOutdir=${sampleOutdir}"
@@ -400,7 +400,7 @@ export_vars="${export_vars},sample_name=${sample_name}"
 
 num_lines=$(wc -l < "${sampleOutdir}/log/${sample_name}.chrom_list2_simple")
 
-qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -pe threads 2 -t 1-${num_lines} "${src}/sort_bamintersect.sh" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
 ################################################################################################
