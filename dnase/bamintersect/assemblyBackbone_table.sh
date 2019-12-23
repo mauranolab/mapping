@@ -12,6 +12,7 @@ sampleOutdir=$3
 sample_name=$4
 INTERMEDIATEDIR=$5
 src=$6
+ReqFullyAligned=$7
 
 ######################################################################
 # Get the header.
@@ -69,6 +70,6 @@ samtools view "${TMPDIR}/subsetBAM_output_sorted.bam" ${assembly} | tee "${TMPDI
 samtools view "${TMPDIR}/subsetBAM_output_sorted.bam" | grep -v -F -f "${TMPDIR}/HAreads_noHdr.sam" | cat ${TMPDIR}/header.sam - | samtools view -h -b | samtools sort -n > ${TMPDIR}/bamfile_mates.bam
 
 # Now call bamintersect.py to build the bed12 file.
-${src}/bamintersect.py --src ${src} --bam1 "${TMPDIR}/bamfile_HAreads.bam" --bam2 "${TMPDIR}/bamfile_mates.bam" --outdir ${sampleOutdir} --make_bed --ReqFullyAligned
+${src}/bamintersect.py --src ${src} --bam1 "${TMPDIR}/bamfile_HAreads.bam" --bam2 "${TMPDIR}/bamfile_mates.bam" --outdir ${sampleOutdir} --make_bed ${ReqFullyAligned}
 mv "${sampleOutdir}/dsgrep_out.csv" "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
 
