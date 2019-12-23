@@ -1,17 +1,19 @@
+#LP097	60	1239	EF-1-alpha promoter
+#LP097	4732	5674	ERT2, contained by Esr1
+#LP131	2392	3331	ERT2, contained by Esr1
+#LP131	4072	5521	hmPIGA
+#LP140	60	1239	EF-1-alpha promoter
+#LP140	3065	4003	ERT2, contained in Esr1
+#LP140	4745	6193	hmPIGA
+#LP167	60	1239	EF-1-alpha promoter
+#LP167	1252	2188	ERT2, contained in Esr1
+#LP167	3238	4174	ERT2, contained in Esr1
+#LP167	4918	6367	hmPIGA
 chr9	78480948	78481072	EF-1-alpha promoter
 chr10	4856946	4857194	ERT2, contained by Esr1
 chr10	4997824	4998017	ERT2, contained by Esr1
+#Pgk1 is in the integrated ICE sequences
+chrX	106187099	106187235	Pgk1
 chrX	164422700	164423364	Piga
 chrX	164427929	164428065	Piga
 chrX	164428537	164428674	Piga
-LP097	60	1239	EF-1-alpha promoter
-LP097	4732	5674	ERT2, contained by Esr1
-LP131	2392	3331	ERT2, contained by Esr1
-LP131	4072	5521	hmPIGA
-LP140	60	1239	EF-1-alpha promoter
-LP140	3065	4003	ERT2, contained in Esr1
-LP140	4745	6193	hmPIGA
-LP167	60	1239	EF-1-alpha promoter
-LP167	1252	2188	ERT2, contained in Esr1
-LP167	3238	4174	ERT2, contained in Esr1
-LP167	4918	6367	hmPIGA
