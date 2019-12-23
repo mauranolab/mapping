@@ -43,5 +43,5 @@ samtools view "${TMPDIR}/subsetBAM_output_sorted.bam" | grep -v -F -f "${TMPDIR}
 
 # Now call bamintersect.py to build the bed12 file.
 ${src}/bamintersect.py --src ${src} --bam1 "${TMPDIR}/bamfile_HAreads.bam" --bam2 "${TMPDIR}/bamfile_mates.bam" --outdir ${sampleOutdir} --make_bed ${ReqFullyAligned}
-mv "${sampleOutdir}/dsgrep_out.csv" "${sampleOutdir}/${sample_name}_HA.bed"
+mv "${sampleOutdir}/dsgrep_out.csv" "${sampleOutdir}/${sample_name}.HA.bed"
 

@@ -159,6 +159,13 @@ awk '{print length($0)}' | sort -g | uniq -c | sort -k2,2 | awk '$2!=0'
 
 
 if [ "${minCellBCLength}" -gt 0 ]; then
+    #Hardcoded for now
+    #Aug 2019 Pilot
+    #scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/merged"
+    #Dec 2019 scale
+    scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/FCH7Y3NBGXC"
+    
+    echo
     echo "Generating cellBC weblogo"
     #Need to trim in case not all the same length
     zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | cut -f4 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -v trim=${minCellBCLength} -F "\t" 'BEGIN {OFS="\t"} {print substr($0, 0, trim)}' | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
@@ -194,9 +201,9 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     #Format: BC, cellBC, n
     #TODO parameterize and do more precise filtering of 10x whitelist BCs. we do miss some by not allowing mismatches but it's pretty few reads
     #TODO report high-count cellBCs not on whitelist, mainly in case umi_tools dedup is not working well
-    fgrep -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.whitelist.txt |
-    fgrep -v -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.readcounts.excluded.txt |
-    fgrep -v -w -f /vol/mauranolab/transposon/scrnaseq/merged/cells.pSB.excluded.txt |
+    fgrep -w -f ${scRNAseqbase}/cells.whitelist.txt |
+    fgrep -v -w -f ${scRNAseqbase}/cells.readcounts.excluded.txt |
+    fgrep -v -w -f ${scRNAseqbase}/cells.pSB.excluded.txt |
     awk 'BEGIN {OFS="\t"; print "BC", "cellBC", "count"} {print}' > ${OUTDIR}/${sample}.barcode.counts.byCell.txt
     
     
