@@ -47,64 +47,54 @@ function usage {
 cat << USAGE
 
 Usage: $(basename "$0") [Options]
-  Required Options:
-     --sample_name {sample name}
-     --integrationsite {sitename_HA#1_HA#2   Must be canonical name (sitename e.g. "HPRT1"; HA#s refer to numbers in the HomologyArms.bed file) or null.}
-     --bam1 {full path to bam file #1}
-     --bam1genome [ LP123, mm10, hg38, rn6, ... ]
-     --bam2 {full path to bam file #2}
-     --bam2genome [ LP123, mm10, hg38, rn6, ... ]
-     --outdir {outdir} output directory
-     
-     Mammalian genomes should be the annotationgenome name (hg38, not hg38_full)
-
-  Optional Options:
-          --max_mismatches {The max number of mismatches a read is allowed to have vs the reference. The value is in the read's NM tag. Default = 1}
-
-          --noReqFullyAligned {If set, the default requirement that reads must be fully aligned is disabled. Default = Not set}
-
-          --bam1_keep_flags {a sam format flag value required of all bam1 reads to be 
-                             included in the analysis. Default = 9}
-                            
-          --bam1_exclude_flags {a sam format flag value for bam1 reads to be 
-                                excluded from the analysis. Default = 3078}
-                  Examples:
-
-                      # Require read is paired.
-                      # Require mate is unmapped.
-                      bam1_keep_flags="9"
-
-                      # Exclude mapped in propper pair
-                      # Exclude read unmapped.
-                      # Exclude PCR or optical duplicates.
-                      # Exclude supplementary aligments.
-                      bam1_exclude_flags="3078"
-
-          --bam2_keep_flags {a sam format flag value required of all bam2 reads to be 
-                             included in the analysis. Default = 1}
-                            
-          --bam2_exclude_flags {a sam format flag value for bam2 reads to be 
-                                excluded from the analysis. Default = 3076}
-
-          --reads_match {no argument}
-                 # This flag tells bam_intersect.py how to match the reads from each bam file.
-                 # If set, reads should be matched like [read1 read1], or [read2 read2].
-                 # If unset, reads are paired like [read1 read2], or [read2 read1].
-                 # Set this option for unpaired reads.
-                 # The default is to have it unset.
-
-           --no_bed {no argument}
-                 # Main output is a single bed file (unset), or 2 bam files (set).
-                 # The default is to have it unset.
-
-           --no_countstable {no argument}
-                 # Output a "counts.txt" table summarizing results (unset), or no table (set).
-                 # The default is to have it unset.
-
-           --verbose {no argument}
-                 # Prints out debugging statements
-
-           -h,--help    Print this help message.
+  Required Arguments:
+    --sample_name {sample name}
+    --integrationsite {sitename_HA#1_HA#2   Must be canonical name (sitename e.g. "HPRT1"; HA#s refer to numbers in the HomologyArms.bed file) or null.}
+    --bam1 {full path to bam file #1}
+    --bam1genome [ LP123, mm10, hg38, rn6, ... ]
+    --bam2 {full path to bam file #2, customarily the mammalian genome}
+    --bam2genome [ LP123, mm10, hg38, rn6, ... ]
+    --outdir {outdir} output directory
+    
+    Mammalian genomes should use the annotationgenome name (hg38, not hg38_full)
+    
+  Optional Arguments:
+    --max_mismatches {The max number of mismatches a read is allowed to have vs the reference. The value is in the read's NM tag. Default = 1}
+    
+    --noReqFullyAligned {If set, the default requirement that reads must be fully aligned is disabled. Default = Not set}
+    
+    --bam1_keep_flags {a sam format flag value required of all bam1 reads to be included in the analysis. Default = 1}
+        # Require read is paired
+    
+    --bam1_exclude_flags {a sam format flag value for bam1 reads to be excluded from the analysis. Default = 3078}
+        # Exclude mapped in proper pair
+        # Exclude read unmapped.
+        # Exclude PCR or optical duplicates.
+        # Exclude supplementary aligments.
+    
+    --bam2_keep_flags {a sam format flag value required of all bam2 reads to be included in the analysis. Default = 1}
+    
+    --bam2_exclude_flags {a sam format flag value for bam2 reads to be excluded from the analysis. Default = 3076}
+    
+    --reads_match {no argument}
+           # This flag tells bam_intersect.py how to match the reads from each bam file.
+           # If set, reads should be matched like [read1 read1], or [read2 read2].
+           # If unset, reads are paired like [read1 read2], or [read2 read1].
+           # Set this option for unpaired reads.
+           # The default is to have it unset.
+    
+     --no_bed {no argument}
+           # Main output is a single bed file (unset), or 2 bam files (set).
+           # The default is to have it unset.
+    
+     --no_countstable {no argument}
+           # Output a "counts.txt" table summarizing results (unset), or no table (set).
+           # The default is to have it unset.
+    
+     --verbose {no argument}
+           # Prints out debugging statements
+    
+    -h,--help    Print this help message.
 
 USAGE
 }
@@ -181,29 +171,11 @@ eval set -- "${options}"
     make_table=True
     reads_match=""
     integrationsite="null"
-    
-    # Require read is paired.
-    # Require mate is unmapped.
-    bam1_keep_flags="9"
-    
-    # Exclude mapped in propper pair
-    # Exclude read unmapped.
-    # Exclude PCR or optical duplicates.
-    # Exclude supplementary aligments.
+    bam1_keep_flags="1"
     bam1_exclude_flags="3078"
-    
-    # Require read is paired.
-    # Require mate is unmapped.
     bam2_keep_flags="1"
-    
-    # Exclude mapped in propper pair
-    # Exclude read unmapped.
-    # Exclude PCR or optical duplicates.
-    # Exclude supplementary aligments.
     bam2_exclude_flags="3078"
-    
     verbose=False
-    
     max_mismatches=1
     ReqFullyAligned="--ReqFullyAligned"
 

@@ -113,9 +113,10 @@ echo
 
 # HA analysis:
 echo
+#Al
 if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis."
-    ${src}/HA_table.sh ${bam2} 3076 ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} ${ReqFullyAligned}
+    ${src}/HA_table.sh ${bam2} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} ${ReqFullyAligned}
     ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam2genome} ${sampleOutdir}/${sample_name}.HA.bed
 else
     echo -e "No HAs available, so there will be no HA analysis."
@@ -125,7 +126,7 @@ echo
 
 echo
 echo "Look for reads spanning the assembly and the backbone."
-${src}/assemblyBackbone_table.sh ${bam1} 3076 ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} ${ReqFullyAligned}
+${src}/assemblyBackbone_table.sh ${bam1} ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} ${ReqFullyAligned}
 ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
 echo
 
@@ -143,8 +144,8 @@ echo "Subset bam files for uploading UCSC custom tracks"
 cut -f4 ${sampleOutdir}/${sample_name}.assemblyBackbone.bed > ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt
 
 if [ -s "${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt" ]; then
-    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt --bamFile_in ${bam1} --bamFile_out - |
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.assemblyBackbone.bam
+    ${src}/subsetBAM.py --exclude_flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt --bamFile_in ${bam1} --bamFile_out - |
+    samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.assemblyBackbone.bam
     samtools index ${sampleOutdir}/${sample_name}.assemblyBackbone.bam
 fi
 
@@ -152,12 +153,12 @@ cut -f4 ${sampleOutdir}/${sample_name}.informative.bed > ${TMPDIR}/${sample_name
 if [ -s "${TMPDIR}/${sample_name}.readNames.txt" ]; then
     debug_fa "${sample_name}.readNames.txt was found"
     
-    ${src}/subsetBAM.py --flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bam1} --bamFile_out - |
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam1genome}.bam
+    ${src}/subsetBAM.py --exclude_flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bam1} --bamFile_out - |
+    samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam1genome}.bam
     debug_fa "Completed samtools lines for bam1"
     
-    ${src}/subsetBAM.py --flags ${BAM_E2} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bam2} --bamFile_out - |
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam2genome}.bam
+    ${src}/subsetBAM.py --exclude_flags ${BAM_E2} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bam2} --bamFile_out - |
+    samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam2genome}.bam
     debug_fa "Completed samtools lines for bam2"
     
     samtools merge -@ $NSLOTS -O bam -l 9 ${sampleOutdir}/${sample_name}.informative.bam ${TMPDIR}/${sample_name}.informative.${bam1genome}.bam ${TMPDIR}/${sample_name}.informative.${bam2genome}.bam

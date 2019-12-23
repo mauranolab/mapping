@@ -4,29 +4,29 @@ set -eu -o pipefail
 ######################################################################
 # This bam file needs to have an associated bai file:
 bamfile=$1
+sampleOutdir=$2
+sample_name=$3
+INTERMEDIATEDIR=$4
+src=$5
+ReqFullyAligned=$6
 
-# 3076=read is unmapped, or read is PCR, or read is sup alignment.
-exclude_flags=$2
-
-sampleOutdir=$3
-sample_name=$4
-INTERMEDIATEDIR=$5
-src=$6
-ReqFullyAligned=$7
+# Exclude read with flags: unmapped, failed QC flag, read is duplicate, or read is sup alignment.
+exclude_flags=3596
 
 ######################################################################
+echo "Generating HA table"
+
 # Get the header.
 samtools view -H ${bamfile} > "${TMPDIR}/header.sam"
 
 # Get reads from both HAs, where both mates are mapped.  Then get the read IDs with only one read in a HA (via cut & awk).
-let "exclude_flags_plus_unmapped = ${exclude_flags} | 8" # 8 means mate is unmapped.
-samtools view -F ${exclude_flags_plus_unmapped} -L ${INTERMEDIATEDIR}/HA_coords.bed ${bamfile} | cut -f1 | sort | uniq -c | awk '$1==1 {print $2}' > "${TMPDIR}/Reads.txt"
+samtools view -F ${exclude_flags} -L ${INTERMEDIATEDIR}/HA_coords.bed ${bamfile} | cut -f1 | sort | uniq -c | awk '$1==1 {print $2}' > "${TMPDIR}/Reads.txt"
 # Reads.txt is all the reads with mapped mates, and only one read in a HA.
 
 # Get the records for the read IDs with only one end in a HA.
 # Note that we will get two lines for each such read ID: one in the HA, and one outside the HA.
 ${src}/subsetBAM.py  \
-    --flags ${exclude_flags_plus_unmapped} \
+    --exclude_flags ${exclude_flags} \
     --readNames "${TMPDIR}/Reads.txt" \
     --bamFile_in ${bamfile} \
     --bamFile_out "${TMPDIR}/subsetBAM_output.bam"
