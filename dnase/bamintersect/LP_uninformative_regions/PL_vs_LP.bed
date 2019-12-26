@@ -19,3 +19,7 @@ PL1_payload	34	1213	pEF1a
 PL1_payload	2653	2687	LoxP
 Sox2_Sox2_46kb_dDistalLCR_marker	1474	2653	EF1a_promoter
 Sox2_Sox2_143kb_marker	1474	2653	EF1a_promoter
+#segdup that comes up often
+chr15	75085522	75087045
+#LTR
+chrX	118707623	118707673
