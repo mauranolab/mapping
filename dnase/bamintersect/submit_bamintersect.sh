@@ -35,8 +35,8 @@ if [ ${TMPDIR} = "/tmp" ]; then
 fi
 ############################################################
 
-module load samtools/1.9
-module load bedops/2.4.37
+module load samtools
+module load bedops
 
 ############################################################
 # Start of "getopt" section
