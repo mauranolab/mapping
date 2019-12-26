@@ -152,7 +152,7 @@ readgroup="@RG\\tID:${fc}${BS}\\tLB:${BS}\\tSM:${BS_nosuffix}\\tPL:ILLUMINA"
 if [ -s "/vol/mauranolab/flowcells/data/${fc/./}/info.txt" ]; then
     readgroup_instrument=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Instrument" {print $2}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
     
-    readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Load date" {print $2}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
+    readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"; loaddate="NA"} $1=="#Load date" {loaddate=$2} END {print loaddate}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
     #BUGBUG hardcoded column numbers
     readgroup_bcs=`awk -v ds=${BS} -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && 0!="" && $2==ds {split($7, bc1, "_"); split($8, bc2, "_"); print bc1[2] "-" bc2[2]}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
     #BUGBUG BC: shows up in bwa command line but at some point disappears from the bam header
@@ -431,6 +431,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     echo "Mean quality by cycle"
     date
     #BUGBUG performs badly for SRR jobs -- some assumption not met?
+    #BUGBUG reports "WARNING   2019-12-17 09:08:12     SinglePassSamProgram    File reports sort order 'queryname', assuming it's coordinate sorted anyway." mainly on cegsvectors? baseq still seems to be output. Not sure why it cares about sort order.
     java -XX:ParallelGCThreads=2 -Xmx3g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MeanQualityByCycle -INPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -OUTPUT $TMPDIR/${curfile}.baseQ.txt -CHART_OUTPUT $TMPDIR/${curfile}.baseQ.pdf -VALIDATION_STRINGENCY LENIENT
     
     instrument=`bam2instrument ${sampleOutdir}/${curfile}.${curGenome}.bam | uniq | awk 'values[$0] != 1 {print; values[$0]=1}' | perl -pe 's/\n$//g;' | perl -pe 's/\n/;/g;'`
