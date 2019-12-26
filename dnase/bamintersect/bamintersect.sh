@@ -8,8 +8,11 @@ set -eu -o pipefail
 ## INTERMEDIATEDIR is passed in via an sbatch export ($INTERMEDIATEDIR/sorted_bams contains output of sort_bamintersect.sh)
 ########################################################
 
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
+
+
 ## The "|| true" prevents the SIGPIPE signal problem. It's only needed when set -eo pipefail is enabled.
-bam_intersect_data=$(tail -n+${SLURM_ARRAY_TASK_ID} "${INTERMEDIATEDIR}/sorted_bams/inputs.array_list.txt" | head -n 1) || true
+bam_intersect_data=$(tail -n+${SLURM_ARRAY_TASK_ID} "${INTERMEDIATEDIR}/inputs.bamintersect.txt" | head -n 1) || true
 read -r bam1 bam2 outdir <<< ${bam_intersect_data}
 
 ####################################################################################################################
