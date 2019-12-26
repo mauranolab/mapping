@@ -260,6 +260,8 @@ mkdir -p ${INTERMEDIATEDIR}/bamintersectPyOut
 mkdir -p ${INTERMEDIATEDIR}/sorted_bams
 
 
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
+
 
 ################################################################################################
 ## Send some summary info to the anc file:

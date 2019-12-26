@@ -15,6 +15,8 @@ debug_fa() {
 }
 ##########################################################################################################
 
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
+
 
 ## Variables are passed in via sbatch export.
 
