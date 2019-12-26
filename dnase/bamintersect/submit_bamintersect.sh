@@ -312,24 +312,24 @@ fi
 echo
 echo "sort_bamintersect"
 
+#Outputs array job inputfile to stdout by collapsing chromosomes if too many
 function make_chrom_inputfile {
     bamfile=$1
-    outfile=$2
     
     samtools idxstats ${bamfile} | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' > ${TMPDIR}/idxstats.txt
     n=$(wc -l < ${TMPDIR}/idxstats.txt)
     if [ "${n}" -lt "20" ]; then
-        awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $1}' ${TMPDIR}/idxstats.txt > ${outfile}
+        awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $1}' ${TMPDIR}/idxstats.txt
     else
         #If there is a large number of chromosomes, consolidate everything but the canonically named ones into a final line
         #Use $2 (length) or $3+$4 (total reads) to split instead of chrom name
-        awk -F "\t" '$1~/^chr[0-9]*$|^chr[XYM]$/' ${TMPDIR}/idxstats.txt | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $1}' > ${outfile}
-        awk -F "\t" '$1!~/^chr[0-9]*$|^chr[XYM]$/' ${TMPDIR}/idxstats.txt | awk -F "\t" 'BEGIN {OFS="\t"; chroms=""} {chroms=chroms " " $1} END {print "all_other", chroms}' >> ${outfile}
+        awk -F "\t" '$1~/^chr[0-9]*$|^chr[XYM]$/' ${TMPDIR}/idxstats.txt | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $1}'
+        awk -F "\t" '$1!~/^chr[0-9]*$|^chr[XYM]$/' ${TMPDIR}/idxstats.txt | awk -F "\t" 'BEGIN {OFS="\t"; chroms=""} {chroms=chroms " " $1} END {print "all_other", chroms}'
     fi
 }
 
-make_chrom_inputfile ${bam1} ${INTERMEDIATEDIR}/inputs.sort.bam1.txt
-make_chrom_inputfile ${bam2} ${INTERMEDIATEDIR}/inputs.sort.bam2.txt
+make_chrom_inputfile ${bam1} > ${INTERMEDIATEDIR}/inputs.sort.bam1.txt
+make_chrom_inputfile ${bam2} > ${INTERMEDIATEDIR}/inputs.sort.bam2.txt
 
 
 export_vars="sampleOutdir=${sampleOutdir}"
