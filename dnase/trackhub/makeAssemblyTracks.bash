@@ -147,6 +147,13 @@ BASE="/vol/${assmbly_type2}/sequences/"
 # This loop generates the ".bb" files which are found in the trackhub "<genome>/data" directories.
 # genome_array just contains hg38, mm10, rn6, and cegsvectors.
 for genome in "${genome_array[@]}"; do
+    if [ "mauranolab" = "${assmbly_type1}" ]; then
+        if [[ "${genome}" == "hg38" ]] || [[ "${genome}" == "mm10" ]]; then
+            echo "Skipping ${genome} assemblies"
+            continue
+        fi
+    fi
+
     genome=${genome}/
     if [ "${genome}" = "${assmbly_type1}/" ]; then
         chrom_sizes="/vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes"
