@@ -12,6 +12,7 @@ chroms=`awk -F "\t" -v jobid=$jobid 'NR==jobid {print $2}' ${INTERMEDIATEDIR}/in
 BAM_OUT="${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${chromname}.${BAM_N}.bam"
 
 echo "Sorting ${chroms}"
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 date
 echo
 
