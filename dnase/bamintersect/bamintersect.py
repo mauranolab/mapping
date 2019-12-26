@@ -1,6 +1,7 @@
 #!/bin/env python3.5
 
 import sys
+import os
 import argparse
 import pysam
 import csv
@@ -106,9 +107,8 @@ def bam_intersect_f(bam_name1, bam_name2, outdir, same, make_bed, max_mismatches
     file2_file = pysam.AlignmentFile(bam_name2, "rb")
     
     if make_bed:
-        # Normal file handle for the output file.
         dsgrep_out_file = open(outdir + r"/dsgrep_out.csv", 'w', newline='')
-        dsgrep_writer = csv.writer(dsgrep_out_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        dsgrep_writer = csv.writer(dsgrep_out_file, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, quotechar='"', quoting=csv.QUOTE_MINIMAL)
         
         # Fill unused variables in call to write_output.
         bam_out1 = None
