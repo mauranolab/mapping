@@ -83,14 +83,14 @@ bedmap --delim "\t" --echo --echo-map-id - ${TMPDIR}/${sample_name}.regions.bam1
 cut -f13-14 | awk -F "\t" 'BEGIN {OFS="\t"} {counts[$1 "~" $2] += 1} END {for (x in counts) {split(x, countsplit, "~"); print counts[x], countsplit[1], countsplit[2]}}' |
 #reorder columns
 #Keep in bam2 coordinates
-awk -F "\t" -v minReadsCutoff=2  'BEGIN {OFS="\t"} $1>=minReadsCutoff {split($2, bam2region, /[:-]/); split($3, bam1region, /[:-]/); print bam2region[1], bam2region[2], bam2region[3], bam2region[3]-bam2region[2], $1, bam1region[1], bam1region[2], bam1region[3], bam1region[3]-bam1region[2]}' | sort-bed - > $TMPDIR/$sample_name}.counts.bed
+awk -F "\t" -v minReadsCutoff=2  'BEGIN {OFS="\t"} $1>=minReadsCutoff {split($2, bam2region, /[:-]/); split($3, bam1region, /[:-]/); print bam2region[1], bam2region[2], bam2region[3], bam2region[3]-bam2region[2], $1, bam1region[1], bam1region[2], bam1region[3], bam1region[3]-bam1region[2]}' | sort-bed - > $TMPDIR/${sample_name}.counts.bed
 
 
 cat ${geneAnnotationFile} |
 awk -F "\t" 'BEGIN {OFS="\t"} $7=="protein_coding"' |
 #Restrict to level 1 or 2 genes if available (Sox2 is level 2 for example)
 awk -F "\t" 'BEGIN {OFS="\t"} $5<=2 || $5=="."' |
-closest-features --delim "|" --closest $TMPDIR/$sample_name}.counts.bed - |
+closest-features --delim "|" --closest $TMPDIR/${sample_name}.counts.bed - |
 # Replace empty gene names with a dash.
 awk -F "|" 'BEGIN {OFS="\t"} {split($2, gene, "\t"); if(gene[4]=="") {gene[4]="-"} print $1, gene[4]}' |
 #Sort by Informative_Reads, chrom_bam2, chromStart_bam2
