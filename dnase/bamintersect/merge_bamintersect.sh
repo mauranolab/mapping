@@ -118,7 +118,7 @@ echo
 #Al
 if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis."
-    ${src}/HA_table.sh ${bam2} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} ${ReqFullyAligned}
+    ${src}/consolidated_HA_AB_table.sh HA ${bam2} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} ${ReqFullyAligned}
     ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam2genome} ${sampleOutdir}/${sample_name}.HA.bed
 else
     echo -e "No HAs available, so there will be no HA analysis."
@@ -128,7 +128,7 @@ echo
 
 echo
 echo "Look for reads spanning the assembly and the backbone."
-${src}/assemblyBackbone_table.sh ${bam1} ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} ${ReqFullyAligned}
+${src}/consolidated_HA_AB_table.sh AB ${bam1} ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} ${ReqFullyAligned}
 ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
 echo
 
