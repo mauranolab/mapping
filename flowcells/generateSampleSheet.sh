@@ -45,7 +45,7 @@ END { if(programmedReads != expectedReads) { \
 awk -F "\t" 'BEGIN {OFS="\t"} $1=="#FC kit" { kitcycles="NA"; \
     if($2=="HighOutput_75cycle") {kitcycles=92} \
     else if($2=="MidOutput_150cycle" || $2=="HighOutput_150cycle") {kitcycles=168} \
-    else if($2=="MidOutput_300cycle" || $2=="HighOutput_300cycle") {kitcycles=347} \
+    else if($2=="MidOutput_300cycle" || $2=="HighOutput_300cycle") {kitcycles=318} \
 } \
 $1=="#Format" {split($2, fcreadformat, ",")} \
 $1=="#Indices" {split($2, fcindices, ",")} \
