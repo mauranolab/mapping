@@ -3,16 +3,11 @@
 set -eu -o pipefail
 ######################################################################
 # This script is run on a single bam file in order to find read pairs
-# in which one read is in "Zone 1" and the other is in "Zone 2". The
-# zones can be defined in two ways:
+# in which one read is in "Zone 1" and the other is in "Zone 2".
 # 
-# Way 1:  Zone 1 is within a Homology Arm, and Zone 2 is outside the Homology Arms.
-# Way 2:  Zone 1 is within a cegsvector assembly, and zone 2 is within the associated
-#         cegsvector assembly backbone.
-#
-# The parameter "runHA" is used to indicate which way is being utilized:
-#     runHA=HA indicates "Way 1"
-#     runHA=AB indicates "Way 2"
+# The parameter "runHA" is used to indicate how the zones are defined:
+#     runHA=HA indicates "Way 1" Zone 1 is within a Homology Arm, and Zone 2 is outside the Homology Arms.
+#     runHA=AB indicates "Way 2" Zone 1 is within a cegsvector assembly, and zone 2 is within the associated cegsvector assembly backbone
 ######################################################################
 runHA=$1             # can equal HA ("Homology Arms") or AB ("Assembly Backbone")
 bamfile=$2           # This bam file needs to have an associated bai file.
