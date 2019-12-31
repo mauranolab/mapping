@@ -26,8 +26,9 @@ alias closest-features='closest-features --header'
 
 OUTBASE=$1
 sample_name=$2
-bam2genome=$3
-bamintersectBED12=$4
+bam1genome=$3
+bam2genome=$4
+bamintersectBED12=$5
 
 echo "Making counts_table from ${bamintersectBED12}; will output to ${OUTBASE}.counts.txt"
 
@@ -35,29 +36,62 @@ echo "Making counts_table from ${bamintersectBED12}; will output to ${OUTBASE}.c
 echo -e -n "Number of total reads:\t"
 cat ${bamintersectBED12} | wc -l
 
-
-# Set the appropriate gene annotation file.
-# Note that hg38_full, etc. was converted to just "hg38" prior to calling bamintersect.
-case "${bam2genome}" in
-mm10)
-    geneAnnotationFile=/vol/isg/annotation/bed/mm10/gencodev23/GencodevM23.gene.bed
-    ;;
-rn6)
-    geneAnnotationFile=/vol/isg/annotation/bed/rn6/ensembl96/Ensemblv96_Rnor.gene.bed
-    ;;
-hg38)
-    geneAnnotationFile=/vol/isg/annotation/bed/hg38/gencodev31/Gencodev31.gene.bed
-    ;;
-*)
-    echo "ERROR: Don't recognize genome ${bam2genome}";
-    exit 1;;
-esac
+#Annotate a file by adding a column with the nearest gene name. Inputfile can be stdin (as -); outputs to stdout
+function annotateNearestGeneName {
+    local inputfile=$1
+    local genome=$2
+    
+    # Set the appropriate gene annotation file.
+    # Note that hg38_full, etc. was converted to just "hg38" prior to calling bamintersect.
+    local geneAnnotationFile=""
+    case "${genome}" in
+    mm10)
+        geneAnnotationFile=/vol/isg/annotation/bed/mm10/gencodev23/GencodevM23.gene.bed
+        ;;
+    rn6)
+        geneAnnotationFile=/vol/isg/annotation/bed/rn6/ensembl96/Ensemblv96_Rnor.gene.bed
+        ;;
+    hg38)
+        geneAnnotationFile=/vol/isg/annotation/bed/hg38/gencodev31/Gencodev31.gene.bed
+        ;;
+    *)
+        geneAnnotationFile="CEGS"
+        ;;
+    esac
+    
+    if [[ "${geneAnnotationFile}" == "CEGS" ]]; then
+        cat /vol/cegs/sequences/cegsvectors/cegsvectors/cegsvectors.bed | perl -pe 's/ /_/g;' > $TMPDIR/geneAnnotationFile.${genome}.bed
+    else
+        #Needs prefiltering
+        #Add gene name
+        cat ${geneAnnotationFile} |
+        awk -F "\t" 'BEGIN {OFS="\t"} $7=="protein_coding"' |
+        #Restrict to level 1 or 2 genes if available (Sox2 is level 2 for example)
+        awk -F "\t" 'BEGIN {OFS="\t"} $5<=2 || $5=="."' > $TMPDIR/geneAnnotationFile.${genome}.bed
+    fi
+    geneAnnotationFile="$TMPDIR/geneAnnotationFile.${genome}.bed"
+    
+    closest-features --delim "|" --closest --dist ${inputfile} ${geneAnnotationFile} |
+    #Replace empty gene names with a dash
+    #Add distance to the gene name; note distance is relative to the genomic location (+ is to the right) not the transcriptional direction
+    awk -F "|" 'BEGIN {OFS="\t"} { \
+        split($2, gene, "\t"); if(gene[4]=="") {gene[4]="-"} \
+        if($3=="NA" || $3==0) { \
+            distance = ""; \
+        } else if($3>0) { \
+            distance = "-" $3 "bp"; \
+        } else { \
+            distance = "+" "BUGBUGthisDisappears" -1*$3 "bp"; \
+        } \
+        print $1, gene[4] distance; \
+    }'
+}
 
 
 #Takes a bed file and outputs a list of minimal regions covering all elements grouped by fixed distance to stdout
 function merge_tight {
-    file=$1
-    range=$2
+    local file=$1
+    local range=$2
     
     #Generate bam1 regions
     cat ${file} | bedops --range ${range} -m - | 
@@ -79,25 +113,22 @@ bedmap --delim "\t" --echo --echo-map-id ${TMPDIR}/${sample_name}.reads.bam2.bed
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6, $13}' | sort-bed - |
 #Annotate each read with the coordinates of the bam1 region it overlaps
 bedmap --delim "\t" --echo --echo-map-id - ${TMPDIR}/${sample_name}.regions.bam1.bed |
-#Count reads per unique pairs of bam1/bam2 regions; uses ~ as field separator
+#Count reads per unique pairs of bam1/bam2 regions; uses ~ internally as field separator
 cut -f13-14 | awk -F "\t" 'BEGIN {OFS="\t"} {counts[$1 "~" $2] += 1} END {for (x in counts) {split(x, countsplit, "~"); print counts[x], countsplit[1], countsplit[2]}}' |
 #reorder columns, keep in bam2 coordinates
-awk -F "\t" -v minReadsCutoff=2  'BEGIN {OFS="\t"} $1>=minReadsCutoff {split($2, bam2region, /[:-]/); split($3, bam1region, /[:-]/); print bam2region[1], bam2region[2], bam2region[3], bam2region[3]-bam2region[2], $1, bam1region[1], bam1region[2], bam1region[3], bam1region[3]-bam1region[2]}' | sort-bed - > $TMPDIR/${sample_name}.counts.bed
-
-
-cat ${geneAnnotationFile} |
-awk -F "\t" 'BEGIN {OFS="\t"} $7=="protein_coding"' |
-#Restrict to level 1 or 2 genes if available (Sox2 is level 2 for example)
-awk -F "\t" 'BEGIN {OFS="\t"} $5<=2 || $5=="."' |
-closest-features --delim "|" --closest $TMPDIR/${sample_name}.counts.bed - |
-# Replace empty gene names with a dash.
-awk -F "|" 'BEGIN {OFS="\t"} {split($2, gene, "\t"); if(gene[4]=="") {gene[4]="-"} print $1, gene[4]}' |
+awk -F "\t" -v minReadsCutoff=2  'BEGIN {OFS="\t"} $1>=minReadsCutoff {split($2, bam2region, /[:-]/); split($3, bam1region, /[:-]/); print bam2region[1], bam2region[2], bam2region[3], bam2region[3]-bam2region[2], $1, bam1region[1], bam1region[2], bam1region[3], bam1region[3]-bam1region[2]}' | sort-bed - |
+#Add gene name to bam2
+annotateNearestGeneName - ${bam2genome} |
+#switch to bam1 coordinates, leaving the bam2 gene name at the end where it belongs
+awk -F "\t" 'BEGIN {OFS="\t"} {print $6, $7, $8, $9, $5, $1, $2, $3, $4, $10}' | sort-bed - |
+#Add gene name to bam1
+annotateNearestGeneName - ${bam1genome} |
 #Sort by Informative_Reads, chrom_bam2, chromStart_bam2
 #tried mlr but it doesn't like the field name below
 #mlr --tsv sort -nr Informative_Reads -f ${#chrom_bam2} -n chromStart_bam2
 sort -k5,5nr -k1,1 -k2,2n |
-#Reorder columns
-awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -F "\t" 'BEGIN {OFS="\t"; print "#chrom_bam2", "chromStart_bam2", "chromEnd_bam2", "Width_bam2", "NearestGene_bam2", "Informative_Reads", "chrom_bam1", "chromStart_bam1", "chromEnd_bam1", "Width_bam1", "Sample"} {short_sample_name} {print $1, $2, $3, $4, $10, $5, $6, $7, $8, $9, short_sample_name}' > ${OUTBASE}.counts.txt
+#Reorder columns to put bam1 gene where it belongs
+awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -F "\t" 'BEGIN {OFS="\t"; print "#chrom_bam1", "chromStart_bam1", "chromEnd_bam1", "Width_bam1", "NearestGene_bam1", "Informative_Reads", "chrom_bam2", "chromStart_bam2", "chromEnd_bam2", "Width_bam2", "NearestGene_bam2", "Sample"} {print $1, $2, $3, $4, $11, $5, $6, $7, $8, $9, $10, short_sample_name}' > ${OUTBASE}.counts.txt
 
 
 #####################################################################################

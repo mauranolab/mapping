@@ -72,19 +72,19 @@ fi
 
 
 #Unfiltered
-${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.bed
+${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.bed
 echo
 
 
 #With filters
 #Check for a curated uninformative regions file for this combination of genomes
-if echo "${bam1genome}" | grep -q "^LP[0-9]\+" ; then
-    genome2exclude="${src}/LP_uninformative_regions/LP_vs_${bam2genome}.bed"
+if echo "${bam2genome}" | grep -q "^LP[0-9]\+" ; then
+    genome2exclude="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
 #TODO hardcoded for now
-elif echo "${bam1genome}" | grep -q "^Sox2_" ; then
+elif echo "${bam2genome}" | grep -q "^Sox2_" ; then
     genome2exclude="${src}/LP_uninformative_regions/PL_vs_LP.bed"
 else
-    genome2exclude="${src}/LP_uninformative_regions/${bam1genome}_vs_${bam2genome}.bed"
+    genome2exclude="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
 fi
 if [ ! -f "${genome2exclude}" ]; then
     echo "WARNING: Can't find ${genome2exclude}; will run without region mask"
@@ -93,23 +93,27 @@ else
     echo "Found uninformative regions file: $(basename ${genome2exclude}) [${genome2exclude}]" >> ${sampleOutdir}/${sample_name}.info.txt
 fi
 #Sort exclusion files and strip comments just in case
-#BUGBUG hardcoded repeatmask for bam2genome
-cat ${genome2exclude} ${INTERMEDIATEDIR}/HA_coords.bed | awk '$0 !~ /^#/' | sort-bed - | bedops -u - /vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed > ${TMPDIR}/uninformativeRegionFile.bed
+cat ${genome2exclude} | awk '$0 !~ /^#/' | sort-bed - |
+#BUGBUG hardcoded repeatmask for bam1genome
+bedops -u - /vol/isg/annotation/bed/${bam1genome}/repeat_masker/Satellite.bed |
+bedops -u - ${INTERMEDIATEDIR}/HA_coords.bed > ${TMPDIR}/uninformativeRegionFile.bed
+
+
 
 #Starts out with bam1 coordinates
 cat ${sampleOutdir}/${sample_name}.bed | 
-#Remove bam1 reads that overlap the ranges defined in uninformativeRegionFile.bed file via submit_bamintrsect.sh
+#Remove bam1 reads that overlap the ranges defined in uninformativeRegionFile.bed file via submit_bamintersect.sh
 bedops -n 1 - ${TMPDIR}/uninformativeRegionFile.bed |
+#Only apply deletion_range to bam1
+#bedops -n 1 - ${INTERMEDIATEDIR}/deletion_range.bed |
 #Switch to bam2
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - |
 #Sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the uninformativeRegionFile:
 bedops -n 1 - ${TMPDIR}/uninformativeRegionFile.bed |
-#Only apply deletion_range to bam2
-bedops -n 1 - ${INTERMEDIATEDIR}/deletion_range.bed | 
 #Switch back to bam1 coordinates
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - > ${sampleOutdir}/${sample_name}.informative.bed
 
-${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam2genome} ${sampleOutdir}/${sample_name}.informative.bed
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.informative.bed
 echo
 
 
@@ -118,8 +122,8 @@ echo
 #Al
 if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis."
-    ${src}/HA_table.sh HA ${bam2} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} ${ReqFullyAligned}
-    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam2genome} ${sampleOutdir}/${sample_name}.HA.bed
+    ${src}/HA_table.sh HA ${bam1} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} ${ReqFullyAligned}
+    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam1genome} ${bam1genome} ${sampleOutdir}/${sample_name}.HA.bed
 else
     echo -e "No HAs available, so there will be no HA analysis."
 fi
@@ -128,8 +132,8 @@ echo
 
 echo
 echo "Look for reads spanning the assembly and the backbone."
-${src}/HA_table.sh AB ${bam1} ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} ${ReqFullyAligned}
-${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
+${src}/HA_table.sh AB ${bam2} ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} ${ReqFullyAligned}
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
 echo
 
 # Number of reads
