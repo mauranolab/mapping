@@ -73,6 +73,8 @@ BCrevcomp_parser.add_argument('--no-BCrevcomp', dest='BCrevcomp', action='store_
 
 parser.add_argument("--maxEditDist", action='store', type=float, default=0.1, help = "Max edit (hamming) distance as a proportion of total sequence length. Applied to both BC and plasmid reads. [%(default)s]")
 
+parser.add_argument("--cellBCsuffix", action='store', required=False, help = "Cell BC suffix which will be appended after an underscore, e.g. GEM well number. [%(default)s]")
+
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
 parser.add_argument('--version', action='version', version='%(prog)s ' + version)
 
@@ -107,6 +109,9 @@ if enforcePlasmidRead:
     plasmidRefSeq = plasmidRefSeq.upper()
     plasmidRefSeqLength = len(plasmidRefSeq)
     numWrongPlasmidSeq = 0
+
+if args.cellBCsuffix is not None:
+    cellBCsuffix = "_" + args.cellBCsuffix
 
 maxEditDistRate = args.maxEditDist
 
@@ -280,7 +285,7 @@ try:
         UMI_seq = ""
         cell_seq = ""
         if(len(readname)>2):
-            cell_seq = readname[1]
+            cell_seq = readname[1] + cellBCsuffix
             UMI_seq = readname[2]
         elif(len(readname)>1):
             UMI_seq = readname[1]
@@ -289,7 +294,7 @@ try:
             readNoNsInUMIPassed = False
         else:
             readNoNsInUMIPassed = True
-
+        
         
         if readBCreadEditDistPassed and readBCMinBaseQpassed and readBClengthPassed and readNoNsInBCPassed and (not enforcePlasmidRead or readPlasmidReadEditDistPassed) and (not args.align or readAlignmentPassed):
             #Read is good
