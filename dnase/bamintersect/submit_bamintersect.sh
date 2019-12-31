@@ -52,11 +52,16 @@ Usage: $(basename "$0") [Options]
     --integrationsite {sitename_HA#1_HA#2   Must be canonical name (sitename e.g. "HPRT1"; HA#s refer to numbers in the HomologyArms.bed file) or null.}
     --bam1 {full path to bam file #1}
     --bam1genome [ LP123, mm10, hg38, rn6, ... ]
-    --bam2 {full path to bam file #2, customarily the mammalian genome}
+    --bam2 {full path to bam file #2}
     --bam2genome [ LP123, mm10, hg38, rn6, ... ]
     --outdir {outdir} output directory
     
-    Mammalian genomes should use the annotationgenome name (hg38, not hg38_full)
+    Genome notes:
+    1) The mammalian genome is customarily passed as bam1. This affects:
+        Files for uninformative read masking differ
+        HA table is run on bam1, backbone analysis on bam2
+    
+    2) Mammalian genomes should use the annotationgenome name (hg38, not hg38_full)
     
   Optional Arguments:
     --max_mismatches {The max number of mismatches a read is allowed to have vs the reference. The value is in the read's NM tag. Default = 1}
@@ -74,7 +79,7 @@ Usage: $(basename "$0") [Options]
     
     --bam2_keep_flags {a sam format flag value required of all bam2 reads to be included in the analysis. Default = 1}
     
-    --bam2_exclude_flags {a sam format flag value for bam2 reads to be excluded from the analysis. Default = 3076}
+    --bam2_exclude_flags {a sam format flag value for bam2 reads to be excluded from the analysis. Default = 3078}
     
     --reads_match {no argument}
            # This flag tells bam_intersect.py how to match the reads from each bam file.
@@ -251,7 +256,7 @@ mkdir -p "${sampleOutdir}/log"
 # Make a directory structure to hold files passed between jobs.
 # It is built within ${sampleOutdir} so it can be persistent.
 # It gets removed at the end of the merge_bamintersect.sh script.
-INTERMEDIATEDIR="${sampleOutdir}/tmp.${sample_name}.${bam1genome}"   # INTERMEDIATEDIR contains no trailing slash.
+INTERMEDIATEDIR="${sampleOutdir}/tmp.${sample_name}"   # INTERMEDIATEDIR contains no trailing slash.
 
 # Subdirectories will hold output from bamintersect.py
 mkdir -p ${INTERMEDIATEDIR}/bamintersectPyOut
@@ -267,7 +272,7 @@ echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 ## Send some summary info to the anc file:
 echo "bam files:" > ${sampleOutdir}/${sample_name}.info.txt
 echo "bam1: ${bam1}" >> ${sampleOutdir}/${sample_name}.info.txt
-echo "bam2:: ${bam2}" >> ${sampleOutdir}/${sample_name}.info.txt
+echo "bam2: ${bam2}" >> ${sampleOutdir}/${sample_name}.info.txt
 echo "" >> ${sampleOutdir}/${sample_name}.info.txt
 
 # Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
@@ -275,7 +280,7 @@ if [ "${integrationsite}" != "null" ]; then
     # In the next line we rely on HA1 being the 5p side HA.
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
     echo "Looking up HA coordinates for ${integrationsite}:" >> ${sampleOutdir}/${sample_name}.info.txt
-    HA_file="/vol/cegs/sequences/${bam2genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
+    HA_file="/vol/cegs/sequences/${bam1genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
     
     if [ -s "${HA_file}" ]; then
         grep "${integrationSiteName}_${HA1}$" ${HA_file} >> ${sampleOutdir}/${sample_name}.info.txt
@@ -286,24 +291,23 @@ if [ "${integrationsite}" != "null" ]; then
         grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/HA_coords.bed"
         grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/HA_coords.bed"
         
-        # Get the deletion range coordinates:
-        cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${INTERMEDIATEDIR}/deletion_range.bed
-        
-        echo -n "Found coordinates spanning (bp): " >> ${sampleOutdir}/${sample_name}.info.txt
-        awk -F "\t" 'BEGIN {OFS="\t"} {print $3-$2}' ${INTERMEDIATEDIR}/deletion_range.bed >> ${sampleOutdir}/${sample_name}.info.txt
+#        # Get the deletion range coordinates:
+#        cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${INTERMEDIATEDIR}/deletion_range.bed
+#        echo -n "Found coordinates for deletion spanning (bp): " >> ${sampleOutdir}/${sample_name}.info.txt
+#        awk -F "\t" 'BEGIN {OFS="\t"} {print $3-$2}' ${INTERMEDIATEDIR}/deletion_range.bed >> ${sampleOutdir}/${sample_name}.info.txt
     else
         echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range" >> ${sampleOutdir}/${sample_name}.info.txt
         echo "" >> ${sampleOutdir}/${sample_name}.info.txt
         
         touch "${INTERMEDIATEDIR}/HA_coords.bed"
-        touch "${INTERMEDIATEDIR}/deletion_range.bed"
+#       touch "${INTERMEDIATEDIR}/deletion_range.bed"
     fi
 else
     echo "No integration site was provided, and so there is no Deletion Range." >> ${sampleOutdir}/${sample_name}.info.txt
     echo "" >> ${sampleOutdir}/${sample_name}.info.txt
     
     touch "${INTERMEDIATEDIR}/HA_coords.bed"
-    touch "${INTERMEDIATEDIR}/deletion_range.bed"
+#    touch "${INTERMEDIATEDIR}/deletion_range.bed"
 fi
 
 
