@@ -1,0 +1,4 @@
+#PIGA LP reads mapping between Puro and Piga look also come up between pSpCas9 and the endogenous piga, so include these from LP_vs_mm10.bed
+chrX	164422700	164423364	Piga
+chrX	164427929	164428065	Piga
+chrX	164428537	164428674	Piga
