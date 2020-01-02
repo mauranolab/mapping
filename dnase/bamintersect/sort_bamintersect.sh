@@ -9,7 +9,7 @@ jobid=$SLURM_ARRAY_TASK_ID
 chromname=`awk -F "\t" -v jobid=$jobid 'NR==jobid {print $1}' ${INTERMEDIATEDIR}/inputs.sort.bam${BAM_N}.txt`
 chroms=`awk -F "\t" -v jobid=$jobid 'NR==jobid {print $2}' ${INTERMEDIATEDIR}/inputs.sort.bam${BAM_N}.txt`
 
-BAM_OUT="${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${chromname}.${BAM_N}.bam"
+BAM_OUT="${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${chromname}.bam"
 
 echo "Sorting ${chroms}"
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
