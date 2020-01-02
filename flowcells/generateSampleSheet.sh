@@ -189,14 +189,16 @@ for(bc1len in bc1range) {
 }
 
 cat("\nNumber of samples too close by BC sequencing lengths:\n")
-#print.data.frame(results, row.names=F)
-results.wide <- cast(bc1len~bc2len, value="numSamplesTooClose", data=results, fun.aggregate=sum, add.missing=T, fill=NA)
-#Cast adds bc2 as colnames but not rownames
-rownames(results.wide) <- paste("bc1", results.wide[,1])
-results.wide <- results.wide[,-1]
-print.data.frame(results.wide, row.names=T)
-
-#BUGBUG no output for single index runs
+if(maxBC2len==0) {
+    #Not great but just print results for SE runs
+    print.data.frame(results, row.names=F)
+} else {
+    results.wide <- cast(bc1len~bc2len, value="numSamplesTooClose", data=results, fun.aggregate=sum, add.missing=T, fill=NA)
+    #Cast adds bc2 as colnames but not rownames
+    rownames(results.wide) <- paste("bc1", results.wide[,1])
+    results.wide <- results.wide[,-1]
+    print.data.frame(results.wide, row.names=T)
+}
 EOF
 
 
