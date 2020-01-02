@@ -147,7 +147,7 @@ BASE="/vol/${assmbly_type2}/sequences/"
 # This loop generates the ".bb" files which are found in the trackhub "<genome>/data" directories.
 # genome_array just contains hg38, mm10, rn6, and cegsvectors, or hg38, mm10, mauranolab.
 for genome in "${genome_array[@]}"; do
-    if [ ! -d "/vol/mauranolab/sequences/${genome}" ]; then
+    if [ ! -d "/vol/${assmbly_type2}/sequences/${genome}" ]; then
         echo "Skipping ${genome} assemblies"
         continue
     fi
