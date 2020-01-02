@@ -28,7 +28,7 @@ echo
 echo "Sample sheet validation"
 #validate date format as YYYY-MM-DD
 readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Load date" {print $2}' info.txt`
-if [[ ! "${readgroup_date}" =~ 201[5-9]\-[0-2][0-9]\-[0123][0-9] ]]; then
+if [[ ! "${readgroup_date}" =~ 20[12][0-9]\-[0-2][0-9]\-[0123][0-9] ]]; then
     echo "WARNING: invalid FC load date ${readgroup_date}"
 fi
 
