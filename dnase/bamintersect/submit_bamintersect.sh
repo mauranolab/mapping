@@ -317,23 +317,31 @@ echo
 echo "sort_bamintersect"
 
 #Outputs array job inputfile to stdout by collapsing chromosomes if too many
+#Output is tab-delimited file with two columns: short name, list of chromosomes separated by spaces
 function make_chrom_inputfile {
-    bamfile=$1
+    local bamfile=$1
+    local prefix=$2
     
     samtools idxstats ${bamfile} | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' > ${TMPDIR}/idxstats.txt
     n=$(wc -l < ${TMPDIR}/idxstats.txt)
-    if [ "${n}" -lt "20" ]; then
-        awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $1}' ${TMPDIR}/idxstats.txt
-    else
-        #If there is a large number of chromosomes, consolidate everything but the canonically named ones into a final line
-        #Use $2 (length) or $3+$4 (total reads) to split instead of chrom name
-        awk -F "\t" '$1~/^chr[0-9]*$|^chr[XYM]$/' ${TMPDIR}/idxstats.txt | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $1}'
-        awk -F "\t" '$1!~/^chr[0-9]*$|^chr[XYM]$/' ${TMPDIR}/idxstats.txt | awk -F "\t" 'BEGIN {OFS="\t"; chroms=""} {chroms=chroms " " $1} END {print "all_other", chroms}'
-    fi
+    
+    #Chunk bam file based on >5M read chunks of chromosomes to reduce array job size for large runs
+    cat ${TMPDIR}/idxstats.txt | awk -v maxchunksize=5000000 -v prefix=${prefix} -F "\t" 'BEGIN {OFS="\t"; chunknum=0; chroms=""; chunksize=0} {\
+        chroms = chroms " " $1; \
+        #$3+$4 adds mapped and unmapped reads \
+        chunksize += $3+$4; \
+        if(chunksize>maxchunksize) {\
+            chunknum+=1;\
+            print prefix chunknum, chroms;\
+            chroms = ""
+            chunksize=0;
+        }
+    }\
+    END {if(chunksize>0) {print prefix chunknum, chroms}}'
 }
 
-make_chrom_inputfile ${bam1} > ${INTERMEDIATEDIR}/inputs.sort.bam1.txt
-make_chrom_inputfile ${bam2} > ${INTERMEDIATEDIR}/inputs.sort.bam2.txt
+make_chrom_inputfile ${bam1} "bam1_" > ${INTERMEDIATEDIR}/inputs.sort.bam1.txt
+make_chrom_inputfile ${bam2} "bam2_" > ${INTERMEDIATEDIR}/inputs.sort.bam2.txt
 
 
 export_vars="sampleOutdir=${sampleOutdir}"
@@ -368,7 +376,7 @@ echo
 echo "bamintersect"
 for bam1chromname in `cut -f1 ${INTERMEDIATEDIR}/inputs.sort.bam1.txt`; do
     for bam2chromname in `cut -f1 ${INTERMEDIATEDIR}/inputs.sort.bam2.txt`; do
-        echo ${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam1chromname}.1.bam ${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam2chromname}.2.bam ${INTERMEDIATEDIR}/bamintersectPyOut/${bam1chromname}_vs_${bam2chromname} >> ${INTERMEDIATEDIR}/inputs.bamintersect.txt
+        echo ${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam1chromname}.bam ${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam2chromname}.bam ${INTERMEDIATEDIR}/bamintersectPyOut/${bam1chromname}_vs_${bam2chromname} >> ${INTERMEDIATEDIR}/inputs.bamintersect.txt
     done
 done
 
