@@ -355,7 +355,8 @@ for assay_type in assays:
                 autoScale='off',
                 maxHeightPixels="100:30:10",
                 short_label="Cut Counts",
-                long_label="Cut Counts")
+                long_label="Cut Counts",
+                windowingFunction="maximum")
             composite.add_view(Cuts_view)
         
         if assay_type in ["DNA", "DNA Capture"]:
