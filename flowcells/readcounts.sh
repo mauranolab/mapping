@@ -56,7 +56,7 @@ for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="
         #NB assumes PE reads
         #/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads} ${project}/Sample_${bs}/bak.fastq
         #add ${project}/Sample_${bs}/bak.fastq to make backup
-        qsub -S /bin/bash -j y -N split.${bs} -pe threads 4 "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads}"
+        qsub -S /bin/bash -j y -N split.${bs} -pe threads 8 "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads}"
     done
 done
 
@@ -82,7 +82,7 @@ for d in `find ${basedir}  -maxdepth 1 -name "Project_*" -type d | grep -v Proje
 done
 
 #echo "Tarballing flowcell data directory"
-#base=${fc}
+#base="${fc}_"`date +%Y%b%d`
 #cd /vol/mauranolab/flowcells/data/$fc/
 #echo "Your data are available at (user:sequencing, password:moretags)"
 #echo "https://sequencing:moretags@cascade.isg.med.nyu.edu/flowcells/${base}_data.tar"
