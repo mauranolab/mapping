@@ -302,7 +302,8 @@ for assay_type in assays:
                 autoScale='on',
                 maxHeightPixels="100:30:10",
                 short_label="Coverage",
-                long_label="Coverage")
+                long_label="Coverage",
+                windowingFunction="mean")
             composite.add_view(Coverage_view)
         
         if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
@@ -316,7 +317,8 @@ for assay_type in assays:
                 autoScale='off',
                 maxHeightPixels="100:30:10",
                 short_label="Density",
-                long_label="Density")
+                long_label="Density",
+                windowingFunction="maximum")
             composite.add_view(Dens_view)
             
         if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
@@ -353,7 +355,8 @@ for assay_type in assays:
                 autoScale='off',
                 maxHeightPixels="100:30:10",
                 short_label="Cut Counts",
-                long_label="Cut Counts")
+                long_label="Cut Counts",
+                windowingFunction="maximum")
             composite.add_view(Cuts_view)
         
         if assay_type in ["DNA", "DNA Capture"]:
