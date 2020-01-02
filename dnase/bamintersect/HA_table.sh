@@ -20,10 +20,8 @@ sampleOutdir=$3
 sample_name=$4
 INTERMEDIATEDIR=$5
 src=$6
-ReqFullyAligned=$7
-
-# Exclude reads with flags: read unmapped, mate unmapped, failed QC flag, read is duplicate, or read is sup alignment.
-exclude_flags=3596
+exclude_flags=$7
+ReqFullyAligned=$8
 
 ######################################################################
 
@@ -37,13 +35,16 @@ if [ ${runHA} = "AB" ]; then
     backbone=${assembly}_backbone
     backboneCheck=$(samtools idxstats ${bamfile} | tail -n +2 | head -n 1 | cut -f1)
     if [ "${backbone}" != "${backboneCheck}" ]; then
-        echo "[assemblyBackbone_table.sh] ERROR: Problem with assignment of backbone names: ${assembly} ${backbone} ${backboneCheck}"
-        echo ""
-        echo "samtools idxstats ${bamfile} :"
-        samtools idxstats ${bamfile}
-        # exit 1
-    
-        # For now:
+        numLines=$(wc -l <(samtools idxstats ${bamfile}) | cut -d ' ' -f1)
+        if [[ "${backboneCheck}" == "*" ]] && [[ "${numLines}" == "2" ]]; then
+            # There is no backbone, only a single assembly. As an example, this happens for pSpCas9.
+            echo "${assembly} does not have a backbone chromosome."
+        else
+            echo "[assemblyBackbone_table.sh] ERROR: Problem with assignment of backbone names: ${assembly} ${backbone} ${backboneCheck}"
+            echo ""
+            echo "samtools idxstats ${bamfile} :"
+            samtools idxstats ${bamfile}
+        fi
         touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
         exit 0
     fi
