@@ -31,14 +31,14 @@ if [ ${runHA} = "AB" ]; then
     # If there is a misspelling, extra chromosomes, or if they are out of order, an error happens.
     backbone=${assembly}_backbone
     backboneCheck=$(samtools idxstats ${bamfile} | tail -n +2 | head -n 1 | cut -f1)  # This should be the backbone chromosome.
-    numChroms=$(wc -l <(samtools idxstats ${bamfile}) | cut -d ' ' -f1)   # Actually 1 bigger than the number of chroms. "*" is always the last line.
+    numChroms=$(wc -l <(samtools idxstats ${bamfile}) | sed '$d' | cut -d ' ' -f1)
 
-    if [ "${numChroms}" -gt 3 ]; then
+    if [ "${numChroms}" -gt 2 ]; then
         # There are three or more chromosomes.
         echo "${assembly} has too many chromosomes."
         touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
         exit 0
-    elif [[ "${backboneCheck}" == "*" ]] && [[ "${numChroms}" == "2" ]]; then
+    elif [[ "${numChroms}" == "1" ]]; then
         # There is no backbone, only a single [assembly]. As an example, this happens for pSpCas9.
         echo "${assembly} does not have a backbone chromosome."
         touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
