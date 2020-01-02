@@ -193,19 +193,49 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     cat $TMPDIR/${sample}.barcodes.minPropReadsForBC.txt | awk -v minPropReadsForBC=0.05 -F "\t" 'BEGIN {OFS="\t"} $4/$5>minPropReadsForBC {filtered+=$4} {total+=$4} END {print filtered, total}'
     
     cat $TMPDIR/${sample}.barcodes.minPropReadsForBC.txt |
-    #Do the actual filter
+    #Do the actual filter (note this is set to 0 to pass everything since minPropReadsForBC filter was moved to genotypeClones.py)
     awk -v minPropReadsForBC=0 -F "\t" 'BEGIN {OFS="\t"} $4/$5>minPropReadsForBC' | cut -f1-4 |
     #Sort on BC and count reads perBC+CellBC
     sort -k1,1 -k3,3 |
-    cut -f1,3 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' |
     #Format: BC, cellBC, n
-    #TODO parameterize and do more precise filtering of 10x whitelist BCs. we do miss some by not allowing mismatches but it's pretty few reads
+    cut -f1,3 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' > $TMPDIR/${sample}.barcode.counts.byCell.unfiltered.txt
+    
+    ###Filter and report statistics
+    #TODO do more precise filtering of 10x whitelist BCs. we do miss some by not allowing mismatches but it's pretty few reads
     #TODO report high-count cellBCs not on whitelist, mainly in case umi_tools dedup is not working well
+    
+    cat $TMPDIR/${sample}.barcode.counts.byCell.unfiltered.txt | cut -f2 | sort | uniq > $TMPDIR/${sample}.cellBCs.unfiltered.txt
+    #TODO Read count should be the same as 'Number of reads passing minPropReadsForBC' filter above
+    echo -n -e "${sample}\treads/cells before whitelisting\t"
+    cat $TMPDIR/${sample}.barcode.counts.byCell.unfiltered.txt | wc -l | perl -pe 's/\n/\t/g;'
+    cat $TMPDIR/${sample}.cellBCs.unfiltered.txt | wc -l
+    
+    ##Report cells dropped out
+    #Protect from cases where grep gets no results
+    set +e
+    
+    #Note whitelist doesn't actually need to get listed separately, since only contains cells on whitelist
+    echo -n -e "${sample}\treads/cells not on whitelist\t"
+    cat $TMPDIR/${sample}.barcode.counts.byCell.unfiltered.txt | fgrep -v -w -f ${scRNAseqbase}/cells.whitelist.txt | wc -l | perl -pe 's/\n/\t/g;'
+    cat $TMPDIR/${sample}.cellBCs.unfiltered.txt | fgrep -v -w -f ${scRNAseqbase}/cells.whitelist.txt | wc -l
+    
+    echo -n -e "${sample}\treads/cells with low UMI count\t"
+    cat $TMPDIR/${sample}.barcode.counts.byCell.unfiltered.txt | fgrep -w -f ${scRNAseqbase}/cells.whitelist.txt | fgrep -w -f ${scRNAseqbase}/cells.readcounts.excluded.txt | wc -l | perl -pe 's/\n/\t/g;'
+    cat $TMPDIR/${sample}.cellBCs.unfiltered.txt | fgrep -w -f ${scRNAseqbase}/cells.whitelist.txt | fgrep -w -f ${scRNAseqbase}/cells.readcounts.excluded.txt | wc -l
+    
+    echo -n -e "${sample}\treads/cells with too many pSB reads\t"
+    cat $TMPDIR/${sample}.barcode.counts.byCell.unfiltered.txt | fgrep -v -w -f ${scRNAseqbase}/cells.readcounts.excluded.txt | fgrep -w -f ${scRNAseqbase}/cells.pSB.excluded.txt | wc -l | perl -pe 's/\n/\t/g;'
+    cat $TMPDIR/${sample}.cellBCs.unfiltered.txt | fgrep -v -w -f ${scRNAseqbase}/cells.readcounts.excluded.txt | fgrep -w -f ${scRNAseqbase}/cells.pSB.excluded.txt | wc -l
+    
+    set -e
+    
+    
+    ##Actual filtering
+    cat $TMPDIR/${sample}.barcode.counts.byCell.unfiltered.txt | 
     fgrep -w -f ${scRNAseqbase}/cells.whitelist.txt |
     fgrep -v -w -f ${scRNAseqbase}/cells.readcounts.excluded.txt |
     fgrep -v -w -f ${scRNAseqbase}/cells.pSB.excluded.txt |
     awk 'BEGIN {OFS="\t"; print "BC", "cellBC", "count"} {print}' > ${OUTDIR}/${sample}.barcode.counts.byCell.txt
-    
     
     echo -n -e "${sample}\tNumber of cells\t"
     cat ${OUTDIR}/${sample}.barcode.counts.byCell.txt | mlr --headerless-csv-output --tsv cut -f cellBC | sort | uniq | wc -l

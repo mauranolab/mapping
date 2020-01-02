@@ -8,8 +8,8 @@ src=/vol/mauranolab/mapped/src/transposon
 
 
 ###Parse command line args
-if [ "$#" -ne 6 ]; then
-    echo "Wrong number of arguments"
+if [ "$#" -lt 6 ]; then
+    echo "Not enough arguments"
     exit 1
 fi
 
@@ -18,7 +18,10 @@ BCreadSeq=$2
 bclen=$3
 chunksize=$4
 plasmidSeq=$5
-extractBCargs=$6
+
+#Just take the rest to simplify passing multiple arguments for extractBarcode.py
+shift 5
+extractBCargs=$@
 #TODO extractBarcode.py has the $TMPDIR/${sample}.plasmid.fastq.gz as input
 
 
