@@ -76,13 +76,16 @@ ${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam1genom
 echo
 
 
+echo "Generating uninformativeRegionFile"
 #With filters
 #Check for a curated uninformative regions file for this combination of genomes
 if echo "${bam2genome}" | grep -q "^LP[0-9]\+" ; then
     genome2exclude="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
-#TODO hardcoded for now
+#TODO payload masks hardcoded for now
 elif echo "${bam2genome}" | grep -q "^Sox2_" ; then
     genome2exclude="${src}/LP_uninformative_regions/PL_vs_LP.bed"
+elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)" ; then
+    genome2exclude="${src}/LP_uninformative_regions/LPICE_vs_mm10.bed"
 else
     genome2exclude="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
 fi
@@ -99,7 +102,7 @@ bedops -u - /vol/isg/annotation/bed/${bam1genome}/repeat_masker/Satellite.bed |
 bedops -u - ${INTERMEDIATEDIR}/HA_coords.bed > ${TMPDIR}/uninformativeRegionFile.bed
 
 
-
+echo "Applying uninformativeRegionFile"
 #Starts out with bam1 coordinates
 cat ${sampleOutdir}/${sample_name}.bed | 
 #Remove bam1 reads that overlap the ranges defined in uninformativeRegionFile.bed file via submit_bamintersect.sh
