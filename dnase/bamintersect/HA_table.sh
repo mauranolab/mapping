@@ -31,30 +31,40 @@ if [ ${runHA} = "AB" ]; then
     # Assume there are only 2 chromosomes: the assembly and the assembly backbone, with the assembly first.
     read -r assembly assembly_readlength all_other <<< $(samtools idxstats ${bamfile})
 
-    # Make sure the naming conventions are being followed.
+    # Make sure the naming conventions are being followed, since some manual effort goes into making these assembly files.
+    # We are expecting only two chromosomes: an [assembly] and an [assembly]_backbone
+    # If there is a misspelling, extra chromosomes, or if they are out of order, an error happens.
     backbone=${assembly}_backbone
-    backboneCheck=$(samtools idxstats ${bamfile} | tail -n +2 | head -n 1 | cut -f1)
-    if [ "${backbone}" != "${backboneCheck}" ]; then
-        numLines=$(wc -l <(samtools idxstats ${bamfile}) | cut -d ' ' -f1)
-        if [[ "${backboneCheck}" == "*" ]] && [[ "${numLines}" == "2" ]]; then
-            # There is no backbone, only a single assembly. As an example, this happens for pSpCas9.
-            echo "${assembly} does not have a backbone chromosome."
-        else
-            echo "[assemblyBackbone_table.sh] ERROR: Problem with assignment of backbone names: ${assembly} ${backbone} ${backboneCheck}"
-            echo ""
-            echo "samtools idxstats ${bamfile} :"
-            samtools idxstats ${bamfile}
-        fi
+    backboneCheck=$(samtools idxstats ${bamfile} | tail -n +2 | head -n 1 | cut -f1)  # This should be the backbone chromosome.
+    numChroms=$(wc -l <(samtools idxstats ${bamfile}) | cut -d ' ' -f1)   # Actually 1 bigger than the number of chroms. "*" is always the last line.
+
+    if [ "${numChroms}" -gt 3 ]; then
+        # There are three or more chromosomes.
+        echo "${assembly} has too many chromosomes."
         touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
         exit 0
+    elif [[ "${backboneCheck}" == "*" ]] && [[ "${numChroms}" == "2" ]]; then
+        # There is no backbone, only a single [assembly]. As an example, this happens for pSpCas9.
+        echo "${assembly} does not have a backbone chromosome."
+        touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
+        exit 0
+    elif [ "${backbone}" != "${backboneCheck}" ]; then
+        # We are not getting [assembly] and [assembly]_backbone
+        echo "[assemblyBackbone_table.sh] ERROR: Problem with assignment of backbone names: ${assembly} ${backbone} ${backboneCheck}"
+        echo ""
+        echo "samtools idxstats ${bamfile} :"
+        samtools idxstats ${bamfile}
+        touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
+        exit 0
+    else
+        # The naming conventions are being followed.
+        echo assembly is: ${assembly}
+        echo backbone is: ${backbone}
+
+        # Define Zone 1. We want it to be the entire assembly.
+        echo -e "${assembly}\t0\t${assembly_readlength}" > ${TMPDIR}/zone1.bed
+        outputBed="${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
     fi
-    echo assembly is:  ${assembly}
-    echo backbone is: ${backbone}
-
-    # Define Zone 1. We want it to be the entire assembly.
-    echo -e "${assembly}\t0\t${assembly_readlength}" > ${TMPDIR}/zone1.bed
-
-    outputBed="${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
 elif [ ${runHA} = "HA" ]; then
     echo "Generating HA table"
     # Define Zone 1. We want it to be the HAs (both of them).
