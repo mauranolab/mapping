@@ -21,7 +21,7 @@ ReqFullyAligned=$8
 ######################################################################
 
 if [ ${runHA} = "AB" ]; then
-    echo "Generating assemblyBackbone table"
+    echo "[HA_table] Generating assemblyBackbone table"
     
     # Assume there are only 2 chromosomes: the assembly and the assembly backbone, with the assembly first.
     read -r assembly assembly_readlength all_other <<< $(samtools idxstats ${bamfile})
@@ -32,33 +32,33 @@ if [ ${runHA} = "AB" ]; then
     backbone=$(samtools idxstats ${bamfile} | tail -n +2 | head -n 1 | cut -f1)  # This should be the backbone chromosome.
     numChroms=$(samtools idxstats ${bamfile} | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' | wc -l)
     if [[ "${numChroms}" != 2 ]]; then
-        echo "${assembly} has wrong number of chromosomes, quitting successfully."
+        echo "[HA_table] ${assembly} has wrong number of chromosomes, quitting successfully."
         touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
         exit 0
     elif [ "${backbone}" != "${assembly}_backbone" ]; then
         # The second chromosome is not named [assembly]_backbone
-        echo "WARNING: Assembly has two chromosomes but the second does not match the expected backbone name, quitting successfully: ${assembly} ${backbone}"
+        echo "[HA_table] WARNING: Assembly has two chromosomes but the second does not match the expected backbone name, quitting successfully: ${assembly} ${backbone}"
         echo ""
-        echo "samtools idxstats ${bamfile} :"
+        echo "[HA_table] samtools idxstats ${bamfile} :"
         samtools idxstats ${bamfile}
         touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
         exit 0
     else
         # The naming conventions are being followed.
-        echo assembly is: ${assembly}
-        echo backbone is: ${backbone}
+        echo "[HA_table] assembly is: ${assembly}"
+        echo "[HA_table] backbone is: ${backbone}"
         
         # Define Zone 1. We want it to be the entire assembly.
         echo -e "${assembly}\t0\t${assembly_readlength}" > ${TMPDIR}/zone1.bed
         outputBed="${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
     fi
 elif [ ${runHA} = "HA" ]; then
-    echo "Generating HA table"
+    echo "[HA_table] Generating HA table"
     # Define Zone 1. We want it to be the HAs (both of them).
     cp ${INTERMEDIATEDIR}/HA_coords.bed ${TMPDIR}/zone1.bed
     outputBed="${sampleOutdir}/${sample_name}.HA.bed"
 else
-    echo "Bad runHA parameter in consolidated_HA_AB_table.sh"
+    echo "[HA_table] Bad runHA parameter in consolidated_HA_AB_table.sh"
     exit 1
 fi
 
@@ -73,10 +73,10 @@ samtools view -F ${exclude_flags} -L ${TMPDIR}/zone1.bed ${bamfile} | cut -f1 | 
 if [ ${runHA} = "AB" ]; then
     # This code block is run only for runHA="AB" ("AssemblyBackbone").
     num_lines=$(wc -l < "${TMPDIR}/Reads.txt")
-    echo num_lines is: ${num_lines}
+    echo "[HA_table] num_lines is: ${num_lines}"
     if [ "${num_lines}" = "0" ]; then
         touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
-        echo "Leaving consolidated_HA_AB_table.sh due to no eligible reads."
+        echo "[HA_table] Leaving due to no eligible reads."
         exit 0
     fi
 fi
@@ -104,3 +104,6 @@ ${src}/bamintersect.py --src ${src} --bam1 "${TMPDIR}/bamfile_Zone1reads.bam" --
 
 sort-bed ${sampleOutdir}/dsgrep_out.csv > ${outputBed}
 rm -f ${sampleOutdir}/dsgrep_out.csv
+
+echo "[HA_table] Done]"
+date
