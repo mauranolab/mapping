@@ -77,29 +77,35 @@ echo
 
 
 echo "Generating uninformativeRegionFile"
-#With filters
 #Check for a curated uninformative regions file for this combination of genomes
-if echo "${bam2genome}" | grep -q "^LP[0-9]\+" ; then
-    genome2exclude="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
-#TODO payload masks hardcoded for now
-elif echo "${bam2genome}" | grep -q "^Sox2_" ; then
-    genome2exclude="${src}/LP_uninformative_regions/PL_vs_LP.bed"
-elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)" ; then
-    genome2exclude="${src}/LP_uninformative_regions/LPICE_vs_mm10.bed"
+#For LP integrations, exclude HAs
+#For assemblon (not LP) integrations, filter out reads in deletion (since we have the mapping to the custom assembly)
+if echo "${bam2genome}" | grep -q "^LP[0-9]\+$"; then
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed ${INTERMEDIATEDIR}/HA_coords.bed"
+#TODO payload masks hardcoded by name for now
+elif echo "${bam2genome}" | grep -q "^Sox2_"; then
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed ${INTERMEDIATEDIR}/deletion_range.bed"
+elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/LPICE_vs_mm10.bed ${INTERMEDIATEDIR}/deletion_range.bed"
 else
-    genome2exclude="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
 fi
-if [ ! -f "${genome2exclude}" ]; then
-    echo "WARNING: Can't find ${genome2exclude}; will run without region mask"
-    genome2exclude=""
-else
-    echo "Found uninformative regions file: $(basename ${genome2exclude}) [${genome2exclude}]" >> ${sampleOutdir}/${sample_name}.info.txt
-fi
+
+for curfile in ${uninformativeRegionFiles}; do
+    if [ ! -f "${curfile}" ]; then
+        #NB one missing file will kill the whole list
+        echo "WARNING: Can't find ${curfile}; will run without any region mask"
+        uninformativeRegionFiles=""
+    else
+        echo "Found uninformative regions file: $(basename ${curfile}) [${curfile}]" >> ${sampleOutdir}/${sample_name}.info.txt
+    fi
+done
+
+
 #Sort exclusion files and strip comments just in case
-cat ${genome2exclude} | awk '$0 !~ /^#/' | sort-bed - |
+cat ${uninformativeRegionFiles} | awk '$0 !~ /^#/' | sort-bed - |
 #BUGBUG hardcoded repeatmask for bam1genome
-bedops -u - /vol/isg/annotation/bed/${bam1genome}/repeat_masker/Satellite.bed |
-bedops -u - ${INTERMEDIATEDIR}/HA_coords.bed > ${TMPDIR}/uninformativeRegionFile.bed
+bedops -u - /vol/isg/annotation/bed/${bam1genome}/repeat_masker/Satellite.bed > ${TMPDIR}/uninformativeRegionFile.bed
 
 
 echo "Applying uninformativeRegionFile"
@@ -107,8 +113,6 @@ echo "Applying uninformativeRegionFile"
 cat ${sampleOutdir}/${sample_name}.bed | 
 #Remove bam1 reads that overlap the ranges defined in uninformativeRegionFile.bed file via submit_bamintersect.sh
 bedops -n 1 - ${TMPDIR}/uninformativeRegionFile.bed |
-#Only apply deletion_range to bam1
-#bedops -n 1 - ${INTERMEDIATEDIR}/deletion_range.bed |
 #Switch to bam2
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - |
 #Sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the uninformativeRegionFile:
