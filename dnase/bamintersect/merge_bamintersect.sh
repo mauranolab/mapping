@@ -97,7 +97,7 @@ for curfile in ${uninformativeRegionFiles}; do
         echo "WARNING: Can't find ${curfile}; will run without any region mask"
         uninformativeRegionFiles=""
     else
-        echo "Found uninformative regions file: $(basename ${curfile}) [${curfile}]" >> ${sampleOutdir}/${sample_name}.info.txt
+        echo "Found uninformative regions file: $(basename ${curfile}) [${curfile}]"
     fi
 done
 
@@ -148,8 +148,8 @@ n1=$(wc -l < "${sampleOutdir}/${sample_name}.bed")
 # Number of informative reads
 n2=$(wc -l < "${sampleOutdir}/${sample_name}.informative.bed")
 
-echo >> ${sampleOutdir}/${sample_name}.info.txt
-echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tare potentially informative." >> ${sampleOutdir}/${sample_name}.info.txt
+echo
+echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tare potentially informative."
 
 ###########################################################################################################################################
 echo
@@ -186,9 +186,9 @@ if [ -s "${TMPDIR}/${sample_name}.readNames.txt" ]; then
         UCSCbase="bigDataUrl=https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/${projectdir}/${sampleOutdir}"
     fi
     
-    echo "" >> ${sampleOutdir}/${sample_name}.info.txt
-    echo "Paths for custom tracks to bam files with informative reads:" >> ${sampleOutdir}/${sample_name}.info.txt
-    echo "track name=\"${sample_name}\" description=\"${sample_name} Reads\" visibility=pack pairEndsByName=F maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.bam" >> ${sampleOutdir}/${sample_name}.info.txt
+    echo ""
+    echo "Paths for custom tracks to bam files with informative reads:"
+    echo "track name=\"${sample_name}\" description=\"${sample_name} Reads\" visibility=pack pairEndsByName=F maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.bam"
     
 else
     # No informative reads
