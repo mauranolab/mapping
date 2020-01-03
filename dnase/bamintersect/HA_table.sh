@@ -15,40 +15,43 @@ sampleOutdir=$3
 sample_name=$4
 INTERMEDIATEDIR=$5
 src=$6
-ReqFullyAligned=$7
-
-# Exclude reads with flags: read unmapped, mate unmapped, failed QC flag, read is duplicate, or read is sup alignment.
-exclude_flags=3596
+exclude_flags=$7
+ReqFullyAligned=$8
 
 ######################################################################
 
 if [ ${runHA} = "AB" ]; then
     echo "Generating assemblyBackbone table"
-
+    
     # Assume there are only 2 chromosomes: the assembly and the assembly backbone, with the assembly first.
     read -r assembly assembly_readlength all_other <<< $(samtools idxstats ${bamfile})
-
-    # Make sure the naming conventions are being followed.
-    backbone=${assembly}_backbone
-    backboneCheck=$(samtools idxstats ${bamfile} | tail -n +2 | head -n 1 | cut -f1)
-    if [ "${backbone}" != "${backboneCheck}" ]; then
-        echo "[assemblyBackbone_table.sh] ERROR: Problem with assignment of backbone names: ${assembly} ${backbone} ${backboneCheck}"
+    
+    # Make sure the naming conventions are being followed, since some manual effort goes into making these assembly files.
+    # We require only two chromosomes: an [assembly] and an [assembly]_backbone
+    # If there is a misspelling, extra chromosomes, or if they are out of order, an error happens.
+    backbone=$(samtools idxstats ${bamfile} | tail -n +2 | head -n 1 | cut -f1)  # This should be the backbone chromosome.
+    numChroms=$(samtools idxstats ${bamfile} | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' | wc -l)
+    if [[ "${numChroms}" != 2 ]]; then
+        echo "${assembly} has wrong number of chromosomes, quitting successfully."
+        touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
+        exit 0
+    elif [ "${backbone}" != "${assembly}_backbone" ]; then
+        # The second chromosome is not named [assembly]_backbone
+        echo "WARNING: Assembly has two chromosomes but the second does not match the expected backbone name, quitting successfully: ${assembly} ${backbone}"
         echo ""
         echo "samtools idxstats ${bamfile} :"
         samtools idxstats ${bamfile}
-        # exit 1
-    
-        # For now:
         touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
         exit 0
+    else
+        # The naming conventions are being followed.
+        echo assembly is: ${assembly}
+        echo backbone is: ${backbone}
+        
+        # Define Zone 1. We want it to be the entire assembly.
+        echo -e "${assembly}\t0\t${assembly_readlength}" > ${TMPDIR}/zone1.bed
+        outputBed="${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
     fi
-    echo assembly is:  ${assembly}
-    echo backbone is: ${backbone}
-
-    # Define Zone 1. We want it to be the entire assembly.
-    echo -e "${assembly}\t0\t${assembly_readlength}" > ${TMPDIR}/zone1.bed
-
-    outputBed="${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
 elif [ ${runHA} = "HA" ]; then
     echo "Generating HA table"
     # Define Zone 1. We want it to be the HAs (both of them).
@@ -101,4 +104,3 @@ ${src}/bamintersect.py --src ${src} --bam1 "${TMPDIR}/bamfile_Zone1reads.bam" --
 
 sort-bed ${sampleOutdir}/dsgrep_out.csv > ${outputBed}
 rm -f ${sampleOutdir}/dsgrep_out.csv
-
