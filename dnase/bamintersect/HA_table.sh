@@ -27,13 +27,13 @@ if [ ${runHA} = "AB" ]; then
     read -r assembly assembly_readlength all_other <<< $(samtools idxstats ${bamfile})
 
     # Make sure the naming conventions are being followed, since some manual effort goes into making these assembly files.
-    # We are expecting only two chromosomes: an [assembly] and an [assembly]_backbone
+    # We require only two chromosomes: an [assembly] and an [assembly]_backbone
     # If there is a misspelling, extra chromosomes, or if they are out of order, an error happens.
     backbone=${assembly}_backbone
     backboneCheck=$(samtools idxstats ${bamfile} | tail -n +2 | head -n 1 | cut -f1)  # This should be the backbone chromosome.
-    numChroms=$(wc -l <(samtools idxstats ${bamfile}) | sed '$d' | cut -d ' ' -f1)
+    numChroms=$(samtools idxstats ${bamfile} | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' | wc -l)
 
-    if [ "${numChroms}" -gt 2 ]; then
+    if [[ "${numChroms}" > 2 ]]; then
         # There are three or more chromosomes.
         echo "${assembly} has too many chromosomes."
         touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
