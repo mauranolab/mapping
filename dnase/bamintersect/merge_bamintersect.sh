@@ -13,6 +13,14 @@ debug_fa() {
         echo "[DEBUG] ${1}"
     fi
 }
+
+
+# Exclude reads with flags: read unmapped, mate unmapped, read is duplicate, or read is sup alignment
+assemblyBackboneExcludeFlags=3084
+# Exclude reads with flags: read unmapped, mate unmapped, failed QC flag, read is duplicate, or read is sup alignment
+homologyArmExcludeFlags=3596
+
+
 ##########################################################################################################
 
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
@@ -37,7 +45,6 @@ if [ ! -s ${sampleOutdir}/${sample_name}.bed ]; then
     date
     exit 0
 fi
-
 
 debug_fa "Finished sorting dsgrep.bed"
 
@@ -117,8 +124,7 @@ echo
 if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis."
 
-    # Exclude reads with flags: read unmapped, mate unmapped, failed QC flag, read is duplicate, or read is sup alignment (3596).
-    ${src}/HA_table.sh HA ${bam1} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} 3596 ${ReqFullyAligned}
+    ${src}/HA_table.sh HA ${bam1} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} ${homologyArmExcludeFlags} ${ReqFullyAligned}
     ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam1genome} ${bam1genome} ${sampleOutdir}/${sample_name}.HA.bed
 else
     echo -e "No HAs available, so there will be no HA analysis."
@@ -127,8 +133,7 @@ fi
 
 echo
 echo "Look for reads spanning the assembly and the backbone."
-# Exclude reads with flags: read unmapped, mate unmapped, read is duplicate, or read is sup alignment (3084).
-${src}/HA_table.sh AB ${bam2} ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} 3084 ${ReqFullyAligned}
+${src}/HA_table.sh AB ${bam2} ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} ${assemblyBackboneExcludeFlags} ${ReqFullyAligned}
 ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
 echo
 
@@ -142,46 +147,39 @@ echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tare potentia
 
 ###########################################################################################################################################
 echo
-echo "Subset bam files for uploading UCSC custom tracks"
-cut -f4 ${sampleOutdir}/${sample_name}.assemblyBackbone.bed > ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt
-
-if [ -s "${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt" ]; then
-    ${src}/subsetBAM.py --exclude_flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt --bamFile_in ${bam1} --bamFile_out - |
-    samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.assemblyBackbone.bam
-    samtools index ${sampleOutdir}/${sample_name}.assemblyBackbone.bam
-fi
-
+echo "Merging bam files"
+bamfiles=`cat ${INTERMEDIATEDIR}/inputs.bamintersect.txt | cut -f3 | perl -pe 's/\.bed$/.bam1.bam/g;'; cat ${INTERMEDIATEDIR}/inputs.bamintersect.txt | cut -f3 | perl -pe 's/\.bed$/.bam2.bam/g;'`
+samtools merge -@ $NSLOTS -c -p -O bam -l 1 $TMPDIR/${sample_name}.bam ${bamfiles}
 cut -f4 ${sampleOutdir}/${sample_name}.informative.bed > ${TMPDIR}/${sample_name}.readNames.txt
 if [ -s "${TMPDIR}/${sample_name}.readNames.txt" ]; then
     debug_fa "${sample_name}.readNames.txt was found"
     
-    ${src}/subsetBAM.py --exclude_flags ${BAM_E1} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bam1} --bamFile_out - |
-    samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam1genome}.bam
-    debug_fa "Completed samtools lines for bam1"
-    
-    ${src}/subsetBAM.py --exclude_flags ${BAM_E2} --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in ${bam2} --bamFile_out - |
-    samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/${sample_name}.sort -l 1 -o ${TMPDIR}/${sample_name}.informative.${bam2genome}.bam
-    debug_fa "Completed samtools lines for bam2"
-    
-    samtools merge -@ $NSLOTS -O bam -l 9 ${sampleOutdir}/${sample_name}.informative.bam ${TMPDIR}/${sample_name}.informative.${bam1genome}.bam ${TMPDIR}/${sample_name}.informative.${bam2genome}.bam
+    ${src}/subsetBAM.py --readNames ${TMPDIR}/${sample_name}.readNames.txt --bamFile_in $TMPDIR/${sample_name}.bam --bamFile_out ${sampleOutdir}/${sample_name}.informative.bam
     samtools index ${sampleOutdir}/${sample_name}.informative.bam
-    
-    #Prep for UCSC track links
-    #Remove "new" from the end of path so that we can reprocess data without affecting live data
-    projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab|isg\/encode)\///g;' | perl -pe 's/\/new$//g;'`
-    if [[ `pwd` =~ ^\/vol\/cegs\/ ]]; then
-        UCSCbase="bigDataUrl=https://cegs@cascade.isg.med.nyu.edu/cegs/${projectdir}/${sampleOutdir}"
-    else
-        UCSCbase="bigDataUrl=https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/${projectdir}/${sampleOutdir}"
-    fi
-    
-    echo ""
-    echo "Paths for custom tracks to bam files with informative reads:"
-    echo "track name=\"${sample_name}\" description=\"${sample_name} Reads\" visibility=pack pairEndsByName=F maxItems=10000 type=bam ${UCSCbase}/${sample_name}.informative.bam"
-    
+fi
+
+#Prep for UCSC track links
+#Remove "new" from the end of path so that we can reprocess data without affecting live data
+projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab|isg\/encode)\///g;' | perl -pe 's/\/new$//g;'`
+if [[ `pwd` =~ ^\/vol\/cegs\/ ]]; then
+    UCSCbase="bigDataUrl=https://cegs@cascade.isg.med.nyu.edu/cegs/${projectdir}/${sampleOutdir}"
 else
-    # No informative reads
-    echo "For ${sample_name}, there are no bam files with informative reads."
+    UCSCbase="bigDataUrl=https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/${projectdir}/${sampleOutdir}"
+fi
+
+echo ""
+echo "Paths for custom tracks to bam files with informative reads:"
+echo "track name=\"${sample_name}\" description=\"${sample_name} Reads\" visibility=pack pairEndsByName=F maxItems=10000 type=bam ${UCSCbase}/${sample_name}.informative.bam"
+
+
+echo
+echo "Subset bam files for assemblyBackbone"
+cut -f4 ${sampleOutdir}/${sample_name}.assemblyBackbone.bed > ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt
+
+if [ -s "${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt" ]; then
+    ${src}/subsetBAM.py --exclude_flags ${assemblyBackboneExcludeFlags} --readNames ${TMPDIR}/${sample_name}.assemblyBackbone.readNames.txt --bamFile_in ${bam1} --bamFile_out - |
+    samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.assemblyBackbone.bam
+    samtools index ${sampleOutdir}/${sample_name}.assemblyBackbone.bam
 fi
 echo
 
@@ -189,7 +187,7 @@ debug_fa "Done with the samtools section."
 
 #############################################################################
 ## Cleanup
-rm -r ${INTERMEDIATEDIR}
+#rm -r ${INTERMEDIATEDIR}
 #############################################################################
 
 echo
