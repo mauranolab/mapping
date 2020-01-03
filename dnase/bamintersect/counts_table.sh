@@ -30,7 +30,7 @@ bam1genome=$3
 bam2genome=$4
 bamintersectBED12=$5
 
-echo "Making counts_table from ${bamintersectBED12}; will output to ${OUTBASE}.counts.txt"
+echo "[counts_table] Making counts_table from ${bamintersectBED12}; will output to ${OUTBASE}.counts.txt"
 
 
 echo -e -n "Number of total reads:\t"
@@ -133,5 +133,5 @@ awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -F "\t" 'BEGIN
 
 #####################################################################################
 
-echo "Finished counts_table.sh"
+echo "[counts_table] Done"
 date
