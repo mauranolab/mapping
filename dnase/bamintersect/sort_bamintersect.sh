@@ -4,6 +4,14 @@ set -eu -o pipefail
 ########################################################
 ## Variables passed in via sbatch export.
 ########################################################
+INTERMEDIATEDIR=$1
+sampleOutdir=$2
+sample_name=$3
+BAM=$4
+BAM_N=$5
+BAM_K=$6 # Required. Use "0" if necessary.
+BAM_E=$7 # Required. Use "0" if necessary.
+
 
 jobid=$SLURM_ARRAY_TASK_ID
 chromname=`awk -F "\t" -v jobid=$jobid 'NR==jobid {print $1}' ${INTERMEDIATEDIR}/inputs.sort.bam${BAM_N}.txt`
