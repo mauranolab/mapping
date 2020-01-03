@@ -370,7 +370,7 @@ echo
 echo "bamintersect"
 for bam1chromname in `cut -f1 ${INTERMEDIATEDIR}/inputs.sort.bam1.txt`; do
     for bam2chromname in `cut -f1 ${INTERMEDIATEDIR}/inputs.sort.bam2.txt`; do
-        echo ${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam1chromname}.bam ${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam2chromname}.bam ${INTERMEDIATEDIR}/bamintersectPyOut/${bam1chromname}_vs_${bam2chromname} >> ${INTERMEDIATEDIR}/inputs.bamintersect.txt
+        echo -e "${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam1chromname}.bam\t${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam2chromname}.bam\t${INTERMEDIATEDIR}/bamintersectPyOut/${bam1chromname}_vs_${bam2chromname}.bed" >> ${INTERMEDIATEDIR}/inputs.bamintersect.txt
     done
 done
 

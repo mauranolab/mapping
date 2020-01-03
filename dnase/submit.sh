@@ -12,7 +12,7 @@ export OPENBLAS_NUM_THREADS=1
 module load picard/2.18.15
 module load FastQC/0.11.4
 module load bedtools/2.25
-module load bedops/2.4.35
+module load bedops/2.4.37
 module load bwa/0.7.15
 module load htslib/1.9
 module load samtools/1.9
@@ -88,6 +88,8 @@ find ${srcbase} -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}
 #Only subdir we need is bamintersect
 cp -rp ${srcbase}/bamintersect ${src}
 
+
+###Map
 if [[ "${processingCommand}" =~ ^map ]]; then
     grep ${BS} inputs.txt > ${sampleOutdir}/inputs.map.txt
     n=`cat ${sampleOutdir}/inputs.map.txt | wc -l`
@@ -100,6 +102,7 @@ if [[ "${processingCommand}" =~ ^map ]]; then
 fi
 
 
+###Merge
 if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
     if [[ "${processingCommand}" =~ ^map ]]; then
         mergeHold="-hold_jid `cat ${sampleOutdir}/sgeid.map.${mapname}`"
@@ -122,8 +125,19 @@ if [[ "${processingCommand}" =~ ^map ]]; then
 fi
 
 
-#bamintersect
-#shouldn't this read processingCommand}" == "bamintersect" so you can force bamintersect for non-dna/capture samples?
+###bamintersect
+#Parses Genetic Modification entry from LIMS to return the integration site (in square brackets) for the given entry
+function getIntegrationSite {
+    local sampleAnnotationGeneticModification=$1
+    local entry=$2
+    
+    #Parse out integration site. If we can't find it for whatever reason, use null
+    #TODO Take only first three (MenDel) fields in case there are comments/constructs (unofficial for now)
+    #Parse each genetic modification on separate line, and move part in [] to $2
+    echo "${sampleAnnotationGeneticModification}" | perl -pe 's/,/\n/g;' | perl -pe 's/\[/\t/g;' -e 's/\]/\t/g;' | awk -v entry=${entry} -F "\t" 'BEGIN {integrationsite="null"} $1==entry {integrationsite=$2} END {print integrationsite}'
+}
+
+
 if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect" ]] || [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]); then
     echo
     echo "bamintersect"
@@ -140,11 +154,12 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
             cegsGenomeShort="${cegsGenome/cegsvectors_/}"
             #Limit this to references listed as genetic modifications
             if [[ ${sampleAnnotationGeneticModification} =~ ${cegsGenomeShort} ]]; then
-                #Parse out integration site. If we can't find it for whatever reason, use null
-                #NB for assemblons this yields the LP name rather looking up the LP integrationsite
-                #TODO Take only first three (MenDel) fields in case there are comments/constructs (unofficial for now)
-                #Parse each genetic modification on separate line, and move part in [] to $2
-                integrationsite=`echo "${sampleAnnotationGeneticModification}" | perl -pe 's/,/\n/g;' | perl -pe 's/\[/\t/g;' -e 's/\]/\t/g;' | awk -v genome=${cegsGenomeShort} -F "\t" 'BEGIN {integrationsite="null"} $1==genome {integrationsite=$2} END {print integrationsite}'`
+                integrationsite=`getIntegrationSite ${sampleAnnotationGeneticModification} ${cegsGenomeShort}`
+                #For assemblons this yields the LP name rather looking up the LP integrationsite, so look up the site for the LP itself
+                if [[ "${integrationsite}" =~ ^LP ]]; then
+                    echo "found ${integrationsite}, looking up again"
+                    integrationsite=`getIntegrationSite ${sampleAnnotationGeneticModification} ${integrationsite}`
+                fi
                 echo "+ ${mammalianAnnotationGenome} vs. ${cegsGenomeShort}[${integrationsite}]"
                 
                 if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
@@ -161,6 +176,7 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
 fi
 
 
+###Analysis
 #Always run analysis job, but specifying none will have analysis.sh skip most analyses
 if [[ "${processingCommand}" != bamintersect ]]; then
     echo
