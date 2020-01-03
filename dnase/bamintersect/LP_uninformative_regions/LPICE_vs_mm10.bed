@@ -1,2 +1,4 @@
-#LPICE_downstream	368	504	Pgk1
-chrX	106187099	106187235	Pgk1
+#LPICE_downstream	368	504	Pgk1_promoter
+#Old coords from cadley chrX	106187099	106187235	Pgk1_promoter
+#Full match
+chrX	106186732	106187231	Pgk1_promoter
