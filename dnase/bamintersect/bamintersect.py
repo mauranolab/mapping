@@ -44,7 +44,6 @@ def write_output(bed_writer, file1_file, file2_file, file1_read, file2_read, bed
     
     if bam2out_file is not None:
         bam2out_file.write(file2_read)
-        return
     
     if bed_writer is not None:
         file1_readID = file1_read.query_name
@@ -90,9 +89,9 @@ def write_output(bed_writer, file1_file, file2_file, file1_read, file2_read, bed
 def samtoolsCmpReadnames(cCode, read1, operator, read2):
     read1_b = read1.encode('utf-8')
     read2_b = read2.encode('utf-8')
-
+    
     retValue = cCode.strnum_cmp(read1_b, read2_b)
-
+    
     if operator == ">":
         return retValue > 0
     elif operator == "<":
@@ -113,6 +112,7 @@ def openBamOutFile(bamin, bamout):
         bamout_file = None
 
     return bamout_file
+
 
 def bam_intersect_f(bam_name1, bam_name2, same, bedout, bam1out, bam2out, max_mismatches, ReqFullyAligned):
     # Get iterator handles for bam input files #1 and #2.
