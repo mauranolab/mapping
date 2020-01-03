@@ -145,8 +145,14 @@ echo Starting calls to bedToBigBed... > make_bigBED.log
 BASE="/vol/${assmbly_type2}/sequences/"
 
 # This loop generates the ".bb" files which are found in the trackhub "<genome>/data" directories.
-# genome_array just contains hg38, mm10, rn6, and cegsvectors.
+# For hub_type=CEGS genome_array just contains hg38, mm10, rn6, and cegsvectors.
+# For hub_type=MAURANOLAB genome_array just contains hg38, mm10, and mauranolab.
 for genome in "${genome_array[@]}"; do
+    if [ ! -d "/vol/${assmbly_type2}/sequences/${genome}" ]; then
+        echo "Skipping ${genome} assemblies"
+        continue
+    fi
+
     genome=${genome}/
     if [ "${genome}" = "${assmbly_type1}/" ]; then
         chrom_sizes="/vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes"
