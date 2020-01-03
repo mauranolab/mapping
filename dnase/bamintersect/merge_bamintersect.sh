@@ -20,18 +20,15 @@ echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
 ## Variables are passed in via sbatch export.
 
-## Merge the bam_intersect output files:
+echo "Merging the bam_intersect output files"
+#xargs and bedops -u don't work well for some reason, so pipe everything through cat first; performance shouldn't be a huge deal
+cat ${INTERMEDIATEDIR}/inputs.bamintersect.txt | cut -f3 | xargs cat | sort-bed - > ${sampleOutdir}/${sample_name}.bed
 
-debug_fa "Starting merge_bamintersect.sh"
 
-# First check for the "no reads to merge" problem. Also deal with the usual pipefail issue via "true".
-dir_names=($(ls -d ${INTERMEDIATEDIR}/bamintersectPyOut/*/ 2> /dev/null || true))      ## These have a trailing /
-numElements="${#dir_names[@]}"
-if [ "${numElements}" = "0" ]; then
+if [ ! -s ${sampleOutdir}/${sample_name}.bed ]; then
     # Don't generate an error. Create some appropriately empty output files.
-    echo "" > "${sampleOutdir}/${sample_name}.bed"
     echo "" > "${sampleOutdir}/${sample_name}.informative.bed"
-    echo "There are no reads with unmapped mates to analyze."
+    echo "There are no reads left to analyze."
     # Not generating bam files for this case.
     
     ## Cleanup
@@ -41,17 +38,6 @@ if [ "${numElements}" = "0" ]; then
     exit 0
 fi
 
-first="True"
-for i in ${dir_names[@]}; do
-    if [ ${first} = "True" ]; then
-        cp "${i}dsgrep_out.csv" "${TMPDIR}/unsorted_dsgrep.bed"
-        first="False"
-    else
-        cat "${i}dsgrep_out.csv" >> "${TMPDIR}/unsorted_dsgrep.bed"
-    fi
-done
-
-sort-bed ${TMPDIR}/unsorted_dsgrep.bed > ${sampleOutdir}/${sample_name}.bed
 
 debug_fa "Finished sorting dsgrep.bed"
 
@@ -66,7 +52,7 @@ if [ ${make_bed} != "--make_bed" ]; then
 fi
 
 if [ ${make_table} != "True" ]; then
-    echo "LP integration table not requested; quitting successfully."
+    echo "Summary counts tables not requested; quitting successfully."
     exit 0
 fi
 

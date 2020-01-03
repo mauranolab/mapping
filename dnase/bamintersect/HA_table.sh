@@ -63,10 +63,10 @@ else
 fi
 
 # Preserve the header.
-samtools view -H ${bamfile} > "${TMPDIR}/header.sam"
+samtools view -H ${bamfile} > ${TMPDIR}/header.sam
 
 # Get reads from Zone 1, where the mates are mapped to anywhere.  Then get the read IDs with only one read in Zone 1 (via cut & awk).
-samtools view -F ${exclude_flags} -L ${TMPDIR}/zone1.bed ${bamfile} | cut -f1 | sort | uniq -c | awk '$1==1 {print $2}' > "${TMPDIR}/Reads.txt"
+samtools view -F ${exclude_flags} -L ${TMPDIR}/zone1.bed ${bamfile} | cut -f1 | sort | uniq -c | awk '$1==1 {print $2}' > ${TMPDIR}/Reads.txt
 # Reads.txt is all the reads with mapped mates, and only one read in Zone 1.
 # The other reads must be somewhere outside the HAs (Way 1) or inside the backbone (Way 2).
 
@@ -85,25 +85,24 @@ fi
 # Note that we will get two lines for each such read ID: one in Zone 1, and one in Zone 2.
 ${src}/subsetBAM.py  \
     --exclude_flags ${exclude_flags} \
-    --readNames "${TMPDIR}/Reads.txt" \
+    --readNames ${TMPDIR}/Reads.txt \
     --bamFile_in ${bamfile} \
-    --bamFile_out "${TMPDIR}/subsetBAM_output.bam"
+    --bamFile_out ${TMPDIR}/subsetBAM_output.bam
 
 # Need to sort & index here so we can filter by region below.
-samtools sort "${TMPDIR}/subsetBAM_output.bam" > "${TMPDIR}/subsetBAM_output_sorted.bam"
-samtools index "${TMPDIR}/subsetBAM_output_sorted.bam"
+samtools sort ${TMPDIR}/subsetBAM_output.bam > ${TMPDIR}/subsetBAM_output_sorted.bam
+samtools index ${TMPDIR}/subsetBAM_output_sorted.bam
 
 # Get only the reads inside Zone 1.
-samtools view  -L ${TMPDIR}/zone1.bed "${TMPDIR}/subsetBAM_output_sorted.bam" | tee "${TMPDIR}/Zone1reads_noHdr.sam" | cat ${TMPDIR}/header.sam - | samtools view -h -b | samtools sort -n > "${TMPDIR}/bamfile_Zone1reads.bam"
+samtools view  -L ${TMPDIR}/zone1.bed ${TMPDIR}/subsetBAM_output_sorted.bam | tee ${TMPDIR}/Zone1reads_noHdr.sam | cat ${TMPDIR}/header.sam - | samtools view -h -b | samtools sort -n > ${TMPDIR}/bamfile_Zone1reads.bam
 
 # Get the reads which are in Zone 2.
-samtools view "${TMPDIR}/subsetBAM_output_sorted.bam" | grep -v -F -f "${TMPDIR}/Zone1reads_noHdr.sam" | cat ${TMPDIR}/header.sam - | samtools view -h -b | samtools sort -n > ${TMPDIR}/bamfile_Zone2reads.bam
+samtools view ${TMPDIR}/subsetBAM_output_sorted.bam | grep -v -F -f ${TMPDIR}/Zone1reads_noHdr.sam | cat ${TMPDIR}/header.sam - | samtools view -h -b | samtools sort -n > ${TMPDIR}/bamfile_Zone2reads.bam
 
 # Now call bamintersect.py to build the bed12 file.
-${src}/bamintersect.py --src ${src} --bam1 "${TMPDIR}/bamfile_Zone1reads.bam" --bam2 "${TMPDIR}/bamfile_Zone2reads.bam" --outdir ${sampleOutdir} --make_bed ${ReqFullyAligned}
-
-sort-bed ${sampleOutdir}/dsgrep_out.csv > ${outputBed}
-rm -f ${sampleOutdir}/dsgrep_out.csv
+#BUGBUG doesn't respect ${make_bed}
+${src}/bamintersect.py ${TMPDIR}/bamfile_Zone1reads.bam ${TMPDIR}/bamfile_Zone2reads.bam --src ${src} --bedout ${TMPDIR}/bamintersect_out.bed ${ReqFullyAligned}
+sort-bed ${TMPDIR}/bamintersect_out.bed > ${outputBed}
 
 echo "[HA_table] Done]"
 date

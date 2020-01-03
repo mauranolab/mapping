@@ -10,23 +10,18 @@ set -eu -o pipefail
 
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
+jobid=${SLURM_ARRAY_TASK_ID}
+bam1=`awk -F "\t" -v jobid=${jobid} 'NR==jobid {print $1}' ${INTERMEDIATEDIR}/inputs.bamintersect.txt`
+bam2=`awk -F "\t" -v jobid=${jobid} 'NR==jobid {print $2}' ${INTERMEDIATEDIR}/inputs.bamintersect.txt`
+outfile=`awk -F "\t" -v jobid=${jobid} 'NR==jobid {print $3}' ${INTERMEDIATEDIR}/inputs.bamintersect.txt`
 
-## The "|| true" prevents the SIGPIPE signal problem. It's only needed when set -eo pipefail is enabled.
-bam_intersect_data=$(tail -n+${SLURM_ARRAY_TASK_ID} "${INTERMEDIATEDIR}/inputs.bamintersect.txt" | head -n 1) || true
-read -r bam1 bam2 outdir <<< ${bam_intersect_data}
 
-####################################################################################################################
 ## reads_match=True means that we are looking to pair up read1's with read1's, and read2's with read2's.
 ##             True is also used for unpaired reads.
 ## reads_match=False means that we are looking to pair up read1's with read2's.
-${src}/bamintersect.py --src ${src} --bam1 ${bam1} --bam2 ${bam2} --outdir ${TMPDIR} --max_mismatches ${max_mismatches} ${reads_match} ${make_bed} ${ReqFullyAligned}
-
-## See if there is anything in dsgrep_out.csv, which is produced by bamintersect.py
-## If not, then let TMPDIR die. This reduces the number of merge operations needed in merge_bamintersect.sh
-if [ -s "${TMPDIR}/dsgrep_out.csv" ]; then
-    mkdir -p "${outdir}"
-    mv "${TMPDIR}/dsgrep_out.csv" ${outdir}
-fi
+#BUGBUG doesn't respect ${make_bed}
+${src}/bamintersect.py ${bam1} ${bam2} --src ${src} --bedout ${TMPDIR}/bamintersect_out.bed --max_mismatches ${max_mismatches} ${reads_match} ${ReqFullyAligned}
+sort-bed ${TMPDIR}/bamintersect_out.bed > ${outfile}
 
 echo
 echo "Done!!!"
