@@ -177,7 +177,7 @@ if [ -s "${TMPDIR}/${sample_name}.readNames.txt" ]; then
     
     echo ""
     echo "Paths for custom tracks to bam files with informative reads:"
-    echo "track name=\"${sample_name}\" description=\"${sample_name} Reads\" visibility=pack pairEndsByName=F maxWindowToDraw=10000 maxItems=250 type=bam ${UCSCbase}/${sample_name}.informative.bam"
+    echo "track name=\"${sample_name}\" description=\"${sample_name} Reads\" visibility=pack pairEndsByName=F maxItems=10000 type=bam ${UCSCbase}/${sample_name}.informative.bam"
     
 else
     # No informative reads
