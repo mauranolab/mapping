@@ -132,17 +132,18 @@ if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
 
     # Exclude reads with flags: read unmapped, mate unmapped, failed QC flag, read is duplicate, or read is sup alignment (3596).
     ${src}/HA_table.sh HA ${bam2} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} 3596 ${ReqFullyAligned}
-    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam2genome} ${sampleOutdir}/${sample_name}.HA.bed
+    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam1genome} ${bam1genome} ${sampleOutdir}/${sample_name}.HA.bed
 else
     echo -e "No HAs available, so there will be no HA analysis."
 fi
 echo
 
+
 echo
 echo "Look for reads spanning the assembly and the backbone."
 # Exclude reads with flags: read unmapped, mate unmapped, read is duplicate, or read is sup alignment (3084).
 ${src}/HA_table.sh AB ${bam1} ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} 3084 ${ReqFullyAligned}
-${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
 echo
 
 # Number of reads
