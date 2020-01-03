@@ -1,12 +1,13 @@
 #!/bin/bash
 set -eu -o pipefail
 
-########################################################
-## src is passed in via an sbatch export
-## reads_match is passed in via an sbatch export
-## make_bed is passed in via an sbatch export
-## INTERMEDIATEDIR is passed in via an sbatch export ($INTERMEDIATEDIR/sorted_bams contains output of sort_bamintersect.sh)
-########################################################
+src=$1
+INTERMEDIATEDIR=$2
+ReqFullyAligned=$3
+max_mismatches=$4
+make_bed=${5-} #optional
+reads_match=${6-} #optional, BUGBUG if --make_bed not specified
+
 
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 

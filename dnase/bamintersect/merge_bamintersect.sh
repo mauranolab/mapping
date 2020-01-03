@@ -58,6 +58,7 @@ fi
 
 
 #Unfiltered
+echo
 ${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.bed
 echo
 
@@ -106,8 +107,8 @@ bedops -n 1 - ${TMPDIR}/uninformativeRegionFile.bed |
 #Switch back to bam1 coordinates
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - > ${sampleOutdir}/${sample_name}.informative.bed
 
-${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.informative.bed
 echo
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.informative.bed
 
 
 # HA analysis:
@@ -122,7 +123,6 @@ if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
 else
     echo -e "No HAs available, so there will be no HA analysis."
 fi
-echo
 
 
 echo

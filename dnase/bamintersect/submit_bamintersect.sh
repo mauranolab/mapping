@@ -337,31 +337,11 @@ function make_chrom_inputfile {
 make_chrom_inputfile ${bam1} "bam1_" > ${INTERMEDIATEDIR}/inputs.sort.bam1.txt
 make_chrom_inputfile ${bam2} "bam2_" > ${INTERMEDIATEDIR}/inputs.sort.bam2.txt
 
-
-export_vars="sampleOutdir=${sampleOutdir}"
-export_vars="${export_vars},BAM=${bam1}"
-export_vars="${export_vars},BAM_K=${bam1_keep_flags}"      # Required. Use "0" if necessary.
-export_vars="${export_vars},BAM_E=${bam1_exclude_flags}"   # Required. Use "0" if necessary.
-export_vars="${export_vars},BAM_N=1"
-export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
-export_vars="${export_vars},sample_name=${sample_name}"
-
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam1.txt)
-
-qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
-
-
-export_vars="sampleOutdir=${sampleOutdir}"
-export_vars="${export_vars},BAM=${bam2}"
-export_vars="${export_vars},BAM_K=${bam2_keep_flags}"      # Required. Use "0" if necessary.
-export_vars="${export_vars},BAM_E=${bam2_exclude_flags}"   # Required. Use "0" if necessary.
-export_vars="${export_vars},BAM_N=2"
-export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
-export_vars="${export_vars},sample_name=${sample_name}"
+qsub -S /bin/bash -cwd -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam1} 1 ${bam1_keep_flags} ${bam1_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam2.txt)
-
-qsub -S /bin/bash -cwd -terse -j y --export=ALL,${export_vars} -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+qsub -S /bin/bash -cwd -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam2} 2 ${bam2_keep_flags} ${bam2_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
 ################################################################################################
@@ -377,14 +357,7 @@ done
 
 n=$(wc -l < ${INTERMEDIATEDIR}/inputs.bamintersect.txt)
 
-export_vars="src=${src}"
-export_vars="${export_vars},reads_match=${reads_match}"
-export_vars="${export_vars},make_bed=${make_bed}"
-export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
-export_vars="${export_vars},max_mismatches=${max_mismatches}"
-export_vars="${export_vars},ReqFullyAligned=${ReqFullyAligned}"
-
-qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` --export=ALL,${export_vars} -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh" > ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
+qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${src} ${INTERMEDIATEDIR} ${ReqFullyAligned} ${max_mismatches} ${make_bed} ${reads_match}" > ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
 rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
