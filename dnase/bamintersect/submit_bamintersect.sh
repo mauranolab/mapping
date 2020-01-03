@@ -60,6 +60,7 @@ Usage: $(basename "$0") [Options]
     1) The mammalian genome is customarily passed as bam1. This affects:
         Files for uninformative read masking differ
         HA table is run on bam1, backbone analysis on bam2
+        Reads must have unmapped mates in bam2 (we can't require this for bam1 since typically the payload matches some/all of the reference so it would mask internal reads)
     
     2) Mammalian genomes should use the annotationgenome name (hg38, not hg38_full)
     
@@ -77,7 +78,7 @@ Usage: $(basename "$0") [Options]
         # Exclude PCR or optical duplicates.
         # Exclude supplementary aligments.
     
-    --bam2_keep_flags {a sam format flag value required of all bam2 reads to be included in the analysis. Default = 1}
+    --bam2_keep_flags {a sam format flag value required of all bam2 reads to be included in the analysis. Default = 9}
     
     --bam2_exclude_flags {a sam format flag value for bam2 reads to be excluded from the analysis. Default = 3078}
     
@@ -178,7 +179,7 @@ eval set -- "${options}"
     integrationsite="null"
     bam1_keep_flags="1"
     bam1_exclude_flags="3078"
-    bam2_keep_flags="1"
+    bam2_keep_flags="9"
     bam2_exclude_flags="3078"
     verbose=False
     max_mismatches=1
@@ -356,7 +357,6 @@ done
 
 
 n=$(wc -l < ${INTERMEDIATEDIR}/inputs.bamintersect.txt)
-
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${src} ${INTERMEDIATEDIR} ${ReqFullyAligned} ${max_mismatches} ${make_bed} ${reads_match}" > ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
 rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
