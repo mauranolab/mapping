@@ -13,10 +13,10 @@ parser = argparse.ArgumentParser(prog = "subsetBAM.py",
                                  description = "Returns a BAM file subsetted by a list of read names.",
                                  add_help = True)
 
-parser.add_argument('--exclude_flags', action='store', type=int, help='SAM flags to filter out certain reads.')
-parser.add_argument('--readNames', action='store', type=str, help='Name of a file containing readnames to be extracted from bamFile_in.')
-parser.add_argument('--bamFile_in', action='store', type=str, help='Name of the bam file from which bam lines will be retrieved.')
-parser.add_argument('--bamFile_out', action='store', type=str, help='Name of the bam file to which subsetted bam lines will be written.')
+parser.add_argument('--exclude_flags', action='store', type=int, default=0, help='SAM flags to filter out certain reads.')
+parser.add_argument('--readNames', action='store', type=str, required=True, help='Name of a file containing readnames to be extracted from bamFile_in.')
+parser.add_argument('--bamFile_in', action='store', type=str, required=True, help='Name of the bam file from which bam lines will be retrieved.')
+parser.add_argument('--bamFile_out', action='store', type=str, required=True, help='Name of the bam file to which subsetted bam lines will be written.')
 
 args = parser.parse_args()
 

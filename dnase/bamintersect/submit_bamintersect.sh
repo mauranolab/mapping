@@ -376,8 +376,6 @@ export_vars="${export_vars},make_table=${make_table}"
 export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
 export_vars="${export_vars},bam1=${bam1}"
 export_vars="${export_vars},bam2=${bam2}"
-export_vars="${export_vars},BAM_E1=${bam1_exclude_flags}"
-export_vars="${export_vars},BAM_E2=${bam2_exclude_flags}"
 export_vars="${export_vars},verbose=${verbose}"
 export_vars="${export_vars},ReqFullyAligned=${ReqFullyAligned}"
 

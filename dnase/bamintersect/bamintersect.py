@@ -35,9 +35,12 @@ def validateSingleRead(max_mismatches, ReqFullyAligned, read):
     return True
 
 
-def write_output(bed_writer, file1_file, file2_file, file1_read, file2_read, bedout, bam1out_file, bam2out_file, max_mismatches, ReqFullyAligned):
+def write_output(bed_writer, bam1in_file, bam2in_file, file1_read, file2_read, bedout, bam1out_file, bam2out_file, max_mismatches, ReqFullyAligned):
     if not validateBothReads(max_mismatches, ReqFullyAligned, file1_read, file2_read):
         return
+    
+    global totalReadpairsOut
+    totalReadpairsOut += 1
     
     if bam1out_file is not None:
         bam1out_file.write(file1_read)
@@ -49,8 +52,8 @@ def write_output(bed_writer, file1_file, file2_file, file1_read, file2_read, bed
         file1_readID = file1_read.query_name
         file2_readID = file2_read.query_name
         
-        chrom_1 = file1_file.get_reference_name(file1_read.reference_id)
-        chrom_2 = file2_file.get_reference_name(file2_read.reference_id)
+        chrom_1 = bam1in_file.get_reference_name(file1_read.reference_id)
+        chrom_2 = bam2in_file.get_reference_name(file2_read.reference_id)
         
         # The pysam reference_start values are 0-based.
         # sam file format values are 1-based.
@@ -102,9 +105,9 @@ def samtoolsCmpReadnames(cCode, read1, operator, read2):
         raise NameError('samtoolsCmpReadnames was called with an invalid operator.')
 
 
-def openBamOutFile(bamin, bamout):
+def openBamOutFile(headertemplate, bamout):
     if bamout is not None:
-        newheader = bamin.header.to_dict()
+        newheader = headertemplate.header.to_dict()
         #Set PP tag to last @PG entry listed, also makes no attempt to follow PG chain in case it is run on a merged bam file.
         newheader['PG'].append({'ID':'bamintersect.py', 'PP':newheader['PG'][-1]['ID'], 'PN':'bamintersect.py', 'VN':version, 'CL':' '.join(sys.argv)})
         bamout_file = pysam.AlignmentFile(bamout, "wb", header=newheader)
@@ -114,10 +117,18 @@ def openBamOutFile(bamin, bamout):
     return bamout_file
 
 
+def getNextRead(bamfile):
+    try:
+        read = next(bamfile)
+    except:
+        return None
+    return read
+
+
 def bam_intersect_f(bam_name1, bam_name2, same, bedout, bam1out, bam2out, max_mismatches, ReqFullyAligned):
     # Get iterator handles for bam input files #1 and #2.
-    file1_file = pysam.AlignmentFile(bam_name1, "rb")
-    file2_file = pysam.AlignmentFile(bam_name2, "rb")
+    bam1in_file = pysam.AlignmentFile(bam_name1, "rb")
+    bam2in_file = pysam.AlignmentFile(bam_name2, "rb")
     
     if bedout is not None:
         bed_file = open(bedout, 'w', newline='')
@@ -126,24 +137,10 @@ def bam_intersect_f(bam_name1, bam_name2, same, bedout, bam1out, bam2out, max_mi
         bed_file = None
         bed_writer = None
     
-    bam1out_file = openBamOutFile(file1_file, bam1out)
-    bam2out_file = openBamOutFile(file2_file, bam2out)
+    bam1out_file = openBamOutFile(bam1in_file, bam1out)
+    bam2out_file = openBamOutFile(bam2in_file, bam2out)
     
     ##########################################################################
-    # Inital read pulls. 'next' is an iterator method.
-    try:
-        # It has happened that the "LP backbone" has no mapped reads, for which returning an error here causes 
-        file1_read = next(file1_file)  # Reads lines in file1_file in same order as they are in the file.
-        file1_readID = file1_read.query_name
-        
-        # Returns an exception when the number of mapped reads for the chromosome is zero.
-        # This is a common occurance for the non-standard chromosomes in all the genomes, and
-        # can happen at random for the standard chromosomes as well.
-        file2_read = next(file2_file)
-        file2_readID = file2_read.query_name
-    except:
-        return
-    
     # The logic in this loop handles scenarios in which file1 contains both a read1 and a read2 from a single readID.
     # So it handles both this scenario:
     #                               file1                     file2
@@ -160,101 +157,53 @@ def bam_intersect_f(bam_name1, bam_name2, same, bedout, bam1out, bam2out, max_mi
     # It also handles scenarios in which one file contains both read1 and read2,
     # while the other file contains only a single read.
     
-    try:
-        while True:
-            if samtoolsCmpReadnames(cCode, file1_readID, "<", file2_readID):
-                # The file1 readID is less than the file2 readID. Get another file1 line, and check again.
-                try: file1_read = next(file1_file)
-                except: break  # All done
-                file1_readID = file1_read.query_name
-            elif file1_readID == file2_readID:
-                if reads_match(file1_read, file2_read, same):
-                    # Found a match. Print, then get new file1 and file2 reads.
-                    write_output(bed_writer, file1_file, file2_file, file1_read, file2_read, bedout, bam1out_file, bam2out_file, max_mismatches, ReqFullyAligned)
-                    
-                    try: file1_read = next(file1_file)
-                    except: break  # All done
-                    file1_readID = file1_read.query_name
-                    
-                    try: file2_read = next(file2_file)
-                    except: break  # All done
-                    file2_readID = file2_read.query_name
-                else:
-                    # The readID's match, but the read1/read2 combination is wrong.
-                    # Maybe the next reads will be the same readID, and have the desired read1/read2 values.
-                    # So store the current reads, and look ahead at the next ones.
-                    old_file1_read = file1_read
-                    old_file2_read = file2_read
-                    
-                    try:
-                        file1_read = next(file1_file)
-                    except:
-                        file1_eof = True    # We got to the end of file1. Later, we'll break out of this while loop.
-                    else:
-                        file1_eof = False   # It's OK to keep reading from file1.
-                        file1_readID = file1_read.query_name
-                    
-                    try:
-                        file2_read = next(file2_file)
-                    except:
-                        file2_eof = True     # We got to the end of file2. Later, we'll break out of this while loop.
-                    else:
-                        file2_eof = False    # It's OK to keep reading from file2.
-                        file2_readID = file2_read.query_name
-                    
-                    if (not file1_eof) and (file1_readID == old_file1_read.query_name):
-                        # We were able to get a new read from file1, and it matches the previous file1 readID.
-                        # Let's see if it has the desired read1/read2 value.
-                        if reads_match(file1_read, old_file2_read, same):
-                            write_output(bed_writer, file1_file, file2_file, file1_read, old_file2_read, bedout, bam1out_file, bam2out_file, max_mismatches, ReqFullyAligned)
-                            
-                            # It did, and we wrote the reads to the csv file.
-                            # Now get a new read for the next cycle of the while loop.
-                            try:
-                                file1_read = next(file1_file)
-                            except: 
-                                file1_eof = True
-                            else:
-                                file1_eof = False
-                                file1_readID = file1_read.query_name
-                    
-                    if (not file2_eof) and (file2_readID == old_file2_read.query_name):
-                        # We were able to get a new read from file2, and it matches the previous file2 readID.
-                        # Let's see if it has the desired read1/read2 value.
-                        if reads_match(old_file1_read, file2_read, same):
-                            write_output(bed_writer, file1_file, file2_file, old_file1_read, file2_read, bedout, bam1out_file, bam2out_file, max_mismatches, ReqFullyAligned)
-                            
-                            # It did, and we wrote the reads to the csv file.
-                            # Now get a new read for the next cycle of the while loop.
-                            try:
-                                file2_read = next(file2_file)
-                            except:
-                                file2_eof = True
-                            else:
-                                file2_eof = False
-                                file2_readID = file2_read.query_name
-                    
-                    # Somewhere above, we ran out of reads. So it's time to exit the while loop.
-                    if file1_eof or file2_eof: break    # All done
-            else:
-                # The file1 readID is bigger than the file2 readID. Get another file2 line, and check again.
-                try:
-                    file2_read = next(file2_file)
-                except:
-                    break  # All done
-                file2_readID = file2_read.query_name
-    finally:
-        file1_file.close()
-        file2_file.close()
-        
-        if bed_file is not None:
-            bed_file.close()
-        if bam1out is not None:
-            bam1out_file.close()
-        if bam2out is not None:
-            bam2out_file.close()
+    file1_read = getNextRead(bam1in_file)
+    file2_read = getNextRead(bam2in_file)
     
-    return
+    while file1_read is not None and file2_read is not None:
+        if samtoolsCmpReadnames(cCode, file1_read.query_name, "<", file2_read.query_name):
+            # The file1 readID is less than the file2 readID. Get another file1 read
+            file1_read = getNextRead(bam1in_file)
+        elif file1_read.query_name == file2_read.query_name:
+            if reads_match(file1_read, file2_read, same):
+                # Found a match. Print, then get new file1 and file2 reads.
+                write_output(bed_writer, bam1in_file, bam2in_file, file1_read, file2_read, bedout, bam1out_file, bam2out_file, max_mismatches, ReqFullyAligned)
+                
+                file1_read = getNextRead(bam1in_file)
+                file2_read = getNextRead(bam2in_file)
+            else:
+                # The readID's match, but the read1/read2 combination is wrong.
+                # look ahead at  the next reads to see if they have the same readID, and have the desired read1/read2 values.
+                old_file1_read = file1_read
+                old_file2_read = file2_read
+                
+                file1_read = getNextRead(bam1in_file)
+                file2_read = getNextRead(bam2in_file)
+                
+                if file1_read is not None and file1_read.query_name == old_file1_read.query_name:
+                    # We were able to get a new read from file1, and it matches the previous file1 readID.
+                    if reads_match(file1_read, old_file2_read, same):
+                        write_output(bed_writer, bam1in_file, bam2in_file, file1_read, old_file2_read, bedout, bam1out_file, bam2out_file, max_mismatches, ReqFullyAligned)
+                        file1_read = getNextRead(bam1in_file)
+                
+                if file2_read is not None and file2_read.query_name == old_file2_read.query_name:
+                    # We were able to get a new read from file2, and it matches the previous file2 readID.
+                    if reads_match(old_file1_read, file2_read, same):
+                        write_output(bed_writer, bam1in_file, bam2in_file, old_file1_read, file2_read, bedout, bam1out_file, bam2out_file, max_mismatches, ReqFullyAligned)
+                        file2_read = getNextRead(bam2in_file)
+        else:
+            # The file1 readID is bigger than the file2 readID. Get another file2 line, and check again.
+            file2_read = getNextRead(bam2in_file)
+    
+    bam1in_file.close()
+    bam2in_file.close()
+    
+    if bed_file is not None:
+        bed_file.close()
+    if bam1out is not None:
+        bam1out_file.close()
+    if bam2out is not None:
+        bam2out_file.close()
 
 
 if (__name__ == '__main__'):
@@ -287,5 +236,10 @@ if (__name__ == '__main__'):
         raise Exception("[bamintersect.py] Can't connect to samtools_strnum_cmp.so")
     
     
+    totalReadpairsOut = 0
+    
     bam_intersect_f(args.bam1, args.bam2, args.reads_match, args.bedout, args.bam1out, args.bam2out, args.max_mismatches, args.ReqFullyAligned)
+    
+    print("[bamintersect.py] Wrote", totalReadpairsOut, "read pairs", file=sys.stderr)
+
 
