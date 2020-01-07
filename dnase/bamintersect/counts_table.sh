@@ -132,6 +132,61 @@ awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -F "\t" 'BEGIN
 
 
 #####################################################################################
+# New stuff
+
+n=$(wc -l < ${OUTBASE}.counts.txt)
+if [ "${n}" -le "1" ]; then
+    echo read_groups > ${OUTBASE}_bam_Final.bed
+    paste ${OUTBASE}.counts.txt ${OUTBASE}_bam_Final.bed > ${OUTBASE}.counts2.txt
+    rm ${OUTBASE}_bam_Final.bed
+
+    echo "[counts_table] There are no counts table reads to subset into groups."
+    echo "[counts_table] Done"
+    date
+fi
+
+# Just in case...
+rm -f ${TMPDIR}/bam_semiFinal.bed
+
+# Get bam1 chr pos1 pos2
+awk -F "\t" 'BEGIN{OFS="\t"} NR != 1 {print $1, $2, $3}' < ${OUTBASE}.counts.txt > ${TMPDIR}/bam1_groups.bed
+
+for((i=1;i<=n;i++)); do
+    # Get the i'th line of bam1_groups.bed
+    tail -n +${i} ${TMPDIR}/bam1_groups.bed | head -n1 > ${TMPDIR}/bam_groupLine.bed
+
+    # Get all the reads from the BED12 file that are in the bam_groupLine.bed group.
+    bedops -e ${bamintersectBED12} ${TMPDIR}/bam_groupLine.bed > ${TMPDIR}/groupReads.bed
+
+    # Get the bam2 chr pos1 pos2 from the groupReads.bed list.
+    awk -F "\t" 'BEGIN{OFS="\t"} {print $7, $8, $9}' < ${TMPDIR}/groupReads.bed | sort-bed - > ${TMPDIR}/bam2Reads.bed
+
+    # Group the bam2 reads
+    merge_tight ${TMPDIR}/bam2Reads.bed 500 > ${TMPDIR}/merged_bam2Reads.bed
+
+    # Count how many bam2 reads are in each bam2 group
+    outString=""
+    while read -r line_in; do
+        read chr pos1 pos2 all_other <<< ${line_in}
+
+        echo -e "${chr}\t${pos1}\t${pos2}" > ${TMPDIR}/bam2group.bed
+        bedops -e ${TMPDIR}/bam2Reads.bed ${TMPDIR}/bam2group.bed > ${TMPDIR}/group2Reads.txt
+        numreads=$(wc -l < ${TMPDIR}/group2Reads.txt)
+
+        outTMP=${outString}${chr}":"${pos1}"-"${pos2}"#"${numreads}","
+        outString=${outTMP}
+    done < ${TMPDIR}/merged_bam2Reads.bed
+
+    outTMP=${outString%?}   # kill last comma
+    echo ${outTMP} >> ${TMPDIR}/bam_semiFinal.bed
+done
+
+echo read_groups > ${OUTBASE}_bam_Final.bed
+cat  ${TMPDIR}/bam_semiFinal.bed >> ${OUTBASE}_bam_Final.bed
+paste ${OUTBASE}.counts.txt ${OUTBASE}_bam_Final.bed > ${OUTBASE}.counts2.txt
+rm ${OUTBASE}_bam_Final.bed
+
+#####################################################################################
 
 echo "[counts_table] Done"
 date
