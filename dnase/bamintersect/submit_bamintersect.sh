@@ -332,7 +332,7 @@ function make_chrom_inputfile {
             chunksize=0;
         }
     }\
-    END {if(chunksize>0) {print prefix chunknum, chroms}}'
+    END {if(chunksize>0) {chunknum+=1; print prefix chunknum, chroms}}'
 }
 
 make_chrom_inputfile ${bam1} "bam1_" > ${INTERMEDIATEDIR}/inputs.sort.bam1.txt
