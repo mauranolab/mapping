@@ -143,6 +143,7 @@ if [ "${n}" -le "1" ]; then
     echo "[counts_table] There are no counts table reads to subset into groups."
     echo "[counts_table] Done"
     date
+    exit 0
 fi
 
 # Just in case...
