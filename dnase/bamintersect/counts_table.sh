@@ -106,7 +106,7 @@ merge_tight ${bamintersectBED12} 500 > ${TMPDIR}/${sample_name}.regions.bam1.bed
 cat ${bamintersectBED12} |
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - > ${TMPDIR}/${sample_name}.reads.bam2.bed
 
-merge_tight ${TMPDIR}/${sample_name}.reads.bam2.bed 500 |
+merge_tight ${TMPDIR}/${sample_name}.reads.bam2.bed 5000 |
 #Annotate each read with the coordinates of the bam2 region it overlaps
 bedmap --delim "\t" --echo --echo-map-id ${TMPDIR}/${sample_name}.reads.bam2.bed - |
 #Switch the reads annotated with bam2 region back to bam1 (note the extra column $13)
@@ -116,20 +116,72 @@ bedmap --delim "\t" --echo --echo-map-id - ${TMPDIR}/${sample_name}.regions.bam1
 #Count reads per unique pairs of bam1/bam2 regions; uses ~ internally as field separator
 cut -f13-14 | awk -F "\t" 'BEGIN {OFS="\t"} {counts[$1 "~" $2] += 1} END {for (x in counts) {split(x, countsplit, "~"); print counts[x], countsplit[1], countsplit[2]}}' |
 #reorder columns, keep in bam2 coordinates
-awk -F "\t" -v minReadsCutoff=2  'BEGIN {OFS="\t"} $1>=minReadsCutoff {split($2, bam2region, /[:-]/); split($3, bam1region, /[:-]/); print bam2region[1], bam2region[2], bam2region[3], bam2region[3]-bam2region[2], $1, bam1region[1], bam1region[2], bam1region[3], bam1region[3]-bam1region[2]}' | sort-bed - |
+awk -F "\t" -v minReadsCutoff=4  'BEGIN {OFS="\t"} $1>=minReadsCutoff {split($2, bam2region, /[:-]/); split($3, bam1region, /[:-]/); print bam2region[1], bam2region[2], bam2region[3], bam2region[3]-bam2region[2], $1, bam1region[1], bam1region[2], bam1region[3], bam1region[3]-bam1region[2]}' | sort-bed - |
 #Add gene name to bam2
 annotateNearestGeneName - ${bam2genome} |
 #switch to bam1 coordinates, leaving the bam2 gene name at the end where it belongs
 awk -F "\t" 'BEGIN {OFS="\t"} {print $6, $7, $8, $9, $5, $1, $2, $3, $4, $10}' | sort-bed - |
 #Add gene name to bam1
 annotateNearestGeneName - ${bam1genome} |
-#Sort by Reads, chrom_bam2, chromStart_bam2
+#Sort by Informative_Reads, chrom_bam2, chromStart_bam2
 #tried mlr but it doesn't like the field name below
-#mlr --tsv sort -nr Reads -f ${#chrom_bam2} -n chromStart_bam2
+#mlr --tsv sort -nr Informative_Reads -f ${#chrom_bam2} -n chromStart_bam2
 sort -k5,5nr -k1,1 -k2,2n |
 #Reorder columns to put bam1 gene where it belongs
-awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -F "\t" 'BEGIN {OFS="\t"; print "#chrom_bam1", "chromStart_bam1", "chromEnd_bam1", "Width_bam1", "NearestGene_bam1", "Reads", "chrom_bam2", "chromStart_bam2", "chromEnd_bam2", "Width_bam2", "NearestGene_bam2", "Sample"} {print $1, $2, $3, $4, $11, $5, $6, $7, $8, $9, $10, short_sample_name}' > ${OUTBASE}.counts.txt
+awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -F "\t" 'BEGIN {OFS="\t"; print "#chrom_bam1", "chromStart_bam1", "chromEnd_bam1", "Width_bam1", "NearestGene_bam1", "Informative_Reads", "chrom_bam2", "chromStart_bam2", "chromEnd_bam2", "Width_bam2", "NearestGene_bam2", "Sample"} {print $1, $2, $3, $4, $11, $5, $6, $7, $8, $9, $10, short_sample_name}' > ${OUTBASE}.counts.txt
 
+#####################################################################################
+# New stuff
+
+n=$(wc -l < ${OUTBASE}.counts.txt)
+if [ "${n}" -le "1" ]; then
+    echo read_groups > ${OUTBASE}_bam_Final.bed
+    paste ${OUTBASE}.counts.txt ${OUTBASE}_bam_Final.bed > ${OUTBASE}.counts2.txt
+    rm ${OUTBASE}_bam_Final.bed
+
+    echo "[counts_table] There are no counts table reads to subset into groups."
+    echo "[counts_table] Done"
+    date
+fi
+
+# Just in case...
+rm -f ${TMPDIR}/bam_semiFinal.bed
+
+# Get bam1 chr pos1 pos2
+awk -F "\t" 'BEGIN{OFS="\t"} NR != 1 {print $1, $2, $3}' < ${OUTBASE}.counts.txt > ${TMPDIR}/bam1_groups.bed
+
+for((i=1;i<=n;i++)); do
+    # Get the i'th line of bam1_groups.bed
+    tail -n +${i} ${TMPDIR}/bam1_groups.bed | head -n1 > ${TMPDIR}/bam_groupLine.bed
+
+    # Get all the reads from the BED12 file that are in the bam_groupLine.bed group.
+    bedops -e ${bamintersectBED12} ${TMPDIR}/bam_groupLine.bed > ${TMPDIR}/groupReads.bed
+
+    # Get the bam2 chr pos1 pos2 from the groupReads.bed list.
+    awk -F "\t" 'BEGIN{OFS="\t"} {print $7, $8, $9}' < ${TMPDIR}/groupReads.bed | sort-bed - > ${TMPDIR}/bam2Reads.bed
+
+    merge_tight ${TMPDIR}/bam2Reads.bed 500 > ${TMPDIR}/merged_bam2Reads.bed
+
+    outString=""
+    while read -r line_in; do
+        read chr pos1 pos2 all_other <<< ${line_in}
+
+        echo -e "${chr}\t${pos1}\t${pos2}" > ${TMPDIR}/bam2group.bed
+        bedops -e ${TMPDIR}/bam2Reads.bed ${TMPDIR}/bam2group.bed > ${TMPDIR}/group2Reads.txt
+        numreads=$(wc -l < ${TMPDIR}/group2Reads.txt)
+
+        outTMP=${outString}${chr}":"${pos1}"-"${pos2}"#"${numreads}","
+        outString=${outTMP}
+    done < ${TMPDIR}/merged_bam2Reads.bed
+
+    outTMP=${outString%?}   # kill last comma
+    echo ${outTMP} >> ${TMPDIR}/bam_semiFinal.bed
+done
+
+echo read_groups > ${OUTBASE}_bam_Final.bed
+cat  ${TMPDIR}/bam_semiFinal.bed >> ${OUTBASE}_bam_Final.bed
+paste ${OUTBASE}.counts.txt ${OUTBASE}_bam_Final.bed > ${OUTBASE}.counts2.txt
+rm ${OUTBASE}_bam_Final.bed
 
 #####################################################################################
 
