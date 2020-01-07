@@ -106,7 +106,7 @@ merge_tight ${bamintersectBED12} 500 > ${TMPDIR}/${sample_name}.regions.bam1.bed
 cat ${bamintersectBED12} |
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - > ${TMPDIR}/${sample_name}.reads.bam2.bed
 
-merge_tight ${TMPDIR}/${sample_name}.reads.bam2.bed 5000 |
+merge_tight ${TMPDIR}/${sample_name}.reads.bam2.bed 500 |
 #Annotate each read with the coordinates of the bam2 region it overlaps
 bedmap --delim "\t" --echo --echo-map-id ${TMPDIR}/${sample_name}.reads.bam2.bed - |
 #Switch the reads annotated with bam2 region back to bam1 (note the extra column $13)
@@ -123,12 +123,12 @@ annotateNearestGeneName - ${bam2genome} |
 awk -F "\t" 'BEGIN {OFS="\t"} {print $6, $7, $8, $9, $5, $1, $2, $3, $4, $10}' | sort-bed - |
 #Add gene name to bam1
 annotateNearestGeneName - ${bam1genome} |
-#Sort by Informative_Reads, chrom_bam2, chromStart_bam2
+#Sort by Reads, chrom_bam2, chromStart_bam2
 #tried mlr but it doesn't like the field name below
-#mlr --tsv sort -nr Informative_Reads -f ${#chrom_bam2} -n chromStart_bam2
+#mlr --tsv sort -nr Reads -f ${#chrom_bam2} -n chromStart_bam2
 sort -k5,5nr -k1,1 -k2,2n |
 #Reorder columns to put bam1 gene where it belongs
-awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -F "\t" 'BEGIN {OFS="\t"; print "#chrom_bam1", "chromStart_bam1", "chromEnd_bam1", "Width_bam1", "NearestGene_bam1", "Informative_Reads", "chrom_bam2", "chromStart_bam2", "chromEnd_bam2", "Width_bam2", "NearestGene_bam2", "Sample"} {print $1, $2, $3, $4, $11, $5, $6, $7, $8, $9, $10, short_sample_name}' > ${OUTBASE}.counts.txt
+awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -F "\t" 'BEGIN {OFS="\t"; print "#chrom_bam1", "chromStart_bam1", "chromEnd_bam1", "Width_bam1", "NearestGene_bam1", "Reads", "chrom_bam2", "chromStart_bam2", "chromEnd_bam2", "Width_bam2", "NearestGene_bam2", "Sample"} {print $1, $2, $3, $4, $11, $5, $6, $7, $8, $9, $10, short_sample_name}' > ${OUTBASE}.counts.txt
 
 
 #####################################################################################
