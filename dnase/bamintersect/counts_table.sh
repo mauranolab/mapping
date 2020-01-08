@@ -81,7 +81,8 @@ function annotateNearestGeneName {
         } else if($3>0) { \
             distance = "-" $3 "bp"; \
         } else { \
-            distance = "+" "BUGBUGthisDisappears" -1*$3 "bp"; \
+            #Expression needs to be surrounded by parentheses to avoid getting interpreted as subtraction (thus swallowing the prior token)
+            distance = "+" (-1*$3) "bp"; \
         } \
         print $1, gene[4] distance; \
     }'
