@@ -21,10 +21,12 @@ Sox2_Sox2_46kb_dDistalLCR_marker	1474	2653	EF1a_promoter
 Sox2_Sox2_143kb_marker	1474	2653	EF1a_promoter
 #TODO the following are mm10 only, need to have a separate file. Or maybe mask with segdup file as well?
 #low complexity segdup that comes up often
+chr18	3004270	3005519	Vmn1r238-116973bp
 chr15	75085522	75087045
 #More empirical off-targets from Bl6_Cast_dPiga-BS03020A
 chr7	128699941	128699992	51	Mcmbp
 chr4	129387362	129388185	456	Zbtb8a+9247bp
 chr5	121637921	121637967	46	Acad10
 chr19	4639428	4639492	62	Gm960
+chr19	9304072	9304116	Asrgl1+168438bp
 chr4	100773231	100773370	65	Cachd1-3379bp
