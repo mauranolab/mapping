@@ -279,24 +279,27 @@ if [ "${integrationsite}" != "null" ]; then
     HA_file="/vol/cegs/sequences/${bam1genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
     
     if [ -s "${HA_file}" ]; then
-        grep "${integrationSiteName}_${HA1}$" ${HA_file}
-        grep "${integrationSiteName}_${HA2}$" ${HA_file}
-        echo ""
-        
-        # Get the HA coordinates:
-        grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/HA_coords.bed"
-        grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/HA_coords.bed"
-        
-        # Get the deletion range coordinates:
-        cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${INTERMEDIATEDIR}/deletion_range.bed
-        echo -n "Found coordinates for deletion spanning (bp): "
-        awk -F "\t" 'BEGIN {OFS="\t"} {print $3-$2}' ${INTERMEDIATEDIR}/deletion_range.bed
+        if grep -q "${integrationSiteName}_${HA1}$" ${HA_file} && grep -q "${integrationSiteName}_${HA2}$" ${HA_file}; then
+            # Get the HA coordinates:
+            grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/HA_coords.bed"
+            grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/HA_coords.bed"
+            
+            echo -n "Found homology arm coordinates:"
+            cat ${INTERMEDIATEDIR}/HA_coords.bed
+            
+            # Get the deletion range coordinates:
+            cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${INTERMEDIATEDIR}/deletion_range.bed
+            echo -n "Found coordinates for deletion spanning (bp): "
+            awk -F "\t" 'BEGIN {OFS="\t"} {print $3-$2}' ${INTERMEDIATEDIR}/deletion_range.bed
+        else
+            echo "WARNING could not find homology arm coordinates for ${integrationSiteName}_${HA1} or ${integrationSiteName}_${HA2} in ${HA_file}"
+        fi
     else
         echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range"
         echo ""
         
         touch "${INTERMEDIATEDIR}/HA_coords.bed"
-       touch "${INTERMEDIATEDIR}/deletion_range.bed"
+        touch "${INTERMEDIATEDIR}/deletion_range.bed"
     fi
 else
     echo "No integration site was provided, and so there is no Deletion Range."
