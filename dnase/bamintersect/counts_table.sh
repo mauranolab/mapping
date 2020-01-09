@@ -37,7 +37,7 @@ echo -e -n "Number of total reads:\t"
 cat ${bamintersectBED12} | wc -l
 
 #Annotate a file by adding a column with the nearest gene name. Inputfile can be stdin (as -); outputs to stdout
-function annotateNearestGeneName {
+annotateNearestGeneName() {
     local inputfile=$1
     local genome=$2
     
@@ -90,7 +90,7 @@ function annotateNearestGeneName {
 
 
 #Takes a bed file and outputs a list of minimal regions covering all elements grouped by fixed distance to stdout
-function merge_tight {
+merge_tight() {
     local file=$1
     local range=$2
     
@@ -104,20 +104,27 @@ function merge_tight {
 #Generate bam1 regions
 merge_tight ${bamintersectBED12} 500 > ${TMPDIR}/${sample_name}.regions.bam1.bed
 
-cat ${bamintersectBED12} |
-awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - > ${TMPDIR}/${sample_name}.reads.bam2.bed
 
-merge_tight ${TMPDIR}/${sample_name}.reads.bam2.bed 500 |
-#Annotate each read with the coordinates of the bam2 region it overlaps
-bedmap --delim "\t" --echo --echo-map-id ${TMPDIR}/${sample_name}.reads.bam2.bed - |
-#Switch the reads annotated with bam2 region back to bam1 (note the extra column $13)
-awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6, $13}' | sort-bed - |
-#Annotate each read with the coordinates of the bam1 region it overlaps
-bedmap --delim "\t" --echo --echo-map-id - ${TMPDIR}/${sample_name}.regions.bam1.bed |
-#Count reads per unique pairs of bam1/bam2 regions; uses ~ internally as field separator
-cut -f13-14 | awk -F "\t" 'BEGIN {OFS="\t"} {counts[$1 "~" $2] += 1} END {for (x in counts) {split(x, countsplit, "~"); print counts[x], countsplit[1], countsplit[2]}}' |
-#reorder columns, keep in bam2 coordinates
-awk -F "\t" -v minReadsCutoff=2  'BEGIN {OFS="\t"} $1>=minReadsCutoff {split($2, bam2region, /[:-]/); split($3, bam1region, /[:-]/); print bam2region[1], bam2region[2], bam2region[3], bam2region[3]-bam2region[2], $1, bam1region[1], bam1region[2], bam1region[3], bam1region[3]-bam1region[2]}' | sort-bed - |
+#Split output into separate files by bam1 region
+mkdir $TMPDIR/bam2readsByBam1region
+bedmap --bp-ovr 1 --delim "|" --multidelim "|" --echo --echo-map ${TMPDIR}/${sample_name}.regions.bam1.bed ${bamintersectBED12} |
+#Output format: bam2 chrom chromStart, chromEnd, bam1region
+awk -v outdir=$TMPDIR/bam2readsByBam1region -F "|" 'BEGIN {OFS="\t"} {split($1, bam1region, "\t"); for(i=2; i<=NF; i++) {split($i, bam2read, "\t"); print bam2read[7], bam2read[8], bam2read[9], bam1region[4] > outdir "/" NR ".unsorted.bam2.bed"}}'
+
+for file in $TMPDIR/bam2readsByBam1region/*.unsorted.bam2.bed; do
+    cur=`basename ${file} .unsorted.bam2.bed`
+    cat ${file} | sort-bed - > $TMPDIR/bam2readsByBam1region/${cur}.sorted.bam2.bed
+    
+    #Generate bam2 regions for the set of reads from each bam1 region
+    merge_tight $TMPDIR/bam2readsByBam1region/${cur}.sorted.bam2.bed 500 | cut -f1-3 |
+    #Add a bam1 region id for each read that maps to this bam2 region
+    bedmap --delim "\t" --multidelim ";" --echo --echo-map-id - $TMPDIR/bam2readsByBam1region/${cur}.sorted.bam2.bed |
+    awk -F "\t" 'BEGIN {OFS="\t"} {split($4, bam1region, ";"); for(i=1; i<=length(bam1region); i++) {print $1, $2, $3, bam1region[i]}}'
+done |
+#Each line is the pair of bam1/bam2 regions spanned by a single mate pair, so now count them
+sort -k1,1 -k2,2 -k4,4 | uniq -c |
+#Now filter for minimum reads and finalize output columns
+awk -v minReadsCutoff=2 'BEGIN {OFS="\t"} $1>=minReadsCutoff {split($5, bam1region, /[:-]/); print $2, $3, $4, $4-$3, $1, bam1region[1], bam1region[2], bam1region[3], bam1region[3]-bam1region[2]}' | sort-bed - |
 #Add gene name to bam2
 annotateNearestGeneName - ${bam2genome} |
 #switch to bam1 coordinates, leaving the bam2 gene name at the end where it belongs
@@ -131,6 +138,9 @@ sort -k5,5nr -k1,1 -k2,2n |
 #Reorder columns to put bam1 gene where it belongs
 awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -F "\t" 'BEGIN {OFS="\t"; print "#chrom_bam1", "chromStart_bam1", "chromEnd_bam1", "Width_bam1", "NearestGene_bam1", "Reads", "chrom_bam2", "chromStart_bam2", "chromEnd_bam2", "Width_bam2", "NearestGene_bam2", "Sample"} {print $1, $2, $3, $4, $11, $5, $6, $7, $8, $9, $10, short_sample_name}' > ${OUTBASE}.counts.txt
 
+
+#Cleanup
+rm -rf $TMPDIR/bam2readsByBam1region
 
 #####################################################################################
 
