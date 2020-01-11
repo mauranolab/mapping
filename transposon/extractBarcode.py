@@ -110,7 +110,9 @@ if enforcePlasmidRead:
     plasmidRefSeqLength = len(plasmidRefSeq)
     numWrongPlasmidSeq = 0
 
-if args.cellBCsuffix is not None:
+if args.cellBCsuffix is None:
+    cellBCsuffix = ""
+else:
     cellBCsuffix = "_" + args.cellBCsuffix
 
 maxEditDistRate = args.maxEditDist
