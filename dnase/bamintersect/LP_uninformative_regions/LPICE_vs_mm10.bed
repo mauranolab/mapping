@@ -2,3 +2,5 @@
 #Old coords from cadley chrX	106187099	106187235	Pgk1_promoter
 #Full match
 chrX	106186732	106187231	Pgk1_promoter
+#Specific to HPRT1 payload (part of HPRT1 at hg38 chrX:134458634-134460417 was engineered in to parental line so causes false positives)
+HPRT1	30685	32469
