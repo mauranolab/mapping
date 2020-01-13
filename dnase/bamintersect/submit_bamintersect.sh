@@ -270,6 +270,17 @@ mkdir -p ${INTERMEDIATEDIR}/sorted_bams
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
 
+if [ ! -s ${bam1} ]; then
+    echo "ERROR: Could not find bam1 file ${bam1}"
+    exit 1
+fi
+
+if [ ! -s ${bam2} ]; then
+    echo "ERROR: Could not find bam2 file ${bam2}"
+    exit 1
+fi
+
+
 ################################################################################################
 # Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
 if [ "${integrationsite}" != "null" ]; then
