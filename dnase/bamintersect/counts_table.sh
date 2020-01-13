@@ -36,6 +36,12 @@ echo "[counts_table] Making counts_table from ${bamintersectBED12}; will output 
 echo -e -n "Number of total reads:\t"
 cat ${bamintersectBED12} | wc -l
 
+
+if [ ! -s ${bamintersectBED12} ]; then
+    echo "[counts_table] There are no reads to analyze, quitting successfully."
+    exit 0
+fi
+
 #Annotate a file by adding a column with the nearest gene name. Inputfile can be stdin (as -); outputs to stdout
 annotateNearestGeneName() {
     local inputfile=$1
