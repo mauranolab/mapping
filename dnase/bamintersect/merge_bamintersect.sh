@@ -95,11 +95,16 @@ for curfile in ${uninformativeRegionFiles}; do
     fi
 done
 
+#Genomic repeat annotation
+if [ -f "/vol/isg/annotation/bed/${bam1genome}/repeat_masker/Satellite.bed" ]; then
+    uninformativeRegionFiles="${uninformativeRegionFiles} /vol/isg/annotation/bed/${bam1genome}/repeat_masker/Satellite.bed"
+fi
+if [ -f "/vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed" ]; then
+    uninformativeRegionFiles="${uninformativeRegionFiles} /vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed"
+fi
 
 #Sort exclusion files and strip comments just in case
-cat ${uninformativeRegionFiles} | awk '$0 !~ /^#/' | sort-bed - |
-#BUGBUG hardcoded repeatmask for bam1genome
-bedops -u - /vol/isg/annotation/bed/${bam1genome}/repeat_masker/Satellite.bed > ${TMPDIR}/uninformativeRegionFile.bed
+cat ${uninformativeRegionFiles} | awk '$0 !~ /^#/' | sort-bed - > ${TMPDIR}/uninformativeRegionFile.bed
 
 
 echo "Applying uninformativeRegionFile"
