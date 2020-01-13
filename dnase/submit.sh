@@ -145,20 +145,25 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
     sampleAnnotationGeneticModification=`echo "${sampleAnnotation}" | awk -v key="Genetic_Modification" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
     #TODO should this also include Custom Reference? That is missing an integration site
     
-    mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0!~/^cegsvectors_/'`
+    #Put LPICE into both so we get LPICE vs. payload. Skip rn6 for now
+    mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0!~/^cegsvectors_/ || $0=="cegsvectors_LPICE" && $1!="rn6"'`
     cegsGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0~/^cegsvectors_/'`
     for mammalianGenome in ${mammalianGenomes}; do
         #Same as genomeinfo.sh
-        mammalianAnnotationGenome=`echo ${mammalianGenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
+        mammalianAnnotationGenome=`echo ${mammalianGenome} | perl -pe's/^cegsvectors_LPICE$/LPICE/g;' -e 's/_.+$//g;' -e 's/all$//g;'`
         for cegsGenome in ${cegsGenomes}; do
             cegsGenomeShort="${cegsGenome/cegsvectors_/}"
             #Limit this to references listed as genetic modifications
-            if [[ ${sampleAnnotationGeneticModification} =~ ${cegsGenomeShort} ]]; then
+            #If we are doing ICE, make sure we don't do LPICE vs LPICE
+            if [[ ${sampleAnnotationGeneticModification} =~ ${cegsGenomeShort} ]] && [[ "${mammalianGenome}" != "${cegsGenome}" ]]; then
                 integrationsite=`getIntegrationSite ${sampleAnnotationGeneticModification} ${cegsGenomeShort}`
                 #For assemblons this yields the LP name rather looking up the LP integrationsite, so look up the site for the LP itself
                 if [[ "${integrationsite}" =~ ^LP ]]; then
-                    echo "found ${integrationsite}, looking up again"
+                    #echo "found ${integrationsite}, looking up again"
                     integrationsite=`getIntegrationSite ${sampleAnnotationGeneticModification} ${integrationsite}`
+                    if [[ "${integrationsite}" == "null" ]]; then
+                        echo "WARNING could not find LP integration site for ${cegsGenomeShort}"
+                    fi
                 fi
                 echo "+ ${mammalianAnnotationGenome} vs. ${cegsGenomeShort}[${integrationsite}]"
                 
