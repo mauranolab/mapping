@@ -34,6 +34,12 @@ set -u
 
 mappedgenome=$1
 
+
+#Deal with some of the more complex reference index names
+#NB this will call hotspots, etc. only on the first mammalian genome for the *_sacCer3 hybrid indices
+annotationgenome=`echo ${mappedgenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
+
+
 case "${mappedgenome}" in
 #Reference sequence can be .fa.gz as long as bgzip was used to compress
 hg19)
@@ -102,11 +108,6 @@ cegsvectors*)
     echo "ERROR: Don't recognize genome ${mappedgenome}";
     exit 1;;
 esac
-
-
-#Deal with some of the more complex reference index names
-#NB this will call hotspots, etc. only on the first mammalian genome for the *_sacCer3 hybrid indices
-annotationgenome=`echo ${mappedgenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
 
 
 if [[ "${mappedgenome}" =~ ^cegsvectors ]]; then

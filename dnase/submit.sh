@@ -145,7 +145,7 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
     sampleAnnotationGeneticModification=`echo "${sampleAnnotation}" | awk -v key="Genetic_Modification" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
     #TODO should this also include Custom Reference? That is missing an integration site
     
-    #Put LPICE into both so we get LPICE vs. payload. Skip rn6 for now
+    #Put LPICE into both so we get LPICE vs. payload. Skip rn6 manually for now. One downside is we now get LPICE vs. pSpCas9 etc.
     mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0!~/^cegsvectors_/ || $0=="cegsvectors_LPICE" && $1!="rn6"'`
     cegsGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0~/^cegsvectors_/'`
     for mammalianGenome in ${mammalianGenomes}; do
