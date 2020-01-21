@@ -232,10 +232,16 @@ cat $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed | cut -f5 | awk -v 
 cat $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' > $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed
 
 
-#Remove iPCR insertions with more than one location
+echo
+echo "Histogram of number of insertion sites per barcode"
+cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $3, $6, $4}' | sort -k5,5 | cut -f5 | sort -g | uniq -c | sort -k1,1g | awk '{print $1}' |
+awk -v cutoff=2 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
+
+
+#Identify iPCR insertions with more than one location
 cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {print $4}' | sort | uniq -c | sort -nk1 | awk '$1==1 {print $2}' > $TMPDIR/${sample}.singleIns.txt
 
-#Remove insertion sites with more than one BC
+#Identify insertion sites with more than one BC
 cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq -c | awk 'BEGIN {OFS="\t"} $1==1 {print $2, $3, $4, $5, $6, $7}' | sort-bed - > $TMPDIR/${sample}.singleBC.bed
 
 cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed |
@@ -277,12 +283,6 @@ cat $OUTDIR/${sample}.uniqcoords.bed | bedops --range 5 -m - | uniq | wc -l
 
 echo -n -e "${sample}\tProportion of unique insertion sites at TA\t"
 cat $OUTDIR/${sample}.uniqcoords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$2-=2; $3-=1; print}' |  /home/mauram01/bin/bed2fasta.pl - /vol/isg/annotation/fasta/hg38 2>/dev/null | grep -v -e "^>" | tr '[a-z]' '[A-Z]' | awk -F "\t" 'BEGIN {OFS="\t"; count=0} $0=="TA" {count+=1} END {print count/NR}'
-
-
-echo
-echo "Histogram of number of insertion sites per barcode"
-cat $OUTDIR/${sample}.barcodes.coords.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $3, $6, $4}' | sort -k5,5 | cut -f5 | sort -g | uniq -c | sort -k1,1g | awk '{print $1}' |
-awk -v cutoff=2 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 
 
 echo
