@@ -461,7 +461,7 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
         
         #Check for results first to avoid nonzero exit code
         if grep -q -i -E "(error)" ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.log; then
-            echo "Errors from hotspot logfile:"
+            echo "Hotspot logfile:"
             cat ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.log | grep -i -E "(error|warning)" | awk '{print "[hotspot] " $0}'
             echo
         fi
@@ -505,7 +505,7 @@ if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyze
             
             #Check for results first to avoid nonzero exit code
             if grep -q -i -E "(error)" ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.10Mreads.log; then
-                echo "Errors from hotspot logfile:"
+                echo "Hotspot logfile:"
                 cat ${outbase}/${sampleOutdir}/hotspots/${name}.${mappedgenome}.10Mreads.log | grep -i -E "(error|warning)" | awk '{print "[hotspot] " $0}'
             fi
             
