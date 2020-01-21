@@ -111,8 +111,7 @@ esac
 
 
 if [[ "${mappedgenome}" =~ ^cegsvectors ]]; then
-    #NB this will not be in sync with bwaIndex if makeCombinedCegsvectors.sh has not been run. Should this be switched to the reference-specific chromsizes?
-    chromsizes="/vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes"
+    chromsizes="/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.chrom.sizes"
 else
     chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
 fi
