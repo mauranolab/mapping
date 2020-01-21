@@ -198,16 +198,19 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     
     #seems to have fairly heavy memory requirements
     #java.lang.OutOfMemoryError: unable to create new native thread if run with just 2 threads
-    java -XX:ParallelGCThreads=2 org.usadellab.trimmomatic.TrimmomaticPE ${trimmomaticBaseOpts} $TMPDIR/${sample1}.pretrim.fastq.gz $TMPDIR/${sample2}.pretrim.fastq.gz $TMPDIR/${sample1}.fastq $TMPDIR/${sample1}.unpaired.fastq $TMPDIR/${sample2}.fastq $TMPDIR/${sample2}.unpaired.fastq ${trimmomaticSteps}
-    #TODO why does this output uncompressed fastq? I think it's just so one can test with -s below
+    java -XX:ParallelGCThreads=2 org.usadellab.trimmomatic.TrimmomaticPE ${trimmomaticBaseOpts} $TMPDIR/${sample1}.pretrim.fastq.gz $TMPDIR/${sample2}.pretrim.fastq.gz $TMPDIR/${sample1}.fastq.gz $TMPDIR/${sample1}.unpaired.fastq.gz $TMPDIR/${sample2}.fastq.gz $TMPDIR/${sample2}.unpaired.fastq.gz ${trimmomaticSteps}
     #BUGBUG java doesn't set nonzero exit code on trimmomatic exception
     
-    echo -n "Unpaired reads:"
+    rm -f $TMPDIR/${sample1}.pretrim.fastq.gz $TMPDIR/${sample2}.pretrim.fastq.gz
+    
     #Merge anything unpaired from either R1 or R2
-    cat $TMPDIR/${sample1}.unpaired.fastq $TMPDIR/${sample2}.unpaired.fastq | tee $TMPDIR/${curfile}.unpaired.fastq | wc -l
+    zcat $TMPDIR/${sample1}.unpaired.fastq.gz $TMPDIR/${sample2}.unpaired.fastq.gz | gzip -c --fast > $TMPDIR/${curfile}.unpaired.fastq.gz
+    rm -f $TMPDIR/${sample1}.unpaired.fastq.gz $TMPDIR/${sample2}.unpaired.fastq.gz
+    unpairedReadLines=`zcat $TMPDIR/${curfile}.unpaired.fastq.gz | wc -l`
+    echo "Unpaired read liness: ${unpairedReadLines}"
     
     
-    if [ ! -s "$TMPDIR/${sample1}.fastq" ] && [ ! -s "$TMPDIR/${sample2}.fastq" ] && [ ! -s "$TMPDIR/${sample1}.unpaired.fastq" ] && [ ! -s "$TMPDIR/${sample2}.unpaired.fastq" ]; then
+    if gzip -l $TMPDIR/${sample1}.fastq.gz | awk 'NR==2 {exit($2!=0)}' && gzip -l $TMPDIR/${sample1}.fastq.gz | awk 'NR==2 {exit($2!=0)}' && [[ "${unpairedReadLines}" == 0 ]]; then
         echo "WARNING: No tags passed filtering, quitting successfully"
         exit 0
     fi
@@ -216,38 +219,38 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     mkdir -p ${sampleOutdir}/fastqc
     fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample1}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
-        #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq"
-        mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq
+        #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz"
+        mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz
     fi
     
     fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample2}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
-        #qsub -cwd -V -N ${sample2}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq"
-        mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq
+        #qsub -cwd -V -N ${sample2}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq.gz"
+        mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq.gz
     fi
     
     echo
     echo "Histogram of read lengths for R1"
-    cat $TMPDIR/${sample1}.fastq | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
+    zcat $TMPDIR/${sample1}.fastq.gz | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
     
     echo
     echo "Histogram of read lengths for R2"
-    cat $TMPDIR/${sample2}.fastq | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
+    zcat $TMPDIR/${sample2}.fastq.gz | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
     
     echo
     echo "Histogram of read lengths for unpaired"
-    cat $TMPDIR/${curfile}.unpaired.fastq | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
+    zcat $TMPDIR/${curfile}.unpaired.fastq.gz | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
 else
     PErun="FALSE"
     curfile="${fc}${sample1}"
     
     #BUGBUG missing filterNextSeqReadsForPolyG.py for SE data
     #BUGBUG wrong adapter files
-    java -XX:ParallelGCThreads=2 org.usadellab.trimmomatic.TrimmomaticSE ${trimmomaticBaseOpts} ${readsFq} $TMPDIR/${sample1}.fastq ${trimmomaticSteps}
+    java -XX:ParallelGCThreads=2 org.usadellab.trimmomatic.TrimmomaticSE ${trimmomaticBaseOpts} ${readsFq} $TMPDIR/${sample1}.fastq.gz ${trimmomaticSteps}
     #BUGBUG java doesn't set nonzero exit code on trimmomatic exception
     
     
-    if [ ! -s "$TMPDIR/${sample1}.fastq" ]; then
+    if gzip -l $TMPDIR/${sample1}.fastq.gz | awk 'NR==2 {exit($2!=0)}'; then
         echo "No tags passed filtering, quitting successfully"
         exit 0
     fi
@@ -258,8 +261,8 @@ else
     mkdir -p ${sampleOutdir}/fastqc
     fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample1}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
-        #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq"
-        mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq
+        #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz"
+        mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz
     fi
     
     echo
@@ -267,7 +270,7 @@ else
     
     echo
     echo "Histogram of read lengths"
-    cat $TMPDIR/${sample1}.fastq | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
+    zcat $TMPDIR/${sample1}.fastq.gz | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
 fi
 
 
@@ -296,7 +299,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         #http://seqanswers.com/forums/showthread.php?t=6251
         
         echo "bwa aln ${bwaAlnOpts} ${bwaIndex} ..."
-        bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample1}.fastq > $TMPDIR/${sample1}.${curGenome}.sai
+        bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample1}.fastq.gz > $TMPDIR/${sample1}.${curGenome}.sai
         
         
         #Previously used -n 10 but never really used XA tag and maybe was causing sampe to occasionally truncate last line of output (dropping the tags)
@@ -307,25 +310,25 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
             date
             echo
             
-            bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample2}.fastq > $TMPDIR/${sample2}.${curGenome}.sai
+            bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample2}.fastq.gz > $TMPDIR/${sample2}.${curGenome}.sai
             
             #-P didn't have a major effect, but some jobs were ~10-40% faster but takes ~16GB RAM instead of 4GB
             #TODO permit higher insert size for non-DNase?
-            extractcmd="sampe ${bwaAlnExtractOpts} -a ${maxInsertSize} ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample2}.${curGenome}.sai $TMPDIR/${sample1}.fastq $TMPDIR/${sample2}.fastq"
+            extractcmd="sampe ${bwaAlnExtractOpts} -a ${maxInsertSize} ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample2}.${curGenome}.sai $TMPDIR/${sample1}.fastq.gz $TMPDIR/${sample2}.fastq.gz"
             
             #Only map unpaired reads if the file nonzero
-            if [ -s "$TMPDIR/${curfile}.unpaired.fastq" ]; then
-                echo -e "\nMapping unpaired ${curfile}.unpaired.fastq for ${sample1}"
+            if [[ "${unpairedReadLines}" > 0 ]]; then
+                echo -e "\nMapping unpaired ${curfile}.unpaired.fastq.gz for ${sample1}"
                 date
                 echo
                 
-                bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${curfile}.unpaired.fastq > $TMPDIR/${curfile}.unpaired.${curGenome}.sai
+                bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${curfile}.unpaired.fastq.gz > $TMPDIR/${curfile}.unpaired.${curGenome}.sai
                 date
                 
                 echo
                 echo "Extracting unpaired reads"
                 unpairedReadsSam="$TMPDIR/${curfile}.${curGenome}.unpaired.sam"
-                unpairedExtractcmd="samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${curfile}.unpaired.${curGenome}.sai $TMPDIR/${curfile}.unpaired.fastq"
+                unpairedExtractcmd="samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${curfile}.unpaired.${curGenome}.sai $TMPDIR/${curfile}.unpaired.fastq.gz"
                 echo -e "unpairedExtractcmd=bwa $unpairedExtractcmd | (...)"
                 bwa $unpairedExtractcmd | grep -v "^@" > ${unpairedReadsSam}
                 
@@ -333,7 +336,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
             fi
             #TODO merge headers instead of dropping
         else
-            extractcmd="samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample1}.fastq"
+            extractcmd="samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample1}.fastq.gz"
         fi
     elif [[ "${processingCommand}" == "mapBwaMem" ]]; then
         #ira hall consensus pipeline also includes: -Y -K 100000000
@@ -344,9 +347,9 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
 #            Mainly seems to add spurious secondary alignments where one read in the pair maps to a different reference within cegsvectors
 #            bwaMemOptions="-a"
 #        fi
-        extractcmd="mem ${bwaMemOptions} ${userAlnOptions} -t ${NSLOTS} -R ${readgroup} ${bwaIndex} $TMPDIR/${sample1}.fastq"
+        extractcmd="mem ${bwaMemOptions} ${userAlnOptions} -t ${NSLOTS} -R ${readgroup} ${bwaIndex} $TMPDIR/${sample1}.fastq.gz"
         if [[ "$PErun" == "TRUE" ]] ; then
-            extractcmd="${extractcmd} $TMPDIR/${sample2}.fastq"
+            extractcmd="${extractcmd} $TMPDIR/${sample2}.fastq.gz"
         fi
         echo "bwa ${extractcmd}"
     else
