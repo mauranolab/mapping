@@ -38,8 +38,7 @@ matplotlib.rc('font', serif='Helvetica')
 #2) edge attributes
 #    weight - number of UMIs supporting this link
 #    color - used to distinguish trimmed edges in plots
-def initializeGraphFromInput():
-    inputfilename = args.inputfilename
+def initializeGraphFromInput(inputfilename, minCount):
     if inputfilename=="-":
         inputfile = sys.stdin
     else:
@@ -59,7 +58,7 @@ def initializeGraphFromInput():
             cellbc = line[1]
             count = int(line[2])
             
-            if count >= args.minreads:
+            if count >= minCount:
                 totalReads += count
                 
                 #Node weight is sum of edge weights
@@ -341,7 +340,7 @@ if args.printGraph is not None:
 
 
 ###Initialize graph, filter, write output
-G = initializeGraphFromInput()
+G = initializeGraphFromInput(args.inputfilename, args.minreads)
 
 #This filter seems more stringent on the individual libraries than the aggregate one
 pruneEdgesLowPropOfReads(G, args.minPropOfBCReads, type='BC')
