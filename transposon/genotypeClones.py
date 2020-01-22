@@ -191,7 +191,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
     return nCommunities
 
 
-def printGraph(G, filename=None, node_color='type', edge_color='weight', edge_color_cmap="Blues", show_labels=False, node_color_dict={'BC': 'darkblue', 'cell': 'darkred'}, fig=None):
+def printGraph(G, filename=None, node_color='type', edge_color='weight', edge_color_cmap="Blues", with_labels=False, node_color_dict={'BC': 'darkblue', 'cell': 'darkred'}, fig=None):
     #print("[genotypeClones] Printing graph ", filename, sep="", file=sys.stderr)
     # nodeColorDict = 
 #    node_sizes = [node[1]*25000 for node in G.nodes.data('weight')]
@@ -206,7 +206,7 @@ def printGraph(G, filename=None, node_color='type', edge_color='weight', edge_co
         'node_color': node_colors,
         'node_size': 25,
         'width': 2,
-        'with_labels': show_labels
+        'with_labels': with_labels
 #        'edge_vmin': 0, #min/max edge weight for color scale
 #        'edge_vmax': 0.5
         }
