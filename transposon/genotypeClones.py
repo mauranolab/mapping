@@ -403,7 +403,7 @@ if __name__ == "__main__":
     
     
     ###Initialize graph, filter, write output
-    G = initializeGraphFromInput(args.inputfilename, args.minreads)
+    G = initializeGraphFromInput(inputfilename=args.inputfilename, minCount=args.minreads)
     
     #This filter seems more stringent on the individual libraries than the aggregate one
     pruneEdgesLowPropOfReads(G, args.minPropOfBCReads, type='BC')
