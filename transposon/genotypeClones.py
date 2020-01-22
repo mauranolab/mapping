@@ -306,6 +306,17 @@ def writeOutputFiles(G, output, outputlong, outputwide, printGraph=None):
     print("[genotypeClones] Identified ", str(cloneid), " unique clones, ", totalCells, " cells, and ", totalBCs, " BCs. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalCount/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
 
 
+## Expand a neighboorhood up to a degree
+def expandNeighborhood(G, neighbors, degree = 1, to_skip = set()):
+    union = lambda x, y: x.union(y)
+    neighbors = set(neighbors)
+    to_skip = set(to_skip)
+    for _ in range(degree):
+        neighbors = reduce(union, [nx.neighbors(G, x) for x in neighbors], neighbors)
+        neighbors = neighbors - to_skip
+    return neighbors
+
+
 ###Command line arguments
 version="1.0"
 
