@@ -186,7 +186,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
             
             ###Print graph
             if graphOutput is not None:
-                printGraph(subG, filename=printGraph + '/preclone-' + str(precloneid), edge_color='color')
+                printGraph(subG, filename=graphOutput + '/preclone-' + str(precloneid), edge_color='color')
     
     G.remove_edges_from(edgesToDrop)
     print("[genotypeClones] Created ", nCommunities, " new clones by pruning ", len(edgesToDrop), " edges (", len(G.edges), " left) ", countsremoved, " UMIs removed", sep="", file=sys.stderr)
@@ -314,7 +314,7 @@ def writeOutputFiles(clones, output, outputlong, outputwide, graphOutput=None):
         
         for clonename, clones in clones.items():
             subG = clones['clones']
-            count = clones['umi_count']
+            umi_count = clones['umi_count']
             bcs = clones['bcs']
             cells = clones['cells']
             
@@ -337,14 +337,13 @@ def writeOutputFiles(clones, output, outputlong, outputwide, graphOutput=None):
 
 
 ###Utility functions not currently used in command line operation
-## Given a set of nodes, it expands their neighborhood to up a certain degree of distance, which allows exploring specific node proximities
+## Given a list of nodes, it expands their neighborhood to up a certain degree of distance, which allows exploring specific node proximities
 def expandNeighborhood(G, seednodes, degree = 1, to_skip = set()):
     #Initialize neighborhood with seed nodes
     neighborhood = set(seednodes)
     to_skip = set(to_skip)
     for _ in range(degree):
-        tmp = neighborhood.union(
-            set(n for x in neighborhood for n in nx.neighbors(G, x)))
+        tmp = neighborhood.union(set(n for x in neighborhood for n in nx.neighbors(G, x)))
         neighborhood = tmp - to_skip
     return neighborhood
 
