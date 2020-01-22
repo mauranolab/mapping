@@ -331,13 +331,14 @@ def expandNeighborhood(G, seednodes, degree = 1, to_skip = set()):
         neighbors = tmp - to_skip
     return neighbors
 
-## Assign transfection
+## Assign assigns values to nodes based on a dictionary of node -> value, it can be used to assign nodes transfections for example
 def assignToNodes(G, key, values):
     for n in values:
         if not G.has_node(n):
             continue
         G.nodes[n][key] = values[n]
 
+## Convert bipartite graph into a Jaccard index graph of the cells
 def toJaccard(G):
     def jaccard(G, u, v):
         unbrs = set(G[u])
