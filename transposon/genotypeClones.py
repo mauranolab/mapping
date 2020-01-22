@@ -193,7 +193,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
     return nCommunities
 
 
-def printGraph(G, filename=None, node_color='type', edge_color='weight', show_labels=False, node_color_dict={'BC': 'darkblue', 'cell': 'darkred'}, fig=None):
+def printGraph(G, filename=None, node_color='type', edge_color='weight', edge_color_cmap="Blues", show_labels=False, node_color_dict={'BC': 'darkblue', 'cell': 'darkred'}, fig=None):
     #print("[genotypeClones] Printing graph ", filename, sep="", file=sys.stderr)
     # nodeColorDict = 
 #    node_sizes = [node[1]*25000 for node in G.nodes.data('weight')]
@@ -207,13 +207,13 @@ def printGraph(G, filename=None, node_color='type', edge_color='weight', show_la
         'nodelist': G.nodes,
         'node_color': node_colors,
         'node_size': 25,
-        'width': 2.8,
+        'width': 2,
         'with_labels': show_labels
 #        'edge_vmin': 0, #min/max edge weight for color scale
 #        'edge_vmax': 0.5
         }
     
-    edge_colormap = plt.get_cmap('Blues')
+    edge_colormap = plt.get_cmap(edge_color_cmap)
     if edge_color=="color":
         edge_colors = [mcolors.to_rgba(edge[2]) for edge in G.edges.data('color')]
         kwds['edge_color'] = edge_colors
@@ -327,9 +327,10 @@ def expandNeighborhood(G, neighbors, degree = 1, to_skip = set()):
 
 ## Assign transfection
 def assignToNodes(G, key, values):
-    for n in G.nodes:
-        val = values.get(n, "none")
-        G.nodes[n][key] = val
+    for n in values:
+        if not G.has_node(n):
+            continue
+        G.nodes[n][key] = values[n]
 
 ###Command line arguments
 version="1.0"
