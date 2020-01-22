@@ -320,10 +320,11 @@ def writeOutputFiles(G, output, outputlong, outputwide, printGraph=None):
     print("[genotypeClones] Identified ", str(cloneid), " unique clones, ", totalCells, " cells, and ", totalBCs, " BCs. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalCount/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
 
 
-## Expand a neighboorhood up to a degree
-def expandNeighborhood(G, neighbors, degree = 1, to_skip = set()):
+## Given a set of nodes, it expands their neighborhood to up a certain degree of distance, which allows exploring specific node proximities
+def expandNeighborhood(G, seednodes, degree = 1, to_skip = set()):
     union = lambda x, y: x.union(y)
-    neighbors = set(neighbors)
+    #Initialize neighborhood with seed nodes
+    neighborhood = set(seednodes)
     to_skip = set(to_skip)
     for _ in range(degree):
         tmp = neighbors.union(set(n for x in neighbors for n in nx.neighbors(G, x)))
