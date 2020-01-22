@@ -25,6 +25,7 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rc('font', family='sans-serif')
 matplotlib.rc('font', serif='Helvetica')
 
+from functools import reduce
 
 #BUGBUG don't think connected_component_subgraphs presents subgraphs in deterministic order
 #TODO doublet detection by finding cell nodes that join strongly connected components? Maybe need higher cell density
@@ -192,18 +193,22 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
     return nCommunities
 
 
-def printGraph(G, filename, edge_color='weight'):
+def printGraph(G, filename=None, node_color='type', edge_color='weight', show_labels=False, node_color_dict={'BC': 'darkblue', 'cell': 'darkred'}, fig=None):
     #print("[genotypeClones] Printing graph ", filename, sep="", file=sys.stderr)
-    nodeColorDict = {'BC': 'darkblue', 'cell': 'darkred'}
+    # nodeColorDict = 
 #    node_sizes = [node[1]*25000 for node in G.nodes.data('weight')]
-    node_colors = [mcolors.to_rgba(nodeColorDict[node[1]]) for node in G.nodes.data('type')]
+    node_colors = [mcolors.to_rgba(node_color_dict.get(node[1], "lightgray"))
+                   for node in G.nodes.data(node_color)]
     edge_weights = [edge[2] for edge in G.edges.data('weight')]
     
-    kwds = {'edgelist': G.edges,
-        'font_size': 10,
+    kwds = {
+        'edgelist': G.edges,
+        'font_size': 8,
+        'nodelist': G.nodes,
         'node_color': node_colors,
         'node_size': 25,
         'width': 2.8,
+        'with_labels': show_labels
 #        'edge_vmin': 0, #min/max edge weight for color scale
 #        'edge_vmax': 0.5
         }
@@ -218,26 +223,30 @@ def printGraph(G, filename, edge_color='weight'):
     else:
         print("ERROR", edge_color)
     
-    fig = plt.figure()
-    fig.set_size_inches(7, 7)
+    if fig is None:
+        fig = plt.figure()
+        fig.set_size_inches(7, 7)
     
     #James originally had kamada_kawai_layout but seems to perform badly
     #https://stackoverflow.com/questions/14283341/how-to-increase-node-spacing-for-networkx-spring-layout shows how to space out the components a bit
-    drawing.nx_pylab.draw_networkx(G, pos=nx.spring_layout(G,k=0.25,iterations=50, weight='weight'), **kwds)
+    pos = nx.spring_layout(G, k=0.25, iterations=25, weight='weight')
+    nx.draw_networkx(G, pos=pos, **kwds)
     
     sm = plt.cm.ScalarMappable(cmap=edge_colormap, norm=mcolors.NoNorm(vmin=0, vmax=100))
     sm._A = []
     plt.colorbar(sm, shrink=0.7)
     
     nCells = len([ node for node in G.nodes if G.nodes[node]['type'] == 'cell'])
-    nBCs = len([ node for node in G.nodes if G.nodes[node]['type'] == 'BC'])
+    nBCs   = len([ node for node in G.nodes if G.nodes[node]['type'] == 'BC'])
+
+    plt.title("({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
     
-    plt.title(os.path.basename(filename) + " ({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
-    
-    plt.savefig(filename + '.png')
-    plt.savefig(filename + '.pdf')
-    
-    matplotlib.pyplot.close(fig)
+    if filename is not None:
+        plt.title(os.path.basename(filename) +
+            " ({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
+        plt.savefig(filename + '.png')
+        plt.savefig(filename + '.pdf')
+        plt.close(fig)
 
 
 ###Iterate over connected components (clones) and print out all neighbors
@@ -316,6 +325,11 @@ def expandNeighborhood(G, neighbors, degree = 1, to_skip = set()):
         neighbors = neighbors - to_skip
     return neighbors
 
+## Assign transfection
+def assignToNodes(G, key, values):
+    for n in G.nodes:
+        val = values.get(n, "none")
+        G.nodes[n][key] = val
 
 ###Command line arguments
 version="1.0"
