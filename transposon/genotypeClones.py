@@ -315,20 +315,21 @@ def writeOutputFiles(G, output, outputlong, outputwide, printGraph=None):
     print("[genotypeClones] Identified ", str(cloneid), " unique clones, ", totalCells, " cells, and ", totalBCs, " BCs. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalCount/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
 
 
-## Expand a neighboorhood up to a degree
-def expandNeighborhood(G, neighbors, degree = 1, to_skip = set()):
+## Given a set of nodes, it expands their neighborhood to up a certain degree of distance, which allows exploring specific node proximities
+def expandNeighborhood(G, seednodes, degree = 1, to_skip = set()):
     union = lambda x, y: x.union(y)
-    neighbors = set(neighbors)
+    #Initialize neighborhood with seed nodes
+    neighborhood = set(seednodes)
     to_skip = set(to_skip)
     for _ in range(degree):
-        neighbors = reduce(union, [nx.neighbors(G, x) for x in neighbors], neighbors)
-        neighbors = neighbors - to_skip
-    return neighbors
+        neighborhood = reduce(union, [nx.neighbors(G, x) for x in neighborhood], neighborhood)
+        neighborhood = neighborhood - to_skip
+    return neighborhood
 
-## Assign transfection
-def assignToNodes(G, key, values):
+## Assign assigns values to nodes based on a dictionary of node -> value, it can be used to assign nodes transfections for example
+def assignToNodes(G, key, annotationdict):
     for n in G.nodes:
-        val = values.get(n, "none")
+        val = annotationdict.get(n, "none")
         G.nodes[n][key] = val
 
 ###Command line arguments
