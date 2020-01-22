@@ -227,7 +227,6 @@ else
 fi
 
 #Exclude chrM reads in remaining counts
-#BUGBUG making 4 passes through full bam below
 #samtools view -c is faster than counting wc -l/awk; have a cleanup awk sum the lines in case xargs breaks it into multiple commands
 dupReads=`samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="*" {print $1}' | xargs samtools view -F 512 -f 1024 -c ${sampleOutdir}/${name}.${mappedgenome}.bam | awk 'BEGIN {sum=0} {sum+=$0} END {print sum}'`
 analyzedReads=`unstarch --list ${sampleOutdir}/${name}.${mappedgenome}.reads.starch | perl -pe 's/ *\|/\t/g;' | awk -F "\t" 'BEGIN {OFS="\t"; sum=0} NR==1 {for(i=1; i<=NF; i++) {if($i=="chr") {chromCol=i} else if($i=="uncompressedLineCount") {uncompressedLineCountCol=i} } } NR>1 && $chromCol!="chrM" {sum+=$uncompressedLineCountCol} END {print sum}'`
@@ -242,7 +241,8 @@ fi
 analyzedReadsM=`echo "${analyzedReads}/1000000" | bc -l -q` 
 analyzedReadsM=$(round ${analyzedReadsM} 1)
 
-if [ "${sequencedReads}" != "NA" ]; then
+#sequencedReads can be 0 in case there was a parsing problem above
+if [[ "${sequencedReads}" != "NA" ]] && [[ "${sequencedReads}" != 0 ]]; then
     pctPFalignments=`echo "${PFalignments}/${sequencedReads}*100" | bc -l -q`
     #BUGBUG denominator wrong here
     pctanalyzedReads=`echo "${analyzedReads}/${sequencedReads}*100" | bc -l -q`
