@@ -183,7 +183,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
             
             ###Print graph
             if doGraph and printGraph is not None:
-                printGraph(subG, printGraph + '/preclone-' + str(precloneid), edge_color='color')
+                printGraph(subG, filename=printGraph + '/preclone-' + str(precloneid), edge_color='color')
     
     G.remove_edges_from(edgesToDrop)
     print("[genotypeClones] Created ", nCommunities, " new clones by pruning ", len(edgesToDrop), " edges (", len(G.edges), " left) ", countsremoved, " UMIs removed", sep="", file=sys.stderr)
@@ -191,7 +191,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
     return nCommunities
 
 
-def printGraph(G, filename=None, node_color='type', edge_color='weight', edge_color_cmap="Blues", with_labels=False, node_color_dict={'BC': 'darkblue', 'cell': 'darkred'}, fig=None):
+def printGraph(G, filename=None, fig=None, node_color='type', node_color_dict={'BC': 'darkblue', 'cell': 'darkred'}, edge_color='weight', edge_color_cmap="Blues", with_labels=True):
     #print("[genotypeClones] Printing graph ", filename, sep="", file=sys.stderr)
     # nodeColorDict = 
 #    node_sizes = [node[1]*25000 for node in G.nodes.data('weight')]
@@ -296,7 +296,7 @@ def writeOutputFiles(G, output, outputlong, outputwide, printGraph=None):
             totalCount += count
             
             if printGraph:
-                printGraph(subG, printGraph + '/clone-' + str(cloneid), edge_color='weight')
+                printGraph(subG, filename=printGraph + '/clone-' + str(cloneid), edge_color='weight')
             
             
             for bc in bcs:
