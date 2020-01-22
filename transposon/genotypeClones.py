@@ -322,7 +322,6 @@ def writeOutputFiles(G, output, outputlong, outputwide, printGraph=None):
 
 ## Given a set of nodes, it expands their neighborhood to up a certain degree of distance, which allows exploring specific node proximities
 def expandNeighborhood(G, seednodes, degree = 1, to_skip = set()):
-    union = lambda x, y: x.union(y)
     #Initialize neighborhood with seed nodes
     neighborhood = set(seednodes)
     to_skip = set(to_skip)
@@ -333,11 +332,10 @@ def expandNeighborhood(G, seednodes, degree = 1, to_skip = set()):
     return neighborhood
 
 ## Assign assigns values to nodes based on a dictionary of node -> value, it can be used to assign nodes transfections for example
-def assignToNodes(G, key, values):
-    for n in values:
-        if not G.has_node(n):
-            continue
-        G.nodes[n][key] = values[n]
+def assignToNodes(G, key, annotationdict, default=None):
+    for n in G.nodes:
+        val = annotationdict.get(n, default)
+        G.nodes[n][key] = val
 
 ## Convert bipartite graph into a Jaccard index graph of the cells
 def toJaccard(G):
