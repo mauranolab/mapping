@@ -327,9 +327,10 @@ def expandNeighborhood(G, seednodes, degree = 1, to_skip = set()):
     neighborhood = set(seednodes)
     to_skip = set(to_skip)
     for _ in range(degree):
-        tmp = neighbors.union(set(n for x in neighbors for n in nx.neighbors(G, x)))
-        neighbors = tmp - to_skip
-    return neighbors
+        tmp = neighborhood.union(
+            set(n for x in neighborhood for n in nx.neighbors(G, x)))
+        neighborhood = tmp - to_skip
+    return neighborhood
 
 ## Assign assigns values to nodes based on a dictionary of node -> value, it can be used to assign nodes transfections for example
 def assignToNodes(G, key, values):
