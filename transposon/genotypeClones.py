@@ -5,6 +5,7 @@ import argparse
 import os
 import csv
 import statistics
+import collections
 
 import networkx as nx
 from networkx import drawing
@@ -123,7 +124,7 @@ def pruneEdgesLowPropOfReads(G, minPropOfReads, type='BC'):
     pruneOrphanNodes(G)
 
 
-def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=False, verbose=True, printGraph=None):
+def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=False, verbose=True, graphOutput=None):
     #Break up weakly connected communities
     precloneid = 0
     edgesToDrop = []
@@ -184,7 +185,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
             #nCommunities = len([c for c in comp])
             
             ###Print graph
-            if doGraph and printGraph is not None:
+            if graphOutput is not None:
                 printGraph(subG, filename=printGraph + '/preclone-' + str(precloneid), edge_color='color')
     
     G.remove_edges_from(edgesToDrop)
@@ -256,53 +257,72 @@ def printGraph(G, filename=None, fig=None, node_color='type', node_color_dict={'
         plt.close(fig)
 
 
-###Iterate over connected components (clones) and print out all neighbors
-def writeOutputFiles(G, output, outputlong, outputwide, printGraph=None):
+###Iterate over connected components to define clones; returns a dict of dicts. The key to the top-level dict is the clone name; the value includes the clone subgraph, and summary info like UMI count, bcs, cells
+def identifyClones(G):
     cloneid = 0
     totalCells = 0
     totalCellsSkipped = 0
     totalBCs = 0
     totalBCsSkipped = 0
-    totalCount = 0
+    totalUMIs = 0
     
-    longoutfile = open(outputlong, 'w')
-    longwr = csv.DictWriter(longoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'clone', 'count', 'nCells'])
-    longwr.writeheader()
+    clones = collections.OrderedDict()
     
-    outputfilename = output
-    if outputfilename=="-":
-        outfile = sys.stdout
-    else:
-        outfile = open(outputfilename, 'w')
-    outwr = csv.DictWriter(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'cellBC', 'count', 'clone'])
-    outwr.writeheader()
+    for subG in nx.connected_component_subgraphs(G):
+        cloneid += 1
+        clonename = 'clone-' + str(cloneid).zfill(4)
+        
+        bcs = [x for x in subG.nodes if subG.nodes[x]['type'] == 'BC']
+        cells = [x for x in subG.nodes if subG.nodes[x]['type'] == 'cell']
+        #Sort lists so that print is deterministic
+        bcs.sort()
+        cells.sort()
+        
+        #Num UMIs supporting total clone/BCs
+        umi_count = sum([subG.edges[x]['weight'] for x in subG.edges])
+        totalUMIs += umi_count
+        totalCells += len(cells)
+        totalBCs += len(bcs)
+        
+        clones[clonename] = { 'clones': subG, 'umi_count': umi_count , 'bcs': bcs, 'cells': cells }
+        
+    print("[genotypeClones] Identified ", str(cloneid), " unique clones, ", totalCells, " cells, and ", totalBCs, " BCs. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalUMIs/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
     
-    wideoutfile = open(outputwide, 'w')
-    widewr = csv.DictWriter(wideoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'count', 'nedges', 'nBCs', 'ncells'])
-    widewr.writeheader()
-    
+    return clones
+
+
+#Print three output files and optionally graphs for each clone
+#TODO make each output file optional
+def writeOutputFiles(clones, output, outputlong, outputwide, graphOutput=None):
     try:
-        for subG in nx.connected_component_subgraphs(G):
-            bcs = [x for x in subG.nodes if subG.nodes[x]['type'] == 'BC']
-            cells = [x for x in subG.nodes if subG.nodes[x]['type'] == 'cell']
-            #Sort lists so that print is deterministic
-            bcs.sort()
-            cells.sort()
+        #Prepare file IO
+        longoutfile = open(outputlong, 'w')
+        longwr = csv.DictWriter(longoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'clone', 'count', 'nCells'])
+        longwr.writeheader()
             
-            cloneid += 1
+        outputfilename = output
+        if outputfilename=="-":
+            outfile = sys.stdout
+        else:
+            outfile = open(outputfilename, 'w')
+        outwr = csv.DictWriter(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'cellBC', 'count', 'clone'])
+        outwr.writeheader()
+        
+        wideoutfile = open(outputwide, 'w')
+        widewr = csv.DictWriter(wideoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'count', 'nedges', 'nBCs', 'ncells'])
+        widewr.writeheader()
+        
+        for clonename, clones in clones.items():
+            subG = clones['clones']
+            count = clones['umi_count']
+            bcs = clones['bcs']
+            cells = clones['cells']
             
-            #Num UMIs supporting total clone/BCs
-            count = sum([subG.edges[x]['weight'] for x in subG.edges])
-            totalCells += len(cells)
-            totalBCs += len(bcs)
-            totalCount += count
-            
-            if printGraph:
-                printGraph(subG, filename=printGraph + '/clone-' + str(cloneid), edge_color='weight')
-            
+            if graphOutput:
+                printGraph(subG, filename=graphOutput + '/' + clonename, edge_color='weight')
             
             for bc in bcs:
-                longwr.writerow({ 'BC': bc, 'clone': 'clone-' + str(cloneid).zfill(4), 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])]), 'nCells': len(subG.edges([bc]))})
+                longwr.writerow({ 'BC': bc, 'clone': clonename, 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])]), 'nCells': len(subG.edges([bc]))})
                 
                 #Start with edges with highest UMIs
                 for edge in sorted(subG.edges([bc]), key=lambda e: subG.edges[e]['weight'], reverse=True):
@@ -310,16 +330,14 @@ def writeOutputFiles(G, output, outputlong, outputwide, printGraph=None):
                         cellBC = edge[1]
                     else:
                         cellBC = edge[0]
-                    outwr.writerow({ 'BC': bc, 'cellBC': cellBC, 'clone': 'clone-' + str(cloneid).zfill(4), 'count': subG.edges[edge]['weight'] })
+                    outwr.writerow({ 'BC': bc, 'cellBC': cellBC, 'clone': clonename, 'count': subG.edges[edge]['weight'] })
             
-            widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': 'clone-' + str(cloneid).zfill(4), 'count': count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells) })
+            widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': clonename, 'count': umi_count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells) })
     
     finally:
         outfile.close()
         longoutfile.close()
         wideoutfile.close()
-    
-    print("[genotypeClones] Identified ", str(cloneid), " unique clones, ", totalCells, " cells, and ", totalBCs, " BCs. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalCount/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
 
 
 ###Utility functions not currently used in command line operation
@@ -391,8 +409,9 @@ if __name__ == "__main__":
     pruneEdgesLowPropOfReads(G, args.minPropOfBCReads, type='BC')
     #TODO this drops a lot of otherwise unconnected BCs, maybe keep?
     pruneEdgesLowPropOfReads(G, args.minPropOfCellReads, type='cell')
-    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, doGraph=True, verbose=args.verbose, printGraph=args.printGraph)
+    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=None)
     #Do twice to break up some of the bigger graphs since we don't iterate internally, 3x doesn't do anything else
-    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, doGraph=False, verbose=args.verbose, printGraph=args.printGraph)
+    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
     
-    writeOutputFiles(G, args.output, args.outputlong, args.outputwide, args.printGraph)
+    clones = identifyClones(G)
+    writeOutputFiles(clones, args.output, args.outputlong, args.outputwide, args.printGraph)
