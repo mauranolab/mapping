@@ -25,6 +25,8 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rc('font', family='sans-serif')
 matplotlib.rc('font', serif='Helvetica')
 
+version="1.0"
+
 #BUGBUG don't think connected_component_subgraphs presents subgraphs in deterministic order
 #TODO doublet detection by finding cell nodes that join strongly connected components? Maybe need higher cell density
 #TODO sort output
@@ -243,7 +245,7 @@ def printGraph(G, filename=None, fig=None, node_color='type', node_color_dict={'
     
     nCells = len([ node for node in G.nodes if G.nodes[node]['type'] == 'cell'])
     nBCs = len([node for node in G.nodes if G.nodes[node]['type'] == 'BC'])
-
+    
     plt.title("({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
     
     if filename is not None:
@@ -320,6 +322,7 @@ def writeOutputFiles(G, output, outputlong, outputwide, printGraph=None):
     print("[genotypeClones] Identified ", str(cloneid), " unique clones, ", totalCells, " cells, and ", totalBCs, " BCs. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalCount/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
 
 
+###Utility functions not currently used in command line operation
 ## Given a set of nodes, it expands their neighborhood to up a certain degree of distance, which allows exploring specific node proximities
 def expandNeighborhood(G, seednodes, degree = 1, to_skip = set()):
     #Initialize neighborhood with seed nodes
@@ -331,11 +334,13 @@ def expandNeighborhood(G, seednodes, degree = 1, to_skip = set()):
         neighborhood = tmp - to_skip
     return neighborhood
 
+
 ## Assign assigns values to nodes based on a dictionary of node -> value, it can be used to assign nodes transfections for example
 def assignToNodes(G, key, annotationdict, default=None):
     for n in G.nodes:
         val = annotationdict.get(n, default)
         G.nodes[n][key] = val
+
 
 ## Convert bipartite graph into a Jaccard index graph of the cells
 def toJaccard(G):
@@ -343,55 +348,51 @@ def toJaccard(G):
         unbrs = set(G[u])
         vnbrs = set(G[v])
         return float(len(unbrs & vnbrs)) / len(unbrs | vnbrs)
-
+    
     cells = [n for n in G.nodes if G.nodes[n]['type'] == 'cell']
     return nx.bipartite.generic_weighted_projected_graph(G, cells, weight_function=jaccard)
 
 
-###Command line arguments
-version="1.0"
-
+###Command line operation
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog = "genotypeClones.py", description = "Graph approach to generate unified list of which BCs are present in which cells", allow_abbrev=False)
     parser.add_argument('--inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences. First line must be header (unused)')
     parser.add_argument('--outputlong', action='store', help='Tab-delimited list of BC counts totalled per clone')
     parser.add_argument('--outputwide', action='store', help='Tab-delimited list of clones and the cells/BCs they include')
     parser.add_argument('--output', action='store', help='Tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
-
+    
     parser.add_argument('--minreads', action='store', type=int, default=2, help='Min UMI filter for input file')
     parser.add_argument('--minPropOfBCReads', action='store', type=float, default=0.15, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
     parser.add_argument('--minPropOfCellReads', action='store', type=float, default=0.01, help='Each BC-cell edge must represent at least this proportion of UMIs for cell')
     parser.add_argument('--minCentrality', action='store', type=float, default=0.2, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
     parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
-
+    
     parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
-
+    
     parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
     parser.add_argument('--version', action='version', version='%(prog)s ' + version)
-
+    
     try:
         args = parser.parse_args()
     except argparse.ArgumentError as exc:
         print(exc.message, '\n', exc.argument, file=sys.stderr)
         sys.exit(1)
-
+    
     print("[genotypeClones] " + str(args), file=sys.stderr)
-
+    
     if args.printGraph is not None:
         os.makedirs(args.printGraph, exist_ok=True)
-
-
+    
+    
     ###Initialize graph, filter, write output
     G = initializeGraphFromInput(args.inputfilename, args.minreads)
-
+    
     #This filter seems more stringent on the individual libraries than the aggregate one
     pruneEdgesLowPropOfReads(G, args.minPropOfBCReads, type='BC')
     #TODO this drops a lot of otherwise unconnected BCs, maybe keep?
     pruneEdgesLowPropOfReads(G, args.minPropOfCellReads, type='cell')
-    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads,
-                                      doGraph=True, verbose=args.verbose, printGraph=args.printGraph)
+    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, doGraph=True, verbose=args.verbose, printGraph=args.printGraph)
     #Do twice to break up some of the bigger graphs since we don't iterate internally, 3x doesn't do anything else
-    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads,
-                                      doGraph=False, verbose=args.verbose, printGraph=args.printGraph)
-
+    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, doGraph=False, verbose=args.verbose, printGraph=args.printGraph)
+    
     writeOutputFiles(G, args.output, args.outputlong, args.outputwide, args.printGraph)
