@@ -309,45 +309,45 @@ def writeOutputFiles(G):
 ###Command line arguments
 version="1.0"
 
-parser = argparse.ArgumentParser(prog = "genotypeClones.py", description = "Graph approach to generate unified list of which BCs are present in which cells", allow_abbrev=False)
-parser.add_argument('--inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences. First line must be header (unused)')
-parser.add_argument('--outputlong', action='store', help='Tab-delimited list of BC counts totalled per clone')
-parser.add_argument('--outputwide', action='store', help='Tab-delimited list of clones and the cells/BCs they include')
-parser.add_argument('--output', action='store', help='Tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog = "genotypeClones.py", description = "Graph approach to generate unified list of which BCs are present in which cells", allow_abbrev=False)
+    parser.add_argument('--inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences. First line must be header (unused)')
+    parser.add_argument('--outputlong', action='store', help='Tab-delimited list of BC counts totalled per clone')
+    parser.add_argument('--outputwide', action='store', help='Tab-delimited list of clones and the cells/BCs they include')
+    parser.add_argument('--output', action='store', help='Tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
 
-parser.add_argument('--minreads', action='store', type=int, default=2, help='Min UMI filter for input file')
-parser.add_argument('--minPropOfBCReads', action='store', type=float, default=0.15, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
-parser.add_argument('--minPropOfCellReads', action='store', type=float, default=0.01, help='Each BC-cell edge must represent at least this proportion of UMIs for cell')
-parser.add_argument('--minCentrality', action='store', type=float, default=0.2, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
-parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
+    parser.add_argument('--minreads', action='store', type=int, default=2, help='Min UMI filter for input file')
+    parser.add_argument('--minPropOfBCReads', action='store', type=float, default=0.15, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
+    parser.add_argument('--minPropOfCellReads', action='store', type=float, default=0.01, help='Each BC-cell edge must represent at least this proportion of UMIs for cell')
+    parser.add_argument('--minCentrality', action='store', type=float, default=0.2, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
+    parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
 
-parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
+    parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
 
-parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
-parser.add_argument('--version', action='version', version='%(prog)s ' + version)
+    parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
+    parser.add_argument('--version', action='version', version='%(prog)s ' + version)
+
+    try:
+        args = parser.parse_args()
+    except argparse.ArgumentError as exc:
+        print(exc.message, '\n', exc.argument, file=sys.stderr)
+        sys.exit(1)
+
+    print("[genotypeClones] " + str(args), file=sys.stderr)
+
+    if args.printGraph is not None:
+        os.makedirs(args.printGraph, exist_ok=True)
 
 
-try:
-    args = parser.parse_args()
-except argparse.ArgumentError as exc:
-    print(exc.message, '\n', exc.argument, file=sys.stderr)
-    sys.exit(1)
+    ###Initialize graph, filter, write output
+    G = initializeGraphFromInput(args.inputfilename, args.minreads)
 
-print("[genotypeClones] " + str(args), file=sys.stderr)
+    #This filter seems more stringent on the individual libraries than the aggregate one
+    pruneEdgesLowPropOfReads(G, args.minPropOfBCReads, type='BC')
+    #TODO this drops a lot of otherwise unconnected BCs, maybe keep?
+    pruneEdgesLowPropOfReads(G, args.minPropOfCellReads, type='cell')
+    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, doGraph=True)
+    #Do twice to break up some of the bigger graphs since we don't iterate internally, 3x doesn't do anything else
+    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, doGraph=False)
 
-if args.printGraph is not None:
-    os.makedirs(args.printGraph, exist_ok=True)
-
-
-###Initialize graph, filter, write output
-G = initializeGraphFromInput(args.inputfilename, args.minreads)
-
-#This filter seems more stringent on the individual libraries than the aggregate one
-pruneEdgesLowPropOfReads(G, args.minPropOfBCReads, type='BC')
-#TODO this drops a lot of otherwise unconnected BCs, maybe keep?
-pruneEdgesLowPropOfReads(G, args.minPropOfCellReads, type='cell')
-breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, doGraph=True)
-#Do twice to break up some of the bigger graphs since we don't iterate internally, 3x doesn't do anything else
-breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, doGraph=False)
-
-writeOutputFiles(G)
+    writeOutputFiles(G)
