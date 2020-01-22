@@ -122,7 +122,7 @@ def pruneEdgesLowPropOfReads(G, minPropOfReads, type='BC'):
     pruneOrphanNodes(G)
 
 
-def breakUpWeaklyConnectedCommunities(G, minCentrality, doGraph=False):
+def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=False, verbose=True, printGraph=None):
     #Break up weakly connected communities
     precloneid = 0
     edgesToDrop = []
@@ -161,7 +161,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, doGraph=False):
                     #Separate if for tunable filters to facilitate tuning
                     #Identify communities by removing bridge edges based centrality metric.
                     #TODO arbitrary read cutoff for edges. Should min BC/cells in each component be a proportion rather than 1?
-                    if centrality[edge] > minCentrality and G.edges[edge]['weight'] / min(leftReads, rightReads) <= args.maxpropreads :
+                    if centrality[edge] > minCentrality and G.edges[edge]['weight'] / min(leftReads, rightReads) <= maxPropReads:
                         nCommunities += 1
                         countsremoved += subG.edges[edge]['weight']
                         edgesToDrop.append(edge)
@@ -171,7 +171,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, doGraph=False):
                         nodesToPrune.append(edge[0])
                         nodesToPrune.append(edge[1])
                         
-                        if args.verbose:
+                        if verbose:
                             print("[genotypeClones] ", 'preclone-' + str(precloneid), ' ', edge, " weight:", subG.edges[edge]['weight'], ", L:", str(len(leftNodes)), " (", str(len(leftCells)), " cells, ", leftReads, " reads), R:", str(len(rightNodes)), " (", str(len(rightCells)), " cells, ", rightReads, " reads), centrality:", centrality[edge], sep="", file=sys.stderr)
             
             ###Never implemented Louvain communities (did ok but tended to split up smaller graphs)
@@ -183,8 +183,8 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, doGraph=False):
             #nCommunities = len([c for c in comp])
             
             ###Print graph
-            if doGraph and args.printGraph is not None:
-                printGraph(subG, args.printGraph + '/preclone-' + str(precloneid), edge_color='color')
+            if doGraph and printGraph is not None:
+                printGraph(subG, printGraph + '/preclone-' + str(precloneid), edge_color='color')
     
     G.remove_edges_from(edgesToDrop)
     print("[genotypeClones] Created ", nCommunities, " new clones by pruning ", len(edgesToDrop), " edges (", len(G.edges), " left) ", countsremoved, " UMIs removed", sep="", file=sys.stderr)
@@ -241,7 +241,7 @@ def printGraph(G, filename, edge_color='weight'):
 
 
 ###Iterate over connected components (clones) and print out all neighbors
-def writeOutputFiles(G):
+def writeOutputFiles(G, output, outputlong, outputwide, printGraph=None):
     cloneid = 0
     totalCells = 0
     totalCellsSkipped = 0
@@ -249,11 +249,11 @@ def writeOutputFiles(G):
     totalBCsSkipped = 0
     totalCount = 0
     
-    longoutfile = open(args.outputlong, 'w')
+    longoutfile = open(outputlong, 'w')
     longwr = csv.DictWriter(longoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'clone', 'count', 'nCells'])
     longwr.writeheader()
     
-    outputfilename = args.output
+    outputfilename = output
     if outputfilename=="-":
         outfile = sys.stdout
     else:
@@ -261,7 +261,7 @@ def writeOutputFiles(G):
     outwr = csv.DictWriter(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'cellBC', 'count', 'clone'])
     outwr.writeheader()
     
-    wideoutfile = open(args.outputwide, 'w')
+    wideoutfile = open(outputwide, 'w')
     widewr = csv.DictWriter(wideoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'count', 'nedges', 'nBCs', 'ncells'])
     widewr.writeheader()
     
@@ -281,8 +281,8 @@ def writeOutputFiles(G):
             totalBCs += len(bcs)
             totalCount += count
             
-            if args.printGraph:
-                printGraph(subG, args.printGraph + '/clone-' + str(cloneid), edge_color='weight')
+            if printGraph:
+                printGraph(subG, printGraph + '/clone-' + str(cloneid), edge_color='weight')
             
             
             for bc in bcs:
@@ -346,8 +346,10 @@ if __name__ == "__main__":
     pruneEdgesLowPropOfReads(G, args.minPropOfBCReads, type='BC')
     #TODO this drops a lot of otherwise unconnected BCs, maybe keep?
     pruneEdgesLowPropOfReads(G, args.minPropOfCellReads, type='cell')
-    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, doGraph=True)
+    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads,
+                                      doGraph=True, verbose=args.verbose, printGraph=args.printGraph)
     #Do twice to break up some of the bigger graphs since we don't iterate internally, 3x doesn't do anything else
-    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, doGraph=False)
+    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads,
+                                      doGraph=False, verbose=args.verbose, printGraph=args.printGraph)
 
-    writeOutputFiles(G)
+    writeOutputFiles(G, args.output, args.outputlong, args.outputwide, args.printGraph)
