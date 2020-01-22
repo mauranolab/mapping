@@ -94,10 +94,8 @@ rn6_sacCer3)
     dbsnpvcf=/dev/null
     ;;
 cegsvectors*)
-    if [[ "${mappedgenome}" =~ cegsvectors_ ]]; then
-        #If this genome is an symlink, then substitute it with its target for the purposes of looking up bwa index and fasta file
-        bwagenome=`readlink -f /vol/cegs/sequences/${mappedgenome} | xargs basename`
-    fi
+    #If this genome is an symlink, then substitute it with its target for the purposes of looking up bwa index and fasta file
+    bwagenome=`readlink -f /vol/cegs/sequences/${mappedgenome} | xargs basename`
     bwaIndex=/vol/cegs/sequences/${bwagenome}/${bwagenome}
     ploidy="--ploidy 1"
     #Tried using the full cegsvectors.fa.gz but picard (esp CollectMultipleMetrics) has trouble with it)
@@ -111,7 +109,8 @@ esac
 
 
 if [[ "${mappedgenome}" =~ ^cegsvectors ]]; then
-    chromsizes="/vol/cegs/sequences/${mappedgenome}/${mappedgenome}.chrom.sizes"
+    #In case this genome is an symlink,  use its target name (determined above) to get the right chrom.sizes name
+    chromsizes="/vol/cegs/sequences/${bwagenome}/${bwagenome}.chrom.sizes"
 else
     chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
 fi
