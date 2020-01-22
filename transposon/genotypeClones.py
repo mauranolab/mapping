@@ -25,8 +25,6 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rc('font', family='sans-serif')
 matplotlib.rc('font', serif='Helvetica')
 
-from functools import reduce
-
 #BUGBUG don't think connected_component_subgraphs presents subgraphs in deterministic order
 #TODO doublet detection by finding cell nodes that join strongly connected components? Maybe need higher cell density
 #TODO sort output
@@ -235,9 +233,16 @@ def printGraph(G, filename=None, node_color='type', edge_color='weight', edge_co
     sm = plt.cm.ScalarMappable(cmap=edge_colormap, norm=mcolors.NoNorm(vmin=0, vmax=100))
     sm._A = []
     plt.colorbar(sm, shrink=0.7)
+    ## add node legend
+    ax = fig.gca()
+    for label in node_color_dict:
+        ax.scatter([0], [0], 
+            color=mcolors.to_rgba(node_color_dict[label]),
+            label=label)
+    plt.legend(loc="upper right")
     
     nCells = len([ node for node in G.nodes if G.nodes[node]['type'] == 'cell'])
-    nBCs   = len([ node for node in G.nodes if G.nodes[node]['type'] == 'BC'])
+    nBCs = len([node for node in G.nodes if G.nodes[node]['type'] == 'BC'])
 
     plt.title("({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
     
@@ -321,8 +326,8 @@ def expandNeighborhood(G, neighbors, degree = 1, to_skip = set()):
     neighbors = set(neighbors)
     to_skip = set(to_skip)
     for _ in range(degree):
-        neighbors = reduce(union, [nx.neighbors(G, x) for x in neighbors], neighbors)
-        neighbors = neighbors - to_skip
+        tmp = neighbors.union(set(n for x in neighbors for n in nx.neighbors(G, x)))
+        neighbors = tmp - to_skip
     return neighbors
 
 ## Assign transfection
@@ -331,6 +336,16 @@ def assignToNodes(G, key, values):
         if not G.has_node(n):
             continue
         G.nodes[n][key] = values[n]
+
+def toJaccard(G):
+    def jaccard(G, u, v):
+        unbrs = set(G[u])
+        vnbrs = set(G[v])
+        return float(len(unbrs & vnbrs)) / len(unbrs | vnbrs)
+
+    cells = [n for n in G.nodes if G.nodes[n]['type'] == 'cell']
+    return nx.bipartite.generic_weighted_projected_graph(G, cells, weight_function=jaccard)
+
 
 ###Command line arguments
 version="1.0"
