@@ -321,18 +321,14 @@ def writeOutputFiles(clones, output, outputlong, outputwide, graphOutput=None):
             if graphOutput:
                 printGraph(subG, filename=graphOutput + '/' + clonename, edge_color='weight')
             
+            widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': clonename, 'count': umi_count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells) })
+            
             for bc in bcs:
                 longwr.writerow({ 'BC': bc, 'clone': clonename, 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])]), 'nCells': len(subG.edges([bc]))})
                 
-                #Start with edges with highest UMIs
-                for edge in sorted(subG.edges([bc]), key=lambda e: subG.edges[e]['weight'], reverse=True):
-                    if subG.nodes[edge[0]]['type'] == 'BC':
-                        cellBC = edge[1]
-                    else:
-                        cellBC = edge[0]
-                    outwr.writerow({ 'BC': bc, 'cellBC': cellBC, 'clone': clonename, 'count': subG.edges[edge]['weight'] })
-            
-            widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': clonename, 'count': umi_count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells) })
+                #Get all neighbors for this BC (which must be cellBCs)
+                for cellBC in subG[bc]:
+                    outwr.writerow({ 'BC': bc, 'cellBC': cellBC, 'clone': clonename, 'count': subG.edges[bc, cellBC]['weight'] })
     
     finally:
         outfile.close()
@@ -353,7 +349,7 @@ def expandNeighborhood(G, seednodes, degree = 1, to_skip = set()):
     return neighborhood
 
 
-## Assign assigns values to nodes based on a dictionary of node -> value, it can be used to assign nodes transfections for example
+## Assign assigns values to nodes based on a dictionary of node -> value, values for key must match the name of a cell or BC node.
 def assignToNodes(G, key, annotationdict, default=None):
     for n in G.nodes:
         val = annotationdict.get(n, default)
