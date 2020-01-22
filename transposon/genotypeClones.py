@@ -25,7 +25,6 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rc('font', family='sans-serif')
 matplotlib.rc('font', serif='Helvetica')
 
-
 #BUGBUG don't think connected_component_subgraphs presents subgraphs in deterministic order
 #TODO doublet detection by finding cell nodes that join strongly connected components? Maybe need higher cell density
 #TODO sort output
@@ -38,8 +37,7 @@ matplotlib.rc('font', serif='Helvetica')
 #2) edge attributes
 #    weight - number of UMIs supporting this link
 #    color - used to distinguish trimmed edges in plots
-def initializeGraphFromInput():
-    inputfilename = args.inputfilename
+def initializeGraphFromInput(inputfilename, minCount):
     if inputfilename=="-":
         inputfile = sys.stdin
     else:
@@ -59,7 +57,7 @@ def initializeGraphFromInput():
             cellbc = line[1]
             count = int(line[2])
             
-            if count >= args.minreads:
+            if count >= minCount:
                 totalReads += count
                 
                 #Node weight is sum of edge weights
@@ -123,7 +121,7 @@ def pruneEdgesLowPropOfReads(G, minPropOfReads, type='BC'):
     pruneOrphanNodes(G)
 
 
-def breakUpWeaklyConnectedCommunities(G, minCentrality, doGraph=False):
+def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=False, verbose=True, printGraph=None):
     #Break up weakly connected communities
     precloneid = 0
     edgesToDrop = []
@@ -162,7 +160,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, doGraph=False):
                     #Separate if for tunable filters to facilitate tuning
                     #Identify communities by removing bridge edges based centrality metric.
                     #TODO arbitrary read cutoff for edges. Should min BC/cells in each component be a proportion rather than 1?
-                    if centrality[edge] > minCentrality and G.edges[edge]['weight'] / min(leftReads, rightReads) <= args.maxpropreads :
+                    if centrality[edge] > minCentrality and G.edges[edge]['weight'] / min(leftReads, rightReads) <= maxPropReads:
                         nCommunities += 1
                         countsremoved += subG.edges[edge]['weight']
                         edgesToDrop.append(edge)
@@ -172,7 +170,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, doGraph=False):
                         nodesToPrune.append(edge[0])
                         nodesToPrune.append(edge[1])
                         
-                        if args.verbose:
+                        if verbose:
                             print("[genotypeClones] ", 'preclone-' + str(precloneid), ' ', edge, " weight:", subG.edges[edge]['weight'], ", L:", str(len(leftNodes)), " (", str(len(leftCells)), " cells, ", leftReads, " reads), R:", str(len(rightNodes)), " (", str(len(rightCells)), " cells, ", rightReads, " reads), centrality:", centrality[edge], sep="", file=sys.stderr)
             
             ###Never implemented Louvain communities (did ok but tended to split up smaller graphs)
@@ -184,8 +182,8 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, doGraph=False):
             #nCommunities = len([c for c in comp])
             
             ###Print graph
-            if doGraph and args.printGraph is not None:
-                printGraph(subG, args.printGraph + '/preclone-' + str(precloneid), edge_color='color')
+            if doGraph and printGraph is not None:
+                printGraph(subG, printGraph + '/preclone-' + str(precloneid), edge_color='color')
     
     G.remove_edges_from(edgesToDrop)
     print("[genotypeClones] Created ", nCommunities, " new clones by pruning ", len(edgesToDrop), " edges (", len(G.edges), " left) ", countsremoved, " UMIs removed", sep="", file=sys.stderr)
@@ -193,23 +191,27 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, doGraph=False):
     return nCommunities
 
 
-def printGraph(G, filename, edge_color='weight'):
+def printGraph(G, filename=None, node_color='type', edge_color='weight', edge_color_cmap="Blues", show_labels=False, node_color_dict={'BC': 'darkblue', 'cell': 'darkred'}, fig=None):
     #print("[genotypeClones] Printing graph ", filename, sep="", file=sys.stderr)
-    nodeColorDict = {'BC': 'darkblue', 'cell': 'darkred'}
+    # nodeColorDict = 
 #    node_sizes = [node[1]*25000 for node in G.nodes.data('weight')]
-    node_colors = [mcolors.to_rgba(nodeColorDict[node[1]]) for node in G.nodes.data('type')]
+    node_colors = [mcolors.to_rgba(node_color_dict.get(node[1], "lightgray"))
+                   for node in G.nodes.data(node_color)]
     edge_weights = [edge[2] for edge in G.edges.data('weight')]
     
-    kwds = {'edgelist': G.edges,
-        'font_size': 10,
+    kwds = {
+        'edgelist': G.edges,
+        'font_size': 8,
+        'nodelist': G.nodes,
         'node_color': node_colors,
         'node_size': 25,
-        'width': 2.8,
+        'width': 2,
+        'with_labels': show_labels
 #        'edge_vmin': 0, #min/max edge weight for color scale
 #        'edge_vmax': 0.5
         }
     
-    edge_colormap = plt.get_cmap('Blues')
+    edge_colormap = plt.get_cmap(edge_color_cmap)
     if edge_color=="color":
         edge_colors = [mcolors.to_rgba(edge[2]) for edge in G.edges.data('color')]
         kwds['edge_color'] = edge_colors
@@ -219,30 +221,41 @@ def printGraph(G, filename, edge_color='weight'):
     else:
         print("ERROR", edge_color)
     
-    fig = plt.figure()
-    fig.set_size_inches(7, 7)
+    if fig is None:
+        fig = plt.figure()
+        fig.set_size_inches(7, 7)
     
     #James originally had kamada_kawai_layout but seems to perform badly
     #https://stackoverflow.com/questions/14283341/how-to-increase-node-spacing-for-networkx-spring-layout shows how to space out the components a bit
-    drawing.nx_pylab.draw_networkx(G, pos=nx.spring_layout(G,k=0.25,iterations=50, weight='weight'), **kwds)
+    pos = nx.spring_layout(G, k=0.25, iterations=25, weight='weight')
+    nx.draw_networkx(G, pos=pos, **kwds)
     
     sm = plt.cm.ScalarMappable(cmap=edge_colormap, norm=mcolors.NoNorm(vmin=0, vmax=100))
     sm._A = []
     plt.colorbar(sm, shrink=0.7)
+    ## add node legend
+    ax = fig.gca()
+    for label in node_color_dict:
+        ax.scatter([0], [0], 
+            color=mcolors.to_rgba(node_color_dict[label]),
+            label=label)
+    plt.legend(loc="upper right")
     
     nCells = len([ node for node in G.nodes if G.nodes[node]['type'] == 'cell'])
-    nBCs = len([ node for node in G.nodes if G.nodes[node]['type'] == 'BC'])
+    nBCs = len([node for node in G.nodes if G.nodes[node]['type'] == 'BC'])
+
+    plt.title("({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
     
-    plt.title(os.path.basename(filename) + " ({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
-    
-    plt.savefig(filename + '.png')
-    plt.savefig(filename + '.pdf')
-    
-    matplotlib.pyplot.close(fig)
+    if filename is not None:
+        plt.title(os.path.basename(filename) +
+            " ({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
+        plt.savefig(filename + '.png')
+        plt.savefig(filename + '.pdf')
+        plt.close(fig)
 
 
 ###Iterate over connected components (clones) and print out all neighbors
-def writeOutputFiles(G):
+def writeOutputFiles(G, output, outputlong, outputwide, printGraph=None):
     cloneid = 0
     totalCells = 0
     totalCellsSkipped = 0
@@ -250,11 +263,11 @@ def writeOutputFiles(G):
     totalBCsSkipped = 0
     totalCount = 0
     
-    longoutfile = open(args.outputlong, 'w')
+    longoutfile = open(outputlong, 'w')
     longwr = csv.DictWriter(longoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'clone', 'count', 'nCells'])
     longwr.writeheader()
     
-    outputfilename = args.output
+    outputfilename = output
     if outputfilename=="-":
         outfile = sys.stdout
     else:
@@ -262,7 +275,7 @@ def writeOutputFiles(G):
     outwr = csv.DictWriter(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'cellBC', 'count', 'clone'])
     outwr.writeheader()
     
-    wideoutfile = open(args.outputwide, 'w')
+    wideoutfile = open(outputwide, 'w')
     widewr = csv.DictWriter(wideoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'count', 'nedges', 'nBCs', 'ncells'])
     widewr.writeheader()
     
@@ -282,8 +295,8 @@ def writeOutputFiles(G):
             totalBCs += len(bcs)
             totalCount += count
             
-            if args.printGraph:
-                printGraph(subG, args.printGraph + '/clone-' + str(cloneid), edge_color='weight')
+            if printGraph:
+                printGraph(subG, printGraph + '/clone-' + str(cloneid), edge_color='weight')
             
             
             for bc in bcs:
@@ -307,48 +320,78 @@ def writeOutputFiles(G):
     print("[genotypeClones] Identified ", str(cloneid), " unique clones, ", totalCells, " cells, and ", totalBCs, " BCs. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalCount/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
 
 
+## Given a set of nodes, it expands their neighborhood to up a certain degree of distance, which allows exploring specific node proximities
+def expandNeighborhood(G, seednodes, degree = 1, to_skip = set()):
+    #Initialize neighborhood with seed nodes
+    neighborhood = set(seednodes)
+    to_skip = set(to_skip)
+    for _ in range(degree):
+        tmp = neighborhood.union(
+            set(n for x in neighborhood for n in nx.neighbors(G, x)))
+        neighborhood = tmp - to_skip
+    return neighborhood
+
+## Assign assigns values to nodes based on a dictionary of node -> value, it can be used to assign nodes transfections for example
+def assignToNodes(G, key, annotationdict, default=None):
+    for n in G.nodes:
+        val = annotationdict.get(n, default)
+        G.nodes[n][key] = val
+
+## Convert bipartite graph into a Jaccard index graph of the cells
+def toJaccard(G):
+    def jaccard(G, u, v):
+        unbrs = set(G[u])
+        vnbrs = set(G[v])
+        return float(len(unbrs & vnbrs)) / len(unbrs | vnbrs)
+
+    cells = [n for n in G.nodes if G.nodes[n]['type'] == 'cell']
+    return nx.bipartite.generic_weighted_projected_graph(G, cells, weight_function=jaccard)
+
+
 ###Command line arguments
 version="1.0"
 
-parser = argparse.ArgumentParser(prog = "genotypeClones.py", description = "Graph approach to generate unified list of which BCs are present in which cells", allow_abbrev=False)
-parser.add_argument('--inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences. First line must be header (unused)')
-parser.add_argument('--outputlong', action='store', help='Tab-delimited list of BC counts totalled per clone')
-parser.add_argument('--outputwide', action='store', help='Tab-delimited list of clones and the cells/BCs they include')
-parser.add_argument('--output', action='store', help='Tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog = "genotypeClones.py", description = "Graph approach to generate unified list of which BCs are present in which cells", allow_abbrev=False)
+    parser.add_argument('--inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences. First line must be header (unused)')
+    parser.add_argument('--outputlong', action='store', help='Tab-delimited list of BC counts totalled per clone')
+    parser.add_argument('--outputwide', action='store', help='Tab-delimited list of clones and the cells/BCs they include')
+    parser.add_argument('--output', action='store', help='Tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
 
-parser.add_argument('--minreads', action='store', type=int, default=2, help='Min UMI filter for input file')
-parser.add_argument('--minPropOfBCReads', action='store', type=float, default=0.15, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
-parser.add_argument('--minPropOfCellReads', action='store', type=float, default=0.01, help='Each BC-cell edge must represent at least this proportion of UMIs for cell')
-parser.add_argument('--minCentrality', action='store', type=float, default=0.2, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
-parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
+    parser.add_argument('--minreads', action='store', type=int, default=2, help='Min UMI filter for input file')
+    parser.add_argument('--minPropOfBCReads', action='store', type=float, default=0.15, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
+    parser.add_argument('--minPropOfCellReads', action='store', type=float, default=0.01, help='Each BC-cell edge must represent at least this proportion of UMIs for cell')
+    parser.add_argument('--minCentrality', action='store', type=float, default=0.2, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
+    parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
 
-parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
+    parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
 
-parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
-parser.add_argument('--version', action='version', version='%(prog)s ' + version)
+    parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
+    parser.add_argument('--version', action='version', version='%(prog)s ' + version)
+
+    try:
+        args = parser.parse_args()
+    except argparse.ArgumentError as exc:
+        print(exc.message, '\n', exc.argument, file=sys.stderr)
+        sys.exit(1)
+
+    print("[genotypeClones] " + str(args), file=sys.stderr)
+
+    if args.printGraph is not None:
+        os.makedirs(args.printGraph, exist_ok=True)
 
 
-try:
-    args = parser.parse_args()
-except argparse.ArgumentError as exc:
-    print(exc.message, '\n', exc.argument, file=sys.stderr)
-    sys.exit(1)
+    ###Initialize graph, filter, write output
+    G = initializeGraphFromInput(args.inputfilename, args.minreads)
 
-print("[genotypeClones] " + str(args), file=sys.stderr)
+    #This filter seems more stringent on the individual libraries than the aggregate one
+    pruneEdgesLowPropOfReads(G, args.minPropOfBCReads, type='BC')
+    #TODO this drops a lot of otherwise unconnected BCs, maybe keep?
+    pruneEdgesLowPropOfReads(G, args.minPropOfCellReads, type='cell')
+    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads,
+                                      doGraph=True, verbose=args.verbose, printGraph=args.printGraph)
+    #Do twice to break up some of the bigger graphs since we don't iterate internally, 3x doesn't do anything else
+    breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads,
+                                      doGraph=False, verbose=args.verbose, printGraph=args.printGraph)
 
-if args.printGraph is not None:
-    os.makedirs(args.printGraph, exist_ok=True)
-
-
-###Initialize graph, filter, write output
-G = initializeGraphFromInput()
-
-#This filter seems more stringent on the individual libraries than the aggregate one
-pruneEdgesLowPropOfReads(G, args.minPropOfBCReads, type='BC')
-#TODO this drops a lot of otherwise unconnected BCs, maybe keep?
-pruneEdgesLowPropOfReads(G, args.minPropOfCellReads, type='cell')
-breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, doGraph=True)
-#Do twice to break up some of the bigger graphs since we don't iterate internally, 3x doesn't do anything else
-breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, doGraph=False)
-
-writeOutputFiles(G)
+    writeOutputFiles(G, args.output, args.outputlong, args.outputwide, args.printGraph)
