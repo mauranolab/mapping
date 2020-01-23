@@ -124,8 +124,8 @@ def pruneEdgesLowPropOfReads(G, minPropOfReads, type='BC'):
     pruneOrphanNodes(G)
 
 
+#Break up weakly connected communities
 def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=False, verbose=True, graphOutput=None):
-    #Break up weakly connected communities
     precloneid = 0
     edgesToDrop = []
     countsremoved = 0
@@ -148,21 +148,20 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
                 leftNodes = nx.algorithms.components.node_connected_component(subGedgeless, edge[0])
                 rightNodes = nx.algorithms.components.node_connected_component(subGedgeless, edge[1])
                 
-                leftCells = [ node for node in leftNodes if subG.nodes[node]['type'] == 'cell']
-                rightCells = [ node for node in rightNodes if subG.nodes[node]['type'] == 'cell']
+                leftCells = [ node for node in leftNodes if subG.nodes[node]['type'] == 'cell' ]
+                rightCells = [ node for node in rightNodes if subG.nodes[node]['type'] == 'cell' ]
                 
-                leftBCs = [ node for node in leftNodes if subG.nodes[node]['type'] == 'BC']
-                rightBCs = [ node for node in rightNodes if subG.nodes[node]['type'] == 'BC']
+                leftBCs = [ node for node in leftNodes if subG.nodes[node]['type'] == 'BC' ]
+                rightBCs = [ node for node in rightNodes if subG.nodes[node]['type'] == 'BC' ]
                 
-                leftReads = sum([ subG.nodes[node]['weight'] for node in leftCells])
-                rightReads = sum([ subG.nodes[node]['weight'] for node in rightCells])
+                leftReads = sum([ subG.nodes[node]['weight'] for node in leftCells ])
+                rightReads = sum([ subG.nodes[node]['weight'] for node in rightCells ])
                 
                 #Don't create orphan components with no cells or BCs
                 #Make sure we don't remove both edges from a BC node by not pruning >1 edge from any given node
                 if edge[0] not in nodesToPrune and edge[1] not in nodesToPrune and len(leftCells) >= 1 and len(rightCells) >= 1 and len(leftBCs) >= 1 and len(rightBCs) >= 1:
                     #Separate if for tunable filters to facilitate tuning
                     #Identify communities by removing bridge edges based centrality metric.
-                    #TODO arbitrary read cutoff for edges. Should min BC/cells in each component be a proportion rather than 1?
                     if centrality[edge] > minCentrality and G.edges[edge]['weight'] / min(leftReads, rightReads) <= maxPropReads:
                         nCommunities += 1
                         countsremoved += subG.edges[edge]['weight']
@@ -197,10 +196,9 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
 def printGraph(G, filename=None, fig=None, node_color='type', node_color_dict={'BC': 'darkblue', 'cell': 'darkred'}, edge_color='weight', edge_color_cmap="Blues", with_labels=True):
     #print("[genotypeClones] Printing graph ", filename, sep="", file=sys.stderr)
     # nodeColorDict = 
-#    node_sizes = [node[1]*25000 for node in G.nodes.data('weight')]
-    node_colors = [mcolors.to_rgba(node_color_dict.get(node[1], "lightgray"))
-                   for node in G.nodes.data(node_color)]
-    edge_weights = [edge[2] for edge in G.edges.data('weight')]
+#    node_sizes = [ node[1]*25000 for node in G.nodes.data('weight') ]
+    node_colors = [ mcolors.to_rgba(node_color_dict.get(node[1], "lightgray")) for node in G.nodes.data(node_color) ]
+    edge_weights = [ edge[2] for edge in G.edges.data('weight') ]
     
     kwds = {
         'edgelist': G.edges,
@@ -239,9 +237,7 @@ def printGraph(G, filename=None, fig=None, node_color='type', node_color_dict={'
     ## add node legend
     ax = fig.gca()
     for label in node_color_dict:
-        ax.scatter([0], [0], 
-            color=mcolors.to_rgba(node_color_dict[label]),
-            label=label)
+        ax.scatter([0], [0], color=mcolors.to_rgba(node_color_dict[label]), label=label)
     plt.legend(loc="upper right")
     
     nCells = len([ node for node in G.nodes if G.nodes[node]['type'] == 'cell'])
@@ -350,9 +346,16 @@ def expandNeighborhood(G, seednodes, degree = 1, to_skip = set()):
 
 ## Assign assigns values to nodes based on a dictionary of node -> value, values for key must match the name of a cell or BC node.
 def assignToNodes(G, key, annotationdict, default=None):
+    hadAnnotation = 0
+    missingAnnotation = 0
     for n in G.nodes:
-        val = annotationdict.get(n, default)
-        G.nodes[n][key] = val
+        if n in annotationdict:
+            hadAnnotation += 1
+            G.nodes[n][key] = annotationdict[n]
+        else:
+            missingAnnotation += 1
+            G.nodes[n][key] = default
+    print("[genotypeClones] added annotation to " + str(hadAnnotation) + " nodes; " + str(missingAnnotation) + " missing were assigned \"" + str(default) + "\".", file=sys.stderr)
 
 
 ## Convert bipartite graph into a Jaccard index graph of the cells
