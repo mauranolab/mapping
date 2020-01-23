@@ -246,8 +246,7 @@ def printGraph(G, filename=None, fig=None, node_color='type', node_color_dict={'
     plt.title("({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
     
     if filename is not None:
-        plt.title(os.path.basename(filename) +
-            " ({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
+        plt.title(os.path.basename(filename) + " ({} cells and {} BCs)".format(nCells, nBCs), fontsize=14, x=0.5, y=1.02)
         plt.savefig(filename + '.png')
         plt.savefig(filename + '.pdf')
         plt.close(fig)
