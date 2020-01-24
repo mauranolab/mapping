@@ -27,31 +27,32 @@ if [ ${runHA} = "AB" ]; then
     read -r assembly assembly_readlength all_other <<< $(samtools idxstats ${bamfile})
     
     # Make sure the naming conventions are being followed, since some manual effort goes into making these assembly files.
-    # We require only two chromosomes: an [assembly] and an [assembly]_backbone
-    # If there is a misspelling, extra chromosomes, or if they are out of order, an error happens.
-    backbone=$(samtools idxstats ${bamfile} | tail -n +2 | head -n 1 | cut -f1)  # This should be the backbone chromosome.
+    # We require exactly two chromosomes, one of which ends in "_backbone"
     numChroms=$(samtools idxstats ${bamfile} | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' | wc -l)
     if [[ "${numChroms}" != 2 ]]; then
         echo "[HA_table] ${assembly} has wrong number of chromosomes, quitting successfully."
         touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
         exit 0
-    elif [ "${backbone}" != "${assembly}_backbone" ]; then
+    fi
+    
+    backbone=$(samtools idxstats ${bamfile} | awk 'NR>1 && $0~/_backbone$/')
+    if [ `samtools idxstats ${bamfile} | awk 'NR>1 && $0~/_backbone$/' | wc -l` != 1 ]; then
         # The second chromosome is not named [assembly]_backbone
-        echo "[HA_table] WARNING: Assembly has two chromosomes but the second does not match the expected backbone name, quitting successfully: ${assembly} ${backbone}"
+        echo "[HA_table] WARNING: Assembly does not have exactly one backbone chromosome, quitting successfully: ${assembly} ${backbone}"
         echo ""
         echo "[HA_table] samtools idxstats ${bamfile} :"
         samtools idxstats ${bamfile}
         touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
         exit 0
-    else
-        # The naming conventions are being followed.
-        echo "[HA_table] assembly is: ${assembly}"
-        echo "[HA_table] backbone is: ${backbone}"
-        
-        # Define Zone 1. We want it to be the entire assembly.
-        echo -e "${assembly}\t0\t${assembly_readlength}" > ${TMPDIR}/zone1.bed
-        outputBed="${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
     fi
+    
+    # The naming conventions are being followed.
+    echo "[HA_table] assembly is: ${assembly}"
+    echo "[HA_table] backbone is: ${backbone}"
+    
+    # Define Zone 1. We want it to be the entire assembly.
+    echo -e "${assembly}\t0\t${assembly_readlength}" > ${TMPDIR}/zone1.bed
+    outputBed="${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
 elif [ ${runHA} = "HA" ]; then
     echo "[HA_table] Generating HA table"
     # Define Zone 1. We want it to be the HAs (both of them).
