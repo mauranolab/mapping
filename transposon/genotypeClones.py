@@ -263,7 +263,8 @@ def identifyClones(G):
     
     clones = collections.OrderedDict()
     
-    for subG in nx.connected_component_subgraphs(G):
+    #Go through connected components in descending order of total #BCs + # cells
+    for subG in sorted(nx.connected_component_subgraphs(G), key=lambda subG: len(subG), reverse=True):
         cloneid += 1
         clonename = 'clone-' + str(cloneid).zfill(4)
         
