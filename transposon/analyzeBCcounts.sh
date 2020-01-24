@@ -159,11 +159,17 @@ awk '{print length($0)}' | sort -g | uniq -c | sort -k2,2 | awk '$2!=0'
 
 
 if [ "${minCellBCLength}" -gt 0 ]; then
-    #Hardcoded for now
-    #Aug 2019 Pilot
-    #scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/merged"
-    #Dec 2019 scale
-    scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/FCH7Y3NBGXC"
+    #Tied to sample name for now
+    if [[ "${sample}" =~ T0190 ]]; then
+        #Aug 2019 Pilot
+        scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/merged"
+    elif [[ "${sample}" =~ T021.[AB] ]]; then
+        #Dec 2019 scale
+        scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/FCH7Y3NBGXC"
+    else
+        echo "ERROR can't find the right scRNAseqbase"
+        #exit 1
+    fi
     
     echo
     echo "Generating cellBC weblogo"
@@ -256,7 +262,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     echo
     echo "running genotypeClones"
     date
-    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputwide ${OUTDIR}/${sample}.clones.txt --outputlong ${OUTDIR}/${sample}.clones.counts.filtered.txt --output - --printGraph ${OUTDIR}/clones | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
+    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputwide ${OUTDIR}/${sample}.clones.txt --outputlong ${OUTDIR}/${sample}.clones.counts.filtered.txt --output - --printGraph ${OUTDIR}/${sample}.clones | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
     date
     echo
     
