@@ -145,8 +145,9 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
     sampleAnnotationGeneticModification=`echo "${sampleAnnotation}" | awk -v key="Genetic_Modification" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
     #TODO should this also include Custom Reference? That is missing an integration site
     
-    #Put LPICE into both so we get LPICE vs. payload. Skip rn6 manually for now. One downside is we now get LPICE vs. pSpCas9 etc.
-    mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0!~/^cegsvectors_/ || $0=="cegsvectors_LPICE" && $1!="rn6"'`
+    #Put LPICE into both so we get LPICE vs. payload.
+    #Manually skip rn6 since we haven't integrated anything there
+    mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0!~/^cegsvectors_/ && $1!="rn6" || $0=="cegsvectors_LPICE"'`
     cegsGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0~/^cegsvectors_/'`
     for mammalianGenome in ${mammalianGenomes}; do
         #Same as genomeinfo.sh
@@ -155,7 +156,8 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
             cegsGenomeShort="${cegsGenome/cegsvectors_/}"
             #Limit this to references listed as genetic modifications
             #If we are doing ICE, make sure we don't do LPICE vs LPICE
-            if [[ ${sampleAnnotationGeneticModification} =~ ${cegsGenomeShort} ]] && [[ "${mammalianGenome}" != "${cegsGenome}" ]]; then
+            #Manually skip LPICE vs. pSpCas9 etc.
+            if [[ "${sampleAnnotationGeneticModification}" =~ ${cegsGenomeShort} ]] && [[ "${mammalianGenome}" != "${cegsGenome}" ]] && ( [[ "${mammalianGenome}" != "cegsvectors_LPICE" ]] || [[ ! "${cegsGenome}" =~ cegsvectors_pSpCas9 ]] ); then
                 integrationsite=`getIntegrationSite ${sampleAnnotationGeneticModification} ${cegsGenomeShort}`
                 #For assemblons this yields the LP name rather looking up the LP integrationsite, so look up the site for the LP itself
                 if [[ "${integrationsite}" =~ ^LP ]]; then
