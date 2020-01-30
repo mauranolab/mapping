@@ -10,6 +10,8 @@ from collections import OrderedDict
 import locale
 import csv
 import os
+import urllib.parse
+
 
 #####################################################################################################
 # MakeTrackhub.py requires the forked daler/trackhub from mauranolab. It can be installed locally:
@@ -23,7 +25,7 @@ parser = argparse.ArgumentParser(prog = "MakeTrackhub.py", description = "Create
 parser.add_argument('Input', action = 'store', help = 'Input tsv file with sample metadata. Name, DS, Replicate, Color, Assay, analyzed_reads, SPOT, Num_hotspots, Exclude, Genomic_coverage, Group, Age, filebase')
 #NB Exclude not used right now 
 parser.add_argument('--genome', action = 'store', required = True, help = 'genome assembly name')
-parser.add_argument('--URLbase', action = 'store', required = True, help = 'URL base at which track files are hosted')
+parser.add_argument('--URLbase', action = 'store', required = False, default="", help = 'URL base at which track files are hosted')
 parser.add_argument('--includeSampleIDinSampleCol', action = 'store_true', default = False, help = 'Append the Sample ID in the Sample column')
 parser.add_argument('--checksamples', action = 'store_true', default = False, help = 'Mark Density and Coverage tracks for display by turning on composite track without going to configuration page (NB ChIP-seq input samples are never displayed by default)')
 parser.add_argument('--supertrack', action = 'store', required = False, help = 'Encompass all composite tracks generated within supertrack. Supertrack name specified as parameter.')
@@ -476,7 +478,7 @@ for assay_type in assays:
                 name=sampleName_trackname + '_bam',
                 short_label=sampleShortLabel,
                 long_label=assay_type + ' Reads ' + sampleDescription,
-                url=args.URLbase + curSample['filebase'] + '.bam',
+                url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.bam',
                 subgroups=sampleSubgroups,
                 tracktype='bam',
                 parentonoff="off"
@@ -489,7 +491,7 @@ for assay_type in assays:
                     name=sampleName_trackname + '_cov',
                     short_label=sampleShortLabel,
                     long_label=assay_type + ' Coverage ' + sampleDescription,
-                    url=args.URLbase + curSample['filebase'] + '.coverage.bw',
+                    url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.coverage.bw',
                     subgroups=sampleSubgroups,
                     tracktype='bigWig',
                     color=curSample['Color'],
@@ -503,7 +505,7 @@ for assay_type in assays:
                     name=sampleName_trackname + '_dens',
                     short_label=sampleShortLabel,
                     long_label=assay_type + ' Density ' + sampleDescription,
-                    url=args.URLbase + curSample['filebase'] + '.density.bw',
+                    url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.density.bw',
                     subgroups=sampleSubgroups, 
                     tracktype='bigWig',
                     color=curSample['Color'],
@@ -548,7 +550,7 @@ for assay_type in assays:
                     name=sampleName_trackname + '_cuts',
                     short_label=sampleShortLabel,
                     long_label=assay_type + ' Cut counts ' + sampleDescription,
-                    url=args.URLbase + curSample['filebase'] + '.perBase.bw',
+                    url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.perBase.bw',
                     subgroups=sampleSubgroups,
                     tracktype='bigWig',
                     color=curSample['Color'],
@@ -562,7 +564,7 @@ for assay_type in assays:
                     name=sampleName_trackname + '_vcf',
                     short_label=sampleShortLabel,
                     long_label=assay_type + ' Variants ' + sampleDescription,
-                    url=args.URLbase + curSample['filebase'] + '.filtered.vcf.gz',
+                    url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.filtered.vcf.gz',
                     subgroups=sampleSubgroups,
                     tracktype='vcfTabix',
                     parentonoff="off"
@@ -575,7 +577,7 @@ for assay_type in assays:
                     name=sampleName_trackname + '_gts',
                     short_label=sampleShortLabel,
                     long_label=assay_type + ' Genotypes ' + sampleDescription,
-                    url=args.URLbase + curSample['filebase'] + '.genotypes.bb',
+                    url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.genotypes.bb',
                     subgroups=sampleSubgroups,
                     tracktype='bigBed 5',
                     color=curSample['Color'],
