@@ -122,11 +122,11 @@ pip install --upgrade --user git+git://github.com/mauranolab/trackhub.git
 #Make hub
 mkdir -p /vol/isg/encode/trackhub/mm10 /vol/isg/encode/trackhub/hg38
 cd /vol/isg/encode/trackhub
-${src}/trackhub/MakeTrackhub.py --verbose --genome hg38 --supertrack ENCODE_DNase-seq --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/dnase/mapped/ --subgroupnames Replicate,Age,Institution /vol/isg/encode/dnase/SamplesForTrackhub.tsv > hg38/trackDb.txt
-${src}/trackhub/MakeTrackhub.py --verbose --genome hg38 --supertrack ENCODE_ChIP-seq --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/chipseq/mapped/ --subgroupnames Replicate,Age,Institution /vol/isg/encode/chipseq/SamplesForTrackhub.tsv >> hg38/trackDb.txt
+${src}/trackhub/MakeTrackhub.py --verbose --genome hg38 --supertrack ENCODE_DNase-seq --URLbase ../../dnase/mapped/ --subgroupnames Replicate,Age,Institution /vol/isg/encode/dnase/SamplesForTrackhub.tsv > hg38/trackDb.txt
+${src}/trackhub/MakeTrackhub.py --verbose --genome hg38 --supertrack ENCODE_ChIP-seq --URLbase ../../chipseq/mapped/ --subgroupnames Replicate,Age,Institution /vol/isg/encode/chipseq/SamplesForTrackhub.tsv >> hg38/trackDb.txt
 
-${src}/trackhub/MakeTrackhub.py --verbose --genome mm10 --supertrack ENCODE_DNase-seq --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/mouseencode/mapped/ --subgroupnames Replicate,Age,Institution /vol/isg/encode/mouseencode/SamplesForTrackhub.tsv > mm10/trackDb.txt
-${src}/trackhub/MakeTrackhub.py --verbose --genome mm10 --supertrack ENCODE_ChIP-seq --URLbase https://cascade.isg.med.nyu.edu/mauranolab/encode/mouseencode_chipseq/mapped/ --subgroupnames Replicate,Age,Institution /vol/isg/encode/mouseencode_chipseq/SamplesForTrackhub.tsv >> mm10/trackDb.txt
+${src}/trackhub/MakeTrackhub.py --verbose --genome mm10 --supertrack ENCODE_DNase-seq --URLbase ../../mouseencode/mapped/ --subgroupnames Replicate,Age,Institution /vol/isg/encode/mouseencode/SamplesForTrackhub.tsv > mm10/trackDb.txt
+${src}/trackhub/MakeTrackhub.py --verbose --genome mm10 --supertrack ENCODE_ChIP-seq --URLbase ../../mouseencode_chipseq/mapped/ --subgroupnames Replicate,Age,Institution /vol/isg/encode/mouseencode_chipseq/SamplesForTrackhub.tsv >> mm10/trackDb.txt
 ```
 For debugging trackhub, add "udcTimeout=1&" to browser URL
 
