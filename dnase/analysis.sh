@@ -363,7 +363,7 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
     #Intervals then conform to Richard's convention that the counts are reported in 20bp windows including reads +/-75 from the center of that window
     awk -v step=20 -v binwidth=150 -F "\t" 'BEGIN {OFS="\t"} {offset=(binwidth-step)/2 ; $2+=offset; $3-=offset; print}' |
     #Normalizes the density to 1M reads
-    awk -v analyzedReads=${analyzedReads} -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedReads*1000000; print}' |
+    awk -v analyzedReads=${analyzedReads} -F "\t" 'BEGIN {OFS="\t"} analyzedReads>0 {$5=$5/analyzedReads*1000000; print}' |
     tee $TMPDIR/${name}.${mappedgenome}.density.bed |
     #Remember wig is 1-indexed
     #NB assumes span == step
@@ -372,8 +372,11 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
     
     awk -F "\t" 'BEGIN {OFS="\t"} $5!=0' $TMPDIR/${name}.${mappedgenome}.density.bed | starch - > ${sampleOutdir}/${name}.${mappedgenome}.density.starch
     
-    #Kent tools can't use STDIN
-    wigToBigWig $TMPDIR/${name}.${mappedgenome}.density.wig ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.density.bw
+    #Fails on empty wig input
+    if [ -s "$TMPDIR/${name}.${mappedgenome}.density.wig" ]; then
+        #Kent tools can't use STDIN
+        wigToBigWig $TMPDIR/${name}.${mappedgenome}.density.wig ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.density.bw
+    fi
     
     echo "track name=${name}-dens description=\"${ucscTrackDescriptionDataType} Density (${analyzedReadsM}M analyzed reads; normalized to 1M)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.density.bw"
     
@@ -408,14 +411,20 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
     
     
     callHotspots1=1
-    callHotspots2=1 
+    callHotspots2=1
 else
     callHotspots1=0
-    callHotspots2=0 
+    callHotspots2=0
+fi
+
+#Avoid hotspot failures on empty datasets
+if [[ "${analyzedReads}" > 0 ]]; then
+    callHotspots1=0
+    callHotspots2=0
 fi
 
 
-if ([ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]) && [[ "${analyzedReads}" > 0 ]]; then
+if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
     echo
     echo "Will call hotspots"
     date
