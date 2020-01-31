@@ -104,7 +104,7 @@ hub_type=$1
 hub_target=$2
 short_label=$3
 long_label=$4
-URL_path=$5
+URLbase=$5
 
 
 # Check the inputs:
@@ -174,7 +174,7 @@ echo "Starting makeAssemblyTracks.bash"
 
 # Now construct the "flowcell" and "aggregation" tracks in TMPDIR.
 echo "Starting make_tracks.bash"
-./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} ${URL_path} "${genome_array[@]}"
+./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} ${URLbase} "${genome_array[@]}"
 
 ######################################################################################
 # Now copy the track information to the hub location.
@@ -184,11 +184,11 @@ echo "Updating track files"
 update_genome () {
     genome=$1
     cd "${hub_target}/${genome}"
-
+    
     # Process the Assembly tracks.
     if [ ${hub_type} = "CEGS" ]; then
         cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" trackDb_001.txt
-
+        
         if [ ${genome} = "cegsvectors" ]; then
             cp "${TMPDIR}/assembly_tracks/cytoBandIdeo.bigBed" data
         fi
@@ -197,33 +197,33 @@ update_genome () {
         if [ -f "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" ]; then
             cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" trackDb_001.txt
         fi
-
+        
         if [ ${genome} = "mauranolab" ]; then
             cp "${TMPDIR}/assembly_tracks/cytoBandIdeo.bigBed" data
         fi
     fi
-
+    
     # Process the "flowcell" tracks.
     num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated.tsv")`
     if [ ${num_line} -gt 1 ]; then
        # If num_line == 1, then there are no flowcell tracks for this genome.
        cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated.out" >> trackDb_001.txt
     fi
-
+    
     # Process the "aggregation" tracks.
     num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated_agg.tsv")`
     if [ ${num_line} -gt 1 ]; then
        # If num_line == 1, then there are no aggregation tracks for this genome.
        cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated_agg.out" >> trackDb_001.txt
     fi
-
+    
     # Process the "publicdata" tracks.
     num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated_pub.tsv")`
     if [ ${num_line} -gt 1 ]; then
        # If num_line == 1, then there are no publicdata tracks for this genome.
        cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated_pub.out" >> trackDb_001.txt
     fi
-
+    
     if [ "${hub_type}" = "CEGS" ]; then
         # Process the "CEGS_byLocus" tracks.
         num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated_locus.tsv")`
@@ -304,7 +304,7 @@ echo "The UCSC browser url to this hub is:" | tee "${hub_target}/README"
 hub_dir=`basename ${hub_target}`
 
 # Construct url for the new hub.
-echo "${URL_path}/${hub_dir}/hub.txt" | tee -a "${hub_target}/README"
+echo "${URLbase}/${hub_dir}/hub.txt" | tee -a "${hub_target}/README"
 
 ######################################################################################
 # Check for hub errors.
@@ -312,7 +312,7 @@ echo "${URL_path}/${hub_dir}/hub.txt" | tee -a "${hub_target}/README"
 
 echo
 echo "Running hubCheck"
-hubCheck -noTracks -udcDir=${TMPDIR} "${URL_path}/${hub_dir}/hub.txt"
+hubCheck -noTracks -udcDir=${TMPDIR} "${URLbase}/${hub_dir}/hub.txt"
 ierr=$?
 echo hubCheck error is: ${ierr}
 

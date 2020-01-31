@@ -10,7 +10,7 @@ hub_type=$2
 
 path_to_main_driver_script=$3
 
-URL_path=$4
+URLbase=$4
 
 shift 4
 genome_array=("$@")
@@ -272,7 +272,7 @@ done
 make_tracks () {
     local mappedgenome=$1
     local consol_suffix=$2
-    local urlbase=$3
+    local URLbase=$3
     local supertrack=$4
     
     local mappedgenome_consol=${mappedgenome}${consol_suffix}
@@ -302,14 +302,14 @@ make_tracks () {
            --supertrack ${supertrack} \
            --genome ${mappedgenome} \
            --checksamples \
-           --URLbase ${urlbase} > ${outfile}
+           --URLbase ${URLbase} > ${outfile}
 }
 ###############################
 consol_suffix_in="_consolidated"
 supertrack_in="Flowcells"
 
 for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ${URL_path}/mapped/ ${supertrack_in}
+    make_tracks ${i} ${consol_suffix_in} ${URLbase}/mapped/ ${supertrack_in}
 done
 
 ###############################
@@ -317,7 +317,7 @@ consol_suffix_in="_consolidated_agg"
 supertrack_in="Aggregations"
 
 for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ${URL_path}/aggregations/ ${supertrack_in}
+    make_tracks ${i} ${consol_suffix_in} ${URLbase}/aggregations/ ${supertrack_in}
 done
 
 ###############################
@@ -325,7 +325,7 @@ consol_suffix_in="_consolidated_pub"
 supertrack_in="Public_Data"
 
 for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ${URL_path}/publicdata/ ${supertrack_in}
+    make_tracks ${i} ${consol_suffix_in} ${URLbase}/publicdata/ ${supertrack_in}
 done
 
 ###############################
@@ -334,7 +334,7 @@ if [ ${hub_type} = "CEGS" ]; then
     supertrack_in="By_Locus"
 
     for i in "${genome_array[@]}"; do
-        make_tracks ${i} ${consol_suffix_in} ${URL_path}/mapped/ ${supertrack_in}
+        make_tracks ${i} ${consol_suffix_in} ${URLbase}/mapped/ ${supertrack_in}
     done
 fi
 ###############################
