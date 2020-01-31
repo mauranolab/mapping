@@ -110,30 +110,29 @@ URLbase=$5
 # Check the inputs:
 
 if [ "${hub_type}" != "CEGS" ] && [ "${hub_type}" != "MAURANOLAB" ]; then
-    echo You need to enter a hub type. Either: CEGS or MAURANOLAB. Exiting...
+    echo "ERROR You need to enter a hub type. Either: CEGS or MAURANOLAB. Exiting..."
     exit 1
 fi
 
 # We only accept an absolute path, not a relative path.
 if [[ ! "${hub_target}" = /* ]]; then
-    echo The target directory path is relative, not absolute. Exiting...
+    echo "ERROR The target directory path is relative, not absolute. Exiting..."
     exit 2
 fi
 
 # Make sure the target directory has already been built.
 if [ ! -d "${hub_target}" ]; then
-    echo The target directory does not exist.  Exiting...
+    echo "ERROR The target directory does not exist.  Exiting..."
     exit 3
 fi
 
 # Make sure the target directory is empty.
 if [ "$(ls -A ${hub_target})" ]; then
-    echo The target directory is not empty.  Exiting...
+    echo "ERROR The target directory is not empty.  Exiting..."
     exit 4
 fi
 
-echo Building new ${hub_type} track hub in ${hub_target}
-echo Working...
+echo "Building new ${hub_type} track hub in ${hub_target}"
 
 ############################################################################
 # We need a tmp directory to store intermediate files.
@@ -314,7 +313,7 @@ echo
 echo "Running hubCheck"
 hubCheck -noTracks -udcDir=${TMPDIR} "${URLbase}/${hub_dir}/hub.txt"
 ierr=$?
-echo hubCheck error is: ${ierr}
+echo "hubCheck exit code is: ${ierr}"
 
 echo
 
