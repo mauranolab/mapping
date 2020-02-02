@@ -36,15 +36,15 @@ make_html () {
     
     local tmpdir=$(dirname "${desc_file}")
     echo "<pre>" > "${tmpdir}/make_html_tmp"
-
+    
     if [ -f ${desc_file} ]; then
         cat "${desc_file}" >> "${tmpdir}/make_html_tmp"
         echo " " >> "${tmpdir}/make_html_tmp"
     fi
-
+    
     echo "Source data located in: ${target%/readcounts.summary.txt}" >> "${tmpdir}/make_html_tmp"
     echo " " >> "${tmpdir}/make_html_tmp"
-
+    
     echo "</pre>" >> "${tmpdir}/make_html_tmp"
     echo "<hr>" >> "${tmpdir}/make_html_tmp"
     
@@ -76,7 +76,7 @@ find_readcounts () {
     local dd
     local info_file
     local infile
-
+    
     # Each flowcell directory may be associated with a readcounts file.
     # Get the data from the readcounts file if it is there, and make a table from the data.
     for flowcell in "${dir_names[@]}"; do
@@ -88,7 +88,7 @@ find_readcounts () {
             # For non-flowcell directories, there is only one place for the readcounts file to be:
             mapfile -t target_vec < <( find ${dir_base}${flowcell} -maxdepth 1 -type f -name "readcounts.summary.txt" )
         fi
-
+        
         # Find a date to associate with the flowcell from the info.txt file
         info_file="/vol/mauranolab/flowcells/data/"${flowcell}"info.txt"
         
@@ -111,23 +111,23 @@ find_readcounts () {
             dd=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f3)
             ymd=${yyyy}${mm}${dd}
         fi
-
+        
         numElements="${#target_vec[@]}"
         if [ "${numElements}" = "0" ]; then
             echo "[makeDescFiles.bash] WARNING No subdirectories with a readcounts file in ${dir_base}${flowcell}"
             # But print the data directory path:
-
+            
             if [ "${ymd}" = "00000000" ]; then
                 tmp_flowcell="/"${flowcell%/}
             else
                 tmp_flowcell="/"${ymd}"_"${flowcell%/}
             fi
-
+            
             subdir_names=($(ls -d ${dir_base}${flowcell}*/))
             for j in "${subdir_names[@]}"; do
                 BASE=${j%/}        # Strip trailing slash
                 BASE2=${BASE##*/}  # Get subdir name
-
+                
                 for i in "${genome_array[@]}"; do
                     echo "<pre>" > "${TMPDIR}${tmp_flowcell}_${BASE2}_${i}.html"
                     echo "Source data located in: ${dir_base}${flowcell}" >> "${TMPDIR}${tmp_flowcell}_${BASE2}_${i}.html"
@@ -138,7 +138,7 @@ find_readcounts () {
             done
             continue
         fi
-
+        
         for target in ${target_vec[@]}; do
             # We now have a date. Next, construct a genome related filename for the output.
             if [ "${ymd}" = "00000000" ]; then
@@ -155,8 +155,6 @@ find_readcounts () {
                 tmp_flowcell="${tmp_flowcell}_${BASE2}"
             fi
             # tmp_flowcell will be used in the for loop below.
-            
-            echo ${target}
             
             # Initialize the output files with header lines.
             head -n1 ${target} > "${TMPDIR}/tmp_header"
