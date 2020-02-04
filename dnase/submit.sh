@@ -156,8 +156,8 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
             cegsGenomeShort="${cegsGenome/cegsvectors_/}"
             #Limit this to references listed as genetic modifications
             #If we are doing ICE, make sure we don't do LPICE vs LPICE
-            #Manually skip LPICE vs. pSpCas9 etc.
-            if [[ "${sampleAnnotationGeneticModification}" =~ ${cegsGenomeShort} ]] && [[ "${mammalianGenome}" != "${cegsGenome}" ]] && ( [[ "${mammalianGenome}" != "cegsvectors_LPICE" ]] || [[ ! "${cegsGenome}" =~ cegsvectors_pSpCas9 ]] ); then
+            #Need to do LPICE vs. assemblon but manually skip LPICE vs. pSpCas9 or rtTA
+            if [[ "${sampleAnnotationGeneticModification}" =~ ${cegsGenomeShort} ]] && [[ "${mammalianGenome}" != "${cegsGenome}" ]] && ( [[ "${mammalianGenome}" != "cegsvectors_LPICE" ]] || ([[ ! "${cegsGenome}" =~ cegsvectors_pSpCas9 ]] && [[  "${cegsGenome}" != "cegsvectors_rtTA" ]]) ); then
                 integrationsite=`getIntegrationSite ${sampleAnnotationGeneticModification} ${cegsGenomeShort}`
                 #For assemblons this yields the LP name rather looking up the LP integrationsite, so look up the site for the LP itself
                 if [[ "${integrationsite}" =~ ^LP ]]; then
