@@ -173,6 +173,9 @@ numReadsNsInUMI = 0
 BCeditDistTotals = [0] * (bcRefSeqLength+1)
 BCmismatchByPos = [0] * bcRefSeqLength
 
+BCqualByPos = [0] * bcRefSeqLength
+BCbasesByQual = [0] * 41 ## Assuming a PHRED score max of 40
+
 if enforcePlasmidRead:
     PlasmidEditDistTotals = [0] * (plasmidRefSeqLength+1)
     PlasmidMismatchByPos = [0] * plasmidRefSeqLength
@@ -273,8 +276,13 @@ try:
         
         #Check the baseQ of the barcode
         bc_baseQ = BCread[3][(bcRefSeq_bc_start-bcRefSeqOffset) : (bcRefSeq_bc_end-bcRefSeqOffset)]
+        bc_baseQ = [ord(i)-33 for i in bc_baseQ]
+        for i in range(len(bc_baseQ)):
+            BCqualByPos[i] += bc_baseQ[i]
+            BCbasesByQual[min(bc_baseQ[i], 40)] += 1
+        
         #NB Permits 2 bases to be below threshold
-        if sum([ord(i)-33 >= minBaseQ for i in bc_baseQ]) >= args.bclen-2:
+        if sum([i >= minBaseQ for i in bc_baseQ]) >= args.bclen-2:
             readBCMinBaseQpassed = True
         else:
             readBCMinBaseQpassed = False
@@ -359,6 +367,9 @@ finally:
     print("Percentage reads kept: ", format(((numReads-(numReadsSkipped))/numReads)*100, '.2f'), '%', sep="", file=sys.stderr)
     print("\nBC read edit distances: ", list(range(0, len(BCeditDistTotals))), BCeditDistTotals, sep="", file=sys.stderr)
     print("BC read mismatches by position: ", list(range(0, len(BCmismatchByPos))), BCmismatchByPos, sep="", file=sys.stderr)
+    print("BC avg. baseQ by position: ", list(range(0, len(BCqualByPos))), BCqualByPos, sep="", file=sys.stderr)
+    print("BC baseQ frequency: ", list(range(0, len(BCbasesByQual))), BCbasesByQual, sep="", file=sys.stderr)
+
     if enforcePlasmidRead:
         print("Plasmid read edit distances: ", list(range(0, len(PlasmidEditDistTotals))), PlasmidEditDistTotals, sep="", file=sys.stderr)
         print("Plasmid read mismatches by position: ", list(range(0, len(PlasmidMismatchByPos))), PlasmidMismatchByPos, sep="", file=sys.stderr)
