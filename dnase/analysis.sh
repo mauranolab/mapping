@@ -585,6 +585,7 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
                 
                 #Peaks
                 #NB peaks have "i" in col 4 instead of id-# identifier
+                #NB hotspot2 also generates a .peaks.narrowpeaks.starch which is the same, except columns altered to meet the narrowpeak format
                 hotspot2peakfile=${sampleOutdir}/hotspot2/${name}.${mappedgenome}.peaks.starch
                 if [ -s "${hotspot2peakfile}" ] && [ `unstarch --elements ${hotspot2peakfile}` -gt 0 ]; then
                     unstarch ${hotspot2peakfile} | cut -f1-3 > $TMPDIR/${name}.${mappedgenome}.peaks.bed
