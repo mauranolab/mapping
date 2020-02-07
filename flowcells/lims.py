@@ -56,6 +56,7 @@ def getLIMSsheet(sheet):
 
 #Verify consistency in common entries between Sample Sheet and LIMS sheets
 #Projects argument suppresses less important inconsistencies unless project is on that comma-separated list
+#TODO: ensure Trim empty except for Amplicon, Bait except for capture
 def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maurano,CEGS"):
     projectList = projects.split(",")
     
@@ -79,7 +80,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maura
             print("ERROR", "found " + str(numEntriesInLIMS) + " entries in LIMS!", SampleName, bs, "", "", "", sep=",")
             numMultipleSamples += 1
         else:
-            if projectList is '' or curLims['Lab'].item() in projectList:
+            if projects=='' or curLims['Lab'].item() in projectList:
                 for col in commonCols:
                     if curSeq[col] != curLims[col].item():
                         if curSeq[col] == "" or curLims[col].item() == "":
