@@ -115,6 +115,9 @@ def transposonSamples(line):
     #default parameters that can be overriden below
     bclen = "16"
     
+    if line["R1 Trim (P5)"]=="" or line["R2 Trim (P7)"]=="":
+        raise Exception("Missing trim values")
+    
     #Unique line to each library 
     if sampleType in ['Transposon DNA', 'Transposon RNA']:
         BCreadSeq = "CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBGCTAGTTGTGGGATCTTTGTCCAAACTCATCGAGCTCGGGA"
@@ -140,7 +143,8 @@ def transposonSamples(line):
         bcread = "R2"
         BCreadSeq = "TTGGACAAAGATCCCACAACTAGCBBBBBBBBBBBBBBBBCCTAATTGCCTAGAAAGGAGCAGACGATATGGCGTCGCTCC"
         plasmidSeq="None" #Nothing to align to in the cell BC / UMI (just the pT tail after).
-        extractBCargs="--BCrevcomp"
+        #NB hardcoded to 10x GEM lane 1, needs to be changed if from a different lane
+        extractBCargs="\'--BCrevcomp  --cellBCsuffix 1\'"
     else:
         raise Exception("Can't handle sampleType" + sampleType)
     submitCommand = ' '.join([qsub + fullSampleName, sampleTypeShort, line["R1 Trim (P5)"], line["R2 Trim (P7)"], bcread, bclen, BCreadSeq, plasmidSeq, extractBCargs, fileLocation])
