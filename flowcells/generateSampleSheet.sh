@@ -13,7 +13,7 @@ cat ${src}/flowcells/SampleSheet.template.txt > SampleSheet.csv
 ###Parse the sequencing sheet info from STDIN
 #Clean up single-line spacer between header and data table
 perl -pe 's/^\t+$//g;' |
-awk -F "\t" 'BEGIN {OFS="\t"; parse=0} {print} $0=="" && parse==0 {parse=1; print "#Sample Name", "Sample #", "Lab", "Made By", "Sample Type", "Species", "Barcode 1 (i7)", "Barcode 2 (i5)", "R1 Trim (P5)", "R2 Trim (P7)", "Sequencing primer R1", "Indexing primer BC1 (i7)", "Indexing primer BC2 (i5)", "Sequencing primer R2", "Library concentration (pM)", "Request Type", "Requested reads (M)", "Read format", "Scale factor", "Relative representation", "Amount put on FC (uL)", "Sequenced reads", "Actual representation"}' |
+awk -F "\t" 'BEGIN {OFS="\t"; parse=0} {print} $0=="" && parse==0 {parse=1; print "#Sample Name", "Sample #", "Lab", "Made By", "Sample Type", "Barcode 1 (i7)", "Barcode 2 (i5)", "R1 Trim (P5)", "R2 Trim (P7)", "Sequencing primer R1", "Indexing primer BC1 (i7)", "Indexing primer BC2 (i5)", "Sequencing primer R2", "Library concentration (pM)", "Request Type", "Requested reads (M)", "Read format", "Scale factor", "Relative representation", "Amount put on FC (uL)", "Sequenced reads", "Actual representation"}' |
 #Clean up trailing tabs on comment lines
 perl -pe 's/^(#.+[^\t])\t+$/\1/g;' |
 #Also creates info.txt
@@ -21,7 +21,7 @@ tee info.txt |
 #NB our sample sheet records RC for BC2, which according to https://support.illumina.com/content/dam/illumina-support/documents/documentation/system_documentation/miseq/indexed-sequencing-overview-guide-15057455-04.pdf is valid for iSeq 100, MiniSeq, NextSeq, HiSeq X, HiSeq 4000, or HiSeq 3000. Therefore for runs on NovaSeqTM 6000, MiSeqTM, HiSeq 2500, and HiSeq 2000, BC2 must be RC back to the original sequence.
 awk -v doRevComp=0 -f ${src}/flowcells/revcomp.awk -F "\t" --source  'BEGIN {OFS=","; split("8,8", bclens, ",")} 
     $1=="#Indices" && $2!="" {split($2, bclens, ",")}
-    $0!~/^#/ && $1!="" && $5!="Pool" {if(bclens[1]==0) {$7="_"} if(bclens[2]==0) {$8="_"} split($7, bc1, "_"); split($8, bc2, "_"); if(doRevComp==1) {bc2[2]=revcomp(bc2[2])} print "Sample_" $2, $2, "", "",  bc1[1], toupper(substr(bc1[2], 0, bclens[1])),  bc2[1], toupper(substr(bc2[2], 0, bclens[2])), "Project_" $3, "";}' >> SampleSheet.csv
+    $0!~/^#/ && $1!="" && $5!="Pool" {if(bclens[1]==0) {$6="_"} if(bclens[2]==0) {$7="_"} split($6, bc1, "_"); split($7, bc2, "_"); if(doRevComp==1) {bc2[2]=revcomp(bc2[2])} print "Sample_" $2, $2, "", "",  bc1[1], toupper(substr(bc1[2], 0, bclens[1])),  bc2[1], toupper(substr(bc2[2], 0, bclens[2])), "Project_" $3, "";}' >> SampleSheet.csv
 
 echo
 echo
@@ -34,8 +34,9 @@ fi
 
 
 #TODO check read count total
+#TODO Better to use pool counts?
 awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Expected reads" {expectedReads=$2; programmedReads=0} \
-$0!~/^#/ && $1!="" && $5!="Pool" { programmedReads+= $17 } \
+$0!~/^#/ && $1!="" && $5!="Pool" { programmedReads+= $16 } \
 END { if(programmedReads != expectedReads) { \
         print "WARNING: Total of " programmedReads " reads requested for a FC that yields " expectedReads; \
     } \
@@ -59,8 +60,8 @@ END {\
 
 awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Format" {split($2, fcreadformat, ",")} \
 $0!~/^#/ && $1!="" { \
-    gsub(/^[SP]E /, "", $18); \
-    split($18, sampleReadFormat, ","); \
+    gsub(/^[SP]E /, "", $17); \
+    split($17, sampleReadFormat, ","); \
     if(sampleReadFormat[1]>fcreadformat[1] || sampleReadFormat[2]>fcreadformat[2]) { \
         print "WARNING: Sample " $1 "-" $2 " requires longer read lengths (" sampleReadFormat[1] "," sampleReadFormat[2] ") than programmed" \
     } \
