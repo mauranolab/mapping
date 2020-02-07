@@ -95,6 +95,31 @@ def getBasedir(lab, sampleType, fc):
     return basedir
 
 
+###FC loading
+def getFlowcellInfoFromFile(flowcellID):
+    flowcellInfoFileName = "/vol/mauranolab/flowcells/data/" + flowcellID + "/info.txt"
+    
+    flowcellInfoFile = open(flowcellInfoFileName, 'r')
+    #flowcellInfoFile = open("/vol/mauranolab/flowcells/data/FCHM2LKBGX9/info.txt", 'r')
+    flowcellInfoFileContent = flowcellInfoFile.readlines()
+    
+    flowcellInfoFile.close()
+    
+    flowcellInfoFileContent = [line.rstrip().split('\t') for line in flowcellInfoFileContent]
+    
+    startRow=0
+    while(flowcellInfoFileContent[startRow][0] != "#Sample Name"):
+        startRow+=1
+    
+    if args.verbose:
+        print("Reading", flowcellInfoFileName, "starting at line", startRow, file=sys.stderr)
+    
+    curFlowcellFile = pd.DataFrame(flowcellInfoFileContent[startRow:], columns = flowcellInfoFileContent[startRow]).iloc[1:]
+    curFlowcellFile['FC'] = flowcellID
+    
+    return curFlowcellFile
+
+
 ###Handlers for individual data types
 #Each function takes dict representing a single row from the FC file iterator and returns the processing command line
 #Transposon pipeline
@@ -291,26 +316,11 @@ def bwaPipeline(line):
 ####
 
 ###Parse flowcell info
+limsWks, lims, limsMask = getLIMSsheet("LIMS")
+
 flowcellFile = pd.DataFrame()
 for flowcellID in flowcellIDs:
-    flowcellInfoFileName = "/vol/mauranolab/flowcells/data/" + flowcellID + "/info.txt"
-    
-    flowcellInfoFile = open(flowcellInfoFileName, 'r')
-    #flowcellInfoFile = open("/vol/mauranolab/flowcells/data/FCHM2LKBGX9/info.txt", 'r')
-    flowcellInfoFile = flowcellInfoFile.readlines()
-    flowcellInfoFile = [line.rstrip().split('\t') for line in flowcellInfoFile]
-    
-    startRow=0
-    while(flowcellInfoFile[startRow][0] != "#Sample Name"):
-        startRow+=1
-    
-    if args.verbose:
-        print("Reading", flowcellInfoFileName, "starting at line", startRow, file=sys.stderr)
-    
-    curFlowcellFile = pd.DataFrame(flowcellInfoFile[startRow:], columns = flowcellInfoFile[startRow]).iloc[1:]
-    curFlowcellFile['FC'] = flowcellID
-    flowcellFile = pd.concat([flowcellFile, curFlowcellFile])
-
+    flowcellFile = pd.concat([flowcellFile, getFlowcellInfoFromFile(flowcellID)])
 
 ###Pre-processing
 print("#", ' '.join([ quoteStringsWithSpaces(arg) for arg in sys.argv ]), sep="")
@@ -366,8 +376,6 @@ if args.aggregate or args.aggregate_sublibraries:
 
 
 ###Dispatch appropriate function handler per sample line
-limsWks, lims, limsMask = getLIMSsheet("LIMS")
-
 #Will map to these custom genomes when specified, stored as they appear in LIMS (without cegsvectors_ prefix)
 cegsGenomes = [ re.sub(r'^cegsvectors_', '', os.path.basename(x)) for x in glob.glob("/vol/cegs/sequences/cegsvectors_*") ]
 if args.verbose:
