@@ -453,7 +453,8 @@ for assay_type in assays:
                 sampleDescription += (', Age = ' + curSample['Age'] if curSample['Age'] != 'NA' else '')
             
             if 'Bait_set' in curSample and curSample['Bait_set'] != 'NA':
-                sampleDescription += ', Bait=' + curSample['Bait_set']
+                #Remove "_bait" suffix from each individual bait name to save space
+                sampleDescription += ', Bait=' + ','.join([ re.sub('_bait$', '', bait) for bait in curSample['Bait_set'].split(",") ])
             
             if args.genome == "cegsvectors" and 'Mapped_Genome' in curSample and curSample['Mapped_Genome'] != 'NA':
                 sampleDescription += ", Mapped to " + re.sub(r'^cegsvectors_', '', curSample['Mapped_Genome'])
