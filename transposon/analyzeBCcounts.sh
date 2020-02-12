@@ -164,12 +164,13 @@ if [ "${minCellBCLength}" -gt 0 ]; then
         #Aug 2019 Pilot
         scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/merged"
     elif [[ "${sample}" =~ T021.[AB] ]]; then
-        #Dec 2019 scale
+        #Dec 2019 scaled
         scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/FCH7Y3NBGXC"
     else
         echo "ERROR can't find the right scRNAseqbase"
         #exit 1
     fi
+    echo "Taking 10x blacklist/whitelists from ${scRNAseqbase}"
     
     echo
     echo "Generating cellBC weblogo"
