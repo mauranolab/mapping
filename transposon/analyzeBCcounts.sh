@@ -168,7 +168,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
         scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/FCH7Y3NBGXC"
     else
         echo "ERROR can't find the right scRNAseqbase"
-        #exit 1
+        exit 1
     fi
     echo "Taking 10x blacklist/whitelists from ${scRNAseqbase}"
     
