@@ -1,11 +1,13 @@
-#!/bin/env python3.5
+#!/bin/env python
 from sys import argv
 import sys
+import re
 import argparse
 import os
 import csv
 import statistics
 import collections
+import gzip
 
 import networkx as nx
 from networkx import drawing
@@ -26,11 +28,9 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rc('font', family='sans-serif')
 matplotlib.rc('font', serif='Helvetica')
 
-version="1.0"
+version="1.1"
 
-#BUGBUG don't think connected_component_subgraphs presents subgraphs in deterministic order
 #TODO doublet detection by finding cell nodes that join strongly connected components? Maybe need higher cell density
-#TODO sort output
 
 
 ###Initialize undirected bipartite graph between BCs and cells
@@ -44,7 +44,7 @@ def initializeGraphFromInput(inputfilename, minCount):
     if inputfilename=="-":
         inputfile = sys.stdin
     else:
-        inputfile = open(inputfilename, 'r') 
+        inputfile = open(inputfilename, 'r')
     
     try:
         input_data = inputfile.readlines()
@@ -92,36 +92,87 @@ def initializeGraphFromInput(inputfilename, minCount):
     return G
 
 
+def filterNodesFromFile(G, filename, keep=True):
+    try:
+        if re.search('\.gz$', filename) is not None:
+            maskfile = gzip.open(filename, 'rt')
+        else:
+            maskfile = open(filename, 'r')
+        mask_data = maskfile.readlines()
+        mask_data = [line.rstrip("\n") for line in mask_data]
+        mask_data = set(mask_data) #for O(1) lookup performance below
+        maskfile.close()
+        
+        if keep:
+            #Apply whitelist only to BCs
+            nodesToRemove = [ node for node in G.nodes if node not in mask_data and G.nodes[node]['type']=='BC' ]
+            nodesPresentInGraph =  len([ node for node in G.nodes if node in mask_data ])
+        else:
+            nodesToRemove = [ node for node in G.nodes if node in mask_data ]
+            nodesPresentInGraph = len(nodesToRemove)
+        
+        ncells = len([x for x in nodesToRemove if G.nodes[x]['type'] == 'cell'])
+        nbcs = len([x for x in nodesToRemove if G.nodes[x]['type'] == 'BC'])
+        
+        print("[genotypeClones] Applying ", "whitelist" if keep else "blacklist", " mask in ", filename, " containing ", len(mask_data), " entries, matching ", nodesPresentInGraph, " nodes. Removing ", len(nodesToRemove), " nodes (", nbcs, " BCs and ", ncells, " cells).", sep="", file=sys.stderr)
+        
+        remove_edges(G, [edge for edge in G.edges if edge[0] in nodesToRemove or edge[1] in nodesToRemove])
+        G.remove_nodes_from(nodesToRemove)
+        
+        print("[genotypeClones] ", len(G.nodes), " nodes left", sep="", file=sys.stderr)
+    except FileNotFoundError as e:
+        print("[genotypeClones] WARNING Problem opening filter file ", filename, sep="", file=sys.stderr)
+
+
+
 #Remove nodes without edges (BCs without cells and vice versa)
 def pruneOrphanNodes(G):
     #BUGBUG removes everything?
     isolates = [node for node in nx.isolates(G)]
     print("[genotypeClones] Dropped ", len([node for node in isolates if G.nodes[node]['type']=='cell']), " unconnected cells and ", len([node for node in isolates if G.nodes[node]['type']=='BC']), " unconnected BCs from graph", sep="", file=sys.stderr)
+    #By definition there are no edges to update
     G.remove_nodes_from(isolates)
 
 
-def pruneEdgesLowPropOfReads(G, minPropOfReads, type='BC'):
-    countsremoved = 0
-    edgesremoved = 0
+#Remove list of edges, keeping node weights in sync
+def remove_edges(G, edgesToRemove):
+    #Update node weights first
+    #Make sure we only subtract umis once per edge, regardless of representation (i.e. node order) in edgesToRemove
+    for edge in [e for e in G.edges if e in edgesToRemove]:
+        edgeweight = G.edges[edge]['weight']
+        G.nodes[edge[0]]['weight'] -= edgeweight
+        G.nodes[edge[1]]['weight'] -= edgeweight
+    G.remove_edges_from(edgesToRemove)
+
+
+def identifyEdgesLowPropOfReads(G, minPropOfReads, type='BC'):
+    edgesToRemove = set()
     for node in G.nodes:
         if G.nodes[node]['type'] == type:
             nodeweight = G.nodes[node]['weight']
-            edges = [edge for edge in G.edges([node]) if G.edges[edge]['weight'] / nodeweight < minPropOfReads ]
-            filteredEdgeWeight = sum([G.edges[x]['weight'] for x in edges])
-            countsremoved += filteredEdgeWeight
-            edgesremoved += len(edges)
-            
-            #Update node weights
-            for edge in edges:
-                G.nodes[edge[0]]['weight'] -= G.edges[edge]['weight']
-                G.nodes[edge[1]]['weight'] -= G.edges[edge]['weight']
-            
-            G.remove_edges_from(edges)
+            curEdgesToRemove = [ edge for edge in G.edges([node]) if G.edges[edge]['weight'] / nodeweight < minPropOfReads ]
+            for edge in curEdgesToRemove:
+                edgesToRemove.add(edge)
     
-    print("[genotypeClones] Pruned ", edgesremoved, " edges (", len(G.edges), " left) representing <", minPropOfReads, " of all UMIs for a given ", type, "; ", countsremoved, " UMIs removed", sep="", file=sys.stderr)
-    print("[genotypeClones] Average UMIs per edge: ", str(statistics.mean([ G.edges[x]['weight'] for x in G.edges])), sep="", file=sys.stderr)
+    countsremoved = sum([G.edges[x]['weight'] for x in edgesToRemove])
     
+    print("[genotypeClones] Identified ", len(edgesToRemove), " edges representing <", minPropOfReads, " of all UMIs for a given ", type, "; ", countsremoved, " UMIs removed", sep="", file=sys.stderr)
+    
+    return edgesToRemove
+
+
+def pruneEdgesLowPropOfReads(G, minPropOfBCReads, minPropOfCellReads):
+    #Make a first pass to identify edges for removal so each edge is assessed against the incoming counts
+    edgesToRemove = set()
+    edgesToRemove.update(identifyEdgesLowPropOfReads(G, minPropOfReads=minPropOfBCReads, type="BC"))
+    edgesToRemove.update(identifyEdgesLowPropOfReads(G, minPropOfReads=minPropOfCellReads, type="cell"))
+    
+    #Remove edges all at once
+    remove_edges(G, edgesToRemove)
     pruneOrphanNodes(G)
+    
+    print("[genotypeClones] Pruned ", len(edgesToRemove), " total edges (", len(G.edges), " left)", sep="", file=sys.stderr)
+    print("[genotypeClones] Average UMIs per edge: ", str(statistics.mean([ G.edges[x]['weight'] for x in G.edges ])), sep="", file=sys.stderr)
 
 
 #Break up weakly connected communities
@@ -131,7 +182,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
     countsremoved = 0
     nCommunities = 0
     #Downside of doing filtering in a separate pass is that it is harder to debug why some clusters aren't broken up
-    for subG in nx.connected_component_subgraphs(G):
+    for subG in [G.subgraph(c) for c in sorted(nx.connected_components(G), key=len, reverse=True)]:
         bcs = [x for x in subG.nodes if subG.nodes[x]['type'] == 'BC']
         cells = [x for x in subG.nodes if subG.nodes[x]['type'] == 'cell']
         
@@ -166,8 +217,9 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
                         nCommunities += 1
                         countsremoved += subG.edges[edge]['weight']
                         edgesToDrop.append(edge)
-                        subG.nodes[edge[0]]['weight'] -= subG.edges[edge]['weight']
-                        subG.nodes[edge[1]]['weight'] -= subG.edges[edge]['weight']
+#replace by remove_edges
+#                        subG.nodes[edge[0]]['weight'] -= subG.edges[edge]['weight']
+#                        subG.nodes[edge[1]]['weight'] -= subG.edges[edge]['weight']
                         subG.edges[edge]['color'] = 'darkred'
                         nodesToPrune.append(edge[0])
                         nodesToPrune.append(edge[1])
@@ -187,7 +239,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
             if graphOutput is not None:
                 printGraph(subG, filename=graphOutput + '/preclone-' + str(precloneid), edge_color='color')
     
-    G.remove_edges_from(edgesToDrop)
+    remove_edges(G, edgesToDrop)
     print("[genotypeClones] Created ", nCommunities, " new clones by pruning ", len(edgesToDrop), " edges (", len(G.edges), " left) ", countsremoved, " UMIs removed", sep="", file=sys.stderr)
     
     return nCommunities
@@ -264,7 +316,7 @@ def identifyClones(G):
     clones = collections.OrderedDict()
     
     #Go through connected components in descending order of total #BCs + # cells
-    for subG in sorted(nx.connected_component_subgraphs(G), key=lambda subG: len(subG), reverse=True):
+    for subG in [G.subgraph(c) for c in sorted(nx.connected_components(G), key=len, reverse=True)]:
         cloneid += 1
         clonename = 'clone-' + str(cloneid).zfill(4)
         
@@ -280,7 +332,7 @@ def identifyClones(G):
         totalCells += len(cells)
         totalBCs += len(bcs)
         
-        clones[clonename] = { 'clones': subG, 'umi_count': umi_count , 'bcs': bcs, 'cells': cells }
+        clones[clonename] = { 'clone': subG, 'umi_count': umi_count , 'bcs': bcs, 'cells': cells }
         
     print("[genotypeClones] Identified ", str(cloneid), " unique clones, ", totalCells, " cells, and ", totalBCs, " BCs. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalUMIs/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
     
@@ -308,11 +360,11 @@ def writeOutputFiles(clones, output, outputlong, outputwide, graphOutput=None):
         widewr = csv.DictWriter(wideoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'count', 'nedges', 'nBCs', 'ncells'])
         widewr.writeheader()
         
-        for clonename, clones in clones.items():
-            subG = clones['clones']
-            umi_count = clones['umi_count']
-            bcs = clones['bcs']
-            cells = clones['cells']
+        for clonename, clone in clones.items():
+            subG = clone['clone']
+            umi_count = clone['umi_count']
+            bcs = clone['bcs']
+            cells = clone['cells']
             
             if graphOutput:
                 printGraph(subG, filename=graphOutput + '/' + clonename, edge_color='weight')
@@ -373,13 +425,17 @@ def toJaccard(G):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog = "genotypeClones.py", description = "Graph approach to generate unified list of which BCs are present in which cells", allow_abbrev=False)
     parser.add_argument('--inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences. First line must be header (unused)')
-    parser.add_argument('--outputlong', action='store', help='Tab-delimited list of BC counts totalled per clone')
-    parser.add_argument('--outputwide', action='store', help='Tab-delimited list of clones and the cells/BCs they include')
-    parser.add_argument('--output', action='store', help='Tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
+    parser.add_argument('--outputlong', action='store', help='output filename for tab-delimited list of BC counts totalled per clone')
+    parser.add_argument('--outputwide', action='store', help='output filename for tab-delimited list of clones and the cells/BCs they include')
+    parser.add_argument('--output', action='store', help='output filename for tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
+#   TODO
+#    parser.add_argument('--cloneobj', action='store', default=None, help='output filename to serialize native clones and G objects')
+    parser.add_argument('--whitelist', action='store', default=None, help='Comma separated list filenames, each containing BCs to be retained. Format: one per line, no other columns.')
+    parser.add_argument('--blacklist', action='store', default=None, help='Comma separated list filenames, each containing cellBCs or BCs to be dropped. Format: one per line, no other columns')
     
     parser.add_argument('--minreads', action='store', type=int, default=2, help='Min UMI filter for input file')
     parser.add_argument('--minPropOfBCReads', action='store', type=float, default=0.15, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
-    parser.add_argument('--minPropOfCellReads', action='store', type=float, default=0.01, help='Each BC-cell edge must represent at least this proportion of UMIs for cell')
+    parser.add_argument('--minPropOfCellReads', action='store', type=float, default=0.02, help='Each BC-cell edge must represent at least this proportion of UMIs for cell')
     parser.add_argument('--minCentrality', action='store', type=float, default=0.2, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
     parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
     
@@ -404,9 +460,17 @@ if __name__ == "__main__":
     G = initializeGraphFromInput(inputfilename=args.inputfilename, minCount=args.minreads)
     
     #This filter seems more stringent on the individual libraries than the aggregate one
-    pruneEdgesLowPropOfReads(G, args.minPropOfBCReads, type='BC')
-    #TODO this drops a lot of otherwise unconnected BCs, maybe keep?
-    pruneEdgesLowPropOfReads(G, args.minPropOfCellReads, type='cell')
+    pruneEdgesLowPropOfReads(G, minPropOfBCReads=args.minPropOfBCReads, minPropOfCellReads=args.minPropOfCellReads)
+    
+    if args.whitelist is not None:
+        for f in args.whitelist.split(","):
+            filterNodesFromFile(G, filename=f, keep=True)
+    if args.blacklist is not None:
+        for f in args.blacklist.split(","):
+            filterNodesFromFile(G, filename=f, keep=False)
+    if args.whitelist is not None or args.blacklist is not None:
+        pruneOrphanNodes(G)
+    
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=None)
     #Do twice to break up some of the bigger graphs since we don't iterate internally, 3x doesn't do anything else
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)

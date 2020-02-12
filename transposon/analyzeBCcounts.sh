@@ -163,13 +163,19 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     if [[ "${sample}" =~ T0190 ]]; then
         #Aug 2019 Pilot
         scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/merged"
-    elif [[ "${sample}" =~ T021.[AB] ]]; then
+    elif [[ "${sample}" =~ T021. ]]; then
         #Dec 2019 scaled
         scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/FCH7Y3NBGXC"
+        blacklist="--blacklist /vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_shared.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_conflicting_cells.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_T0213A.txt"
     else
         echo "ERROR can't find the right scRNAseqbase"
         exit 1
     fi
+    echo
+    echo "10x cellBC analysis"
+    date
+    
+    echo
     echo "Taking 10x blacklist/whitelists from ${scRNAseqbase}"
     
     echo
@@ -221,10 +227,6 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     #Protect from cases where grep gets no results
     set +e
     
-    echo -n -e "${sample}\treads/BCs on blacklist\t"
-    cat $TMPDIR/${sample}.barcode.counts.byCell.unfiltered.txt | fgrep -w -f ${scRNAseqbase}/BCs.excluded.txt | wc -l | perl -pe 's/\n/\t/g;'
-    cat ${OUTDIR}/${sample}.barcode.counts.txt | fgrep -v -w -f ${scRNAseqbase}/BCs.excluded.txt | wc -l
-    
     #Note whitelist doesn't actually need to get listed separately, since only contains cells on whitelist
     echo -n -e "${sample}\treads/cells not on whitelist\t"
     cat $TMPDIR/${sample}.barcode.counts.byCell.unfiltered.txt | fgrep -v -w -f ${scRNAseqbase}/cells.whitelist.txt | wc -l | perl -pe 's/\n/\t/g;'
@@ -243,7 +245,6 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     
     ##Actual filtering
     cat $TMPDIR/${sample}.barcode.counts.byCell.unfiltered.txt |
-    fgrep -v -w -f ${scRNAseqbase}/BCs.excluded.txt |
     fgrep -w -f ${scRNAseqbase}/cells.whitelist.txt |
     fgrep -v -w -f ${scRNAseqbase}/cells.readcounts.excluded.txt |
     fgrep -v -w -f ${scRNAseqbase}/cells.pSB.excluded.txt |
@@ -263,7 +264,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     echo
     echo "running genotypeClones"
     date
-    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputwide ${OUTDIR}/${sample}.clones.txt --outputlong ${OUTDIR}/${sample}.clones.counts.filtered.txt --output - --printGraph ${OUTDIR}/${sample}.clones | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
+    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputwide ${OUTDIR}/${sample}.clones.txt --outputlong ${OUTDIR}/${sample}.clones.counts.filtered.txt --output - ${blacklist} --printGraph ${OUTDIR}/${sample}.clones | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
     date
     echo
     
