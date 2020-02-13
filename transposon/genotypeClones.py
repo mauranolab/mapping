@@ -245,7 +245,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
     return nCommunities
 
 
-def printGraph(G, filename=None, fig=None, node_color='type', node_color_dict={'BC': 'darkblue', 'cell': 'darkred'}, edge_color='weight', edge_color_cmap="Blues", with_labels=True):
+def printGraph(G, filename=None, fig=None, node_color='type', node_color_dict={'BC': 'darkblue', 'cell': 'darkred'}, edge_color='weight', edge_color_cmap="Blues", with_labels=True, with_legend=True):
     #print("[genotypeClones] Printing graph ", filename, sep="", file=sys.stderr)
     # nodeColorDict = 
 #    node_sizes = [ node[1]*25000 for node in G.nodes.data('weight') ]
@@ -286,11 +286,13 @@ def printGraph(G, filename=None, fig=None, node_color='type', node_color_dict={'
     sm = plt.cm.ScalarMappable(cmap=edge_colormap, norm=mcolors.NoNorm(vmin=0, vmax=100))
     sm._A = []
     plt.colorbar(sm, shrink=0.7)
-    ## add node legend
-    ax = fig.gca()
-    for label in node_color_dict:
-        ax.scatter([0], [0], color=mcolors.to_rgba(node_color_dict[label]), label=label)
-    plt.legend(loc="upper right")
+    if with_legend:
+        ## add node legend
+        ax = fig.gca()
+        for label in node_color_dict:
+            ax.scatter([], [], color=mcolors.to_rgba(
+                node_color_dict[label]), label=label)
+        plt.legend(loc="upper right")
     
     nCells = len([ node for node in G.nodes if G.nodes[node]['type'] == 'cell'])
     nBCs = len([node for node in G.nodes if G.nodes[node]['type'] == 'BC'])
