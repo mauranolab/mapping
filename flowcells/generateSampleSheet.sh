@@ -1,6 +1,13 @@
 #!/bin/bash
 set -eu -o pipefail
 
+
+if [ "$#" -ge 1 ]; then
+    printPairs="$1"
+else
+    printPairs="FALSE"
+fi
+
 src="/vol/mauranolab/mapped/src"
 #TODO /home/mauram01/lib/revcomp.awk
 
@@ -97,10 +104,10 @@ echo "Finished validation"
 echo
 echo
 
-Rscript --quiet --no-save - << 'EOF'
+Rscript --quiet --no-save - ${printPairs} << 'EOF'
 suppressPackageStartupMessages(library(reshape))
 
-printPairs <- FALSE
+printPairs <- commandArgs(TRUE)[1]
 
 data <- read.table("SampleSheet.csv", header=T, skip=19, sep=",", comment.char = "", quote = "", strip.white = TRUE, stringsAsFactors = F)
 
