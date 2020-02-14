@@ -434,7 +434,7 @@ if __name__ == "__main__":
     parser.add_argument('--outputlong', action='store', required=True, help='output filename for tab-delimited list of BC counts totalled per clone')
     parser.add_argument('--outputwide', action='store', required=True, help='output filename for tab-delimited list of clones and the cells/BCs they include')
     parser.add_argument('--output', action='store', required=True, help='output filename for tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
-    parser.add_argument('--cloneobj', action='store', default=None, help='output filename to serialize native clones and G objects')
+    parser.add_argument('--cloneobj', action='store', default=None, help='output .pickle filename to serialize native clones and G objects')
     parser.add_argument('--whitelist', action='store', default=None, help='Comma separated list filenames, each containing BCs to be retained. Format: one per line, no other columns.')
     parser.add_argument('--blacklist', action='store', default=None, help='Comma separated list filenames, each containing cellBCs or BCs to be dropped. Format: one per line, no other columns')
     parser.add_argument('--annotateclones', action='store', default=None, help='Comma separated list filenames, each containing annotation to be added to cells or cellBCs. Format: gzipped tab-delimited file with header, one header column must be "bc", another must be "transfection"')
