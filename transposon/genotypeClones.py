@@ -344,7 +344,7 @@ def identifyClones(G):
 
 #Print three output files and optionally graphs for each clone
 #TODO make each output file optional
-def writeOutputFiles(clones, output, outputlong, outputwide, cloneobj, graphOutput=None):
+def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphOutput=None):
     try:
         #Prepare file IO
         longoutfile = open(outputlong, 'w')
@@ -364,7 +364,7 @@ def writeOutputFiles(clones, output, outputlong, outputwide, cloneobj, graphOutp
         widewr.writeheader()
 
         if cloneobj is not None:
-            pickle.dump(clones, open(cloneobj, "wb"))
+            pickle.dump(dict(graph = G, clones = clones), open(cloneobj, "wb"))
         
         for clonename, clone in clones.items():
             subG = clone['clone']
@@ -503,4 +503,4 @@ if __name__ == "__main__":
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
     
     clones = identifyClones(G)
-    writeOutputFiles(clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
+    writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
