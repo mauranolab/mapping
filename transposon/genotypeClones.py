@@ -8,6 +8,7 @@ import csv
 import statistics
 import collections
 import gzip
+import pickle
 
 import networkx as nx
 from networkx import drawing
@@ -343,7 +344,7 @@ def identifyClones(G):
 
 #Print three output files and optionally graphs for each clone
 #TODO make each output file optional
-def writeOutputFiles(clones, output, outputlong, outputwide, graphOutput=None):
+def writeOutputFiles(clones, output, outputlong, outputwide, cloneobj, graphOutput=None):
     try:
         #Prepare file IO
         longoutfile = open(outputlong, 'w')
@@ -361,6 +362,9 @@ def writeOutputFiles(clones, output, outputlong, outputwide, graphOutput=None):
         wideoutfile = open(outputwide, 'w')
         widewr = csv.DictWriter(wideoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'count', 'nedges', 'nBCs', 'ncells'])
         widewr.writeheader()
+
+        if cloneobj is not None:
+            pickle.dump(clones, open(cloneobj, "wb"))
         
         for clonename, clone in clones.items():
             subG = clone['clone']
@@ -430,8 +434,7 @@ if __name__ == "__main__":
     parser.add_argument('--outputlong', action='store', help='output filename for tab-delimited list of BC counts totalled per clone')
     parser.add_argument('--outputwide', action='store', help='output filename for tab-delimited list of clones and the cells/BCs they include')
     parser.add_argument('--output', action='store', help='output filename for tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
-#   TODO
-#    parser.add_argument('--cloneobj', action='store', default=None, help='output filename to serialize native clones and G objects')
+    parser.add_argument('--cloneobj', action='store', default=None, help='output filename to serialize native clones and G objects')
     parser.add_argument('--whitelist', action='store', default=None, help='Comma separated list filenames, each containing BCs to be retained. Format: one per line, no other columns.')
     parser.add_argument('--blacklist', action='store', default=None, help='Comma separated list filenames, each containing cellBCs or BCs to be dropped. Format: one per line, no other columns')
     
@@ -478,4 +481,4 @@ if __name__ == "__main__":
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
     
     clones = identifyClones(G)
-    writeOutputFiles(clones, args.output, args.outputlong, args.outputwide, args.printGraph)
+    writeOutputFiles(clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
