@@ -37,7 +37,7 @@ cat readcounts.txt
 
 echo
 echo "Sorted by BS number"
-cat readcounts.txt | awk -F "\t" 'BEGIN {OFS="\t"} $0=="" {exit} {print}' | mlr --tsv sort -f Sample
+cat readcounts.txt | awk -F "\t" 'BEGIN {OFS="\t"} $0=="" {exit} {print}' | mlr --tsv sort -f Sample then cut -f "#Reads"
 
 
 echo

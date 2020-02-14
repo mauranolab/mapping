@@ -1,4 +1,4 @@
-#!/bin/env python3.5
+#!/bin/env python
 from sys import argv
 import sys
 import re
