@@ -31,7 +31,7 @@ matplotlib.rc('font', serif='Helvetica')
 version="1.1"
 
 #TODO doublet detection by finding cell nodes that join strongly connected components? Maybe need higher cell density
-#Sort output to stdout so I don't need mlr
+#TODO Sort output to stdout so I don't need mlr
 
 ###Initialize undirected bipartite graph between BCs and cells
 #1) Node attributes
