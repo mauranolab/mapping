@@ -166,7 +166,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     elif [[ "${sample}" =~ T021. ]]; then
         #Dec 2019 scaled
         scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/FCH7Y3NBGXC"
-        blacklist="--blacklist /vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_shared.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_conflicting_cells.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_T0213A.txt"
+        genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_shared.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_conflicting_cells.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_T0213A.txt --annotateclones /vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/bc_transfection-occurence.txt.gz"
     else
         echo "ERROR can't find the right scRNAseqbase"
         exit 1
@@ -264,7 +264,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     echo
     echo "running genotypeClones"
     date
-    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputwide ${OUTDIR}/${sample}.clones.txt --outputlong ${OUTDIR}/${sample}.clones.counts.filtered.txt --output - ${blacklist} --printGraph ${OUTDIR}/${sample}.clones | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
+    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputwide ${OUTDIR}/${sample}.clones.txt --outputlong ${OUTDIR}/${sample}.clones.counts.filtered.txt --output - ${genotypeClonesArgs} --printGraph ${OUTDIR}/${sample}.clones | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
     date
     echo
     
