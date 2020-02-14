@@ -264,7 +264,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     echo
     echo "running genotypeClones"
     date
-    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputwide ${OUTDIR}/${sample}.clones.txt --outputlong ${OUTDIR}/${sample}.clones.counts.filtered.txt --output - ${blacklist} --printGraph ${OUTDIR}/${sample}.clones | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
+    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputwide ${OUTDIR}/${sample}.clones.txt --outputlong ${OUTDIR}/${sample}.clones.counts.filtered.txt --output - ${blacklist} --printGraph ${OUTDIR}/${sample}.clones --cloneobj ${OUTDIR}/${sample}.clones.pickle | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
     date
     echo
     
