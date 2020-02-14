@@ -32,7 +32,7 @@ matplotlib.rc('font', serif='Helvetica')
 version="1.1"
 
 #TODO doublet detection by finding cell nodes that join strongly connected components? Maybe need higher cell density
-
+#TODO Sort output to stdout so I don't need mlr
 
 ###Initialize undirected bipartite graph between BCs and cells
 #1) Node attributes
@@ -238,7 +238,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
             
             ###Print graph
             if graphOutput is not None:
-                printGraph(subG, filename=graphOutput + '/preclone-' + str(precloneid), edge_color='color')
+                printGraph(subG, filename=graphOutput + '/preclone-' + str(precloneid), edge_color='color', **printGraph_kwds)
     
     remove_edges(G, edgesToDrop)
     print("[genotypeClones] Created ", nCommunities, " new clones by pruning ", len(edgesToDrop), " edges (", len(G.edges), " left) ", countsremoved, " UMIs removed", sep="", file=sys.stderr)
@@ -373,7 +373,7 @@ def writeOutputFiles(clones, output, outputlong, outputwide, cloneobj, graphOutp
             cells = clone['cells']
             
             if graphOutput:
-                printGraph(subG, filename=graphOutput + '/' + clonename, edge_color='weight')
+                printGraph(subG, filename=graphOutput + '/' + clonename, edge_color='weight', **printGraph_kwds)
             
             widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': clonename, 'count': umi_count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells) })
             
@@ -430,13 +430,14 @@ def toJaccard(G):
 ###Command line operation
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog = "genotypeClones.py", description = "Graph approach to generate unified list of which BCs are present in which cells", allow_abbrev=False)
-    parser.add_argument('--inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences. First line must be header (unused)')
-    parser.add_argument('--outputlong', action='store', help='output filename for tab-delimited list of BC counts totalled per clone')
-    parser.add_argument('--outputwide', action='store', help='output filename for tab-delimited list of clones and the cells/BCs they include')
-    parser.add_argument('--output', action='store', help='output filename for tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
+    parser.add_argument('--inputfilename', action='store', required=True, help='input filename. Format: tab-delimited with barcode sequences. First line must be header (unused)')
+    parser.add_argument('--outputlong', action='store', required=True, help='output filename for tab-delimited list of BC counts totalled per clone')
+    parser.add_argument('--outputwide', action='store', required=True, help='output filename for tab-delimited list of clones and the cells/BCs they include')
+    parser.add_argument('--output', action='store', required=True, help='output filename for tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
     parser.add_argument('--cloneobj', action='store', default=None, help='output filename to serialize native clones and G objects')
     parser.add_argument('--whitelist', action='store', default=None, help='Comma separated list filenames, each containing BCs to be retained. Format: one per line, no other columns.')
     parser.add_argument('--blacklist', action='store', default=None, help='Comma separated list filenames, each containing cellBCs or BCs to be dropped. Format: one per line, no other columns')
+    parser.add_argument('--annotateclones', action='store', default=None, help='Comma separated list filenames, each containing annotation to be added to cells or cellBCs. Format: gzipped tab-delimited file with header, one header column must be "bc", another must be "transfection"')
     
     parser.add_argument('--minreads', action='store', type=int, default=2, help='Min UMI filter for input file')
     parser.add_argument('--minPropOfBCReads', action='store', type=float, default=0.15, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
@@ -463,6 +464,27 @@ if __name__ == "__main__":
     
     ###Initialize graph, filter, write output
     G = initializeGraphFromInput(inputfilename=args.inputfilename, minCount=args.minreads)
+    
+    #Add annotation if any
+    #TODO generalize
+    if args.annotateclones is not None:
+        for f in args.annotateclones.split(","):
+            print("[genotypeClones] Loading annotation from ", f, sep="", file=sys.stderr)
+            inputfile_reader = csv.DictReader(gzip.open(f, 'rt'), delimiter='\t')
+            bcToTransfection = {}
+            for line in inputfile_reader:
+                bcToTransfection[line['bc']] = line['transfection']
+            
+            assignToNodes(G, 'transfection', bcToTransfection, default="None")
+            for n in G.nodes:
+                if G.nodes[n]['type'] == 'cell':
+                    G.nodes[n]['transfection'] = 'cellBC'
+        
+        printGraph_kwds = { 'node_color': 'transfection', 'node_color_dict': {'cellBC': 'black', 'T0215A': 'orange', 'T0216B': 'purple', 'T0217B': 'green'} }
+    else:
+        printGraph_kwds = {}
+
+
     
     #This filter seems more stringent on the individual libraries than the aggregate one
     pruneEdgesLowPropOfReads(G, minPropOfBCReads=args.minPropOfBCReads, minPropOfCellReads=args.minPropOfCellReads)
