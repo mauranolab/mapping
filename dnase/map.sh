@@ -339,10 +339,10 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
             extractcmd="samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample1}.fastq.gz"
         fi
     elif [[ "${processingCommand}" == "mapBwaMem" ]]; then
-        #ira hall consensus pipeline also includes: -Y -K 100000000
-        #By default, bwa-mem loads a batch of reads into RAM to process. The number of loaded bases is proportional to the number of threads. If you use a different number of threads, the mapping results may be slightly different. This hurts reproducibility. -K disables the behavior by loading a fixed number of bases into RAM. It should not affect ALT mapping.
+        #parameters from ira hall consensus pipeline added 2020feb18 along with update to bwa 0.7.17        #https://github.com/CCDG/Pipeline-Standardization/blob/master/PipelineStandard.md
+        #I could not find any effect of '-Y'; in some spot checking I hever see bwa output anything with $6~/H/, though I can find some soft-clipped supplementary alignments with or without the option
+        bwaMemOptions="-Y -K 100000000"
         
-        bwaMemOptions=""
 #        if [[ "${curGenome}" =~ ^cegsvectors ]]; then
 #            Mainly seems to add spurious secondary alignments where one read in the pair maps to a different reference within cegsvectors
 #            bwaMemOptions="-a"

@@ -13,7 +13,7 @@ module load picard/2.18.15
 module load FastQC/0.11.4
 module load bedtools/2.25
 module load bedops/2.4.37
-module load bwa/0.7.15
+module load bwa/0.7.17
 module load htslib/1.9
 module load samtools/1.9
 module load bcftools/1.9
