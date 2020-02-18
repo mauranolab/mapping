@@ -129,7 +129,8 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggrega
     ###Samblaster is faster
     #samblaster used an average of 1GB memory mapping ENCODE DNase data to hg38. 10/889 jobs used >5GB.
     samtools view -h ${sampleOutdir}/${name}.${mappedgenome}.bam |
-    samblaster --addMateTags |
+    #NB bwa bwa/0.7.17 adds MC but not MQ tags. samblaster --addMateTags then adds its own. Since I don't see us using MQ anywhere, we'll remove the samblaster option and let bwa generate MC
+    samblaster |
     #BUGBUG samblaster does not add a PP field in its @PG tag; when we are merging after map PP should just be bwa, but would be the prior tag SAMBLASTER when doing aggregateRemarkDups
     #BUGBUG samblaster blindly adds new @PG     ID:SAMBLASTER record even if it exists, causing strict (picard) validation errors
     #https://github.com/GregoryFaust/samblaster/blob/master/samblaster.cpp
