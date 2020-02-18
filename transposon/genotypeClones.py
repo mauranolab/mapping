@@ -83,14 +83,18 @@ def initializeGraphFromInput(inputfilename, minCount):
     finally:
         inputfile.close()
     
-    print("[genotypeClones] Read ", str(len([x for x in G.nodes if G.nodes[x]['type'] == 'cell'])), " unique cells", sep="", file=sys.stderr)
-    print("[genotypeClones] Read ", str(len([x for x in G.nodes if G.nodes[x]['type'] == 'BC'])), " unique BCs", sep="", file=sys.stderr)
-    print("[genotypeClones] Read ", str(totalReads), " total UMIs", sep="", file=sys.stderr)
-    print("[genotypeClones] Initialized ", len(G.edges), " total edges", sep="", file=sys.stderr)
-    print("[genotypeClones] Average UMIs per BC: ", str(statistics.mean([ int(G.nodes[x]['weight']) for x in G.nodes if G.nodes[x]['type'] == 'BC'])), sep="", file=sys.stderr)
-    print("[genotypeClones] Average UMIs per BC-cell edge: ", str(statistics.mean([ int(G.edges[x]['weight']) for x in G.edges])), sep="", file=sys.stderr)
+    summarizeGraph(G)
     
     return G
+
+
+def summarizeGraph(G):
+    bcs = [x for x in G.nodes if G.nodes[x]['type'] == 'BC']
+    cells = [x for x in G.nodes if G.nodes[x]['type'] == 'cell']
+    
+    totalUMIs = sum([G.edges[e]['weight'] for e in G.edges])
+    
+    print("[genotypeClones] summarizeGraph - ", len(G.nodes), " nodes (", len(cells), " cells, ", len(bcs), " BCs), ", len(G.edges), " edges with ", totalUMIs, " UMIs (avg. ", round(totalUMIs/len(bcs), 1), " per BC, and ", round(totalUMIs/len(G.edges), 1), " per edge).", sep="", file=sys.stderr)
 
 
 def filterNodesFromFile(G, filename, keep=True):
@@ -115,12 +119,12 @@ def filterNodesFromFile(G, filename, keep=True):
         ncells = len([x for x in nodesToRemove if G.nodes[x]['type'] == 'cell'])
         nbcs = len([x for x in nodesToRemove if G.nodes[x]['type'] == 'BC'])
         
-        print("[genotypeClones] Applying ", "whitelist" if keep else "blacklist", " mask in ", filename, " containing ", len(mask_data), " entries, matching ", nodesPresentInGraph, " nodes. Removing ", len(nodesToRemove), " nodes (", nbcs, " BCs and ", ncells, " cells).", sep="", file=sys.stderr)
+        print("[genotypeClones] filterNodesFromFile - ", "whitelist " if keep else "blacklist ", filename, " with ", len(mask_data), " entries, matching ", nodesPresentInGraph, " nodes. Removing ", len(nodesToRemove), " nodes (", nbcs, " BCs and ", ncells, " cells).", sep="", file=sys.stderr)
         
         remove_edges(G, [edge for edge in G.edges if edge[0] in nodesToRemove or edge[1] in nodesToRemove])
         G.remove_nodes_from(nodesToRemove)
         
-        print("[genotypeClones] ", len(G.nodes), " nodes left", sep="", file=sys.stderr)
+        summarizeGraph(G)
     except FileNotFoundError as e:
         print("[genotypeClones] WARNING Problem opening filter file ", filename, sep="", file=sys.stderr)
 
@@ -130,9 +134,10 @@ def filterNodesFromFile(G, filename, keep=True):
 def pruneOrphanNodes(G):
     #BUGBUG removes everything?
     isolates = [node for node in nx.isolates(G)]
-    print("[genotypeClones] Dropped ", len([node for node in isolates if G.nodes[node]['type']=='cell']), " unconnected cells and ", len([node for node in isolates if G.nodes[node]['type']=='BC']), " unconnected BCs from graph", sep="", file=sys.stderr)
+    print("[genotypeClones] pruneOrphanNodes - Dropped ", len([node for node in isolates if G.nodes[node]['type']=='cell']), " unconnected cells and ", len([node for node in isolates if G.nodes[node]['type']=='BC']), " unconnected BCs from graph", sep="", file=sys.stderr)
     #By definition there are no edges to update
     G.remove_nodes_from(isolates)
+    summarizeGraph(G)
 
 
 #Remove list of edges, keeping node weights in sync
@@ -157,7 +162,7 @@ def identifyEdgesLowPropOfReads(G, minPropOfReads, type='BC'):
     
     countsremoved = sum([G.edges[x]['weight'] for x in edgesToRemove])
     
-    print("[genotypeClones] Identified ", len(edgesToRemove), " edges representing <", minPropOfReads, " of all UMIs for a given ", type, "; ", countsremoved, " UMIs removed", sep="", file=sys.stderr)
+    print("[genotypeClones] identifyEdgesLowPropOfReads - Identified ", len(edgesToRemove), " edges representing <", minPropOfReads, " of all UMIs for a given ", type, "; ", countsremoved, " UMIs removed", sep="", file=sys.stderr)
     
     return edgesToRemove
 
@@ -170,10 +175,8 @@ def pruneEdgesLowPropOfReads(G, minPropOfBCReads, minPropOfCellReads):
     
     #Remove edges all at once
     remove_edges(G, edgesToRemove)
+    print("[genotypeClones] pruneEdgesLowPropOfReads - Removed ", len(edgesToRemove), " total edges", sep="", file=sys.stderr)
     pruneOrphanNodes(G)
-    
-    print("[genotypeClones] Pruned ", len(edgesToRemove), " total edges (", len(G.edges), " left)", sep="", file=sys.stderr)
-    print("[genotypeClones] Average UMIs per edge: ", str(statistics.mean([ G.edges[x]['weight'] for x in G.edges ])), sep="", file=sys.stderr)
 
 
 #Break up weakly connected communities
@@ -241,7 +244,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
                 printGraph(subG, filename=graphOutput + '/preclone-' + str(precloneid), edge_color='color', **printGraph_kwds)
     
     remove_edges(G, edgesToDrop)
-    print("[genotypeClones] Created ", nCommunities, " new clones by pruning ", len(edgesToDrop), " edges (", len(G.edges), " left) ", countsremoved, " UMIs removed", sep="", file=sys.stderr)
+    print("[genotypeClones] breakUpWeaklyConnectedCommunities Created ", nCommunities, " new clones by pruning ", len(edgesToDrop), " edges (", len(G.edges), " left) ", countsremoved, " UMIs removed", sep="", file=sys.stderr)
     
     return nCommunities
 
@@ -337,7 +340,7 @@ def identifyClones(G):
         
         clones[clonename] = { 'clone': subG, 'umi_count': umi_count , 'bcs': bcs, 'cells': cells }
         
-    print("[genotypeClones] Identified ", str(cloneid), " unique clones, ", totalCells, " cells, and ", totalBCs, " BCs. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalUMIs/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
+    print("[genotypeClones] Identified ", str(cloneid), " unique clones. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalUMIs/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
     
     return clones
 
