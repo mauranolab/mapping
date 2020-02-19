@@ -4,3 +4,5 @@
 chrX	106186732	106187231	Pgk1_promoter
 #Specific to HPRT1 payload (part of HPRT1 at hg38 chrX:134458634-134460417 was engineered in to parental line so causes false positives)
 HPRT1	30685	32469
+#In addition to the payload copy, there appears to be an SV40pA at the upstream end of the landing pad but it is misplaced in LPICE based on reads mapping across the junction and there must be some missing intervening sequence. Note that this off-target hit is nearly 30 kb upstream of Hprt
+chrX	52962446	52963047
