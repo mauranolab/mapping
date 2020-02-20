@@ -1,7 +1,5 @@
 #!/bin/bash
 ####################################################################
-# Make sure some version of the ucsckentutils module has already been loaded.
-####################################################################
 # Get input parameters
 path_to_main_driver_script=$1
 hub_target=$2
@@ -10,7 +8,6 @@ hub_type=$4
 shift 4
 genome_array=("$@")
 
-module load bedops/2.4.35
 
 ####################################################################
 # Set some hub_type dependent constants.

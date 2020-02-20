@@ -14,8 +14,6 @@ shift 4
 genome_array=("$@")
 
 ##############################################################################
-module load R/3.5.0
-##############################################################################
 # This function calls the R code that makes the data table html code
 # It is called by the below "find_readcounts" function.
 
