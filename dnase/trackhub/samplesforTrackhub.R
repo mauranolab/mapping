@@ -6,6 +6,53 @@ suppressPackageStartupMessages(library(RColorBrewer))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(optparse))
 
+
+###Helper functions
+getInputSampleIDs <- function(inputfile) {
+	inputSampleIDs <- as.data.frame(fread(inputfile))
+	
+	# Translate column names from LIMS, if present
+	colnames(inputSampleIDs)[colnames(inputSampleIDs)=="Sample Name"] <- "Name"
+	colnames(inputSampleIDs)[colnames(inputSampleIDs)=="Sample #"] <- "DS"
+	
+	if(is.null(inputSampleIDs$DS)) {
+		stop("[samplesforTrackhub] DS column is required in provided inputfile", call.=FALSE)
+	} 
+	
+	inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$DS),]
+	message("[samplesforTrackhub] Merging annotation from ", inputfile, ": ", nrow(inputSampleIDs), " x ", ncol(inputSampleIDs), ", ", length(unique(inputSampleIDs$DS)), " unique DS numbers")
+	return(inputSampleIDs)
+}
+
+
+# Get paths of directories to search for sample directories relative to pwd
+getFilteredDirs <- function(path) {
+	dirs <- list.dirs(path=path, full.names=F, recursive=F)
+	# Prune unwanted directories
+	dirs <- dirs[grep('^new', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^bak', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^trash', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^fastq$', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^sra$', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^src$', sapply(dirs, basename), invert=TRUE)]
+	#NB These show up in old pipeline
+	dirs <- dirs[grep('^hotspots$', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^fastqc$', sapply(dirs, basename), invert=TRUE)]
+	
+	return(dirs)
+}
+
+
+pipelineParametersParser <- function(pipelineParameters, fieldName) {
+	regex_out <- regexpr('^Running (?<processingCommand>[^,]+),(?<analysisCommand>[^ ]+) analysis [^\\-]+\\-[^ ]+ \\(.+\\) against genome (?<mappedgenome>[^ ]+)( \\(aka (?<annotationgenome>[^ ]+)\\))?', pipelineParameters, perl=T)
+	
+	regex_out.start <- attr(regex_out,"capture.start")[1, fieldName]
+	regex_out.lngth <- attr(regex_out,"capture.length")[1, fieldName]
+	return(substr(pipelineParameters, regex_out.start, regex_out.start+regex_out.lngth-1))
+}
+
+
+###Process command line
 option_list = list(
 	make_option(c("--inputfile"), type="character", default=NULL,
 		help="input file name. Optional tab-delimited file. Entries will be matched on DS column, and any non-NA data in other columns will be propagated to trackhub", metavar="character"),
@@ -43,27 +90,14 @@ pwd <- opt$workingDir
 
 message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", opt$project)
 
+
 ##############################################################
+#Begin processing
+
 #for debug
 #opt=list(file="/vol/isg/encode/dnase/SampleIDs.tsv", out="/vol/isg/encode/dnase/SamplesForTrackhub.tsv")
 #opt=list(file="/vol/isg/encode/mouseencode_chipseq_2018/SampleIDs.tsv",out="/vol/isg/encode/mouseencode_chipseq_2018/SamplesForTrackhub.tsv")
 
-##############################################################
-getInputSampleIDs <- function(inputfile) {
-	inputSampleIDs <- as.data.frame(fread(inputfile))
-	
-	# Translate column names from LIMS, if present
-	colnames(inputSampleIDs)[colnames(inputSampleIDs)=="Sample Name"] <- "Name"
-	colnames(inputSampleIDs)[colnames(inputSampleIDs)=="Sample #"] <- "DS"
-	
-	if(is.null(inputSampleIDs$DS)) {
-		stop("[samplesforTrackhub] DS column is required in provided inputfile", call.=FALSE)
-	} 
-	
-	inputSampleIDs <- inputSampleIDs[order(inputSampleIDs$DS),]
-	message("[samplesforTrackhub] Merging annotation from ", inputfile, ": ", nrow(inputSampleIDs), " x ", ncol(inputSampleIDs), ", ", length(unique(inputSampleIDs$DS)), " unique DS numbers")
-	return(inputSampleIDs)
-}
 
 if(!is.null(opt$inputfile)) {
 	if(opt$inputfile == "-") {
@@ -75,23 +109,6 @@ if(!is.null(opt$inputfile)) {
 	inputSampleIDs <- NULL
 }
 
-
-# Get paths of directories to search for sample directories relative to pwd
-getFilteredDirs <- function(path) {
-	dirs <- list.dirs(path=path, full.names=F, recursive=F)
-	# Prune unwanted directories
-	dirs <- dirs[grep('^new', sapply(dirs, basename), invert=TRUE)]
-	dirs <- dirs[grep('^bak', sapply(dirs, basename), invert=TRUE)]
-	dirs <- dirs[grep('^trash', sapply(dirs, basename), invert=TRUE)]
-	dirs <- dirs[grep('^fastq$', sapply(dirs, basename), invert=TRUE)]
-	dirs <- dirs[grep('^sra$', sapply(dirs, basename), invert=TRUE)]
-	dirs <- dirs[grep('^src$', sapply(dirs, basename), invert=TRUE)]
-	#NB These show up in old pipeline
-	dirs <- dirs[grep('^hotspots$', sapply(dirs, basename), invert=TRUE)]
-	dirs <- dirs[grep('^fastqc$', sapply(dirs, basename), invert=TRUE)]
-	
-	return(dirs)
-}
 
 if("descend" %in% names(opt)) {
 	projectdirs <- NULL
@@ -148,17 +165,8 @@ nextColorFromPalette <- 0
 colorAssignments <- NULL
 
 
-# The "pipelineParameters" parser function. Will be used in the below for loop.
-pipelineParametersParser <- function(pipelineParameters, fieldName) {
-	regex_out <- regexpr('^Running (?<processingCommand>[^,]+),(?<analysisCommand>[^ ]+) analysis [^\\-]+\\-[^ ]+ \\(.+\\) against genome (?<mappedgenome>[^ ]+)( \\(aka (?<annotationgenome>[^ ]+)\\))?', pipelineParameters, perl=T)
-
-	regex_out.start <- attr(regex_out,"capture.start")[1, fieldName]
-	regex_out.lngth <- attr(regex_out,"capture.length")[1, fieldName]
-	return(substr(pipelineParameters, regex_out.start, regex_out.start+regex_out.lngth-1))
-}
-
 # Initialize "data" with just column names.  We'll be adding rows to this later on in the code.
-outputCols <- c("Name", "SampleID", "Assay", "Group", "filebase", "Mapped_Genome", "Annotation_Genome", "Color", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Age", "Institution", "Replicate", "Bait_set")
+outputCols <- c("Name", "SampleID", "Assay", "Group", "filebase", "Mapped_Genome", "Annotation_Genome", "Color", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Age", "Institution", "Replicate", "Bait_set", "Genetic_Modification")
 if(opt$project == "CEGS_byLocus") {
     outputCols <- c(outputCols, "Study", "Project", "Assembly", "Type")
 }
@@ -275,6 +283,10 @@ for(curdir in mappeddirs) {
 				data$Bait_set[i] <- SampleAnnotation[["Bait_set"]]
 			}
 			
+			if( !is.null(SampleAnnotation[["Genetic_Modification"]]) ) {
+				data$Genetic_Modification[i] <- SampleAnnotation[["Genetic_Modification"]]
+			}
+			
 			if(any(grepl('^Genomic_coverage\t', analysisFileContents))) {
 				data$Genomic_coverage[i] <- strsplit(analysisFileContents[grep('^Genomic_coverage\t', analysisFileContents)], '\t')[[1]][2]
 			}
@@ -313,20 +325,40 @@ for(curdir in mappeddirs) {
 					}
 				} else if(opt$project=="CEGS_byLocus") {
 					#Group values will be in the form of Study ID
-					SampleNameSplit <- unlist(strsplit(data$Name[i], "_"))
-					CEGSsampleType <- SampleNameSplit[length(SampleNameSplit)]
-					if(CEGSsampleType %in% c("Yeast", "DNA", "BAC", "RepoBAC", "Ecoli", "Amplicon")) {
+					
+					if(is.na(data$Genetic_Modification[i])) {
+						#Based on sample name
+						SampleNameSplit <- unlist(strsplit(data$Name[i], "_"))
+						CEGSsampleType <- SampleNameSplit[length(SampleNameSplit)]
+					} else {
+						#Find samples based on Genetic_Modification. Look for an assemblon at a landing pad
+						Genetic_Modification <- strsplit(data$Genetic_Modification[i], ",")[[1]]
+						if(any(sapply(Genetic_Modification, grepl, pattern="\\[LP(ICE|[0-9]+)\\]$", perl=T))) {
+							payload <- Genetic_Modification[sapply(Genetic_Modification, grepl, pattern="\\[LP(ICE|[0-9]+)\\]$", perl=T)]
+							payload <- gsub("\\[LP(ICE|[0-9]+)\\]$", "", payload, perl=T)
+							SampleNameSplit <- unlist(strsplit(payload, "_"))
+							CEGSsampleType <- "Cells"
+						} else {
+							#Couldn't parse
+							SampleNameSplit <- NA
+							CEGSsampleType <- NA
+						}
+					}
+					
+					if(CEGSsampleType %in% c("Yeast", "DNA", "BAC", "RepoBAC", "Ecoli", "Amplicon", "Cells")) {
 						data$Study[i] <- SampleNameSplit[1]
 						if(CEGSsampleType != "RepoBAC") {
 							#RepoBAC just have a SampleID field which doesn't make it into a specific UCSC field right now
 							data$Project[i] <- SampleNameSplit[2]
 							data$Assembly[i] <- SampleNameSplit[3]
-							data$Info[i] <- SampleNameSplit[4]
+							if(length(SampleNameSplit) >= 5) {
+								#We have informally allowed optional comment field in Genetic Modification entries
+								data$Info[i] <- SampleNameSplit[4]
+							}
 						}
 						data$Type[i] <- CEGSsampleType
 						data$Group[i] <- data$Study[i]
 					}
-					#TODO Find capture samples based on bait?
 				} else {
 					stop("ERROR Impossible!")
 				}
