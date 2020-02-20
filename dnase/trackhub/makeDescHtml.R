@@ -1,5 +1,4 @@
 #!/bin/env Rscript
-# module load R/3.5.0
 
 library(tableHTML)
 

@@ -16,8 +16,6 @@ shift 4
 genome_array=("$@")
 
 ##############################################################################
-module load R/3.5.0
-##############################################################################
 # This is the samplesforTrackhub.R section for "flowcell" samples.
 # It finds the samples within each flowcell directory, and dumps relevant 
 # sample information into an output file.
