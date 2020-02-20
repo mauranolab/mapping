@@ -435,14 +435,14 @@ for assay_type in assays:
             sampleDescription = sampleName + "-"
             if assay_type == "ChIP-seq":
                 sampleDescription += curSample['Assay'] + "-"
-            sampleDescription += curSample['SampleID'] + ' (' + locale.format("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, '
+            sampleDescription += curSample['SampleID'] + ' (' + locale.format_string("%d", int(curSample['analyzed_reads']), grouping=True) + ' analyzed reads, '
             if assay_type in ["DNA", "DNA Capture"]:
                 sampleDescription += curSample['Genomic_coverage'] + 'x coverage)'
             else:
                 if curSample['Num_hotspots'] == "NA":
                     sampleDescriptionNumHotspots = "no"
                 else:
-                    sampleDescriptionNumHotspots = locale.format("%d", int(curSample['Num_hotspots']), grouping=True)
+                    sampleDescriptionNumHotspots = locale.format_string("%d", int(curSample['Num_hotspots']), grouping=True)
                 if curSample['SPOT'] == "NA":
                     sampleDescriptionSPOT = "NA"
                 else:
