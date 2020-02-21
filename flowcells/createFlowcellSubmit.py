@@ -292,13 +292,13 @@ def bwaPipeline(line):
     
     sampleAnnotation = [ ]
     sex = getValueFromLIMS(lims, line['Original Sample #'], 'Sex')
-    if sex is not "":
+    if sex != "":
         sampleAnnotation.append("Sex=" + sex)
     bait_set = getValueFromLIMS(lims, line['Original Sample #'], 'Bait set')
-    if bait_set is not "":
+    if bait_set != "":
         sampleAnnotation.append("Bait_set=" + bait_set)
     geneticModification = getValueFromLIMS(lims, line['Original Sample #'], 'Genetic Modification')
-    if geneticModification is not "":
+    if geneticModification != "":
         sampleAnnotation.append("Genetic_Modification=" + geneticModification)
     
     submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["#Sample Name"] + " " + line["Sample #"]
