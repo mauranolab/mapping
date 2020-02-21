@@ -251,9 +251,8 @@ def addCEGSgenomes(line):
         
         return additionalGenomesToMap
 
-def bwaPipeline(line):
-    sampleType = line["Sample Type"]
-    
+
+def getBwaReference(species):
     if sampleType in ["DNA", "DNA Capture"]:
         speciesToGenomeReference = {
             'Human': 'hg38_full',
@@ -262,16 +261,30 @@ def bwaPipeline(line):
             'Human+yeast': 'hg38_sacCer3',
             'Mouse+yeast': 'mm10_sacCer3',
             'Rat+yeast': 'rn6_sacCer3',
+            'Yeast': 'sacCer3',
         }
     elif sampleType in ["Nano-DNase", "ChIP-seq", "DNase-seq"]:
         speciesToGenomeReference = {
             'Human': 'hg38_noalt',
             'Mouse': 'mm10',
-            'Rat': 'rn6'
+            'Rat': 'rn6',
         }
     else:
         raise Exception("Can't parse " + sampleType)
-    mappedgenomes = [ speciesToGenomeReference[curSpecies ] for curSpecies in getValueFromLIMS(lims, line['Original Sample #'], 'Species').split(",") ]
+    
+    if species == "":
+        print("WARNING Species was not provided", e, sep="", file=sys.stderr)
+    
+    if species not in speciesToGenomeReference:
+        raise Exception("Can't find refrence for species" + species)
+    
+    return(speciesToGenomeReference[species])
+
+
+def bwaPipeline(line):
+    sampleType = line["Sample Type"]
+    
+    mappedgenomes = [ getBwaReference(curSpecies) for curSpecies in getValueFromLIMS(lims, line['Original Sample #'], 'Species').split(",") ]
     mappedgenomes += addCEGSgenomes(line)
     
     if args.aggregate:
