@@ -93,6 +93,13 @@ rn6_sacCer3)
     referencefasta=/vol/isg/annotation/fasta/rn6_sacCer3/rn6_sacCer3.fa.gz
     dbsnpvcf=/dev/null
     ;;
+sacCer3)
+    bwaIndex=/vol/isg/annotation/bwaIndex/sacCer3/sacCer3
+    #Maybe better to leave as diploid?
+    ploidy="--ploidy 1"
+    referencefasta=/vol/isg/annotation/fasta/sacCer3/sacCer3.fa.gz
+    dbsnpvcf=/dev/null
+    ;;
 cegsvectors*)
     #If this genome is an symlink, then substitute it with its target for the purposes of looking up bwa index and fasta file
     bwagenome=`readlink -f /vol/cegs/sequences/${mappedgenome} | xargs basename`
