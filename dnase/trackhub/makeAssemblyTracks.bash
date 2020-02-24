@@ -323,6 +323,9 @@ while read -r line_in ; do
     # So it leaves just the numeric part of bedN.
     N=${bed_type/bed/}
     echo "        type bigBed ${N}" >> ${out_file}
+    if [ "${N}" = "9" ]; then
+        echo "        itemRgb On" >> ${out_file}
+    fi
     echo " " >> ${out_file}
 done < ${OUTFILE}
 
