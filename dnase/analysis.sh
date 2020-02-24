@@ -418,7 +418,7 @@ else
 fi
 
 #Avoid hotspot failures on empty datasets
-if [[ "${analyzedReads}" > 0 ]]; then
+if [[ "${analyzedReads}" == 0 ]]; then
     callHotspots1=0
     callHotspots2=0
 fi
