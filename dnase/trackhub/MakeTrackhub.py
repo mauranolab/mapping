@@ -87,14 +87,14 @@ def createSubGroup(subGroups, subGroupNames, keys, label):
 
 #For an array, return a dict mapping the elements of the array to their shortest unique prefix
 #https://stackoverflow.com/questions/22468435/how-would-i-look-for-the-shortest-unique-subsequence-from-a-set-of-words-in-pyth
-def shortest_unique_strings(array):
+def shortest_unique_strings(array, minlength=1):
     ret = {}
     for k in set(array):
-        for ix in range(len(k)):
-            #Initialize with the full element in case k is fully a prefix of another
-            ret[k] = k
+        #Initialize with the full element in case k is fully a prefix of another
+        ret[k] = k
+        for ix in range(min(len(k), minlength), len(k)):
             #When array has only 1 element, return identity map rather than truncating element
-            if len([key for key in array if key.startswith(k[:ix])]) == 1 and len(array)>1:
+            if len([key for key in array if key.startswith(k[:ix])]) == 1 and len(array) > 1:
                 ret[k] = k[:ix]
                 break
     return ret
@@ -211,7 +211,7 @@ for assay_type in assays:
         
         if args.genome == "cegsvectors":
             #Add cegsvectors to make sure a minimum label is printed if there is only a single Mapped_Genome
-            cegsvectorsAbbreviatedNames = shortest_unique_strings(set(["cegsvectors"] + [line['Mapped_Genome'] for line in matchingSamples]))
+            cegsvectorsAbbreviatedNames = shortest_unique_strings(set(["cegsvectors"] + [line['Mapped_Genome'] for line in matchingSamples]), minlength=7)
             cegsvectorsAbbreviatedNames = {k: re.sub(r'^cegsvectors_', '', v) for k, v in cegsvectorsAbbreviatedNames.items()}
             createSubGroup(subGroupDefs, subGroupNames, [re.sub(r'^cegsvectors_', '', line['Mapped_Genome']) for line in matchingSamples], "Mapped_Genome")
         
@@ -414,7 +414,7 @@ for assay_type in assays:
             # We add 4 characters to sampleName_trackname later in the code ('_bam', '_cov', etc.)
             # The browser prepends 'hub_161_', and appends '.priority'
             # So sampleName_trackname is increased by 4+8+9=21 characters.
-            # If sampleName_trackname starts with 107 charcters, then 128 characters get sent to the server.  This causes an error.
+            # If sampleName_trackname starts with 107 characters, then 128 characters get sent to the server.  This causes an error.
             # So sampleName_trackname needs to be 106 characters or less. 
             sampleName_trackname = cleanTrackName(sampleNameGenome + "_" + curGroup + "_" + curSample['SampleID'])
             
