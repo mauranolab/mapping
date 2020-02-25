@@ -211,7 +211,7 @@ for assay_type in assays:
         
         if args.genome == "cegsvectors":
             #Add cegsvectors to make sure a minimum label is printed if there is only a single Mapped_Genome
-            cegsvectorsAbbreviatedNames = shortest_unique_strings(set(["cegsvectors"] + [line['Mapped_Genome'] for line in matchingSamples]), minlength=7)
+            cegsvectorsAbbreviatedNames = shortest_unique_strings(set(["cegsvectors"] + [line['Mapped_Genome'] for line in matchingSamples]), minlength=18)
             cegsvectorsAbbreviatedNames = {k: re.sub(r'^cegsvectors_', '', v) for k, v in cegsvectorsAbbreviatedNames.items()}
             createSubGroup(subGroupDefs, subGroupNames, [re.sub(r'^cegsvectors_', '', line['Mapped_Genome']) for line in matchingSamples], "Mapped_Genome")
         
