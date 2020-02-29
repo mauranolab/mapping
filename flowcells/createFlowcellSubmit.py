@@ -262,13 +262,15 @@ def getBwaReference(species):
             'Mouse+yeast': 'mm10_sacCer3',
             'Rat+yeast': 'rn6_sacCer3',
             'Yeast': 'sacCer3',
+            'Plasmid': None,
         }
     elif sampleType in ["Nano-DNase", "ChIP-seq", "DNase-seq"]:
         speciesToGenomeReference = {
             'Human': 'hg38_noalt',
             'Mouse': 'mm10',
             'Rat': 'rn6',
-        }
+            'Plasmid': None,
+            }
     else:
         raise Exception("Can't parse " + sampleType)
     
@@ -276,7 +278,7 @@ def getBwaReference(species):
         print("WARNING Species was not provided", e, sep="", file=sys.stderr)
     
     if species not in speciesToGenomeReference:
-        raise Exception("Can't find refrence for species" + species)
+        raise Exception("Can't find reference for species" + species)
     
     return(speciesToGenomeReference[species])
 
@@ -285,7 +287,13 @@ def bwaPipeline(line):
     sampleType = line["Sample Type"]
     
     mappedgenomes = [ getBwaReference(curSpecies) for curSpecies in getValueFromLIMS(lims, line['Original Sample #'], 'Species').split(",") ]
+    if None in mappedgenomes:
+        #None is used for a special case of species we silently do not map to, e.g. Plasmid is not handled right now except as a custom reference
+        mappedgenomes.remove(None)
     mappedgenomes += addCEGSgenomes(line)
+    
+    if len(mappedgenomes) != len(set(mappedgenomes)):
+        raise Exception("Duplicate genomes specified")
     
     if args.aggregate:
         processingCommand="aggregate"
