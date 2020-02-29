@@ -72,7 +72,9 @@ if ! grep -q ${BS} inputs.txt; then
 fi
 
 
-echo "Will process ${samplePrefix} (${BS}) using ${analysisType} pipeline for genomes ${genomesToMap}"
+echo "Submitting jobs for ${samplePrefix} (${BS})"
+echo "Pipeline: ${analysisType}"
+echo "Genomes ${genomesToMap}"
 
 sampleOutdir="${samplePrefix}-${BS}"
 name=`basename ${sampleOutdir}`
@@ -96,7 +98,8 @@ if [[ "${processingCommand}" =~ ^map ]]; then
     mapname="${name}.${genomesToMap}"
     #SGE doesn't accept a -t specification with gaps, so we'll start R2 jobs that will die instantly rather than prune here
     echo
-    echo "Mapping ${n} jobs for ${mapname}"
+    echo "Mapping ${n} jobs"
+    echo "+ ${mapname}"
     #NB running many jobs with threads < 4 can sometimes get memory errors, not quite sure of the culprit
     qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mapThreads} -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sampleOutdir} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
 fi
@@ -157,7 +160,7 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
             #Limit this to references listed as genetic modifications
             #If we are doing ICE, make sure we don't do LPICE vs LPICE
             #Need to do LPICE vs. assemblon but manually skip LPICE vs. pSpCas9 or rtTA
-            if [[ "${sampleAnnotationGeneticModification}" =~ ${cegsGenomeShort} ]] && [[ "${mammalianGenome}" != "${cegsGenome}" ]] && ( [[ "${mammalianGenome}" != "cegsvectors_LPICE" ]] || ([[ ! "${cegsGenome}" =~ cegsvectors_pSpCas9 ]] && [[  "${cegsGenome}" != "cegsvectors_rtTA" ]]) ); then
+            if [[ "${sampleAnnotationGeneticModification}" =~ ${cegsGenomeShort} ]] && [[ "${mammalianGenome}" != "${cegsGenome}" ]] && ( [[ "${mammalianGenome}" != "cegsvectors_LPICE" ]] || ([[ ! "${cegsGenome}" =~ "cegsvectors_pSpCas9" ]] && [[ "${cegsGenome}" != "cegsvectors_rtTA" ]]) ); then
                 integrationsite=`getIntegrationSite ${sampleAnnotationGeneticModification} ${cegsGenomeShort}`
                 #For assemblons this yields the LP name rather looking up the LP integrationsite, so look up the site for the LP itself
                 if [[ "${integrationsite}" =~ ^LP ]]; then
@@ -187,7 +190,7 @@ fi
 #Always run analysis job, but specifying none will have analysis.sh skip most analyses
 if [[ "${processingCommand}" != bamintersect ]]; then
     echo
-    echo "analysis"
+    echo "Analysis"
 fi
 
 for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
@@ -214,4 +217,5 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
 done
 
 
+echo
 echo
