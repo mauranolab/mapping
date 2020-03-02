@@ -107,14 +107,13 @@ else
     pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.R1.fastq.gz
 
     bwaAlnOpts="-t ${NSLOTS} -Y -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
-    extractcmd="mem ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample}.R1.fastq.gz $TMPDIR/${sample}.R2.fastq.gz | samtools sort -@ $NSLOTS -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n -"
+    extractcmd="mem ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample}.R1.fastq.gz $TMPDIR/${sample}.R2.fastq.gz"
 fi
 
 echo "Extracting"
 echo -e "extractcmd=bwa ${extractcmd} | (...)"
 bwa ${extractcmd} |
-#No need to sort SE data
-#samtools sort -@ ${NSLOTS} -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
+samtools sort -@ ${NSLOTS} -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
 #TODO UMIs don't seem to be in format filter_reads.py expects so they are not getting passed into bam
 ${src}/../dnase/filter_reads.py --reqFullyAligned --failUnwantedRefs --unwanted_refs_list "hap|random|^chrUn_|_alt$|scaffold|^C\d+|^pSB$|^pTR$" --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} - - |
 samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${sample}.sortbyname -l 1 > $OUTDIR/${sample}.bam
