@@ -18,7 +18,7 @@ outbase <- argv[2]
 filterSampleData <- function(data, useDNA=TRUE) {
 	#iPCR filters
 	cat("Thresholding iPCR counts\n")
-	#This is redundant as barcodes.coords.bed was already thresholded
+	#The 2-read cutoff is redundant as barcodes.coords.bed was already thresholded
 	data  <- subset(data, iPCR >= 2 & !is.na(iPCR))
 	
 	#DNA filters
@@ -111,7 +111,7 @@ print.data.frame(results.proxcor, row.names=F, right=F)
 write.table(results.proxcor, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.txt"), append=F, sep="\t")
 
 
-
+#By NumDHS100kb.decile
 sampleData$NumDHS100kb.decile <- factor(cut(sampleData$NumDHS100kb, breaks=unique(quantile(sampleData$NumDHS100kb, probs=seq.int(from=0, to=1, length.out=6), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,5,1))
 
 ins.proximity.numDHS <- data.frame(subset(sampleData, select=c(chrom, chromStart, zscore, NumDHS100kb.decile))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, zscore, NumDHS100kb.decile))[-1,], check.names=T)
@@ -135,15 +135,38 @@ print.data.frame(results.proxcor.numDHS, row.names=F, right=F)
 write.table(results.proxcor.numDHS, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.numDHS.txt"), append=F, sep="\t")
 
 
+#Whether in same TAD
+ins.proximity.TAD <- data.frame(subset(sampleData, select=c(chrom, chromStart, zscore, TADid))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, zscore, TADid))[-1,], check.names=T)
+ins.proximity.TAD <- subset(ins.proximity.TAD, chrom==chrom.1)
+ins.proximity.TAD$dist <- ins.proximity.TAD$chromStart.1 - ins.proximity.TAD$chromStart
+ins.proximity.TAD$dist.bin <- cut.pretty(ins.proximity.TAD$dist, breaks=c(1, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left") #labels=c("1 bp", "1 kbp", "10 kbp", "20 kbp", "30 kbp", "40 kbp", "50 kbp", "60 kbp", "70 kbp", "80 kbp", "90 kbp", "100 kbp")
+ins.proximity.TAD$sameTAD <- ins.proximity.TAD$TADid==ins.proximity.TAD$TADid.1
+
+
+results.proxcor.TAD <- NULL
+for(curDist in levels(ins.proximity.TAD$dist.bin)) {
+	for(curSameTAD in sort(unique(ins.proximity.TAD$sameTAD))) {
+		curdata <- subset(ins.proximity.TAD, dist.bin==curDist & sameTAD==curSameTAD)
+		if(nrow(curdata)>2) {
+			curcor <- with(curdata, cor(zscore, zscore.1, use="na.or.complete", method="pearson"))
+			#cat(curRsquared, ":", curcor, "\n")
+			results.proxcor.TAD <- rbind(results.proxcor.TAD, data.frame(sample=prefix, dist.bin=curDist, sameTAD=curSameTAD, meandist=mean.na(curdata$dist), cor=curcor, n=nrow(curdata)))
+		}
+	}
+}
+print.data.frame(results.proxcor.TAD, row.names=F, right=F)
+write.table(results.proxcor.TAD, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.TAD.txt"), append=F, sep="\t")
+
+
 cat("\nlm\n")
-#log(abs(DistToTSS)+1)+log(DistToNearestDHSnoCTCF+1)+log(DistToNearestCTCF+1)+
+#log(abs(DistToTSS)+1)+log(abs(DistToNearestDHSnoCTCF)+1)+log(abs(DistToNearestCTCF)+1)+
 fit <- lm(zscore~NumDHS100kb, data=sampleData)
 print(summary(fit))
 
 sampleData$fit <- predict(fit, sampleData, type="response")
 sampleData$residual <- with(sampleData, zscore-fit)
 cat("Clipping", length(which(sampleData[,"residual"] < -2)), "sites z < -2\n")
-sampleData[sampleData[,"residual"] < -2,"residual"] <- -2
+sampleData[sampleData[,"residual"] < -2, "residual"] <- -2
 sampleData[,"residual"] <- (sampleData[,"residual"] + 2) / 4
 
 write.table(subset(sampleData, select=c(chrom, chromStart, chromEnd, BC, residual)), file=paste0(outbase, '.residual.bed'), quote=F, sep='\t', col.names=F, row.names=F) 
@@ -175,9 +198,8 @@ write.table(results.DistToTSS, file=paste0(outbase, '.DistToTSS.txt'), quote=F, 
 
 
 cat("\n\nActivity related to nearest DHS\n")
-sampleData$DistToNearestDHSnoCTCF.bin <- cut(abs(sampleData$DistToNearestDHSnoCTCF), breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), labels=c("0 bp", "1 kb", "10 kb", "100 kb", "500 kb"), right=F, include.lowest=T)
-#sampleData$DistToNearestDHS.bin <- cut.pretty(abs(sampleData$DistToNearestDHS), breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left")
-sampleData$DistToNearestDHS.decile <- factor(cut(abs(sampleData$DistToNearestDHS), breaks=unique(quantile(abs(sampleData$DistToNearestDHS), probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,10,1))
+sampleData$DistToNearestDHS.bin <- cut.pretty(abs(sampleData$DistToNearestDHS), breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left")
+#sampleData$DistToNearestDHS.decile <- factor(cut(abs(sampleData$DistToNearestDHS), breaks=unique(quantile(abs(sampleData$DistToNearestDHS), probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,10,1))
 results.DistToNearestDHS <- cbind(sample=prefix, summaryBy(zscore~DistToNearestDHS.bin, data=sampleData, FUN=list(mean, median, length)))
 print.data.frame(results.DistToNearestDHS, row.names=F, right=F)
 write.table(results.DistToNearestDHS, file=paste0(outbase, '.DistToNearestDHS.txt'), quote=F, sep='\t', col.names=T, row.names=F) 
@@ -197,7 +219,7 @@ cat("\n\nActivity related to nearest CTCF site\n")
 sampleData$DistToNearestCTCF.bin <- cut(abs(sampleData$DistToNearestCTCF), breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), labels=c("0 bp", "1 kb", "10 kb", "100 kb", "500 kb"), right=F, include.lowest=T)
 #sampleData$DistToNearestCTCF.bin <- cut.pretty(abs(sampleData$DistToNearestCTCF), breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left")
 #sampleData$DistToNearestCTCF.bin <- cut(abs(sampleData$DistToNearestCTCF), breaks=c(0, 1e3, 5e3, 1e4,  1e5, Inf), right=F, include.lowest=T)
-sampleData$DistToNearestCTCF.decile <- factor(cut(abs(sampleData$DistToNearestCTCF), breaks=unique(quantile(abs(sampleData$DistToNearestCTCF), probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,10,1))
+#sampleData$DistToNearestCTCF.decile <- factor(cut(abs(sampleData$DistToNearestCTCF), breaks=unique(quantile(abs(sampleData$DistToNearestCTCF), probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,10,1))
 results.DistToNearestCTCF <- cbind(sample=prefix, summaryBy(zscore~DistToNearestCTCF.bin, data=sampleData, FUN=list(mean, median, length)))
 print.data.frame(results.DistToNearestCTCF, row.names=F, right=F)
 write.table(results.DistToNearestCTCF, file=paste0(outbase, '.DistToNearestCTCF.txt'), quote=F, sep='\t', col.names=T, row.names=F) 
@@ -263,6 +285,9 @@ if(!useDNA) {
 }
 write.table(iPCR.overlaps.byReadDecile.long, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".iPCR.intersections.byReadDecile.txt"), append=F, sep="\t")
 
+
+cat("iPCR insertion density vs. activity\n")
+print.data.frame(cbind(prefix, summaryBy(zscore~InsDens,data=sampleData, FUN=list(mean, length))), row.names=F, right=F)
 
 cat("\nDone!!!\n")
 print(date())
