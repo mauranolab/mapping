@@ -24,8 +24,6 @@ trackcolor=$(getcolor $sample)
 
 minReadCutoff=2
 
-samflags="-F 512"
-
 OUTDIR=${sample}
 
 hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch
@@ -42,6 +40,11 @@ if [ ! -s "$OUTDIR/${sample}.bam" ]; then
     exit 2
 fi
 
+if [ "$(samtools view -h $OUTDIR/${sample}.bam | head -n 1000 | samtools view -f1 -c -)" -gt 0 ]; then
+    samflags="-f 128 -F 512"
+else
+    samflags="-F 512"
+fi
 
 echo "Analyzing data for ${sample}"
 echo "Analyzing read mapping (minReadCutoff=${minReadCutoff})"
@@ -57,7 +60,7 @@ echo -n -e "${sample}\tTotal PF reads\t"
 cat $TMPDIR/${sample}.flagstat.txt | grep "in total" | awk '{print $1}'
 
 echo -n -e "${sample}\tTotal reads mapping to pSB or pTR\t"
-samtools view -f 512 $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3=="pTR" || $3=="pSB"' | wc -l
+samtools view -c -f 512 $OUTDIR/${sample}.bam pTR pSB
 
 echo -n -e "${sample}\tTotal mapped reads MAPQ<10\t"
 samtools view -F 4 -f 512 $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $5<10' | wc -l
@@ -77,7 +80,7 @@ echo -e "${sample}\tMinimum read length\t${minReadLength}"
 
 #Get the reads from the bam since we don't save the trimmed fastq
 #Need to trim in case not all the same length
-samtools view $OUTDIR/${sample}.bam | cut -f10 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -F "\t" -v trim=${minReadLength} 'BEGIN {OFS="\t"} {print substr($0, 0, trim)}' | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
+samtools view ${samflags} $OUTDIR/${sample}.bam | cut -f10 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -F "\t" -v trim=${minReadLength} 'BEGIN {OFS="\t"} {print substr($0, 0, trim)}' | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
 weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} genomic" --stacks-per-line 100 > $TMPDIR/${sample}.genomic.eps
 convert $TMPDIR/${sample}.genomic.eps ${OUTDIR}/${sample}.genomic.png
 
@@ -287,7 +290,7 @@ cat $OUTDIR/${sample}.uniqcoords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$2-=2; $3-
 
 echo
 echo "Histogram of number of insertions between two neighboring DNase sites"
-gcat ${hotspotfile} > $TMPDIR/hotspotfile.bed
+unstarch ${hotspotfile} > $TMPDIR/hotspotfile.bed
 uniqueIntervals=$(tail -n +2 $TMPDIR/hotspotfile.bed | paste $TMPDIR/hotspotfile.bed - | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $4, $5}' | sed \$d | awk -F "\t" 'BEGIN {OFS="\t"} {if ($1==$3) print $1, $2, $4}' | bedtools intersect -wa -a - -b $OUTDIR/${sample}.barcodes.coords.bed | sort | uniq | wc -l | awk '{print $1}')
 allIntervals=$(wc -l $TMPDIR/hotspotfile.bed | awk '{print $1}')
 zeroInsertions=`echo $allIntervals-$uniqueIntervals | bc -l`
@@ -476,7 +479,7 @@ EOF
 
 echo
 echo "doing GenicLocation"
-gcat /vol/isg/annotation/bed/hg38/refseq_paint/refGene_hg38.bed6.starch | grep -v promoter > $TMPDIR/refGene_hg38.bed6
+unstarch /vol/isg/annotation/bed/hg38/refseq_paint/refGene_hg38.bed6.starch | grep -v promoter > $TMPDIR/refGene_hg38.bed6
 
 bedmap --delim '\t' --echo-map-id $OUTDIR/${sample}.uniqcoords.bed $TMPDIR/refGene_hg38.bed6 | awk -F "\t" 'BEGIN {OFS="\t"} {col=NF} $col~/coding/ {$col="coding"} $col~/TxS-1000/ {$col="TxS-1000"} $col~/TxStart-10kb/ {$col="TxStart-10kb"} $col~/3.UTR/ {$col="3UTR"} $col~/5.UTR/ {$col="5UTR"} $col~/intron/ {$col="intron"} $col=="" || $col~/3.proximal/ {$col="intergenic"} {print;}' | sort -g | uniq -c | sort -k1,1g
 
