@@ -107,7 +107,7 @@ else
     pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.R1.fastq.gz
 
     bwaAlnOpts="-t ${NSLOTS} -Y -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
-    extractcmd="mem ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample}.R1.fastq.gz $TMPDIR/${sample}.R2.fastq.gz"
+    extractcmd="mem ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample}.R1.fastq.gz $TMPDIR/${sample}.R2.fastq.gz | samtools sort -n -@ $NSLOTS -m 1750M -"
 fi
 
 echo "Extracting"
