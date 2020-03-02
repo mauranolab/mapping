@@ -89,7 +89,7 @@ echo
 date
 ## Require BC read have 49 + 20 bp length to run paired mapping
 if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END { print 4 * sum/NR }')" -le 69 ]; then
-    ## Single-end mapping
+    # Single-end mapping using bwa aln
     bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t ${NSLOTS} -Y"
 
     echo "bwa aln ${bwaAlnOpts} ${bwaIndex} ..."
@@ -99,7 +99,7 @@ if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END
     bwaExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
     extractcmd="samse ${bwaExtractOpts} ${bwaIndex} $TMPDIR/${sample}.genome.sai $TMPDIR/${sample}.genome.fastq.gz"
 else
-    ## Paired mapping
+    # Paired-end mapping using bwa mem
     echo "Trimming $R1primerlen bp primer from R1"
     zcat -f $f1 |
     awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
@@ -113,10 +113,12 @@ fi
 echo "Extracting"
 echo -e "extractcmd=bwa ${extractcmd} | (...)"
 bwa ${extractcmd} |
+#SE data technically doesn't need a sort
 samtools sort -@ ${NSLOTS} -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
 #TODO UMIs don't seem to be in format filter_reads.py expects so they are not getting passed into bam
 ${src}/../dnase/filter_reads.py --reqFullyAligned --failUnwantedRefs --unwanted_refs_list "hap|random|^chrUn_|_alt$|scaffold|^C\d+|^pSB$|^pTR$" --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} - - |
 samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${sample}.sortbyname -l 1 > $OUTDIR/${sample}.bam
+
 
 echo
 echo "Done!!!"
