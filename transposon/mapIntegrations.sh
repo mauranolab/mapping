@@ -70,6 +70,7 @@ mm10)
     exit 3;;
 esac
 
+
 #Now set up for the iPCR-specific parts
 ##Trim primer before mapping to genome
 #BUGBUG hardcoded primer length
@@ -82,7 +83,27 @@ zcat -f $f2 |
     pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.R2.fastq.gz
 
 ## Require BC read have 49 + 25 bp length to run paired mapping
-if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END { print 4 * sum/NR }')" -gt 74 ]; then
+if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END { print 4 * sum/NR }')" -le 74 ]; then
+    ## Single-end mapping
+    bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t ${NSLOTS} -Y"
+
+    date
+    echo "bwa aln ${bwaAlnOpts} ${bwaIndex} ..."
+    bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample}.genome.fastq.gz > $TMPDIR/${sample}.genome.sai
+
+    echo
+    date
+    bwaExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
+    extractcmd="samse ${bwaExtractOpts} ${bwaIndex} $TMPDIR/${sample}.genome.sai $TMPDIR/${sample}.genome.fastq.gz"
+    echo "Extracting"
+    echo -e "extractcmd=bwa ${extractcmd} | (...)"
+    bwa ${extractcmd} |
+    #No need to sort SE data
+    #samtools sort -@ ${NSLOTS} -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
+    #TODO UMIs don't seem to be in format filter_reads.py expects so they are not getting passed into bam
+    ${src}/../dnase/filter_reads.py --reqFullyAligned --failUnwantedRefs --unwanted_refs_list "hap|random|^chrUn_|_alt$|scaffold|^C\d+|^pSB$|^pTR$" --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} - - |
+    samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${sample}.sortbyname -l 1 > $OUTDIR/${sample}.bam
+else
     ## Paired mapping
     bwaAlnOpts="-t ${NSLOTS} -Y -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
 
@@ -108,26 +129,6 @@ if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END
             - - |
         samtools sort -@ $NSLOTS -m 1750M -O bam \
             -T $TMPDIR/${sample}.sortbyname -l 1 > $OUTDIR/${sample}.bam
-else
-    ## Single-end mapping
-    bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t ${NSLOTS} -Y"
-
-    date
-    echo "bwa aln ${bwaAlnOpts} ${bwaIndex} ..."
-    bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample}.genome.fastq.gz > $TMPDIR/${sample}.genome.sai
-
-    echo
-    date
-    bwaExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
-    extractcmd="samse ${bwaExtractOpts} ${bwaIndex} $TMPDIR/${sample}.genome.sai $TMPDIR/${sample}.genome.fastq.gz"
-    echo "Extracting"
-    echo -e "extractcmd=bwa ${extractcmd} | (...)"
-    bwa ${extractcmd} |
-    #No need to sort SE data
-    #samtools sort -@ ${NSLOTS} -O bam -T $OUTDIR/${sample}.sortbyname -l 1 -n - |
-    #TODO UMIs don't seem to be in format filter_reads.py expects so they are not getting passed into bam
-    ${src}/../dnase/filter_reads.py --reqFullyAligned --failUnwantedRefs --unwanted_refs_list "hap|random|^chrUn_|_alt$|scaffold|^C\d+|^pSB$|^pTR$" --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} - - |
-    samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${sample}.sortbyname -l 1 > $OUTDIR/${sample}.bam
 fi
 
 
