@@ -487,105 +487,107 @@ for assay_type in assays:
             )
             Reads_view.add_tracks(track)
             
-            #Coverage_view
-            if assay_type in ["DNA", "DNA Capture"]:
-                track = Track(
-                    name=sampleName_trackname + '_cov',
-                    short_label=sampleShortLabel,
-                    long_label=assay_type + ' Coverage ' + sampleDescription,
-                    url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.coverage.bw',
-                    subgroups=sampleSubgroups,
-                    tracktype='bigWig',
-                    color=curSample['Color'],
-                    parentonoff=DensCovTracksDefaultDisplayMode
-                )
-                Coverage_view.add_tracks(track)
-            
-            #Dens_view
-            if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
-                track = Track(
-                    name=sampleName_trackname + '_dens',
-                    short_label=sampleShortLabel,
-                    long_label=assay_type + ' Density ' + sampleDescription,
-                    url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.density.bw',
-                    subgroups=sampleSubgroups, 
-                    tracktype='bigWig',
-                    color=curSample['Color'],
-                    parentonoff="off" if assay_type=='ChIP-seq' and curSample['Assay']=='input' else DensCovTracksDefaultDisplayMode
-                )
-                Dens_view.add_tracks(track)
-            
-            #Hotspots_view
-            if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
-                hotspot_base = os.path.basename(curSample['filebase'])
-                hotspot_dir = os.path.dirname(curSample['filebase'])
-                hotspot_path = hotspot_dir + "/hotspot2/" + hotspot_base
+            #Avoid making entries for tracks with no reads (since there are no .bw/.bb files); the bam file still shows up in case there is something there, and the samples still show up in the summary table at bottom in UCSC browser
+            if int(curSample['analyzed_reads'])>0:
+                #Coverage_view
+                if assay_type in ["DNA", "DNA Capture"]:
+                    track = Track(
+                        name=sampleName_trackname + '_cov',
+                        short_label=sampleShortLabel,
+                        long_label=assay_type + ' Coverage ' + sampleDescription,
+                        url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.coverage.bw',
+                        subgroups=sampleSubgroups,
+                        tracktype='bigWig',
+                        color=curSample['Color'],
+                        parentonoff=DensCovTracksDefaultDisplayMode
+                    )
+                    Coverage_view.add_tracks(track)
                 
-                track = Track(
-                    name=sampleName_trackname + '_hot',
-                    short_label=sampleShortLabel,
-                    long_label=assay_type + ' Hotspots (5% FDR) ' + sampleDescription,
-                    url=args.URLbase + hotspot_path + '.hotspots.fdr0.05.bb',
-                    subgroups=sampleSubgroups,
-                    tracktype='bigBed 4',
-                    color=curSample['Color'],
-                    parentonoff="off"
-                )
-                Hotspots_view.add_tracks(track)
+                #Dens_view
+                if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
+                    track = Track(
+                        name=sampleName_trackname + '_dens',
+                        short_label=sampleShortLabel,
+                        long_label=assay_type + ' Density ' + sampleDescription,
+                        url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.density.bw',
+                        subgroups=sampleSubgroups, 
+                        tracktype='bigWig',
+                        color=curSample['Color'],
+                        parentonoff="off" if assay_type=='ChIP-seq' and curSample['Assay']=='input' else DensCovTracksDefaultDisplayMode
+                    )
+                    Dens_view.add_tracks(track)
                 
-                #Peaks_View
-                track = Track(
-                    name=sampleName_trackname + '_pks',
-                    short_label=sampleShortLabel,
-                    long_label=assay_type + ' Peaks ' + sampleDescription,
-                    url=args.URLbase + hotspot_path  + '.peaks.bb',
-                    subgroups=sampleSubgroups,
-                    tracktype='bigBed 3',
-                    color=curSample['Color'],
-                    parentonoff="off"
-                )
-                Peaks_view.add_tracks(track)
-            
-            #PerBaseCutCount
-            if assay_type in ["DNase-seq", "ATAC-seq"]:
-                track = Track(
-                    name=sampleName_trackname + '_cuts',
-                    short_label=sampleShortLabel,
-                    long_label=assay_type + ' Cut counts ' + sampleDescription,
-                    url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.perBase.bw',
-                    subgroups=sampleSubgroups,
-                    tracktype='bigWig',
-                    color=curSample['Color'],
-                    parentonoff="off"
-                )
-                Cuts_view.add_tracks(track)
-            
-            #Variants_view
-            if assay_type in ["DNA", "DNA Capture"]:
-                track = Track(
-                    name=sampleName_trackname + '_vcf',
-                    short_label=sampleShortLabel,
-                    long_label=assay_type + ' Variants ' + sampleDescription,
-                    url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.filtered.vcf.gz',
-                    subgroups=sampleSubgroups,
-                    tracktype='vcfTabix',
-                    parentonoff="off"
-                )
-                Variants_view.add_tracks(track)
-            
-            #Genotypes_view
-            if assay_type in ["DNA", "DNA Capture"]:
-                track = Track(
-                    name=sampleName_trackname + '_gts',
-                    short_label=sampleShortLabel,
-                    long_label=assay_type + ' Genotypes ' + sampleDescription,
-                    url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.genotypes.bb',
-                    subgroups=sampleSubgroups,
-                    tracktype='bigBed 5',
-                    color=curSample['Color'],
-                    parentonoff="off"
-                )
-                Genotypes_view.add_tracks(track)
+                #Hotspots_view
+                if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
+                    hotspot_base = os.path.basename(curSample['filebase'])
+                    hotspot_dir = os.path.dirname(curSample['filebase'])
+                    hotspot_path = hotspot_dir + "/hotspot2/" + hotspot_base
+                    
+                    track = Track(
+                        name=sampleName_trackname + '_hot',
+                        short_label=sampleShortLabel,
+                        long_label=assay_type + ' Hotspots (5% FDR) ' + sampleDescription,
+                        url=args.URLbase + hotspot_path + '.hotspots.fdr0.05.bb',
+                        subgroups=sampleSubgroups,
+                        tracktype='bigBed 4',
+                        color=curSample['Color'],
+                        parentonoff="off"
+                    )
+                    Hotspots_view.add_tracks(track)
+                    
+                    #Peaks_View
+                    track = Track(
+                        name=sampleName_trackname + '_pks',
+                        short_label=sampleShortLabel,
+                        long_label=assay_type + ' Peaks ' + sampleDescription,
+                        url=args.URLbase + hotspot_path  + '.peaks.bb',
+                        subgroups=sampleSubgroups,
+                        tracktype='bigBed 3',
+                        color=curSample['Color'],
+                        parentonoff="off"
+                    )
+                    Peaks_view.add_tracks(track)
+                
+                #PerBaseCutCount
+                if assay_type in ["DNase-seq", "ATAC-seq"]:
+                    track = Track(
+                        name=sampleName_trackname + '_cuts',
+                        short_label=sampleShortLabel,
+                        long_label=assay_type + ' Cut counts ' + sampleDescription,
+                        url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.perBase.bw',
+                        subgroups=sampleSubgroups,
+                        tracktype='bigWig',
+                        color=curSample['Color'],
+                        parentonoff="off"
+                    )
+                    Cuts_view.add_tracks(track)
+                
+                #Variants_view
+                if assay_type in ["DNA", "DNA Capture"]:
+                    track = Track(
+                        name=sampleName_trackname + '_vcf',
+                        short_label=sampleShortLabel,
+                        long_label=assay_type + ' Variants ' + sampleDescription,
+                        url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.filtered.vcf.gz',
+                        subgroups=sampleSubgroups,
+                        tracktype='vcfTabix',
+                        parentonoff="off"
+                    )
+                    Variants_view.add_tracks(track)
+                
+                #Genotypes_view
+                if assay_type in ["DNA", "DNA Capture"]:
+                    track = Track(
+                        name=sampleName_trackname + '_gts',
+                        short_label=sampleShortLabel,
+                        long_label=assay_type + ' Genotypes ' + sampleDescription,
+                        url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.genotypes.bb',
+                        subgroups=sampleSubgroups,
+                        tracktype='bigBed 5',
+                        color=curSample['Color'],
+                        parentonoff="off"
+                    )
+                    Genotypes_view.add_tracks(track)
         
         
         # Demonstrate some post-creation adjustments...here, just make control samples gray
