@@ -13,6 +13,9 @@ import os
 import urllib.parse
 
 
+locale.setlocale(locale.LC_ALL, 'en_US')
+
+
 #####################################################################################################
 # MakeTrackhub.py requires the forked daler/trackhub from mauranolab. It can be installed locally:
 #     pip install --upgrade --user .
@@ -274,129 +277,20 @@ for assay_type in assays:
         composite.add_params(dimensions=params_dimensions)
         
         
-        ########
-        #Create view track
-        ########
-        #Notes
-        #adding viewUi="off" seems to expand the panel by default, opposite expectation
-        
-        Reads_view = ViewTrack(
-            name="Reads_view_" + curGroup_trackname,
-            view="Reads",
-            visibility="hide",
-            parentonoff="off",
-            tracktype="bam",
-            short_label="Reads",
-            maxItems=10000, #Set high so that dense sequencing tracks can be displayed as this parameter can not be changed in the UI
-#            maxWindowToDraw=10000,
-            pairEndsByName=".",
-            long_label="Reads")
-        composite.add_view(Reads_view)
-        
-        if assay_type in ["DNA", "DNA Capture"]:
-            Coverage_view = ViewTrack(
-                name="Coverage_view_" + curGroup_trackname,
-                view="Coverage",
-                visibility="full",
-                parentonoff=DensCovTracksDefaultDisplayMode,
-                tracktype="bigWig",
-                viewLimits="0:500",
-                autoScale='on',
-                maxHeightPixels="100:30:10",
-                short_label="Coverage",
-                long_label="Coverage",
-                windowingFunction="mean")
-            composite.add_view(Coverage_view)
-        
-        if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
-            Dens_view = ViewTrack(
-                name="Dens_view_" + curGroup_trackname,
-                view="Density",
-                visibility="full",
-                parentonoff=DensCovTracksDefaultDisplayMode,
-                tracktype="bigWig",
-                viewLimits="0:3",
-                autoScale='off',
-                maxHeightPixels="100:30:10",
-                short_label="Density",
-                long_label="Density",
-                windowingFunction="maximum")
-            composite.add_view(Dens_view)
-            
-        if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
-            Hotspots_view = ViewTrack(
-                name="Hotspots_view_" + curGroup_trackname,
-                view="Hotspots",
-                visibility="hide",
-                parentonoff="off",
-                tracktype="bigBed",
-                maxItems=250,
-                short_label="Hotspots",
-                long_label="Hotspots")
-            composite.add_view(Hotspots_view)
-            
-            Peaks_view = ViewTrack(
-                name="Peaks_view_" + curGroup_trackname,
-                view="Peaks",
-                visibility="hide",
-                parentonoff="off",
-                tracktype="bigBed",
-                maxItems=250,
-                short_label="Peaks",
-                long_label="Peaks")
-            composite.add_view(Peaks_view)
-        
-        if assay_type in ["DNase-seq", "ATAC-seq"]:
-            Cuts_view = ViewTrack(
-                name="Cuts_view_" + curGroup_trackname,
-                view="Cuts",
-                visibility="hide",
-                parentonoff="off",
-                tracktype="bigWig",
-                viewLimits="0:2",
-                autoScale='off',
-                maxHeightPixels="100:30:10",
-                short_label="Cut Counts",
-                long_label="Cut Counts",
-                windowingFunction="maximum")
-            composite.add_view(Cuts_view)
-        
-        if assay_type in ["DNA", "DNA Capture"]:
-            Variants_view = ViewTrack(
-                name="Variants_view_" + curGroup_trackname,
-                view="Variants",
-                visibility="hide",
-                parentonoff="off",
-                tracktype='vcfTabix',
-                maxItems=250,
-                applyMinQual="true",
-                minQual=10,
-                short_label="Variants",
-                long_label="Variants")
-            composite.add_view(Variants_view)
-        
-        if assay_type in ["DNA", "DNA Capture"]:
-            Genotypes_view = ViewTrack(
-                name="Genotypes_view_" + curGroup_trackname,
-                view="Genotypes",
-                visibility="hide",
-                parentonoff="off",
-                tracktype="bigBed",
-                maxItems=250,
-                short_label="Genotypes",
-                long_label="Genotypes")
-            composite.add_view(Genotypes_view)
-        
-        
-        for view in composite.views:
-            view.add_params(configurable="on")
+        #Placeholders for view tracks, which will get initialized upon the first track below
+        Reads_view = None
+        Coverage_view = None
+        Dens_view = None
+        Hotspots_view = None
+        Peaks_view = None
+        Cuts_view = None
+        Variants_view = None
+        Genotypes_view = None
         
         
         ########
         #Make tracks for all bigWigs in current dir
         ########
-        #Create long label from analyzed reads, SPOTS and Hotspots. Format numbers into 1000's
-        locale.setlocale(locale.LC_ALL, 'en_US')
         for curSample in matchingSamples:
             sampleName = re.sub(r'_L$|_R$', '', curSample['Name'])
             
@@ -431,7 +325,7 @@ for assay_type in assays:
             sampleName_dict[sampleName_trackname] = sampleName_trackname
             
             
-            ###Set up description - longLabel must be <= 76 printable characters
+            ###Create long label from analyzed reads, SPOTS and Hotspots. Format numbers into 1000's - longLabel must be <= 76 printable characters
             sampleDescription = sampleName + "-"
             if assay_type == "ChIP-seq":
                 sampleDescription += curSample['Assay'] + "-"
@@ -476,6 +370,20 @@ for assay_type in assays:
             
             
             ###
+            #adding viewUi="off" seems to expand the panel by default, opposite expectation
+            if Reads_view is None:
+                Reads_view = ViewTrack(
+                    name="Reads_view_" + curGroup_trackname,
+                    view="Reads",
+                    visibility="hide",
+                    parentonoff="off",
+                    tracktype="bam",
+                    short_label="Reads",
+                    maxItems=10000, #Set high so that dense sequencing tracks can be displayed as this parameter can not be changed in the UI
+        #            maxWindowToDraw=10000,
+                    pairEndsByName=".",
+                    long_label="Reads")
+                composite.add_view(Reads_view)
             track = Track(
                 name=sampleName_trackname + '_bam',
                 short_label=sampleShortLabel,
@@ -491,6 +399,20 @@ for assay_type in assays:
             if int(curSample['analyzed_reads'])>0:
                 #Coverage_view
                 if assay_type in ["DNA", "DNA Capture"]:
+                    if Coverage_view is None:
+                        Coverage_view = ViewTrack(
+                            name="Coverage_view_" + curGroup_trackname,
+                            view="Coverage",
+                            visibility="full",
+                            parentonoff=DensCovTracksDefaultDisplayMode,
+                            tracktype="bigWig",
+                            viewLimits="0:500",
+                            autoScale='on',
+                            maxHeightPixels="100:30:10",
+                            short_label="Coverage",
+                            long_label="Coverage",
+                            windowingFunction="mean")
+                        composite.add_view(Coverage_view)
                     track = Track(
                         name=sampleName_trackname + '_cov',
                         short_label=sampleShortLabel,
@@ -505,6 +427,20 @@ for assay_type in assays:
                 
                 #Dens_view
                 if assay_type in ["DNase-seq", "ChIP-seq", "ATAC-seq"]:
+                    if Dens_view is None:
+                        Dens_view = ViewTrack(
+                            name="Dens_view_" + curGroup_trackname,
+                            view="Density",
+                            visibility="full",
+                            parentonoff=DensCovTracksDefaultDisplayMode,
+                            tracktype="bigWig",
+                            viewLimits="0:3",
+                            autoScale='off',
+                            maxHeightPixels="100:30:10",
+                            short_label="Density",
+                            long_label="Density",
+                            windowingFunction="maximum")
+                        composite.add_view(Dens_view)
                     track = Track(
                         name=sampleName_trackname + '_dens',
                         short_label=sampleShortLabel,
@@ -523,6 +459,17 @@ for assay_type in assays:
                     hotspot_dir = os.path.dirname(curSample['filebase'])
                     hotspot_path = hotspot_dir + "/hotspot2/" + hotspot_base
                     
+                    if Hotspots_view is None:
+                        Hotspots_view = ViewTrack(
+                            name="Hotspots_view_" + curGroup_trackname,
+                            view="Hotspots",
+                            visibility="hide",
+                            parentonoff="off",
+                            tracktype="bigBed",
+                            maxItems=250,
+                            short_label="Hotspots",
+                            long_label="Hotspots")
+                        composite.add_view(Hotspots_view)
                     track = Track(
                         name=sampleName_trackname + '_hot',
                         short_label=sampleShortLabel,
@@ -536,6 +483,17 @@ for assay_type in assays:
                     Hotspots_view.add_tracks(track)
                     
                     #Peaks_View
+                    if Peaks_view is None:
+                        Peaks_view = ViewTrack(
+                            name="Peaks_view_" + curGroup_trackname,
+                            view="Peaks",
+                            visibility="hide",
+                            parentonoff="off",
+                            tracktype="bigBed",
+                            maxItems=250,
+                            short_label="Peaks",
+                            long_label="Peaks")
+                        composite.add_view(Peaks_view)
                     track = Track(
                         name=sampleName_trackname + '_pks',
                         short_label=sampleShortLabel,
@@ -550,6 +508,20 @@ for assay_type in assays:
                 
                 #PerBaseCutCount
                 if assay_type in ["DNase-seq", "ATAC-seq"]:
+                    if Cuts_view is None:
+                        Cuts_view = ViewTrack(
+                            name="Cuts_view_" + curGroup_trackname,
+                            view="Cuts",
+                            visibility="hide",
+                            parentonoff="off",
+                            tracktype="bigWig",
+                            viewLimits="0:2",
+                            autoScale='off',
+                            maxHeightPixels="100:30:10",
+                            short_label="Cut Counts",
+                            long_label="Cut Counts",
+                            windowingFunction="maximum")
+                        composite.add_view(Cuts_view)
                     track = Track(
                         name=sampleName_trackname + '_cuts',
                         short_label=sampleShortLabel,
@@ -564,6 +536,19 @@ for assay_type in assays:
                 
                 #Variants_view
                 if assay_type in ["DNA", "DNA Capture"]:
+                    if Variants_view is None:
+                        Variants_view = ViewTrack(
+                            name="Variants_view_" + curGroup_trackname,
+                            view="Variants",
+                            visibility="hide",
+                            parentonoff="off",
+                            tracktype='vcfTabix',
+                            maxItems=250,
+                            applyMinQual="true",
+                            minQual=10,
+                            short_label="Variants",
+                            long_label="Variants")
+                        composite.add_view(Variants_view)
                     track = Track(
                         name=sampleName_trackname + '_vcf',
                         short_label=sampleShortLabel,
@@ -577,6 +562,17 @@ for assay_type in assays:
                 
                 #Genotypes_view
                 if assay_type in ["DNA", "DNA Capture"]:
+                    if Genotypes_view is None:
+                        Genotypes_view = ViewTrack(
+                            name="Genotypes_view_" + curGroup_trackname,
+                            view="Genotypes",
+                            visibility="hide",
+                            parentonoff="off",
+                            tracktype="bigBed",
+                            maxItems=250,
+                            short_label="Genotypes",
+                            long_label="Genotypes")
+                        composite.add_view(Genotypes_view)
                     track = Track(
                         name=sampleName_trackname + '_gts',
                         short_label=sampleShortLabel,
@@ -589,7 +585,8 @@ for assay_type in assays:
                     )
                     Genotypes_view.add_tracks(track)
         
-        
+        for view in composite.views:
+            view.add_params(configurable="on")
         # Demonstrate some post-creation adjustments...here, just make control samples gray
         #for track in trackdb.tracks:
         #    if 'control' in track.name:
