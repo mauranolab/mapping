@@ -262,6 +262,7 @@ while read -r line_in ; do
         echo "track ${genome}_Assemblies" >> ${out_file}
         echo "shortLabel Assemblies" >> ${out_file}
         echo "longLabel Assemblies" >> ${out_file}
+        echo "priority 10" >> ${out_file}
 
         # We need this to avoid having the ${assmbly_type1} Assemblies being shown in the "Other" control group.
         if [[ "${genome}" == "${assmbly_type1}" ]]; then

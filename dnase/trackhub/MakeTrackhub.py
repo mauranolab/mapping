@@ -153,12 +153,25 @@ hub, genomes_file, genome, trackdb = default_hub(
 
 
 # Initialize the supertrack
-# "supertrackonoff" requires the forked daler/trackhub
+# "supertrackonoff" & "supertrackPriority" require the forked daler/trackhub
 if args.supertrack is not None:
+
+    if args.supertrack == "Flowcells":
+        supertrackPriority = 40
+    elif args.supertrack == "Aggregations":
+        supertrackPriority = 30
+    elif args.supertrack == "Public_Data":
+        supertrackPriority = 50
+    elif args.supertrack == "By_Locus":
+        supertrackPriority = 20
+    else:
+        supertrackPriority = 99
+
     supertrack = SuperTrack(
         name=cleanTrackName(args.supertrack),
         short_label=args.supertrack,
         long_label=args.supertrack,
+        priority=supertrackPriority,
         supertrackonoff="show")
     if args.genome == "cegsvectors":
         supertrack.add_params(group="cegsvectors")
