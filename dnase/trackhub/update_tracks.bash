@@ -275,7 +275,7 @@ echo
 echo "Deploying trackhub"
 cd ${path_to_main_driver_script}
 
-cp -R assets/${hub_type} ${hub_target}
+cp -R assets/${hub_type}/. ${hub_target}
 
 for i in "${genome_array[@]}"; do
     [ "${i}" = "cegsvectors" ] && continue
