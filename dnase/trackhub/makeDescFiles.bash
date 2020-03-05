@@ -58,56 +58,43 @@ make_html () {
 find_readcounts () {
     local dir_base=$1
     local suffix=$2
-    shift 2
-    local dir_names=("$@")
     
     local flowcell
-    local ymd
     local BASE
     local BASE2
     local target
     local desc_file
     local tmp_flowcell
-    local d_out
-    local yyyy
-    local mm
-    local dd
     local info_file
     local infile
     
+    
     # Each flowcell directory may be associated with a readcounts file.
     # Get the data from the readcounts file if it is there, and make a table from the data.
-    for flowcell in "${dir_names[@]}"; do
+    for flowcelldir in `find ${dir_base} -mindepth 1 -maxdepth 1 -type d`; do
+        flowcell=`basename ${flowcelldir}`
         # Fill up target_vec with directory names that house readcounts.summary.txt:
-        if [ ${dir_base} = "/vol/cegs/mapped/" ] || [ ${dir_base} = "/vol/mauranolab/mapped/" ] ; then
-            mapfile -t target_vec < <( \
-                find ${dir_base}${flowcell} -maxdepth 2 \( -name "trash*" -o -name "bak" \) -prune -o -type f -name "readcounts.summary.txt" -print )
+        if [[ "${dir_base}" = */mapped/ ]]; then
+            mapfile -t target_vec < <( find ${dir_base}${flowcell} -maxdepth 2 \( -name "trash*" -o -name "bak" \) -prune -o -type f -name "readcounts.summary.txt" -print )
         else
             # For non-flowcell directories, there is only one place for the readcounts file to be:
             mapfile -t target_vec < <( find ${dir_base}${flowcell} -maxdepth 1 -type f -name "readcounts.summary.txt" )
         fi
         
         # Find a date to associate with the flowcell from the info.txt file
-        info_file="/vol/mauranolab/flowcells/data/"${flowcell}"info.txt"
+        info_file="/vol/mauranolab/flowcells/data/${flowcell}/info.txt"
         
         # Make sure the file is there:
-        if [ ! -f ${info_file} ]; then
-            # It is not.
-            ierr=0
-        else
+        local yyyymmdd="00000000"
+        tmp_flowcell="/${flowcell}"             # tmp_flowcell will be used in the for loop below. #BUGBUG unclearly named, note it gets modified after use below
+        if [ -f ${info_file} ]; then
             # It is, but is the date there?
             ierr=$(grep -c '#Load date' ${info_file})
-        fi
-        
-        # Find a date to associate with the flowcell from the info.txt file
-        if (( ierr == 0)); then
-            ymd="00000000"
-        else
-            d_out=$(grep '#Load date' ${info_file})
-            yyyy=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f1)
-            mm=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f2)
-            dd=$(echo $d_out | cut -d' ' -f3 | cut -d'-' -f3)
-            ymd=${yyyy}${mm}${dd}
+            if (( ierr == 0 )); then
+                # Find a date to associate with the flowcell from the info.txt file
+                yyyymmdd=$(grep '#Load date' ${info_file} | perl -pe 's/\-//g;')
+                tmp_flowcell="/${yyyymmdd}_${flowcell}"
+            fi
         fi
         
         numElements="${#target_vec[@]}"
@@ -115,44 +102,29 @@ find_readcounts () {
             echo "[makeDescFiles.bash] WARNING No subdirectories with a readcounts file in ${dir_base}${flowcell}"
             # But print the data directory path:
             
-            if [ "${ymd}" = "00000000" ]; then
-                tmp_flowcell="/"${flowcell%/}
-            else
-                tmp_flowcell="/"${ymd}"_"${flowcell%/}
-            fi
-            
-            subdir_names=($(ls -d ${dir_base}${flowcell}*/))
+            subdir_names=(`find ${flowcelldir} -mindepth 1 -maxdepth 1 -type d`)
             for j in "${subdir_names[@]}"; do
-                BASE=${j%/}        # Strip trailing slash
-                BASE2=${BASE##*/}  # Get subdir name
+                BASE=${j##*/}  # Get subdir name
                 
                 for i in "${genome_array[@]}"; do
-                    echo "<pre>" > "${TMPDIR}${tmp_flowcell}_${BASE2}_${i}.html"
-                    echo "Source data located in: ${dir_base}${flowcell}" >> "${TMPDIR}${tmp_flowcell}_${BASE2}_${i}.html"
-                    echo " " >> "${TMPDIR}${tmp_flowcell}_${BASE2}_${i}.html"
-                    echo "</pre>" >> "${TMPDIR}${tmp_flowcell}_${BASE2}_${i}.html"
-                    echo "<hr>" >> "${TMPDIR}${tmp_flowcell}_${BASE2}_${i}.html"
+                    echo "<pre>" > "${TMPDIR}${tmp_flowcell}_${BASE}_${i}.html"
+                    echo "Source data located in: ${dir_base}${flowcell}" >> "${TMPDIR}${tmp_flowcell}_${BASE}_${i}.html"
+                    echo " " >> "${TMPDIR}${tmp_flowcell}_${BASE}_${i}.html"
+                    echo "</pre>" >> "${TMPDIR}${tmp_flowcell}_${BASE}_${i}.html"
+                    echo "<hr>" >> "${TMPDIR}${tmp_flowcell}_${BASE}_${i}.html"
                 done
             done
             continue
         fi
         
         for target in ${target_vec[@]}; do
-            # We now have a date. Next, construct a genome related filename for the output.
-            if [ "${ymd}" = "00000000" ]; then
-                tmp_flowcell="/"${flowcell%/}
-            else
-                tmp_flowcell="/"${ymd}"_"${flowcell%/}
-            fi
-            
-            if [ ${dir_base} = "/vol/cegs/mapped/" ] || [ ${dir_base} = "/vol/mauranolab/mapped/" ] ; then
+            if [[ "${dir_base}" = */mapped/ ]]; then
                 # The name of the flowcell subdirectory that the readcounts.summary.txt file lives in is also the name of the relevant assay type.
                 # Use that assay type to help make a unique html name.
                 BASE=${target%/readcounts.summary.txt}       # Kill trailing /readcounts.summary.txt
                 BASE2=${BASE##*/}  # Get subdir name
                 tmp_flowcell="${tmp_flowcell}_${BASE2}"
             fi
-            # tmp_flowcell will be used in the for loop below.
             
             # Initialize the output files with header lines.
             head -n1 ${target} > "${TMPDIR}/tmp_header"
@@ -189,49 +161,23 @@ find_readcounts () {
 }
 ##############################################################################
 # Make the html files.
-if [ "${hub_type}" = "CEGS" ]; then
+if [[ "${hub_type}" == "CEGS" ]]; then
     # CEGS flowcells
-    dir_base="/vol/cegs/mapped/"
-    cd ${dir_base}
-    dir_names=($(ls -d */))    # These have trailing slashes.
-    suffix="NA"
-    find_readcounts ${dir_base} ${suffix} "${dir_names[@]}"
-    
-    # CEGS aggregations
-    dir_base="/vol/cegs/aggregations/"
-    cd ${dir_base}
-    dir_names=($(ls -d */))     # These have trailing slashes.
-    suffix="readcounts.summary.txt"
-    find_readcounts ${dir_base} ${suffix} "${dir_names[@]}"
-    
-    # CEGS publicdata
-    dir_base="/vol/cegs/publicdata/"
-    cd ${dir_base}
-    dir_names=($(ls -d */))     # These have trailing slashes.
-    suffix="readcounts.summary.txt"
-    find_readcounts ${dir_base} ${suffix} "${dir_names[@]}"
+    hub_basedir="/vol/cegs"
 else
-    # Maurano flowcells
-    dir_base="/vol/mauranolab/mapped/"
-    cd ${dir_base}
-    dir_names=($(ls -d */))     # These have trailing slashes.
-    suffix="NA"
-    find_readcounts ${dir_base} ${suffix} "${dir_names[@]}"
-    
-    # Maurano aggregations
-    dir_base="/vol/mauranolab/aggregations/"
-    cd ${dir_base}
-    dir_names=($(ls -d */))     # These have trailing slashes.
-    suffix="readcounts.summary.txt"
-    find_readcounts ${dir_base} ${suffix} "${dir_names[@]}"
-    
-    # Maurano publicdata
-    dir_base="/vol/mauranolab/publicdata/"
-    cd ${dir_base}
-    dir_names=($(ls -d */))     # These have trailing slashes.
-    suffix="readcounts.summary.txt"
-    find_readcounts ${dir_base} ${suffix} "${dir_names[@]}"
+    # Maurano
+    hub_basedir="/vol/mauranolab"
 fi
+
+# flowcells
+find_readcounts ${hub_basedir}/mapped/ NA
+
+# aggregations
+find_readcounts ${hub_basedir}/aggregations/ readcounts.summary.txt
+
+# publicdata
+find_readcounts ${hub_basedir}/publicdata/ readcounts.summary.txt
+
 
 ###########################################################################
 # Move the html files to trackhub_dev, and rename them.
