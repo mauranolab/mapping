@@ -82,7 +82,7 @@ echo "Trimming $R2primerlen bp primer from R2"
 zcat -f $f2 | 
 awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
 awk -v trim=$R2primerlen '{if(NR % 4==2 || NR % 4==0) {print substr($0, trim+1)} else if (NR % 4==1) {print $1} else {print}}' |
-pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.R2.fastq.gz
+pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.genome.fastq.gz
 
 
 echo
@@ -107,7 +107,7 @@ else
     pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.R1.fastq.gz
 
     bwaAlnOpts="-t ${NSLOTS} -Y -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
-    extractcmd="mem ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample}.R1.fastq.gz $TMPDIR/${sample}.R2.fastq.gz"
+    extractcmd="mem ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample}.R1.fastq.gz $TMPDIR/${sample}.genome.fastq.gz"
 fi
 
 echo "Extracting"
