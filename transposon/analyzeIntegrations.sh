@@ -40,11 +40,8 @@ if [ ! -s "$OUTDIR/${sample}.bam" ]; then
     exit 2
 fi
 
-if [ "$(samtools view -h $OUTDIR/${sample}.bam | head -n 1000 | samtools view -f1 -c -)" -gt 0 ]; then
-    samflags="-f 128 -F 512"
-else
-    samflags="-F 512"
-fi
+## Ignore R1 in paired without excluding single-end reads
+samflags="-F 64 -F 512"
 
 echo "Analyzing data for ${sample}"
 echo "Analyzing read mapping (minReadCutoff=${minReadCutoff})"
