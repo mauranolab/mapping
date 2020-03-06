@@ -135,7 +135,6 @@ function getIntegrationSite {
     local entry=$2
     
     #Parse out integration site. If we can't find it for whatever reason, use null
-    #TODO Take only first three (MenDel) fields in case there are comments/constructs (unofficial for now)
     #Parse each genetic modification on separate line, and move part in [] to $2
     echo "${sampleAnnotationGeneticModification}" | perl -pe 's/,/\n/g;' | perl -pe 's/\[/\t/g;' -e 's/\]/\t/g;' | awk -v entry=${entry} -F "\t" 'BEGIN {integrationsite="null"} $1==entry {integrationsite=$2} END {print integrationsite}'
 }
