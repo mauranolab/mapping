@@ -244,6 +244,9 @@ awk -v cutoff=2 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | u
 #Identify iPCR insertions with more than one location
 cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {print $4}' | sort | uniq -c | sort -nk1 | awk '$1==1 {print $2}' > $TMPDIR/${sample}.singleIns.txt
 
+# save BC list of insertions with more than one location
+cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {print $4}' | sort | uniq -c | sort -nk1 | awk '$1>1 {print $2}' > $OUTDIR/${sample}.multiIns.txt
+
 #Identify insertion sites with more than one BC
 cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq -c | awk 'BEGIN {OFS="\t"} $1==1 {print $2, $3, $4, $5, $6, $7}' | sort-bed - > $TMPDIR/${sample}.singleBC.bed
 
