@@ -238,8 +238,8 @@ def addCEGSgenomes(line):
         
         geneticModifications = getValueFromLIMS(lims, line['Original Sample #'], 'Genetic Modification').split(",")
         geneticModifications = [ re.sub(r'\[.+\]$', '', cur) for cur in geneticModifications ]
-        #Take only first three (MenDel) fields in case there are comments/constructs (unofficial for now)
-        geneticModifications = [ "_".join(cur.split("_")[0:3]) for cur in geneticModifications ]
+        #Take only first three (MenDel) fields in case there are comments/constructs (no longer supported -- must now match exactly)
+        #geneticModifications = [ "_".join(cur.split("_")[0:3]) for cur in geneticModifications ]
         
         customReferences = getValueFromLIMS(lims, line['Original Sample #'], 'Custom Reference').split(",")
         
