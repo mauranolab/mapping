@@ -381,7 +381,8 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
     echo "track name=${name}-dens description=\"${ucscTrackDescriptionDataType} Density ${name} (${analyzedReadsM}M analyzed reads; normalized to 1M)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.density.bw"
     
     
-    if [[ "${sampleType}" != "chipseq" ]]; then
+    #bedGraphToBigWig below fails with 0 reads, "needLargeMem: trying to allocate 0 bytes (limit: 100000000000)"
+    if [[ "${sampleType}" != "chipseq" ]] && [[ "${analyzedReads}" > 0 ]]; then
         echo
         echo "Making cut count track"
         unstarch ${sampleOutdir}/${name}.${mappedgenome}.reads.starch |
@@ -389,7 +390,7 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
         awk -F "\t" 'BEGIN {OFS="\t"} {if($6=="+") {chromStart=$2; chromEnd=$2+1} else {chromStart=$3; chromEnd=$3+1} print $1, chromStart, chromEnd }' | sort-bed - | tee $TMPDIR/${name}.${mappedgenome}.cuts.bed | 
         bedops --chop 1 - | awk -F "\t" 'BEGIN {OFS="\t"} {$4="id-" NR; print}' > $TMPDIR/${name}.${mappedgenome}.cuts.loc.bed
         bedmap --faster --delim '\t' --bp-ovr 1 --echo --count $TMPDIR/${name}.${mappedgenome}.cuts.loc.bed $TMPDIR/${name}.${mappedgenome}.cuts.bed | 
-        awk -v analyzedReads=${analyzedReads} -F "\t" 'BEGIN {OFS="\t"} {$5=$5/analyzedReads*100000000; print}' |
+        awk -v analyzedReads=${analyzedReads} -F "\t" 'BEGIN {OFS="\t"} analyzedReads>0 {$5=$5/analyzedReads*100000000; print}' |
         starch - > ${sampleOutdir}/${name}.${mappedgenome}.perBase.starch
         
         #Skip chrM since UCSC doesn't like the cut count to the right of the last bp in a chromosome
