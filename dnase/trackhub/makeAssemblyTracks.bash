@@ -268,6 +268,9 @@ while read -r line_in ; do
             echo "group ${assmbly_type1}" >> ${out_file}
         fi
         echo superTrack on show >> ${out_file}
+
+        # priority needs to be a floating point number.
+        echo "priority 10.0" >> ${out_file}
         echo " " >> ${out_file}
 
         # Since we have a new genome, we also need to give it new composite tracks.
