@@ -157,15 +157,16 @@ hub, genomes_file, genome, trackdb = default_hub(
 if args.supertrack is not None:
 
     if args.supertrack == "Flowcells":
-        supertrackPriority = 40
+        # supertrackPriority needs to be a floating point number.
+        supertrackPriority = 40.
     elif args.supertrack == "Aggregations":
-        supertrackPriority = 30
+        supertrackPriority = 30.
     elif args.supertrack == "Public_Data":
-        supertrackPriority = 50
+        supertrackPriority = 50.
     elif args.supertrack == "By_Locus":
-        supertrackPriority = 20
+        supertrackPriority = 20.
     else:
-        supertrackPriority = 99
+        supertrackPriority = 99.
 
     supertrack = SuperTrack(
         name=cleanTrackName(args.supertrack),
@@ -392,7 +393,7 @@ for assay_type in assays:
                     parentonoff="off",
                     tracktype="bam",
                     short_label="Reads",
-                    maxItems=10000, #Set high so that dense sequencing tracks can be displayed as this parameter can not be changed in the UI
+                    maxItems=50000, #Set high so that dense sequencing tracks can be displayed as this parameter can not be changed in the UI
         #            maxWindowToDraw=10000,
                     pairEndsByName=".",
                     long_label="Reads")

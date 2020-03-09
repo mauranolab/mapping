@@ -275,11 +275,7 @@ echo
 echo "Deploying trackhub"
 cd ${path_to_main_driver_script}
 
-if [ "${hub_type}" = "CEGS" ]; then
-    cp -R assets/CEGS/. ${hub_target}
-else
-    cp -R assets/MAURANOLAB/. ${hub_target}
-fi
+cp -R assets/${hub_type}/. ${hub_target}
 
 for i in "${genome_array[@]}"; do
     [ "${i}" = "cegsvectors" ] && continue
