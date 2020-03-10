@@ -154,7 +154,7 @@ hub, genomes_file, genome, trackdb = default_hub(
 
 
 # Initialize the supertrack
-# "supertrackonoff" & "supertrackPriority" require the forked daler/trackhub
+# "supertrackonoff" requires the forked daler/trackhub
 if args.supertrack is not None:
     supertrack = SuperTrack(
         name=cleanTrackName(args.supertrack),
