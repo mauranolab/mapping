@@ -269,7 +269,7 @@ while read -r line_in ; do
         fi
         echo superTrack on show >> ${out_file}
 
-        echo "priority 10.0" >> ${out_file}
+        echo "priority 10" >> ${out_file}
         echo " " >> ${out_file}
 
         # Since we have a new genome, we also need to give it new composite tracks.
