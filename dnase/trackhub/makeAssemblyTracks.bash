@@ -269,7 +269,6 @@ while read -r line_in ; do
         fi
         echo superTrack on show >> ${out_file}
 
-        # priority needs to be a floating point number.
         echo "priority 10.0" >> ${out_file}
         echo " " >> ${out_file}
 
