@@ -160,10 +160,11 @@ if args.supertrack is not None:
         name=cleanTrackName(args.supertrack),
         short_label=args.supertrack,
         long_label=args.supertrack,
-        priority=args.supertrackPriority,
         supertrackonoff="show")
     if args.genome == "cegsvectors":
         supertrack.add_params(group="cegsvectors")
+    if args.supertrackPriority is not None:
+        supertrack.add_params(priority=args.supertrackPriority)
     trackdb.add_tracks(supertrack)
 
 
