@@ -79,8 +79,19 @@ if echo "${bam2genome}" | grep -q "^LP[0-9]\+$"; then
 #TODO payload masks hardcoded by name for now
 elif echo "${bam2genome}" | grep -q "^Sox2_"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed ${INTERMEDIATEDIR}/deletion_range.bed"
+elif echo "${bam2genome}" | grep -q "^rtTA$"; then
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/rtTA_vs_mm10.bed ${INTERMEDIATEDIR}/deletion_range.bed"
 elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/LPICE_vs_mm10.bed ${INTERMEDIATEDIR}/deletion_range.bed"
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed ${INTERMEDIATEDIR}/deletion_range.bed"
+    if [[ "${bam1genome}" == "LPICE" ]]; then
+        #Need also to mask the SV40pA on the assembly
+        if [ ! -f "/vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed" ]; then
+            echo "WARNING could not find bed file to mask SV40 poly(A) signal in ${bam2genome} genome"
+        else
+            awk -F "\t" '$4=="SV40 poly(A) signal"' /vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed > $TMPDIR/ICE_SV40pA.bed
+            uninformativeRegionFiles="${uninformativeRegionFiles} $TMPDIR/ICE_SV40pA.bed"
+        fi
+    fi
 else
     uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
 fi
