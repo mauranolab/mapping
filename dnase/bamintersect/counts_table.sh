@@ -39,6 +39,7 @@ cat ${bamintersectBED12} | wc -l
 
 if [ ! -s ${bamintersectBED12} ]; then
     echo "[counts_table] There are no reads to analyze, quitting successfully."
+    touch ${OUTBASE}.counts.txt
     exit 0
 fi
 
@@ -77,7 +78,10 @@ annotateNearestGeneName() {
     fi
     geneAnnotationFile="$TMPDIR/geneAnnotationFile.${genome}.bed"
     
-    closest-features --delim "|" --closest --dist ${inputfile} ${geneAnnotationFile} |
+    cat ${inputfile} |
+    #Replace main bed coordinates with the center of each element to refine annotation ID
+    awk -F "\t" 'BEGIN {OFS="\t"} {width=$3-$2; center=int($2+width/2); print $1, center-1, center, $0}' | sort-bed - |
+    closest-features --delim "|" --closest --dist - ${geneAnnotationFile} |
     #Replace empty gene names with a dash
     #Add distance to the gene name; note distance is relative to the genomic location (+ is to the right) not the transcriptional direction
     awk -F "|" 'BEGIN {OFS="\t"} { \
@@ -91,7 +95,9 @@ annotateNearestGeneName() {
             distance = "+" (-1*$3) "bp"; \
         } \
         print $1, gene[4] distance; \
-    }'
+    }' |
+    #Drop the centered coordinates in the first three columns
+    cut -f4- | sort-bed -
 }
 
 
