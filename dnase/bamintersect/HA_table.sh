@@ -105,5 +105,5 @@ samtools view ${TMPDIR}/subsetBAM_output_sorted.bam | grep -v -F -f ${TMPDIR}/Zo
 ${src}/bamintersect.py ${TMPDIR}/bamfile_Zone1reads.bam ${TMPDIR}/bamfile_Zone2reads.bam --src ${src} --bedout ${TMPDIR}/bamintersect_out.bed ${ReqFullyAligned}
 sort-bed ${TMPDIR}/bamintersect_out.bed > ${outputBed}
 
-echo "[HA_table] Done]"
+echo "[HA_table] Done!"
 date
