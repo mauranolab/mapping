@@ -164,6 +164,7 @@ if args.supertrack is not None:
     if args.genome == "cegsvectors":
         supertrack.add_params(group="cegsvectors")
     if args.supertrackPriority is not None:
+        #NB: trackhub requires that priority be a float or it will silently drop the line
         supertrack.add_params(priority=args.supertrackPriority)
     trackdb.add_tracks(supertrack)
 
@@ -239,8 +240,6 @@ for assay_type in assays:
             short_label=shrt_label,
             long_label=lng_label,
             tracktype="bigBed",
-        # Why is priority="2" not showing up in the output?
-            priority="2",
             visibility="hide",
             parentonoff="off",
             sortOrder=SortOrder,
