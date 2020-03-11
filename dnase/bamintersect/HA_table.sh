@@ -74,11 +74,7 @@ samtools view -F ${exclude_flags} -L ${TMPDIR}/zone1.bed ${bamfile} | cut -f1 | 
 num_lines=$(wc -l < "${TMPDIR}/Reads.txt")
 echo "[HA_table] num_lines is: ${num_lines}"
 if [ "${num_lines}" = "0" ]; then
-    if [ ${runHA} = "AB" ]; then
-        touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
-    else
-        touch ${outputBed}
-    fi
+    touch ${outputBed}
     echo "[HA_table] Leaving due to no eligible reads."
     exit 0
 fi
