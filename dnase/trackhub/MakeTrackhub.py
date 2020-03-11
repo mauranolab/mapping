@@ -32,6 +32,7 @@ parser.add_argument('--URLbase', action = 'store', required = False, default="",
 parser.add_argument('--includeSampleIDinSampleCol', action = 'store_true', default = False, help = 'Append the Sample ID in the Sample column')
 parser.add_argument('--checksamples', action = 'store_true', default = False, help = 'Mark Density and Coverage tracks for display by turning on composite track without going to configuration page (NB ChIP-seq input samples are never displayed by default)')
 parser.add_argument('--supertrack', action = 'store', required = False, help = 'Encompass all composite tracks generated within supertrack. Supertrack name specified as parameter.')
+parser.add_argument('--supertrackPriority', type=float, action = 'store', required = False, help = 'Priority values set the order in which supertracks are displayed in the browser control panel.')
 parser.add_argument('--generateHTMLdescription', action = 'store_true', default = False, help = 'Link to HTML descriptions for composite tracks, assumed to be present at [genome]/descriptions/[group name].html')
 parser.add_argument('--tracknameprefix', action = 'store', required = False, default="", help = 'Add prefix within track names (e.g. to permit unique names).')
 parser.add_argument('--subgroupnames', action = 'store', required = False, default="SampleID", help = 'Comma-separated list of columns in input to add as subgroups; will be sorted in order specified')
@@ -162,6 +163,9 @@ if args.supertrack is not None:
         supertrackonoff="show")
     if args.genome == "cegsvectors":
         supertrack.add_params(group="cegsvectors")
+    if args.supertrackPriority is not None:
+        #NB: trackhub requires that priority be a float or it will silently drop the line
+        supertrack.add_params(priority=args.supertrackPriority)
     trackdb.add_tracks(supertrack)
 
 
@@ -236,8 +240,6 @@ for assay_type in assays:
             short_label=shrt_label,
             long_label=lng_label,
             tracktype="bigBed",
-        # Why is priority="2" not showing up in the output?
-            priority="2",
             visibility="hide",
             parentonoff="off",
             sortOrder=SortOrder,

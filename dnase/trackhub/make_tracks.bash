@@ -292,12 +292,25 @@ make_tracks () {
         subgroupprefix="--subgroupnames Replicate"
     fi
     
+    if [ ${supertrack} = "By_Locus" ]; then
+        supertrackPriority=20
+    elif [ ${supertrack} = "Aggregations" ]; then
+        supertrackPriority=30
+    elif [ ${supertrack} = "Public_Data" ]; then
+        supertrackPriority=40
+    elif [ ${supertrack} = "Flowcells" ]; then
+        supertrackPriority=50
+    else
+        supertrackPriority=99
+    fi
+    
     python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
            ${generateHTMLdescription} \
            ${includeSampleIDinSampleCol} \
            ${tracknameprefix} \
            ${subgroupprefix} \
            --supertrack ${supertrack} \
+           --supertrackPriority ${supertrackPriority} \
            --genome ${mappedgenome} \
            --checksamples \
            --URLbase ${URLbase} > ${outfile}
