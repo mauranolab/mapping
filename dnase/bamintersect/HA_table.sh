@@ -71,15 +71,12 @@ samtools view -F ${exclude_flags} -L ${TMPDIR}/zone1.bed ${bamfile} | cut -f1 | 
 # Reads.txt is all the reads with mapped mates, and only one read in Zone 1.
 # The other reads must be somewhere outside the HAs (Way 1) or inside the backbone (Way 2).
 
-if [ ${runHA} = "AB" ]; then
-    # This code block is run only for runHA="AB" ("AssemblyBackbone").
-    num_lines=$(wc -l < "${TMPDIR}/Reads.txt")
-    echo "[HA_table] num_lines is: ${num_lines}"
-    if [ "${num_lines}" = "0" ]; then
-        touch "${sampleOutdir}/${sample_name}.assemblyBackbone.bed"
-        echo "[HA_table] Leaving due to no eligible reads."
-        exit 0
-    fi
+num_lines=$(wc -l < "${TMPDIR}/Reads.txt")
+echo "[HA_table] num_lines is: ${num_lines}"
+if [ "${num_lines}" = "0" ]; then
+    touch ${outputBed}
+    echo "[HA_table] Leaving due to no eligible reads."
+    exit 0
 fi
 
 # Get the bam record lines for the read IDs with only one read in Zone 1.
