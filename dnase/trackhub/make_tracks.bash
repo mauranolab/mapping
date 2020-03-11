@@ -10,9 +10,11 @@ hub_type=$2
 
 path_to_main_driver_script=$3
 
-URLbase=$4
+assemblyBaseDir=$4
 
-shift 4
+URLbase=$5
+
+shift 5
 genome_array=("$@")
 
 ##############################################################################
@@ -25,18 +27,11 @@ genome_array=("$@")
 outfile_base=${TMP_OUT}"/samplesforTrackhub"
 outfile=${outfile_base}"_all.tsv"
 
-# workingDir is where the various flowcell directories are located.
-# It's an input to samplesforTrackhub.R
-if [ ${hub_type} = "CEGS" ]; then
-    workingDir=/vol/cegs/mapped
-else
-    workingDir=/vol/mauranolab/mapped
-fi
 
 echo
 Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
         --out ${outfile} \
-        --workingDir ${workingDir} \
+        --workingDir ${assemblyBaseDir}/mapped \
         --descend \
         --project byFC \
         --quiet
@@ -62,7 +57,7 @@ if [ ${hub_type} = "CEGS" ]; then
     echo
     Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
             --out ${outfile} \
-            --workingDir ${workingDir} \
+            --workingDir ${assemblyBaseDir}/mapped \
             --descend \
             --project CEGS_byLocus \
             --quiet
@@ -132,12 +127,7 @@ agg_pub_loop () {
     # aggregations or publicdata
     local loop_type=$2
     
-    local workingDir
-    if [ ${hub_type} = "CEGS" ]; then
-        workingDir="/vol/cegs/${loop_type}/${dir_loop_name}"
-    else
-        workingDir="/vol/mauranolab/${loop_type}/${dir_loop_name}"
-    fi
+    local workingDir="${assemblyBaseDir}/${loop_type}/${dir_loop_name}"
     
     #Pull in annotation if available
     local inputfile=""
@@ -204,11 +194,7 @@ done
 outfile="${outfile_base}_all_agg.tsv"
 
 # Get the names of the aggregation directories
-if [ ${hub_type} = "CEGS" ]; then
-    cd /vol/cegs/aggregations/
-else
-    cd /vol/mauranolab/aggregations/
-fi
+cd ${assemblyBaseDir}/aggregations/
 dir_names=($(ls -d */))
 
 # Get rid of trailing slashes 
@@ -238,11 +224,7 @@ done
 outfile="${outfile_base}_all_pub.tsv"
 
 # Get the names of the publicdata directories
-if [ ${hub_type} = "CEGS" ]; then
-    cd /vol/cegs/publicdata/
-else
-    cd /vol/mauranolab/publicdata/
-fi
+cd ${assemblyBaseDir}/publicdata/
 dir_names=($(ls -d */))
 
 # Get rid of trailing slashes 
@@ -343,7 +325,7 @@ done
 if [ ${hub_type} = "CEGS" ]; then
     consol_suffix_in="_consolidated_locus"
     supertrack_in="By_Locus"
-
+    
     for i in "${genome_array[@]}"; do
         make_tracks ${i} ${consol_suffix_in} ${URLbase}/mapped/ ${supertrack_in}
     done

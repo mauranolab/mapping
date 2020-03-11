@@ -5,20 +5,11 @@ path_to_main_driver_script=$1
 hub_target=$2
 TMPDIR=$3
 hub_type=$4
-shift 4
+customGenomeAssembly=$5
+assemblyBaseDir=$6
+shift 6
 genome_array=("$@")
 
-
-####################################################################
-# Set some hub_type dependent constants.
-
-if [ ${hub_type} = "CEGS" ]; then
-    assmbly_type1="cegsvectors"
-    assmbly_type2="cegs"
-else
-    assmbly_type1="mauranolab"
-    assmbly_type2="mauranolab"
-fi
 
 ####################################################################
 # We need to make bigBED files from bed files. To do this we need 
@@ -120,11 +111,11 @@ AWK_HEREDOC_01
 make_directory () {
     local genome
     genome=$1
-
+    
     if [ ! -d "${hub_target}/${genome}/data" ]; then
         mkdir "${hub_target}/${genome}/data"
     fi
-
+    
     # Locus subdirectory...
     if [ ! -d $2 ]; then
         mkdir $2
@@ -136,61 +127,57 @@ make_directory () {
 OUTFILE="${TMPDIR}/assembly_tracks/output_full_paths"
 
 # Initialize the error log file where bedToBigBed problems will show up.
-echo Starting calls to bedToBigBed... > make_bigBED.log
-
-# This is where the assembly sequences are kept.
-BASE="/vol/${assmbly_type2}/sequences/"
+echo "Starting calls to bedToBigBed..". > make_bigBED.log
 
 # This loop generates the ".bb" files which are found in the trackhub "<genome>/data" directories.
 # For hub_type=CEGS genome_array just contains hg38, mm10, rn6, and cegsvectors.
 # For hub_type=MAURANOLAB genome_array just contains hg38, mm10, and mauranolab.
 for genome in "${genome_array[@]}"; do
-    if [ ! -d "/vol/${assmbly_type2}/sequences/${genome}" ]; then
+    if [ ! -d "${assemblyBaseDir}/sequences/${genome}" ]; then
         echo "Skipping ${genome} assemblies"
         continue
     fi
-
-    genome=${genome}/
-    if [ "${genome}" = "${assmbly_type1}/" ]; then
-        chrom_sizes="/vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes"
-        cp "${path_to_main_driver_script}/assets/${hub_type}/trackDb_${assmbly_type1}_Analyses.txt" \
-           "${TMPDIR}/assembly_tracks/trackDb_assemblies_${assmbly_type1}.txt"
+    
+    genome="${genome}/"
+    if [ "${genome}" = "${customGenomeAssembly}/" ]; then
+        chrom_sizes="${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes"
+        cp ${path_to_main_driver_script}/assets/${hub_type}/trackDb_${customGenomeAssembly}_Analyses.txt ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
     else
         chrom_sizes="/vol/isg/annotation/fasta/${genome/\//}/${genome/\//}.chrom.sizes"
     fi
-
-    cd ${BASE}${genome}
+    
+    cd ${assemblyBaseDir}/sequences/${genome}
     assmbly_dirs=($(ls -d */))   # Elements will look like:  HPRT1/
-
+    
     for assmbly in "${assmbly_dirs[@]}"; do
         if [[ "${assmbly}" == "bak"* ]] || [[ "${assmbly}" == "trash"* ]]; then
             continue
         fi
-
+        
         # Create an html file for this assembly. Later it will get moved to "descriptions" subdirectory.
         echo "<pre>" > "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
-        echo "Source data located in: ${BASE}${genome}${assmbly%/}" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
+        echo "Source data located in: ${assemblyBaseDir}/sequences/${genome}${assmbly%/}" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
         echo "</pre>" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
-
+        
         # Note we that ignore emacs backups in the next line via the [/d]?$
-        bed_files=($(ls "${BASE}${genome}${assmbly}"* | egrep *[.]bed[0-9]*$))
-    
+        bed_files=($(ls "${assemblyBaseDir}/sequences/${genome}${assmbly}"* | egrep *[.]bed[0-9]*$))
+        
         cd "${TMPDIR}/assembly_tracks"
         for bed_file in "${bed_files[@]}"; do
             # 'bed_file' is in the form: <BASE><genome><assmbly><bed name>.bedN  (or ".bed" or ".bedNN")
-
+            
             # Get just the bedN part
             bed_type=${bed_file##*.}                 # This retrieves everything after the last "." in bed_file
             if [ "${bed_type}" = "bed" ]; then
                 bed_type="bed4"
             fi
-        
+            
             # Make directories for the .bb files, as needed.
             make_directory ${genome} "${hub_target}/${genome}data/${assmbly}"
-
+            
             # Make the .bb files
             out_file=$(make_bigBED ${bed_file} ${chrom_sizes})
-        
+            
             # Move the .bb files into the appropriate directories
             mv ${out_file} "${hub_target}/${genome}data/${assmbly}"
             echo "${hub_target}/${genome}data/${assmbly}${out_file}" "${bed_type}" >> ${OUTFILE}
@@ -200,13 +187,13 @@ done
 # At the end of the above for loops, we're now in ${TMPDIR}/assembly_tracks
 
 # Divert here to make the cytoband file:
-cat /vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes | LC_COLLATE=C sort -k1,1 -k2,2n | awk '{print $1,0,$2,$1,"gneg"}' > cytoBandIdeo.bed
-bedToBigBed -type=bed4 cytoBandIdeo.bed -as="${path_to_main_driver_script}/cytoband.as" /vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes cytoBandIdeo.bigBed
+cat ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes | LC_COLLATE=C sort -k1,1 -k2,2n | awk '{print $1,0,$2,$1,"gneg"}' > cytoBandIdeo.bed
+bedToBigBed -type=bed4 cytoBandIdeo.bed -as="${path_to_main_driver_script}/cytoband.as" ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes cytoBandIdeo.bigBed
 
 
 # Divert again to make the GC percentage file:
-hgGcPercent -wigOut -doGaps -file=stdout -win=5 -verbose=0 ${assmbly_type1} /vol/${assmbly_type2}/sequences/${assmbly_type1} > ${assmbly_type1}.wig
-wigToBigWig ${assmbly_type1}.wig /vol/${assmbly_type2}/sequences/${assmbly_type1}/${assmbly_type1}.chrom.sizes ${assmbly_type1}.gc.bw
+hgGcPercent -wigOut -doGaps -file=stdout -win=5 -verbose=0 ${customGenomeAssembly} ${assemblyBaseDir}/sequences/${customGenomeAssembly} > ${customGenomeAssembly}.wig
+wigToBigWig ${customGenomeAssembly}.wig ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes ${customGenomeAssembly}.gc.bw
 
 
 # Sort OUTFILE (made in the above for loops), so that the lines are all grouped by:
@@ -219,7 +206,7 @@ mv ${OUTFILE}_tmp ${OUTFILE}
 
 # Clear out old track files, just in case.
 for i in "${genome_array[@]}"; do
-    [ "${i}" = "${assmbly_type1}" ] && continue
+    [ "${i}" = "${customGenomeAssembly}" ] && continue
     rm -f "trackDb_assemblies_${i}.txt"
 done
 
@@ -249,7 +236,7 @@ while read -r line_in ; do
         out_file="trackDb_assemblies_"${genome}".txt"
         old_genome=${genome}
 
-        if [[ "${genome}" == "${assmbly_type1}" ]]; then
+        if [[ "${genome}" == "${customGenomeAssembly}" ]]; then
             # Add the cytoband track:
             echo "track cytoBandIdeo" >> ${out_file}
             echo "type bigBed" >> ${out_file}
@@ -263,9 +250,9 @@ while read -r line_in ; do
         echo "shortLabel Assemblies" >> ${out_file}
         echo "longLabel Assemblies" >> ${out_file}
 
-        # We need this to avoid having the ${assmbly_type1} Assemblies being shown in the "Other" control group.
-        if [[ "${genome}" == "${assmbly_type1}" ]]; then
-            echo "group ${assmbly_type1}" >> ${out_file}
+        # We need this to avoid having the ${customGenomeAssembly} Assemblies being shown in the "Other" control group.
+        if [[ "${genome}" == "${customGenomeAssembly}" ]]; then
+            echo "group ${customGenomeAssembly}" >> ${out_file}
         fi
         echo superTrack on show >> ${out_file}
 
@@ -288,8 +275,8 @@ while read -r line_in ; do
         echo "    shortLabel ${assmbly}" >> ${out_file}
         echo "    longLabel ${assmbly}" >> ${out_file}
 
-        # Display assembly tracks by default if genome=${assmbly_type1}. Otherwise not.
-        if [[ "${genome}" == "${assmbly_type1}" ]]; then
+        # Display assembly tracks by default if genome=${customGenomeAssembly}. Otherwise not.
+        if [[ "${genome}" == "${customGenomeAssembly}" ]]; then
             # This does not work with the supertrack:  echo "    parent ${genome}_Assemblies on" >> ${out_file}
             echo "    parent ${genome}_Assemblies" >> ${out_file}
         else

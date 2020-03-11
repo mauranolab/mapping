@@ -114,8 +114,14 @@ URLbase=$5
 
 # Check the inputs:
 
-if [ "${hub_type}" != "CEGS" ] && [ "${hub_type}" != "MAURANOLAB" ]; then
-    echo "ERROR You need to enter a hub type. Either: CEGS or MAURANOLAB. Exiting..."
+if [[ "${hub_type}" == "CEGS" ]]; then
+    customGenomeAssembly="cegsvectors"
+    assemblyBaseDir="/vol/cegs"
+elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
+    customGenomeAssembly="mauranolab"
+    assemblyBaseDir="/vol/mauranolab"
+else
+    echo "ERROR You need to enter a valid hub type. Either: CEGS or MAURANOLAB. Exiting..."
     exit 1
 fi
 
@@ -174,11 +180,11 @@ echo " "
 
 # We also need to make tracks for the various assemblies. Do it here:
 echo "Starting makeAssemblyTracks.bash"
-./makeAssemblyTracks.bash ${path_to_main_driver_script} ${hub_target} ${TMPDIR} ${hub_type} "${genome_array[@]}"
+./makeAssemblyTracks.bash ${path_to_main_driver_script} ${hub_target} ${TMPDIR} ${hub_type} ${customGenomeAssembly} ${assemblyBaseDir} "${genome_array[@]}"
 
 # Now construct the "flowcell" and "aggregation" tracks in TMPDIR.
 echo "Starting make_tracks.bash"
-./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} ${URLbase} "${genome_array[@]}"
+./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} ${assemblyBaseDir} ${URLbase} "${genome_array[@]}"
 
 ######################################################################################
 # Now copy the track information to the hub location.
@@ -190,21 +196,13 @@ update_genome () {
     cd "${hub_target}/${genome}"
     
     # Process the Assembly tracks.
-    if [ ${hub_type} = "CEGS" ]; then
+    # may not have assemblies in all genomes.
+    if [ -f "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" ]; then
         cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" trackDb_001.txt
-        
-        if [ ${genome} = "cegsvectors" ]; then
-            cp "${TMPDIR}/assembly_tracks/cytoBandIdeo.bigBed" data
-        fi
-    else
-        # MAURANOLAB may not have assemblies in all genomes.
-        if [ -f "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" ]; then
-            cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" trackDb_001.txt
-        fi
-        
-        if [ ${genome} = "mauranolab" ]; then
-            cp "${TMPDIR}/assembly_tracks/cytoBandIdeo.bigBed" data
-        fi
+    fi
+    
+    if [[ "${genome}" == "${customGenomeAssembly}" ]]; then
+        cp "${TMPDIR}/assembly_tracks/cytoBandIdeo.bigBed" data
     fi
     
     # Process the "flowcell" tracks.
@@ -243,11 +241,7 @@ for i in "${genome_array[@]}"; do
 done
 
 # Move the GC percentage file:
-if [ ${hub_type} = "CEGS" ]; then
-    cp "${TMPDIR}/assembly_tracks/cegsvectors.gc.bw" "${hub_target}/cegsvectors/data"
-else
-    cp "${TMPDIR}/assembly_tracks/mauranolab.gc.bw" "${hub_target}/mauranolab/data"
-fi
+cp ${TMPDIR}/assembly_tracks/${customGenomeAssembly}.gc.bw ${hub_target}/${customGenomeAssembly}/data
 
 ######################################################################################
 
@@ -278,19 +272,14 @@ cd ${path_to_main_driver_script}
 cp -R assets/${hub_type}/. ${hub_target}
 
 for i in "${genome_array[@]}"; do
-    [ "${i}" = "cegsvectors" ] && continue
-    [ "${i}" = "mauranolab" ] && continue
+    [ "${i}" = "${customGenomeAssembly}" ] && continue
     echo "genome ${i}" >> "${hub_target}/genomes.txt"
     echo "trackDb ${i}/trackDb_001.txt" >> "${hub_target}/genomes.txt"
     echo " " >> "${hub_target}/genomes.txt"
 done
 
-#########################################################
-if [ "${hub_type}" = "CEGS" ]; then
-    cp "/vol/cegs/sequences/cegsvectors/cegsvectors.2bit" "${hub_target}/cegsvectors/data/cegsvectors.2bit"
-else
-    cp "/vol/mauranolab/sequences/mauranolab/mauranolab.2bit" "${hub_target}/mauranolab/data/mauranolab.2bit"
-fi
+
+cp ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit ${hub_target}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit
 #########################################################
 
 time_stamp=$(date +"%m-%d-%y %T")
