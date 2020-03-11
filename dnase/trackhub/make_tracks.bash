@@ -292,14 +292,14 @@ make_tracks () {
         subgroupprefix="--subgroupnames Replicate"
     fi
     
-    if [ ${supertrack} = "Flowcells" ]; then
-        supertrackPriority=40
+    if [ ${supertrack} = "By_Locus" ]; then
+        supertrackPriority=20
     elif [ ${supertrack} = "Aggregations" ]; then
         supertrackPriority=30
     elif [ ${supertrack} = "Public_Data" ]; then
+        supertrackPriority=40
+    elif [ ${supertrack} = "Flowcells" ]; then
         supertrackPriority=50
-    elif [ ${supertrack} = "By_Locus" ]; then
-        supertrackPriority=20
     else
         supertrackPriority=99
     fi
