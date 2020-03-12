@@ -141,7 +141,18 @@ for genome in "${genome_array[@]}"; do
     genome="${genome}/"
     if [ "${genome}" = "${customGenomeAssembly}/" ]; then
         chrom_sizes="${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes"
-        cp ${path_to_main_driver_script}/assets/${hub_type}/trackDb_${customGenomeAssembly}_Analyses.txt ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        echo "track GC_percent" > ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        echo "shortLabel GC Percent" >> ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        echo "longLabel GC Percent" >> ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        echo "group ${customGenomeAssembly}" >> ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        echo "visibility full" >> ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        echo "maxHeightPixels 36" >> ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        echo "viewLimits 0:100" >> ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        echo "windowingFunction mean" >> ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        echo "type bigWig" >> ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        echo "bigDataUrl data/${customGenomeAssembly}.gc.bw" >> ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        echo "priority 1" >> ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        echo " " >> ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
     else
         chrom_sizes="/vol/isg/annotation/fasta/${genome/\//}/${genome/\//}.chrom.sizes"
     fi
