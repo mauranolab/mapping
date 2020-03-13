@@ -62,9 +62,11 @@ find_readcounts () {
     local flowcell
     local BASE
     local BASE2
+    local BASEwoSlash
     local target
     local desc_file
-    local tmp_flowcell
+    local partialHtmlName
+    local HtmlName
     local info_file
     local infile
     
@@ -86,17 +88,17 @@ find_readcounts () {
         
         # Make sure the file is there:
         local yyyymmdd="00000000"
-        tmp_flowcell="/${flowcell}"             # tmp_flowcell will be used in the for loop below. #BUGBUG unclearly named, note it gets modified after use below
+        partialHtmlName="/${flowcell%/}"             # partialHtmlName will be used in the for loop below.
         if [ -f ${info_file} ]; then
             # It is, but is the date there?
             ierr=$(grep -c '#Load date' ${info_file})
-            if (( ierr == 0 )); then
+            if (( ierr != 0 )); then
                 # Find a date to associate with the flowcell from the info.txt file
-                yyyymmdd=$(grep '#Load date' ${info_file} | perl -pe 's/\-//g;')
-                tmp_flowcell="/${yyyymmdd}_${flowcell}"
+                yyyymmdd=$(grep '#Load date' ${info_file} | cut -f2 | perl -pe 's/\-//g;')  # Relies on tab delimited field split.
+                partialHtmlName="/${yyyymmdd}_${flowcell%/}"
             fi
         fi
-        
+
         numElements="${#target_vec[@]}"
         if [ "${numElements}" = "0" ]; then
             echo "[makeDescFiles.bash] WARNING No subdirectories with a readcounts file in ${dir_base}${flowcell}"
@@ -104,26 +106,30 @@ find_readcounts () {
             
             subdir_names=(`find ${flowcelldir} -mindepth 1 -maxdepth 1 -type d`)
             for j in "${subdir_names[@]}"; do
-                BASE=${j##*/}  # Get subdir name
+                BASEwoSlash=${j%/}        # Strip trailing slash
+                BASE=${BASEwoSlash##*/}   # Get subdir name
                 
                 for i in "${genome_array[@]}"; do
-                    echo "<pre>" > "${TMPDIR}${tmp_flowcell}_${BASE}_${i}.html"
-                    echo "Source data located in: ${dir_base}${flowcell}" >> "${TMPDIR}${tmp_flowcell}_${BASE}_${i}.html"
-                    echo " " >> "${TMPDIR}${tmp_flowcell}_${BASE}_${i}.html"
-                    echo "</pre>" >> "${TMPDIR}${tmp_flowcell}_${BASE}_${i}.html"
-                    echo "<hr>" >> "${TMPDIR}${tmp_flowcell}_${BASE}_${i}.html"
+                    echo "<pre>" > "${TMPDIR}${partialHtmlName}_${BASE}_${i}.html"
+                    echo "Source data located in: ${dir_base}${flowcell}" >> "${TMPDIR}${partialHtmlName}_${BASE}_${i}.html"
+                    echo " " >> "${TMPDIR}${partialHtmlName}_${BASE}_${i}.html"
+                    echo "</pre>" >> "${TMPDIR}${partialHtmlName}_${BASE}_${i}.html"
+                    echo "<hr>" >> "${TMPDIR}${partialHtmlName}_${BASE}_${i}.html"
                 done
             done
             continue
         fi
         
+
         for target in ${target_vec[@]}; do
+            htmlName=${partialHtmlName}
+
             if [[ "${dir_base}" = */mapped/ ]]; then
                 # The name of the flowcell subdirectory that the readcounts.summary.txt file lives in is also the name of the relevant assay type.
                 # Use that assay type to help make a unique html name.
                 BASE=${target%/readcounts.summary.txt}       # Kill trailing /readcounts.summary.txt
                 BASE2=${BASE##*/}  # Get subdir name
-                tmp_flowcell="${tmp_flowcell}_${BASE2}"
+                htmlName="${htmlName}_${BASE2}"
             fi
             
             # Initialize the output files with header lines.
@@ -132,7 +138,7 @@ find_readcounts () {
             # Use the header we just made to initialize the genome specific output files.
             # Break up the readcounts files into their genomic subsections.
             for i in "${genome_array[@]}"; do
-                declare "${i}"="${TMPDIR}${tmp_flowcell}_${i}"
+                declare "${i}"="${TMPDIR}${htmlName}_${i}"
                 ref="${i}"
                 cat "${TMPDIR}/tmp_header" > ${!ref}
                 grep ${i} ${target} >> ${!ref}
@@ -140,7 +146,7 @@ find_readcounts () {
                 BASE=${target%readcounts.summary.txt}       # Kill trailing readcounts.summary.txt
                 desc_file="${BASE}description.html"
                 
-                declare "${i}_desc"="${TMPDIR}${tmp_flowcell}_${i}_desc"
+                declare "${i}_desc"="${TMPDIR}${htmlName}_${i}_desc"
                 ref2="${i}_desc"
                 
                 if [ -f ${desc_file} ]; then
