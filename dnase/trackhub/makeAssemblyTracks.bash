@@ -155,7 +155,7 @@ for genome in "${genome_array[@]}"; do
 		bigDataUrl data/${customGenomeAssembly}.gc.bw
 		priority 1
 
-HEREDOC_02
+		HEREDOC_02
     else
         chrom_sizes="/vol/isg/annotation/fasta/${genome/\//}/${genome/\//}.chrom.sizes"
     fi
