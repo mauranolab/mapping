@@ -141,7 +141,21 @@ for genome in "${genome_array[@]}"; do
     genome="${genome}/"
     if [ "${genome}" = "${customGenomeAssembly}/" ]; then
         chrom_sizes="${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes"
-        cp ${path_to_main_driver_script}/assets/${hub_type}/trackDb_${customGenomeAssembly}_Analyses.txt ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+        
+        cat <<- HEREDOC_02 > "${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt"
+track GC_percent
+shortLabel GC Percent
+longLabel GC Percent
+group ${customGenomeAssembly}
+visibility full
+maxHeightPixels 36
+viewLimits 0:100
+windowingFunction mean
+type bigWig
+bigDataUrl data/${customGenomeAssembly}.gc.bw
+priority 1
+
+HEREDOC_02
     else
         chrom_sizes="/vol/isg/annotation/fasta/${genome/\//}/${genome/\//}.chrom.sizes"
     fi
