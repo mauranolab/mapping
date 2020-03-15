@@ -5,7 +5,7 @@
 # The temporary output file directory. It's used for the various tmp working files.
 TMP_OUT=$1
 
-# hub_type: CEGS or MAURANOLAB
+# hub_type: CEGS has additional features
 hub_type=$2
 
 path_to_main_driver_script=$3
