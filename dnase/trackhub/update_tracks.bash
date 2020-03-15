@@ -1,73 +1,31 @@
 #!/bin/bash
 ############################################################################
+# Usage:
 # This is the main driver script for the construction of a UCSC track hub.
-# This script can be called from anywhere, as it figures out where it is located, 
-# then moves there to continue working.
+# This script can be called from anywhere.
 #
-# For inputs, it needs to know if we are building a CEGS hub or a MAURANOLAB hub.
+# update_tracks.bash hub_type hub_target short_label long_label URLbase
+# hub_type:  Either CEGS or MAURANOLAB
+# hub_target:  The full path to the new hub location, which must already exist and be empty.
+# short_label, long_label:  The short and long labels that appear on the UCSC browser Track Data Hubs page. If you have multiple hubs you should make sure these are unique, so you know what you are clicking on.
+# URLbase:      The complete url to the new hub location; assumes that mapped, aggregations, and publicdata are present as subdirectories
 #
-# It also needs to know a destination directory for the new hub. Full path plase!
-# In practice, we expect this will be a CEGS development destination, a CEGS
-# production destination, or a standard MAURANOLAB destination. The destination 
-# can be any valid path though. It requires the directory to already exist and be empty.
 #
-# Next, it needs a "short label" and a "long label" for the hub.txt file.
-# These labels appear in the browser Track Data Hubs page, and should be
-# unique, so you know what hubs you are clicking on.
+# Standard execution of this script (for CEGS dev and MAURANOLAB):
+#/vol/cegs/src/trackhub/src_dev/update_tracks.bash CEGS /vol/cegs/public_html/trackhub_dev "CEGS Dev" "CEGS Development Hub" https://cascade.isg.med.nyu.edu/cegs
+#/vol/cegs/src/trackhub/src_prod/update_tracks.bash MAURANOLAB /home/cadlej01/public_html/trackhub "Maurano Lab" "Maurano Lab Hub" https://cascade.isg.med.nyu.edu/~cadlej01
 #
-# Lastly, it needs the url and its corresponding full path to the relevant public_html 
-# directory for the hub being built. It needs both of these so it can construct the proper 
-# hub address, which is needed to bring up the hub in the UCSC browser.
-############################################################################
 # There are two sets of code, defined as development and production.
 # They are located here:
 #     /vol/cegs/src/trackhub/src_dev
 #     /vol/cegs/src/trackhub/src_prod
 #
-# The main driver script, which exists in each directory, is: update_tracks.bash
-# It can be called from anywhere. For example, if the working directory 
-# is /vol/cegs/src/trackhub , then the development code could be launched as follows:
-#
-#
-#     src_dev/update_tracks.bash  CEGS   /vol/cegs/public_html/trackhub_dev  "CEGS Dev"  "CEGS Development Hub"   \
-#     ==========================  =====  ==================================  =========   ======================
-#       Call the main script      Arg 1               Arg 2                    Arg 3             Arg 4
-#
-#                                 https://cascade.isg.med.nyu.edu/cegs
-#                                 =============================================================
-#                                                     Arg 5
-#
-# Arg 1:  Either CEGS or MAURANOLAB 
-#
-# Arg 2:  The full path to the new hub location, which must already exist and be empty.
-#
-# Args 3 & 4:  The short and long labels that appear on the UCSC browser Track Data Hubs page.
-#              If you have multiple hubs you should make sure these are unique, so you know what you are clicking on.
-#
-# Args 5:      The complete url to the new hub location; assumes that mapped, aggregations, and publicdata are present as subdirectories
-#
-############################################################################
-# Standard execution of this script (for CEGS dev and MAURANOLAB):
-#
-# First, make sure the target directory exists and is empty.
-# Then:
-#
-# /vol/cegs/src/trackhub/src_dev/update_tracks.bash CEGS /vol/cegs/public_html/trackhub_dev "CEGS Dev" "CEGS Development Hub" https://cascade.isg.med.nyu.edu/cegs
-#
-#
-# /vol/cegs/src/trackhub/src_prod/update_tracks.bash MAURANOLAB /home/cadlej01/public_html/trackhub "Maurano Lab" "Maurano Lab Hub" https://cascade.isg.med.nyu.edu/~cadlej01
-#
-############################################################################
 # Standard execution of this script (for CEGS prod):
-#
 # To avoid UCSC errors appearing in the production hub, the production version of the CEGS hub is generated via two scripts:
-#     /vol/cegs/src/trackhub/make_prod_hub_alpha.bash
-#     /vol/cegs/src/trackhub/make_prod_hub_final.bash
-#
-# make_prod_hub_alpha.bash calls update_tracks.bash as above, except the hub is placed in:
+# /vol/cegs/src/trackhub/make_prod_hub_alpha.bash calls update_tracks.bash as above, except the hub is placed in:
 #     /home/cadlej01/public_html/prod_test_trackhub
 #
-# make_prod_hub_final.bash clears out the old production hub, then copies the contents
+# /vol/cegs/src/trackhub/make_prod_hub_final.bash clears out the old production hub, then copies the contents
 # of prod_test_trackhub into /vol/cegs/public_html/trackhub
 #
 # The intent of the two-stage process is to allow for an opportunity to check the output of the
@@ -113,7 +71,6 @@ URLbase=$5
 
 
 # Check the inputs:
-
 if [[ "${hub_type}" == "CEGS" ]]; then
     customGenomeAssembly="cegsvectors"
     assemblyBaseDir="/vol/cegs"
@@ -250,8 +207,7 @@ echo "Making description files"
 cd ${path_to_main_driver_script}
 ./makeDescFiles.bash ${path_to_main_driver_script} ${hub_type} ${hub_target} ${TMPDIR} "${genome_array[@]}"
 ######################################################################################
-# Make the hub.txt and genomes.txt files, and populate the structure with 
-# other fixed, hand made assets.
+# Make the hub.txt and genomes.txt files, and populate the structure with other fixed, hand made assets.
 
 
 echo
