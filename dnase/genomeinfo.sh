@@ -100,6 +100,18 @@ sacCer3)
     referencefasta=/vol/isg/annotation/fasta/sacCer3/sacCer3.fa.gz
     dbsnpvcf=/dev/null
     ;;
+wuhCor1)
+    bwaIndex=/vol/isg/annotation/bwaIndex/wuhCor1/wuhCor1
+    ploidy="--ploidy 1"
+    referencefasta=/vol/isg/annotation/fasta/wuhCor1/wuhCor1.fa.gz
+    dbsnpvcf=/dev/null
+    ;;
+hg38_full_wuhCor1)
+    bwaIndex=/vol/isg/annotation/bwaIndex/hg38_full_wuhCor1/hg38_full_wuhCor1
+    ploidy="--ploidy 1"
+    referencefasta=/vol/isg/annotation/fasta/hg38_full_wuhCor1/hg38_full_wuhCor1.fa.gz
+    dbsnpvcf=/dev/null
+    ;;
 cegsvectors*)
     #If this genome is an symlink, then substitute it with its target for the purposes of looking up bwa index and fasta file
     bwagenome=`readlink -f /vol/cegs/sequences/${mappedgenome} | xargs basename`
