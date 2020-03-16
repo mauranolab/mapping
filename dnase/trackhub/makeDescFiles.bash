@@ -170,9 +170,12 @@ find_readcounts () {
 if [[ "${hub_type}" == "CEGS" ]]; then
     # CEGS flowcells
     hub_basedir="/vol/cegs"
-else
+elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
     # Maurano
     hub_basedir="/vol/mauranolab"
+elif [[ "${hub_type}" == "SARS" ]]; then
+    # SARS
+    hub_basedir="/vol/mauranolab/sars"
 fi
 
 # flowcells
@@ -182,8 +185,9 @@ find_readcounts ${hub_basedir}/mapped/ NA
 find_readcounts ${hub_basedir}/aggregations/ readcounts.summary.txt
 
 # publicdata
-find_readcounts ${hub_basedir}/publicdata/ readcounts.summary.txt
-
+if [[ "${hub_type}" != "SARS" ]]; then
+    find_readcounts ${hub_basedir}/publicdata/ readcounts.summary.txt
+fi
 
 ###########################################################################
 # Move the html files to trackhub_dev, and rename them.

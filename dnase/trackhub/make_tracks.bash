@@ -214,32 +214,32 @@ done
 
 ###########################################################################
 # publicdata:
-
-# Initialize publicdata output files
-for i in "${genome_array[@]}"; do
-    declare "outfile_${i}"="${outfile_base}_${i}_consolidated_pub.tsv"
-    ref="outfile_${i}"
-    cat "${TMP_OUT}/header" > "${!ref}"
-done
-outfile="${outfile_base}_all_pub.tsv"
-
-# Get the names of the publicdata directories
-cd ${assemblyBaseDir}/publicdata/
-dir_names=($(ls -d */))
-
-# Get rid of trailing slashes 
-pub_names=()
-for i in "${dir_names[@]}"; do
-    x=$i
-    y=${x%/}
-    pub_names+=($y)
-done
-
-# Call samplesforTrackhub.R for each publicdata directory.
-for i in "${pub_names[@]}"; do
-    agg_pub_loop $i publicdata
-done
-
+if [ "${hub_type}" != "SARS" ]; then
+    # Initialize publicdata output files
+    for i in "${genome_array[@]}"; do
+        declare "outfile_${i}"="${outfile_base}_${i}_consolidated_pub.tsv"
+        ref="outfile_${i}"
+        cat "${TMP_OUT}/header" > "${!ref}"
+    done
+    outfile="${outfile_base}_all_pub.tsv"
+    
+    # Get the names of the publicdata directories
+    cd ${assemblyBaseDir}/publicdata/
+    dir_names=($(ls -d */))
+    
+    # Get rid of trailing slashes 
+    pub_names=()
+    for i in "${dir_names[@]}"; do
+        x=$i
+        y=${x%/}
+        pub_names+=($y)
+    done
+    
+    # Call samplesforTrackhub.R for each publicdata directory.
+    for i in "${pub_names[@]}"; do
+        agg_pub_loop $i publicdata
+    done
+fi
 # End of the samplesforTrackhub.R section for "publicdata" samples.
 
 ###########################################################################
@@ -314,12 +314,14 @@ for i in "${genome_array[@]}"; do
 done
 
 ###############################
-consol_suffix_in="_consolidated_pub"
-supertrack_in="Public_Data"
-
-for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ${URLbase}/publicdata/ ${supertrack_in}
-done
+if [ "${hub_type}" != "SARS" ]; then
+    consol_suffix_in="_consolidated_pub"
+    supertrack_in="Public_Data"
+    
+    for i in "${genome_array[@]}"; do
+        make_tracks ${i} ${consol_suffix_in} ${URLbase}/publicdata/ ${supertrack_in}
+    done
+fi
 
 ###############################
 if [ ${hub_type} = "CEGS" ]; then

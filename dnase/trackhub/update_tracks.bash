@@ -5,7 +5,7 @@
 # This script can be called from anywhere.
 #
 # update_tracks.bash hub_type hub_target short_label long_label URLbase
-# hub_type:  Either CEGS or MAURANOLAB
+# hub_type:  Either CEGS or MAURANOLAB or SARS
 # hub_target:  The full path to the new hub location, which must already exist and be empty.
 # short_label, long_label:  The short and long labels that appear on the UCSC browser Track Data Hubs page. If you have multiple hubs you should make sure these are unique, so you know what you are clicking on.
 # URLbase:      The complete url to the new hub location; assumes that mapped, aggregations, and publicdata are present as subdirectories
@@ -77,8 +77,11 @@ if [[ "${hub_type}" == "CEGS" ]]; then
 elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
     customGenomeAssembly="mauranolab"
     assemblyBaseDir="/vol/mauranolab"
+elif [[ "${hub_type}" == "SARS" ]]; then
+    customGenomeAssembly="NA"
+    assemblyBaseDir="/vol/mauranolab/sars"
 else
-    echo "ERROR You need to enter a valid hub type. Either: CEGS or MAURANOLAB. Exiting..."
+    echo "ERROR You need to enter a valid hub type. Either: CEGS or MAURANOLAB or SARS. Exiting..."
     exit 1
 fi
 
@@ -102,6 +105,11 @@ fi
 
 echo "Building new ${hub_type} track hub in ${hub_target}"
 
+if [[ "${hub_type}" == "SARS" ]]; then
+    # Remake soft links. They were deleted by the calling script.
+    ln -s /vol/mauranolab/sars/mapped /home/cadlej01/public_html/trackhub_sars/mapped
+    ln -s /vol/mauranolab/sars/aggregations /home/cadlej01/public_html/trackhub_sars/aggregations
+fi
 ############################################################################
 # We need a tmp directory to store intermediate files.
 
@@ -123,7 +131,7 @@ path_to_main_driver_script=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 cd ${path_to_main_driver_script}
 
 # What genomes will we be working with?
-# These are defined in the CEGS_genomes and MAURANOLAB_genomes files.
+# These are defined in the CEGS_genomes, MAURANOLAB_genomes, and SARS_genomes files.
 # Read the applicable one here:
 readarray -t genome_array < "${path_to_main_driver_script}/${hub_type}_genomes"
 echo " "
@@ -176,19 +184,21 @@ update_genome () {
        cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated_agg.out" >> trackDb_001.txt
     fi
     
-    # Process the "publicdata" tracks.
-    num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated_pub.tsv")`
-    if [ ${num_line} -gt 1 ]; then
-       # If num_line == 1, then there are no publicdata tracks for this genome.
-       cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated_pub.out" >> trackDb_001.txt
-    fi
-    
-    if [ "${hub_type}" = "CEGS" ]; then
-        # Process the "CEGS_byLocus" tracks.
-        num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated_locus.tsv")`
+    if [[ "${hub_type}" != "SARS" ]]; then
+        # Process the "publicdata" tracks.
+        num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated_pub.tsv")`
         if [ ${num_line} -gt 1 ]; then
-           # If num_line == 1, then there are no CEGS_byLocus tracks for this genome.
-           cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated_locus.out" >> trackDb_001.txt
+           # If num_line == 1, then there are no publicdata tracks for this genome.
+           cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated_pub.out" >> trackDb_001.txt
+        fi
+        
+        if [ "${hub_type}" = "CEGS" ]; then
+            # Process the "CEGS_byLocus" tracks.
+            num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated_locus.tsv")`
+            if [ ${num_line} -gt 1 ]; then
+               # If num_line == 1, then there are no CEGS_byLocus tracks for this genome.
+               cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated_locus.out" >> trackDb_001.txt
+            fi
         fi
     fi
 }
@@ -198,7 +208,9 @@ for i in "${genome_array[@]}"; do
 done
 
 # Move the GC percentage file:
-cp ${TMPDIR}/assembly_tracks/${customGenomeAssembly}.gc.bw ${hub_target}/${customGenomeAssembly}/data
+if [[ "${hub_type}" != "SARS" ]]; then
+    cp ${TMPDIR}/assembly_tracks/${customGenomeAssembly}.gc.bw ${hub_target}/${customGenomeAssembly}/data
+fi
 
 ######################################################################################
 
@@ -217,7 +229,7 @@ echo "hub hub_id_${hub_id}" > "${hub_target}/hub.txt"
 echo "shortLabel ${short_label}" >> "${hub_target}/hub.txt"
 echo "longLabel ${long_label}" >> "${hub_target}/hub.txt"
 echo "genomesFile genomes.txt" >> "${hub_target}/hub.txt"
-echo "email cadley.nyulangone@gmail.com" >> "${hub_target}/hub.txt"
+echo "email cadley.mauranolab@gmail.com" >> "${hub_target}/hub.txt"
 echo "descriptionUrl description.html" >> "${hub_target}/hub.txt"
 
 
@@ -235,7 +247,9 @@ for i in "${genome_array[@]}"; do
 done
 
 
-cp ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit ${hub_target}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit
+if [[ "${hub_type}" != "SARS" ]]; then
+    cp ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit ${hub_target}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit
+fi
 #########################################################
 
 time_stamp=$(date +"%m-%d-%y %T")
@@ -249,7 +263,11 @@ echo "The UCSC browser url to this hub is:" | tee "${hub_target}/README"
 hub_dir=`basename ${hub_target}`
 
 # Construct url for the new hub.
-echo "${URLbase}/${hub_dir}/hub.txt" | tee -a "${hub_target}/README"
+if [[ "${hub_type}" != "SARS" ]]; then
+    echo "${URLbase}/${hub_dir}/hub.txt" | tee -a "${hub_target}/README"
+else
+    echo "${URLbase}/hub.txt" | tee -a "${hub_target}/README"
+fi
 
 ######################################################################################
 # Check for hub errors.
@@ -257,8 +275,13 @@ echo "${URLbase}/${hub_dir}/hub.txt" | tee -a "${hub_target}/README"
 
 echo
 echo "Running hubCheck"
-hubCheck -noTracks -udcDir=${TMPDIR} "${URLbase}/${hub_dir}/hub.txt"
-ierr=$?
+if [[ "${hub_type}" != "SARS" ]]; then
+    hubCheck -noTracks -udcDir=${TMPDIR} "${URLbase}/${hub_dir}/hub.txt"
+    ierr=$?
+else
+    hubCheck -noTracks -udcDir=${TMPDIR} "${URLbase}/hub.txt"
+    ierr=$?
+fi
 echo "hubCheck exit code is: ${ierr}"
 
 echo

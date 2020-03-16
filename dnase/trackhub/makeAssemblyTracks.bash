@@ -199,15 +199,16 @@ HEREDOC_02
 done
 # At the end of the above for loops, we're now in ${TMPDIR}/assembly_tracks
 
-# Divert here to make the cytoband file:
-cat ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes | LC_COLLATE=C sort -k1,1 -k2,2n | awk '{print $1,0,$2,$1,"gneg"}' > cytoBandIdeo.bed
-bedToBigBed -type=bed4 cytoBandIdeo.bed -as="${path_to_main_driver_script}/cytoband.as" ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes cytoBandIdeo.bigBed
-
-
-# Divert again to make the GC percentage file:
-hgGcPercent -wigOut -doGaps -file=stdout -win=5 -verbose=0 ${customGenomeAssembly} ${assemblyBaseDir}/sequences/${customGenomeAssembly} > ${customGenomeAssembly}.wig
-wigToBigWig ${customGenomeAssembly}.wig ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes ${customGenomeAssembly}.gc.bw
-
+if [ "${hub_type}" != "SARS" ]; then
+    # Divert here to make the cytoband file:
+    cat ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes | LC_COLLATE=C sort -k1,1 -k2,2n | awk '{print $1,0,$2,$1,"gneg"}' > cytoBandIdeo.bed
+    bedToBigBed -type=bed4 cytoBandIdeo.bed -as="${path_to_main_driver_script}/cytoband.as" ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes cytoBandIdeo.bigBed
+    
+    
+    # Divert again to make the GC percentage file:
+    hgGcPercent -wigOut -doGaps -file=stdout -win=5 -verbose=0 ${customGenomeAssembly} ${assemblyBaseDir}/sequences/${customGenomeAssembly} > ${customGenomeAssembly}.wig
+    wigToBigWig ${customGenomeAssembly}.wig ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes ${customGenomeAssembly}.gc.bw
+fi
 
 # Sort OUTFILE (made in the above for loops), so that the lines are all grouped by:
 #      First:  genome
