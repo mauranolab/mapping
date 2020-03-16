@@ -81,6 +81,8 @@ def getBasedir(lab, sampleType, fc):
         if sampleType in bwaPipelineAnalysisCommandMap.keys():
             if lab == "Maurano":
                 basedir = "/vol/mauranolab/mapped/"
+            elif lab == "SARS":
+                basedir = "/vol/mauranolab/sars/mapped/"
             elif lab == "CEGS":
                 basedir = "/vol/cegs/mapped/"
             else:
@@ -262,6 +264,8 @@ def getBwaReference(species):
             'Mouse+yeast': 'mm10_sacCer3',
             'Rat+yeast': 'rn6_sacCer3',
             'Yeast': 'sacCer3',
+            'SARS-Cov2': 'wuhCor1',
+            'Human+SARS-Cov2': 'hg38_full_wuhCor1',
             'Plasmid': None,
         }
     elif sampleType in ["Nano-DNase", "ChIP-seq", "DNase-seq"]:
