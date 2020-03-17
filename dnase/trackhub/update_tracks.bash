@@ -8,7 +8,10 @@
 # hub_type:  Either CEGS or MAURANOLAB or SARS
 # hub_target:  The full path to the new hub location, which must already exist and be empty.
 # short_label, long_label:  The short and long labels that appear on the UCSC browser Track Data Hubs page. If you have multiple hubs you should make sure these are unique, so you know what you are clicking on.
-# URLbase:      The complete url to the new hub location; assumes that mapped, aggregations, and publicdata are present as subdirectories
+# URLbase:      Complete URL (e.g. https://<login:pwd>@cascade.isg.med.nyu.edu/cegs) to the directory which contains the hub directory (e.g. "trackhub", trackhub_dev", "trackhub_sars").
+#               Previously, this directory also had to contain softlinks to mapped, aggregations, and publicdata. These were hard coded in the direcory.
+#               So putting another hub directory in URLbase was not feasible unless the second hub used the same soft links.
+#               These links are now constructed via this script, are are located inside the hub directory instead of inside URLbase.
 #
 #
 # Standard execution of this script (for CEGS dev and MAURANOLAB):
@@ -69,7 +72,6 @@ short_label=$3
 long_label=$4
 URLbase=$5
 
-
 # Check the inputs:
 if [[ "${hub_type}" == "CEGS" ]]; then
     customGenomeAssembly="cegsvectors"
@@ -105,10 +107,18 @@ fi
 
 echo "Building new ${hub_type} track hub in ${hub_target}"
 
+# Make soft links in hub directory, so we can have multiple hubs with their own data sources in public_html.
 if [[ "${hub_type}" == "SARS" ]]; then
-    # Remake soft links. They were deleted by the calling script.
-    ln -s /vol/mauranolab/sars/mapped /home/cadlej01/public_html/trackhub_sars/mapped
-    ln -s /vol/mauranolab/sars/aggregations /home/cadlej01/public_html/trackhub_sars/aggregations
+    ln -s /vol/mauranolab/sars/mapped "${hub_target}/mapped"
+    ln -s /vol/mauranolab/sars/aggregations "${hub_target}/aggregations"
+elif [[ "${hub_type}" == "CEGS" ]]; then
+    ln -s /vol/cegs/mapped "${hub_target}/mapped"
+    ln -s /vol/cegs/aggregations "${hub_target}/aggregations"
+    ln -s /vol/cegs/publicdata "${hub_target}/publicdata"
+elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
+    ln -s /vol/mauranolab/mapped "${hub_target}/mapped"
+    ln -s /vol/mauranolab/aggregations "${hub_target}/aggregations"
+    ln -s /vol/mauranolab/publicdata "${hub_target}/publicdata"
 fi
 ############################################################################
 # We need a tmp directory to store intermediate files.
@@ -148,8 +158,9 @@ echo "Starting makeAssemblyTracks.bash"
 ./makeAssemblyTracks.bash ${path_to_main_driver_script} ${hub_target} ${TMPDIR} ${hub_type} ${customGenomeAssembly} ${assemblyBaseDir} "${genome_array[@]}"
 
 # Now construct the "flowcell" and "aggregation" tracks in TMPDIR.
+hub_dir=`basename ${hub_target}`
 echo "Starting make_tracks.bash"
-./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} ${assemblyBaseDir} ${URLbase} "${genome_array[@]}"
+./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} ${assemblyBaseDir} "${URLbase}/${hub_dir}" "${genome_array[@]}"
 
 ######################################################################################
 # Now copy the track information to the hub location.
@@ -208,7 +219,7 @@ for i in "${genome_array[@]}"; do
 done
 
 # Move the GC percentage file:
-if [[ "${hub_type}" != "SARS" ]]; then
+if [ -f "${TMPDIR}/assembly_tracks/${customGenomeAssembly}.gc.bw" ]; then
     cp ${TMPDIR}/assembly_tracks/${customGenomeAssembly}.gc.bw ${hub_target}/${customGenomeAssembly}/data
 fi
 
@@ -246,8 +257,7 @@ for i in "${genome_array[@]}"; do
     echo " " >> "${hub_target}/genomes.txt"
 done
 
-
-if [[ "${hub_type}" != "SARS" ]]; then
+if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit" ]; then
     cp ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit ${hub_target}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit
 fi
 #########################################################
@@ -260,14 +270,8 @@ echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> "${hub_target}/descr
 echo
 echo "The UCSC browser url to this hub is:" | tee "${hub_target}/README"
 
-hub_dir=`basename ${hub_target}`
-
 # Construct url for the new hub.
-if [[ "${hub_type}" != "SARS" ]]; then
-    echo "${URLbase}/${hub_dir}/hub.txt" | tee -a "${hub_target}/README"
-else
-    echo "${URLbase}/hub.txt" | tee -a "${hub_target}/README"
-fi
+echo "${URLbase}/${hub_dir}/hub.txt" | tee -a "${hub_target}/README"
 
 ######################################################################################
 # Check for hub errors.
@@ -275,13 +279,8 @@ fi
 
 echo
 echo "Running hubCheck"
-if [[ "${hub_type}" != "SARS" ]]; then
-    hubCheck -noTracks -udcDir=${TMPDIR} "${URLbase}/${hub_dir}/hub.txt"
-    ierr=$?
-else
-    hubCheck -noTracks -udcDir=${TMPDIR} "${URLbase}/hub.txt"
-    ierr=$?
-fi
+hubCheck -noTracks -udcDir=${TMPDIR} "${URLbase}/${hub_dir}/hub.txt"
+ierr=$?
 echo "hubCheck exit code is: ${ierr}"
 
 echo

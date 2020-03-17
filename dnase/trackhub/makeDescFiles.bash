@@ -59,6 +59,10 @@ find_readcounts () {
     local dir_base=$1
     local suffix=$2
     
+    if [ ! -d "${dir_base}" ] ; then
+        return 0
+    fi
+    
     local flowcell
     local BASE
     local BASE2
@@ -185,9 +189,7 @@ find_readcounts ${hub_basedir}/mapped/ NA
 find_readcounts ${hub_basedir}/aggregations/ readcounts.summary.txt
 
 # publicdata
-if [[ "${hub_type}" != "SARS" ]]; then
-    find_readcounts ${hub_basedir}/publicdata/ readcounts.summary.txt
-fi
+find_readcounts ${hub_basedir}/publicdata/ readcounts.summary.txt
 
 ###########################################################################
 # Move the html files to trackhub_dev, and rename them.
