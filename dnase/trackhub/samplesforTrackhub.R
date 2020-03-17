@@ -337,22 +337,30 @@ for(curdir in mappeddirs) {
 							payload <- Genetic_Modification[sapply(Genetic_Modification, grepl, pattern="\\[LP(ICE|[0-9]+)\\]$", perl=T)]
 							payload <- gsub("\\[LP(ICE|[0-9]+)\\]$", "", payload, perl=T)
 							SampleNameSplit <- unlist(strsplit(payload, "_"))
-							CEGSsampleType <- "Cells"
+							CEGSsampleType <- "PayloadCells"
+						# Group any samples that have a LP but no assemblon
+						} else if(any(sapply(Genetic_Modification, grepl, pattern="LP(ICE|[0-9]+)\\[(.+)\\]$", perl=T))) {
+							LP <- Genetic_Modification[sapply(Genetic_Modification, grepl, pattern="LP(ICE|[0-9]+)\\[(.+)\\]$", perl=T)]
+							integrationsite <- gsub("LP(ICE|[0-9]+)\\[(.+)\\]$", "\\2", LP, perl=T)
+							LP <- gsub("\\[.+\\]$", "", LP, perl=T)
+							#Use gene from integrationsite as Assembly ID
+							SampleNameSplit <- c("LandingPads", LP, unlist(strsplit(integrationsite, "_"))[1])
+							CEGSsampleType <- "LP_Cells"
 						} else {
-							#Couldn't parse
+							#We failed parsing
 							SampleNameSplit <- NA
 							CEGSsampleType <- NA
 						}
 					}
 					
-					if(CEGSsampleType %in% c("Yeast", "DNA", "BAC", "RepoBAC", "Ecoli", "Amplicon", "Cells")) {
+					if(CEGSsampleType %in% c("Yeast", "DNA", "BAC", "RepoBAC", "Ecoli", "Amplicon", "PayloadCells", "LP_Cells")) {
 						data$Study[i] <- SampleNameSplit[1]
 						if(CEGSsampleType != "RepoBAC") {
 							#RepoBAC just have a SampleID field which doesn't make it into a specific UCSC field right now
 							data$Project[i] <- SampleNameSplit[2]
 							data$Assembly[i] <- SampleNameSplit[3]
-							if(length(SampleNameSplit) >= 5) {
-								#We have informally allowed optional comment field in Genetic Modification entries
+							if(length(SampleNameSplit) >= 4) {
+								#The 4th field in Genetic Modification can specify an alternate backbone
 								data$Info[i] <- SampleNameSplit[4]
 							}
 						}
