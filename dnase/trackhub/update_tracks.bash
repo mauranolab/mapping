@@ -108,18 +108,12 @@ fi
 echo "Building new ${hub_type} track hub in ${hub_target}"
 
 # Make soft links in hub directory, so we can have multiple hubs with their own data sources in public_html.
-if [[ "${hub_type}" == "SARS" ]]; then
-    ln -s /vol/mauranolab/sars/mapped "${hub_target}/mapped"
-    ln -s /vol/mauranolab/sars/aggregations "${hub_target}/aggregations"
-elif [[ "${hub_type}" == "CEGS" ]]; then
-    ln -s /vol/cegs/mapped "${hub_target}/mapped"
-    ln -s /vol/cegs/aggregations "${hub_target}/aggregations"
-    ln -s /vol/cegs/publicdata "${hub_target}/publicdata"
-elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
-    ln -s /vol/mauranolab/mapped "${hub_target}/mapped"
-    ln -s /vol/mauranolab/aggregations "${hub_target}/aggregations"
-    ln -s /vol/mauranolab/publicdata "${hub_target}/publicdata"
-fi
+for subdir in mapped aggregations publicdata; do
+    if [[ -d "${assemblyBaseDir}/${subdir}" ]]; then
+        ln -s ${assemblyBaseDir}/${subdir} "${hub_target}/${subdir}"
+    fi
+done
+
 ############################################################################
 # We need a tmp directory to store intermediate files.
 
