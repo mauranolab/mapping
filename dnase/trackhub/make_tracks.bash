@@ -302,7 +302,7 @@ consol_suffix_in="_consolidated"
 supertrack_in="Flowcells"
 
 for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ${URLbase}/mapped/ ${supertrack_in}
+    make_tracks ${i} ${consol_suffix_in} mapped/ ${supertrack_in}
 done
 
 ###############################
@@ -310,7 +310,7 @@ consol_suffix_in="_consolidated_agg"
 supertrack_in="Aggregations"
 
 for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ${URLbase}/aggregations/ ${supertrack_in}
+    make_tracks ${i} ${consol_suffix_in} aggregations/ ${supertrack_in}
 done
 
 ###############################
@@ -319,7 +319,7 @@ if [ "${hub_type}" != "SARS" ]; then
     supertrack_in="Public_Data"
     
     for i in "${genome_array[@]}"; do
-        make_tracks ${i} ${consol_suffix_in} ${URLbase}/publicdata/ ${supertrack_in}
+        make_tracks ${i} ${consol_suffix_in} publicdata/ ${supertrack_in}
     done
 fi
 
@@ -329,7 +329,7 @@ if [ ${hub_type} = "CEGS" ]; then
     supertrack_in="By_Locus"
     
     for i in "${genome_array[@]}"; do
-        make_tracks ${i} ${consol_suffix_in} ${URLbase}/mapped/ ${supertrack_in}
+        make_tracks ${i} ${consol_suffix_in} mapped/ ${supertrack_in}
     done
 fi
 ###############################
