@@ -12,9 +12,7 @@ path_to_main_driver_script=$3
 
 assemblyBaseDir=$4
 
-URLbase=$5
-
-shift 5
+shift 4
 genome_array=("$@")
 
 ##############################################################################

@@ -5,18 +5,16 @@
 # This script can be called from anywhere.
 #
 # update_tracks.bash hub_type hub_target short_label long_label URLbase
-# hub_type:  Either CEGS or MAURANOLAB or SARS
+# hub_type:  One of: CEGS, MAURANOLAB, or SARS
 # hub_target:  The full path to the new hub location, which must already exist and be empty.
 # short_label, long_label:  The short and long labels that appear on the UCSC browser Track Data Hubs page. If you have multiple hubs you should make sure these are unique, so you know what you are clicking on.
-# URLbase:      Complete URL (e.g. https://<login:pwd>@cascade.isg.med.nyu.edu/cegs) to the directory which contains the hub directory (e.g. "trackhub", trackhub_dev", "trackhub_sars").
-#               Previously, this directory also had to contain softlinks to mapped, aggregations, and publicdata. These were hard coded in the direcory.
-#               So putting another hub directory in URLbase was not feasible unless the second hub used the same soft links.
-#               These links are now constructed via this script, are are located inside the hub directory instead of inside URLbase.
+# URLbase:      Complete URL (e.g. https://<login:pwd>@cascade.isg.med.nyu.edu/cegs) to the directory which contains the hub directory (e.g. "trackhub", trackhub_dev", "trackhub_sars"), used for hubCheck
 #
 #
-# Standard execution of this script (for CEGS dev and MAURANOLAB):
+# Standard execution of this script:
 #/vol/cegs/src/trackhub/src_dev/update_tracks.bash CEGS /vol/cegs/public_html/trackhub_dev "CEGS Dev" "CEGS Development Hub" https://cascade.isg.med.nyu.edu/cegs
 #/vol/cegs/src/trackhub/src_prod/update_tracks.bash MAURANOLAB /home/cadlej01/public_html/trackhub "Maurano Lab" "Maurano Lab Hub" https://cascade.isg.med.nyu.edu/~cadlej01
+#/vol/mauranolab/mapped/src/dnase/trackhub/update_tracks.bash SARS /vol/mauranolab/sars/public_html/trackhub "SARS-CoV2" "SARS-CoV2 Hub" https://cascade.isg.med.nyu.edu/sars
 #
 # There are two sets of code, defined as development and production.
 # They are located here:
@@ -154,7 +152,7 @@ echo "Starting makeAssemblyTracks.bash"
 # Now construct the "flowcell" and "aggregation" tracks in TMPDIR.
 hub_dir=`basename ${hub_target}`
 echo "Starting make_tracks.bash"
-./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} ${assemblyBaseDir} "${URLbase}/${hub_dir}" "${genome_array[@]}"
+./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} ${assemblyBaseDir} "${genome_array[@]}"
 
 ######################################################################################
 # Now copy the track information to the hub location.
