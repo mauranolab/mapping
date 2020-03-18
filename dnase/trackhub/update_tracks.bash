@@ -108,7 +108,7 @@ echo "Building new ${hub_type} track hub in ${hub_target}"
 # Make soft links in hub directory, so we can have multiple hubs with their own data sources in public_html.
 for subdir in mapped aggregations publicdata; do
     if [[ -d "${assemblyBaseDir}/${subdir}" ]]; then
-        ln -s ${assemblyBaseDir}/${subdir} "${hub_target}/${subdir}"
+        ln -s ${assemblyBaseDir}/${subdir} ${hub_target}/
     fi
 done
 
