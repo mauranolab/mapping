@@ -59,6 +59,10 @@ find_readcounts () {
     local dir_base=$1
     local suffix=$2
     
+    if [ ! -d "${dir_base}" ] ; then
+        return 0
+    fi
+    
     local flowcell
     local BASE
     local BASE2
@@ -168,11 +172,13 @@ find_readcounts () {
 ##############################################################################
 # Make the html files.
 if [[ "${hub_type}" == "CEGS" ]]; then
-    # CEGS flowcells
     hub_basedir="/vol/cegs"
-else
-    # Maurano
+elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
     hub_basedir="/vol/mauranolab"
+elif [[ "${hub_type}" == "SARS" ]]; then
+    hub_basedir="/vol/mauranolab/sars"
+else
+    echo "ERROR impossible"
 fi
 
 # flowcells
