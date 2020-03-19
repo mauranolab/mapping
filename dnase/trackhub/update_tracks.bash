@@ -257,13 +257,6 @@ fi
 time_stamp=$(date +"%m-%d-%y %T")
 echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> "${hub_target}/description.html"
 
-######################################################################################
-# Provide a README with the hub link.
-echo
-echo "The UCSC browser url to this hub is:" | tee "${hub_target}/README"
-
-# Construct url for the new hub.
-echo "${URLbase}/${hub_dir}/hub.txt" | tee -a "${hub_target}/README"
 
 ######################################################################################
 # Check for hub errors.
