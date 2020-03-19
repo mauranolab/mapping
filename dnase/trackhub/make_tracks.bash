@@ -12,7 +12,9 @@ path_to_main_driver_script=$3
 
 assemblyBaseDir=$4
 
-shift 4
+hub_target=$5
+
+shift 5
 genome_array=("$@")
 
 ##############################################################################
@@ -255,7 +257,12 @@ make_tracks () {
     
     local mappedgenome_consol=${mappedgenome}${consol_suffix}
     local infile=${TMP_OUT}"/samplesforTrackhub_"${mappedgenome_consol}".tsv"
-    local outfile=${TMP_OUT}"/MakeTrackhub_"${mappedgenome_consol}".out"
+
+    num_line=`(wc -l < ${infile})`
+    if [ ${num_line} -le 1 ]; then
+        # There are no tracks of this type
+        return 0
+    fi
     
     local includeSampleIDinSampleCol=""
     if [ ${supertrack} != "Aggregations" ] && [ ${supertrack} != "Public_Data" ] && [ ${supertrack} != "By_Locus" ]; then
@@ -272,6 +279,8 @@ make_tracks () {
         subgroupprefix="--subgroupnames Replicate"
     fi
     
+    trackfile="trackDb.${supertrack}.txt"
+
     if [ ${supertrack} = "By_Locus" ]; then
         supertrackPriority=20
     elif [ ${supertrack} = "Aggregations" ]; then
@@ -281,6 +290,7 @@ make_tracks () {
     elif [ ${supertrack} = "Flowcells" ]; then
         supertrackPriority=50
     else
+        trackfile="trackDb.noSupertrack.txt"
         supertrackPriority=99
     fi
     
@@ -293,7 +303,7 @@ make_tracks () {
            --supertrackPriority ${supertrackPriority} \
            --genome ${mappedgenome} \
            --checksamples \
-           --URLbase ${URLbase} > ${outfile}
+           --URLbase ${URLbase} > "${hub_target}/${mappedgenome}/${trackfile}"
 }
 ###############################
 consol_suffix_in="_consolidated"
