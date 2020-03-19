@@ -152,19 +152,24 @@ echo "Starting makeAssemblyTracks.bash"
 # Now construct the "flowcell" and "aggregation" tracks in TMPDIR.
 hub_dir=`basename ${hub_target}`
 echo "Starting make_tracks.bash"
-./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} ${assemblyBaseDir} "${genome_array[@]}"
+./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} ${assemblyBaseDir} ${hub_target} "${genome_array[@]}"
 
 ######################################################################################
 # Now copy the track information to the hub location.
 echo
 echo "Updating track files"
 
+make_track_include () {
+    local tracks=$1
+    if [ -f ${tracks} ]; then
+       echo -e "include ${tracks}\n" >> trackDb_001.txt
+    fi
+}
+
 update_genome () {
     genome=$1
     cd "${hub_target}/${genome}"
     
-    # Process the Assembly tracks.
-    # may not have assemblies in all genomes.
     if [ -f "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" ]; then
         cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" trackDb_001.txt
     fi
@@ -173,37 +178,11 @@ update_genome () {
         cp "${TMPDIR}/assembly_tracks/cytoBandIdeo.bigBed" data
     fi
     
-    # Process the "flowcell" tracks.
-    num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated.tsv")`
-    if [ ${num_line} -gt 1 ]; then
-       # If num_line == 1, then there are no flowcell tracks for this genome.
-       cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated.out" >> trackDb_001.txt
-    fi
-    
-    # Process the "aggregation" tracks.
-    num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated_agg.tsv")`
-    if [ ${num_line} -gt 1 ]; then
-       # If num_line == 1, then there are no aggregation tracks for this genome.
-       cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated_agg.out" >> trackDb_001.txt
-    fi
-    
-    if [[ "${hub_type}" != "SARS" ]]; then
-        # Process the "publicdata" tracks.
-        num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated_pub.tsv")`
-        if [ ${num_line} -gt 1 ]; then
-           # If num_line == 1, then there are no publicdata tracks for this genome.
-           cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated_pub.out" >> trackDb_001.txt
-        fi
-        
-        if [ "${hub_type}" = "CEGS" ]; then
-            # Process the "CEGS_byLocus" tracks.
-            num_line=`(wc -l < "${TMPDIR}/samplesforTrackhub_${genome}_consolidated_locus.tsv")`
-            if [ ${num_line} -gt 1 ]; then
-               # If num_line == 1, then there are no CEGS_byLocus tracks for this genome.
-               cat "${TMPDIR}/MakeTrackhub_${genome}_consolidated_locus.out" >> trackDb_001.txt
-            fi
-        fi
-    fi
+    make_track_include trackDb.Flowcells.txt
+    make_track_include trackDb.Aggregations.txt
+    make_track_include trackDb.Public_Data.txt
+    make_track_include trackDb.By_Locus.txt
+    make_track_include trackDb.noSupertrack.txt
 }
 
 for i in "${genome_array[@]}"; do
