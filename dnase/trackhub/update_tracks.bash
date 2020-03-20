@@ -1,36 +1,29 @@
 #!/bin/bash
 ############################################################################
-# Usage:
+#
 # This is the main driver script for the construction of a UCSC track hub.
 # This script can be called from anywhere.
 #
-# update_tracks.bash hub_type hub_target short_label long_label URLbase
-# hub_type:  One of: CEGS, MAURANOLAB, or SARS
-# hub_target:  The full path to the new hub location, which must already exist and be empty.
-# short_label, long_label:  The short and long labels that appear on the UCSC browser Track Data Hubs page. If you have multiple hubs you should make sure these are unique, so you know what you are clicking on.
-# URLbase:      Complete URL (e.g. https://<login:pwd>@cascade.isg.med.nyu.edu/cegs) to the directory which contains the hub directory (e.g. "trackhub", trackhub_dev", "trackhub_sars"), used for hubCheck
-#
+# Usage:
+# update_tracks.bash <hub_type> <hub_target> <short_label> <long_label>
+#     hub_type:   One of: CEGS, MAURANOLAB, or SARS
+#     hub_target:  The full path to the new hub location, which must already exist.
+#     short_label, long_label:  The short and long labels that appear on the UCSC browser Track Data Hubs page. If you have multiple hubs you should make sure these are unique, so you know what you are clicking on.
 #
 # Standard execution of this script:
-#/vol/cegs/src/trackhub/src_dev/update_tracks.bash CEGS /vol/cegs/public_html/trackhub_dev "CEGS Dev" "CEGS Development Hub" https://cascade.isg.med.nyu.edu/cegs
-#/vol/cegs/src/trackhub/src_prod/update_tracks.bash MAURANOLAB /home/cadlej01/public_html/trackhub "Maurano Lab" "Maurano Lab Hub" https://cascade.isg.med.nyu.edu/~cadlej01
-#/vol/mauranolab/mapped/src/dnase/trackhub/update_tracks.bash SARS /vol/mauranolab/sars/public_html/trackhub "SARS-CoV2" "SARS-CoV2 Hub" https://cascade.isg.med.nyu.edu/sars
+#    For development:
+#        /vol/cegs/src/trackhub/src_dev/update_tracks.bash CEGS /vol/cegs/public_html/trackhub_dev "CEGS Dev" "CEGS Development Hub"
+#        /vol/cegs/src/trackhub/src_dev/update_tracks.bash SARS /home/cadlej01/public_html/trackhub_sars "SARS" "SARS Hub"
+#
+#    For production:
+#        /vol/cegs/src/trackhub/src_prod/update_tracks.bash CEGS /vol/cegs/public_html/trackhub "CEGS" "CEGS Hub"
+#        /vol/cegs/src/trackhub/src_prod/update_tracks.bash MAURANOLAB /home/cadlej01/public_html/trackhub "Maurano Lab" "Maurano Lab Hub"
+#        /vol/mauranolab/mapped/src/dnase/trackhub/update_tracks.bash SARS /vol/mauranolab/sars/public_html/trackhub "SARS-CoV2" "SARS-CoV2 Hub"
 #
 # There are two sets of code, defined as development and production.
 # They are located here:
 #     /vol/cegs/src/trackhub/src_dev
 #     /vol/cegs/src/trackhub/src_prod
-#
-# Standard execution of this script (for CEGS prod):
-# To avoid UCSC errors appearing in the production hub, the production version of the CEGS hub is generated via two scripts:
-# /vol/cegs/src/trackhub/make_prod_hub_alpha.bash calls update_tracks.bash as above, except the hub is placed in:
-#     /home/cadlej01/public_html/prod_test_trackhub
-#
-# /vol/cegs/src/trackhub/make_prod_hub_final.bash clears out the old production hub, then copies the contents
-# of prod_test_trackhub into /vol/cegs/public_html/trackhub
-#
-# The intent of the two-stage process is to allow for an opportunity to check the output of the
-# production code prior to clearing out the old production directory.
 #
 ############################################################################
 #
@@ -39,10 +32,9 @@
 # update_tracks.bash       - The main script, which calls all the others.
 #
 # makeAssemblyTracks.bash  - Updates the bigBED files for the assemblies.
-#                          - Creates track files for these bigBED files.
-#                          - Is only executed with the CEGS arguement set.
+#                          - Creates supertracks for these bigBED files.
 #
-# make_tracks.bash         - Updates the "flowcell" and "aggregates" tracks.
+# make_tracks.bash         - Updates the Flowcells, Aggregations, Public_Data, and By_Locus supertracks.
 #
 # makeDescFiles.bash       - When possible, creates description HTML files for tracks with readcounts files.
 #
@@ -60,15 +52,12 @@ module load ucsckentutils/379
 module load bedops/2.4.37
 module load R/3.5.0
 module load python/3.8.1
-
-
 ############################################################################
 
 hub_type=$1
-hub_target=$2
+hub_target_final=$2
 short_label=$3
 long_label=$4
-URLbase=$5
 
 # Check the inputs:
 if [[ "${hub_type}" == "CEGS" ]]; then
@@ -86,31 +75,18 @@ else
 fi
 
 # We only accept an absolute path, not a relative path.
-if [[ ! "${hub_target}" = /* ]]; then
+if [[ ! "${hub_target_final}" = /* ]]; then
     echo "ERROR The target directory path is relative, not absolute. Exiting..."
     exit 2
 fi
 
 # Make sure the target directory has already been built.
-if [ ! -d "${hub_target}" ]; then
+if [ ! -d "${hub_target_final}" ]; then
     echo "ERROR The target directory does not exist.  Exiting..."
     exit 3
 fi
 
-# Make sure the target directory is empty.
-if [ "$(ls -A ${hub_target})" ]; then
-    echo "ERROR The target directory is not empty.  Exiting..."
-    exit 4
-fi
-
-echo "Building new ${hub_type} track hub in ${hub_target}"
-
-# Make soft links in hub directory, so we can have multiple hubs with their own data sources in public_html.
-for subdir in mapped aggregations publicdata; do
-    if [[ -d "${assemblyBaseDir}/${subdir}" ]]; then
-        ln -s ${assemblyBaseDir}/${subdir} ${hub_target}/
-    fi
-done
+echo "Building new ${hub_type} track hub in ${hub_target_final}"
 
 ############################################################################
 # We need a tmp directory to store intermediate files.
@@ -124,6 +100,19 @@ echo TMPDIR is: ${TMPDIR}
 # rm -rf ${TMPDIR}
 # mkdir ${TMPDIR}
 # echo TMPDIR is: ${TMPDIR}
+
+############################################################################
+
+hub_target="/${TMPDIR}/trackhub"
+rm -rf ${hub_target}
+mkdir ${hub_target}
+
+# Make soft links in hub directory, so we can have multiple hubs with their own data sources in public_html.
+for subdir in mapped aggregations publicdata; do
+    if [[ -d "${assemblyBaseDir}/${subdir}" ]]; then
+        ln -s ${assemblyBaseDir}/${subdir} ${hub_target}/
+    fi
+done
 
 ############################################################################
 
@@ -243,19 +232,43 @@ echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> "${hub_target}/descr
 
 echo
 echo "Running hubCheck"
-hubCheck -noTracks -udcDir=${TMPDIR} "${URLbase}/${hub_dir}/hub.txt"
+hubCheck -noTracks -udcDir=${TMPDIR} "${hub_target}/hub.txt"
 ierr=$?
 echo "hubCheck exit code is: ${ierr}"
 
 echo
 
 if [ ${ierr} -eq 0 ]; then
-   echo "Removing TMP directory."
-   rm -rf ${TMPDIR}
-   echo "Done!"
+    # Clean out old hub:
+    for i in "${genome_array[@]}"; do
+        rm -rf "${hub_target_final}/${i}"
+    done
+    rm -f  ${hub_target_final}/genomes.txt
+    rm -f  ${hub_target_final}/description.html
+    rm -f  ${hub_target_final}/hub.txt
+    rm -f  ${hub_target_final}/publicdata
+    rm -f  ${hub_target_final}/aggregations
+    rm -f  ${hub_target_final}/mapped
+    
+    # Make sure there is no junk left in there:
+    if [ "$(ls -A ${hub_target_final})" ]; then
+        echo "ERROR The final target directory is not empty.  Exiting..."
+        echo "Not updating hub. Retaining TMPDIR."
+        echo "It is: ${TMPDIR}"
+        exit 4
+    fi
+    
+    # Replace old hub with new hub:
+    echo "Copying the hub."
+    cp -rpd ${hub_target}/* ${hub_target_final}
+    
+    echo "Removing TMPDIR directory."
+    rm -rf ${TMPDIR}
+    echo "Done!"
 else
-   echo "Retaining TMPDIR."
-   echo "It is: ${TMPDIR}"
+    echo "Not updating hub. Retaining TMPDIR."
+    echo "It is: ${TMPDIR}"
+    exit 5
 fi
 ######################################################################################
 
