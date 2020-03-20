@@ -104,7 +104,6 @@ echo TMPDIR is: ${TMPDIR}
 ############################################################################
 
 hub_target="/${TMPDIR}/trackhub"
-rm -rf ${hub_target}
 mkdir ${hub_target}
 
 # Make soft links in hub directory, so we can have multiple hubs with their own data sources in public_html.
