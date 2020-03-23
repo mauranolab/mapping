@@ -491,11 +491,11 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     echo
     
     
-    echo
-    echo
-    echo "Gerald's call for mismatched positions"
-    date
-    awk 'BEGIN {OFS="\t"; print "cycle", "A", "C", "G", "T", "N"} {errors[$2,$3]++} END {for(i=1; i<=36; i++) {print i, errors[i, "A"], errors[i, "C"], errors[i, "G"], errors[i, "T"], errors[i, "N"]}}' $TMPDIR/${curfile}.mm.txt
+#    echo
+#    echo
+#    echo "Gerald's call for mismatched positions"
+#    date
+#    awk 'BEGIN {OFS="\t"; print "cycle", "A", "C", "G", "T", "N"} {errors[$2,$3]++} END {for(i=1; i<=36; i++) {print i, errors[i, "A"], errors[i, "C"], errors[i, "G"], errors[i, "T"], errors[i, "N"]}}' $TMPDIR/${curfile}.mm.txt
 done
 
 
