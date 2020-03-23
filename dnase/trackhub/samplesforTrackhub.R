@@ -204,222 +204,223 @@ for(curdir in mappeddirs) {
 		
 		if(tail(analysisFileContents, 2)[1] != "Done!"){
 			message("[samplesforTrackhub] ", "WARNING ", analysisFile, " appears not to have completed successfully")
-		} else {
-			i <- i+1
-			# We need to add a new row to "data". The values will be set within this for loop.
-			data[i,] <- NA
-			
-			pipelineParameters <- analysisFileContents[grep('^Running [^,]+,[^,]+ analysis', analysisFileContents, perl=T)]
-			if(length(pipelineParameters)>0) {
-				sampleType <- pipelineParametersParser(pipelineParameters, "analysisCommand")
-				mappedgenome <- pipelineParametersParser(pipelineParameters, "mappedgenome")
-				annotationgenome <- pipelineParametersParser(pipelineParameters, "annotationgenome")
-				
-				data$Mapped_Genome[i] <- mappedgenome
-				
-				# Is the annotation geneome in the "Running ... analysis ..." line ?
- 				if(nchar(annotationgenome) > 0) {
-					# It is.
- 					data$Annotation_Genome[i] <- annotationgenome
-				} else {
-					# It is not. Extract it from the "mappedgenome" field.
- 					annotationgenome <- gsub("_.+$", "", mappedgenome)
- 					data$Annotation_Genome[i] <- gsub("all$", "", annotationgenome)
-				}
-			} else {
-				#assume dnase for old pipeline
-				sampleType <- "dnase"
-			}
-			
-			# Adding a new Assay type also requires changes to be made to MakeTrackhub.py
-			# Look for the initialization of "assay_type" in MakeTrackhub.py for comments on this.
-			if(sampleType=="dnase") {
-				data$Assay[i] <- "DNase-seq"
-			} else if(sampleType=="atac") {
-				data$Assay[i] <- "ATAC-seq"
-			} else if(sampleType=="none") {
-				data$Assay[i] <- "None"
-			} else if(sampleType=="dna" || sampleType=="callsnps") {
-				data$Assay[i] <- "DNA"
-			} else if(sampleType=="capture" || sampleType=="callsnpsCapture") {
-				data$Assay[i] <- "DNA Capture"
-			} else if(sampleType=="chipseq") {
-				data$Assay[i] <- SampleIDsplit[2]
-			} else {
-				message("[samplesforTrackhub] ", "WARNING don't recognize sampleType: ", sampleType)
-			}
-			
-			data$Name[i] <- SampleIDsplit[1]
-			
-			data[i, "SampleID"] <- SampleIDsplit[length(SampleIDsplit)]
-			
-			#TODO parameterize setting a different key for color lookup
-			if(is.null(colorAssignments) || !data$Name[i] %in% colorAssignments$group) {
-				colorAssignments <- rbind(colorAssignments, data.frame(group=data$Name[i], rgb=colorPalette[nextColorFromPalette+1], stringsAsFactors=F))
-				nextColorFromPalette <- (nextColorFromPalette + 1) %% length(colorPalette)
-			}
-			data$Color[i] <- colorAssignments[colorAssignments$group == data$Name[i], "rgb"]
-			
-			data$analyzed_reads[i] <- strsplit(analysisFileContents[grep('^Num_analyzed_(tags|reads)\t', analysisFileContents)], '\t')[[1]][2] #Tags is for old pipeline
-			
-			#Parse SampleAnnotation as a list of values with the key as name
-			if(any(grep('^SampleAnnotation\t', analysisFileContents))) {
-				SampleAnnotation <- strsplit(analysisFileContents[grep('^SampleAnnotation\t', analysisFileContents)], '\t')[[1]][2]
-				#Split up semicolon-delimited key/value pairs
-				SampleAnnotation <- strsplit(SampleAnnotation, ";")[[1]]
-				#Split up key/value
-				SampleAnnotation <- sapply(SampleAnnotation, USE.NAMES=F, FUN=function(x) {
-					ret=list()
-					for(cur in strsplit(x, "=")) { 
-						ret[cur[1]] = cur[2] 
-					}
-					return(ret)
-				})
-			} else {
-				SampleAnnotation <- list()
-			}
-			
-			if( !is.null(SampleAnnotation[["Bait_set"]]) ) {
-				data$Bait_set[i] <- SampleAnnotation[["Bait_set"]]
-			}
-			
-			if( !is.null(SampleAnnotation[["Genetic_Modification"]]) ) {
-				data$Genetic_Modification[i] <- SampleAnnotation[["Genetic_Modification"]]
-			}
-			
-			if(any(grepl('^Genomic_coverage\t', analysisFileContents))) {
-				data$Genomic_coverage[i] <- strsplit(analysisFileContents[grep('^Genomic_coverage\t', analysisFileContents)], '\t')[[1]][2]
-			}
-			
-			if(any(grepl('^Num_hotspots2\t', analysisFileContents))) {
-				data$Num_hotspots[i] <- strsplit(analysisFileContents[grep('^Num_hotspots2\t', analysisFileContents)], '\t')[[1]][2]
-			}
-			
-			if(any(grepl('^SPOT\t', analysisFileContents))) {
-				data$SPOT[i] <- strsplit(analysisFileContents[grep('^SPOT\t', analysisFileContents)], '\t')[[1]][2]
-			}
-			
-			if(!is.null(inputSampleIDs)) {
-				#Note that color has already been established and won't be redone if sample name changes
-				
-				#Matching the DS number from the analysis file to inputSampleIDs can give multiple results, so just pick the first
-				inputSampleIDrow <- which(inputSampleIDs[,"DS"] == data[i, "SampleID"])[1]
-				
-				#Take all columns to be taken from inputSampleIDs
-				for(curCol in intersect(outputCols, setdiff(colnames(inputSampleIDs), "DS"))) {
-					if(!is.na(inputSampleIDs[inputSampleIDrow, curCol])) {
-						data[i, curCol] <- inputSampleIDs[inputSampleIDrow, curCol]
-					}
-				}
-			}
-			
-			if(opt$project %in% c("byFC", "CEGS_byLocus")) {
-				data$Institution[i] <- "NYU"
-				
-				if(opt$project=="byFC") {
-					curFC <- unlist(strsplit(curdir, "/"))[1]
-					data$Group[i] <- curFC
-					if(curFC %in% names(flowcell_dates)) {
-						#Group values will be in the form of YYYMMDD_<flowcell>
-						data$Group[i] <- paste0(flowcell_dates[[curFC]] , "_" , data$Group[i])
-					}
-				} else if(opt$project=="CEGS_byLocus") {
-					#Group values will be in the form of Study ID
-					
-					if(is.na(data$Genetic_Modification[i])) {
-						#Based on sample name
-						SampleNameSplit <- unlist(strsplit(data$Name[i], "_"))
-						CEGSsampleType <- SampleNameSplit[length(SampleNameSplit)]
-					} else {
-						#Find samples based on Genetic_Modification. Look for an assemblon at a landing pad
-						Genetic_Modification <- strsplit(data$Genetic_Modification[i], ",")[[1]]
-						if(any(sapply(Genetic_Modification, grepl, pattern="\\[LP(ICE|[0-9]+)\\]$", perl=T))) {
-							payload <- Genetic_Modification[sapply(Genetic_Modification, grepl, pattern="\\[LP(ICE|[0-9]+)\\]$", perl=T)]
-							payload <- gsub("\\[LP(ICE|[0-9]+)\\]$", "", payload, perl=T)
-							SampleNameSplit <- unlist(strsplit(payload, "_"))
-							CEGSsampleType <- "PayloadCells"
-						# Group any samples that have a LP but no assemblon
-						} else if(any(sapply(Genetic_Modification, grepl, pattern="LP(ICE|[0-9]+)\\[(.+)\\]$", perl=T))) {
-							LP <- Genetic_Modification[sapply(Genetic_Modification, grepl, pattern="LP(ICE|[0-9]+)\\[(.+)\\]$", perl=T)]
-							integrationsite <- gsub("LP(ICE|[0-9]+)\\[(.+)\\]$", "\\2", LP, perl=T)
-							LP <- gsub("\\[.+\\]$", "", LP, perl=T)
-							#Use gene from integrationsite as Assembly ID
-							SampleNameSplit <- c("LandingPads", LP, unlist(strsplit(integrationsite, "_"))[1])
-							CEGSsampleType <- "LP_Cells"
-						} else {
-							#We failed parsing
-							SampleNameSplit <- NA
-							CEGSsampleType <- NA
-						}
-					}
-					
-					if(CEGSsampleType %in% c("Yeast", "DNA", "BAC", "RepoBAC", "Ecoli", "Amplicon", "PayloadCells", "LP_Cells")) {
-						data$Study[i] <- SampleNameSplit[1]
-						if(CEGSsampleType != "RepoBAC") {
-							#RepoBAC just have a SampleID field which doesn't make it into a specific UCSC field right now
-							data$Project[i] <- SampleNameSplit[2]
-							data$Assembly[i] <- SampleNameSplit[3]
-							if(length(SampleNameSplit) >= 4) {
-								#The 4th field in Genetic Modification can specify an alternate backbone
-								data$Info[i] <- SampleNameSplit[4]
-							}
-						}
-						data$Type[i] <- CEGSsampleType
-						data$Group[i] <- data$Study[i]
-					}
-				} else {
-					stop("ERROR Impossible!")
-				}
-			} else if(opt$project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipseq", "mouseENCODEchipseq")) {
-				if(grepl('^f[A-Z]|^mfLiver_', data$Name[i])) {
-					data$Group[i] <- "Fetal tissues"
-				} else if(grepl('^(adipo|aggregated_lymphoid_nodule|adrenal|ammon|aorta|artery|astrocyte|bladder|body|bone|bowel|brain|breast|bronchial_epithelial_cell|cardia|cardiocyte|cerebellum|colon|coronary_artery|cortex|cortical_plate|dendritic_cell|derm|epithelial_cell_of_choroid_plexus|erythroblast|esopha|eye|fetal_umbilical_cord|fibroblast|gast|gastro|globus|glom|gonad|gyrus|heart|hepatocyte|intest|keratinocyte|kidney|limb|liver|lung|mammary_epithelial_cell|medial_popliteal_nerve|medull|medulla|mesenchymal_stem_cell|mid_neurogenesis_radial_glial_cells|muscle|myotube|neural_cell|neural_progenitor_cell|neural_stem_progenitor_cell|neuroepithelial_stem_cell|neuron|nucleus|oesteoblast|olfact|fat_pad|osteo|ovary|pancrea|placenta|pons|prostate|psoas|putamen|radial_glial_cell|renal|retina|retinal_pigment_epithelial_cell|right_atrium_auricular_region|right_lobe_of_liver|skin|spinal|spleen|stomach|test[ei]s|thymus|thyroid|tibial_artery|tibial_nerve|tongue|trophoblast_cell|urothelia|uteru|vagina|ventriculus|amniotic_stem_cell|bipolar_spindle_neuron|caput_mediale_musculus_gastrocnemius|inferior_parietal_cortex|islet_precursor_cell|midbrain|middle_frontal_gyrus|pentadactyl_limb|ascending_aorta|bipolar_neuron|epithelial_cell_of_esophagus|epithelial_cell_of_prostate|foreskin_keratinocyte|lower_leg_skin|Peyers_patch|right_cardiac_atrium|sigmoid_colon|skeletal_muscle|small_intestine|smooth_muscle_cell|suprapubic_skin|thoracic_aorta|transverse_colon|upper_lobe_of_left_lung|urinary_bladder|brown_adipose_tissue|forebrain|hindbrain|myocyte|Muller_cell|telencephalon|omental)', data$Name[i], ignore.case=T)) {
-					data$Group[i] <- "Tissues"
-				}
-				if(grepl('^CD|^[him]?A?T[HhNnRr][0-9]*$|^GM[012][0-9][0-9][0-9][0-9]|m?B_?cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|^MEL_GATA1_ER$|macrophage|CH12LX|G1E|mononuclear|megakaryocyte|dendritic|leukemia_stem_cell|^Jurkat|T\\-cell|Raji|NB4|HL\\-60|Karpas\\-422|Loucy', data$Name[i])) { data$Group[i] <- 'Hematopoietic' }
-				if(grepl('ES|^H[179]_hESC|GM23338|^iPS|^trophoblastic_cell$|^mesendoderm$|^endodermal_cell$|^ectodermal_cell$|^mesodermal_cell$|^WW6$|^ZHBTc4$|^E14TG2a.?4$|^ELF_1$|^EL$|^L1_S8$', data$Name[i])) { data$Group[i] <- 'Pluripotent' }
-				if(opt$project=="humanENCODEdnase") {
-					#Correct UMass to UW samples
-					if(data$Institution[i] == 'UMass') {
-						data$Institution[i] <- 'UW'
-					}
-					
-					#Collect Duke samples and remaining UW samples into groups
-					if(is.na(data$Group[i]) || data$Institution[i] == "Duke") {
-						data$Group[i] <- data$Institution[i]
-					}
-				} else if(opt$project %in% c("mouseENCODEdnase", "mouseENCODEchipseq", "humanENCODEchipseq")) {
-					if(opt$project =="humanENCODEchipseq" && data$Name[i]=="GM12878") { data$Group[i] <- "Tier_1" }
-					if(is.na(data$Group[i])) {
-						data$Group[i] <- "Cell lines"
-						if(opt$project =="humanENCODEchipseq") {
-							if(data$Name[i] %in% c("K562", "GM12878")) {
-								#NB H1 is tier 1 but I want to leave it in pluripotent so it is easy to find
-								data$Group[i] <- "Tier_1"
-							} else if(data$Name[i] %in% c("HepG2", "HeLa_S3", "A549", "IMR_90", "MCF_7", "SK_N_SH", "endothelial_cell_of_umbilical_vein")) {
-								data$Group[i] <- "Tier_2"
-							}
-						}
-					}
-					if(opt$project %in% c("mouseENCODEchipseq", "humanENCODEchipseq")) {
-						if(grepl("[Tt]issues$", data$Group[i]) || opt$project=="humanENCODEchipseq" && grepl("^(Cell lines|Tier_)", data$Group[i])) {
-							if(grepl('^H[234][ABFK]', data$Assay[i])) {
-								data$Group[i] <- paste0(data$Group[i], "-Histone marks")
-							} else {
-								data$Group[i] <- paste0(data$Group[i], "-TFs")
-							}
-						}
-						if(grepl('eGFP|(3x)?FLAG', data$Assay[i], ignore.case=T)) { data$Group[i] <- 'Epitope-tagged TFs' }
-						if(grepl('control', data$Assay[i], ignore.case=T)) { data$Group[i] <- 'Control' }
-						if(data$Assay[i] == "CTCF") { data$Group[i] <- 'CTCF' }
-					}
-				}
-			} else {
-				data$Group[i] <- data$Institution[i]
-			}
-			
-			data$filebase[i] <- paste0(curdir, "/", paste0(unlist(strsplit(basename(analysisFile), "\\."))[2:3], collapse="."))
 		}
+		i <- i+1
+		# We need to add a new row to "data". The values will be set within this for loop.
+		data[i,] <- NA
+		
+		pipelineParameters <- analysisFileContents[grep('^Running [^,]+,[^,]+ analysis', analysisFileContents, perl=T)]
+		if(length(pipelineParameters)>0) {
+			sampleType <- pipelineParametersParser(pipelineParameters, "analysisCommand")
+			mappedgenome <- pipelineParametersParser(pipelineParameters, "mappedgenome")
+			annotationgenome <- pipelineParametersParser(pipelineParameters, "annotationgenome")
+			
+			data$Mapped_Genome[i] <- mappedgenome
+			
+			# Is the annotation geneome in the "Running ... analysis ..." line ?
+			if(nchar(annotationgenome) > 0) {
+				# It is.
+				data$Annotation_Genome[i] <- annotationgenome
+			} else {
+				# It is not. Extract it from the "mappedgenome" field.
+				annotationgenome <- gsub("_.+$", "", mappedgenome)
+				data$Annotation_Genome[i] <- gsub("all$", "", annotationgenome)
+			}
+		} else {
+			#assume dnase for old pipeline
+			sampleType <- "dnase"
+		}
+		
+		# Adding a new Assay type also requires changes to be made to MakeTrackhub.py
+		# Look for the initialization of "assay_type" in MakeTrackhub.py for comments on this.
+		if(sampleType=="dnase") {
+			data$Assay[i] <- "DNase-seq"
+		} else if(sampleType=="atac") {
+			data$Assay[i] <- "ATAC-seq"
+		} else if(sampleType=="none") {
+			data$Assay[i] <- "None"
+		} else if(sampleType=="dna" || sampleType=="callsnps") {
+			data$Assay[i] <- "DNA"
+		} else if(sampleType=="capture" || sampleType=="callsnpsCapture") {
+			data$Assay[i] <- "DNA Capture"
+		} else if(sampleType=="chipseq") {
+			data$Assay[i] <- SampleIDsplit[2]
+		} else {
+			message("[samplesforTrackhub] ", "WARNING don't recognize sampleType: ", sampleType)
+		}
+		
+		data$Name[i] <- SampleIDsplit[1]
+		
+		data[i, "SampleID"] <- SampleIDsplit[length(SampleIDsplit)]
+		
+		#TODO parameterize setting a different key for color lookup
+		if(is.null(colorAssignments) || !data$Name[i] %in% colorAssignments$group) {
+			colorAssignments <- rbind(colorAssignments, data.frame(group=data$Name[i], rgb=colorPalette[nextColorFromPalette+1], stringsAsFactors=F))
+			nextColorFromPalette <- (nextColorFromPalette + 1) %% length(colorPalette)
+		}
+		data$Color[i] <- colorAssignments[colorAssignments$group == data$Name[i], "rgb"]
+		
+		if(any(grepl('^Num_analyzed_(tags|reads)\t', analysisFileContents))) {
+			data$analyzed_reads[i] <- strsplit(analysisFileContents[grep('^Num_analyzed_(tags|reads)\t', analysisFileContents)], '\t')[[1]][2] #Tags is for old pipeline
+		}
+		
+		#Parse SampleAnnotation as a list of values with the key as name
+		if(any(grep('^SampleAnnotation\t', analysisFileContents))) {
+			SampleAnnotation <- strsplit(analysisFileContents[grep('^SampleAnnotation\t', analysisFileContents)], '\t')[[1]][2]
+			#Split up semicolon-delimited key/value pairs
+			SampleAnnotation <- strsplit(SampleAnnotation, ";")[[1]]
+			#Split up key/value
+			SampleAnnotation <- sapply(SampleAnnotation, USE.NAMES=F, FUN=function(x) {
+				ret=list()
+				for(cur in strsplit(x, "=")) { 
+					ret[cur[1]] = cur[2] 
+				}
+				return(ret)
+			})
+		} else {
+			SampleAnnotation <- list()
+		}
+		
+		if( !is.null(SampleAnnotation[["Bait_set"]]) ) {
+			data$Bait_set[i] <- SampleAnnotation[["Bait_set"]]
+		}
+		
+		if( !is.null(SampleAnnotation[["Genetic_Modification"]]) ) {
+			data$Genetic_Modification[i] <- SampleAnnotation[["Genetic_Modification"]]
+		}
+		
+		if(any(grepl('^Genomic_coverage\t', analysisFileContents))) {
+			data$Genomic_coverage[i] <- strsplit(analysisFileContents[grep('^Genomic_coverage\t', analysisFileContents)], '\t')[[1]][2]
+		}
+		
+		if(any(grepl('^Num_hotspots2\t', analysisFileContents))) {
+			data$Num_hotspots[i] <- strsplit(analysisFileContents[grep('^Num_hotspots2\t', analysisFileContents)], '\t')[[1]][2]
+		}
+		
+		if(any(grepl('^SPOT\t', analysisFileContents))) {
+			data$SPOT[i] <- strsplit(analysisFileContents[grep('^SPOT\t', analysisFileContents)], '\t')[[1]][2]
+		}
+		
+		if(!is.null(inputSampleIDs)) {
+			#Note that color has already been established and won't be redone if sample name changes
+			
+			#Matching the DS number from the analysis file to inputSampleIDs can give multiple results, so just pick the first
+			inputSampleIDrow <- which(inputSampleIDs[,"DS"] == data[i, "SampleID"])[1]
+			
+			#Take all columns to be taken from inputSampleIDs
+			for(curCol in intersect(outputCols, setdiff(colnames(inputSampleIDs), "DS"))) {
+				if(!is.na(inputSampleIDs[inputSampleIDrow, curCol])) {
+					data[i, curCol] <- inputSampleIDs[inputSampleIDrow, curCol]
+				}
+			}
+		}
+		
+		if(opt$project %in% c("byFC", "CEGS_byLocus")) {
+			data$Institution[i] <- "NYU"
+			
+			if(opt$project=="byFC") {
+				curFC <- unlist(strsplit(curdir, "/"))[1]
+				data$Group[i] <- curFC
+				if(curFC %in% names(flowcell_dates)) {
+					#Group values will be in the form of YYYMMDD_<flowcell>
+					data$Group[i] <- paste0(flowcell_dates[[curFC]] , "_" , data$Group[i])
+				}
+			} else if(opt$project=="CEGS_byLocus") {
+				#Group values will be in the form of Study ID
+				
+				if(is.na(data$Genetic_Modification[i])) {
+					#Based on sample name
+					SampleNameSplit <- unlist(strsplit(data$Name[i], "_"))
+					CEGSsampleType <- SampleNameSplit[length(SampleNameSplit)]
+				} else {
+					#Find samples based on Genetic_Modification. Look for an assemblon at a landing pad
+					Genetic_Modification <- strsplit(data$Genetic_Modification[i], ",")[[1]]
+					if(any(sapply(Genetic_Modification, grepl, pattern="\\[LP(ICE|[0-9]+)\\]$", perl=T))) {
+						payload <- Genetic_Modification[sapply(Genetic_Modification, grepl, pattern="\\[LP(ICE|[0-9]+)\\]$", perl=T)]
+						payload <- gsub("\\[LP(ICE|[0-9]+)\\]$", "", payload, perl=T)
+						SampleNameSplit <- unlist(strsplit(payload, "_"))
+						CEGSsampleType <- "PayloadCells"
+					# Group any samples that have a LP but no assemblon
+					} else if(any(sapply(Genetic_Modification, grepl, pattern="LP(ICE|[0-9]+)\\[(.+)\\]$", perl=T))) {
+						LP <- Genetic_Modification[sapply(Genetic_Modification, grepl, pattern="LP(ICE|[0-9]+)\\[(.+)\\]$", perl=T)]
+						integrationsite <- gsub("LP(ICE|[0-9]+)\\[(.+)\\]$", "\\2", LP, perl=T)
+						LP <- gsub("\\[.+\\]$", "", LP, perl=T)
+						#Use gene from integrationsite as Assembly ID
+						SampleNameSplit <- c("LandingPads", LP, unlist(strsplit(integrationsite, "_"))[1])
+						CEGSsampleType <- "LP_Cells"
+					} else {
+						#We failed parsing
+						SampleNameSplit <- NA
+						CEGSsampleType <- NA
+					}
+				}
+				
+				if(CEGSsampleType %in% c("Yeast", "DNA", "BAC", "RepoBAC", "Ecoli", "Amplicon", "PayloadCells", "LP_Cells")) {
+					data$Study[i] <- SampleNameSplit[1]
+					if(CEGSsampleType != "RepoBAC") {
+						#RepoBAC just have a SampleID field which doesn't make it into a specific UCSC field right now
+						data$Project[i] <- SampleNameSplit[2]
+						data$Assembly[i] <- SampleNameSplit[3]
+						if(length(SampleNameSplit) >= 4) {
+							#The 4th field in Genetic Modification can specify an alternate backbone
+							data$Info[i] <- SampleNameSplit[4]
+						}
+					}
+					data$Type[i] <- CEGSsampleType
+					data$Group[i] <- data$Study[i]
+				}
+			} else {
+				stop("ERROR Impossible!")
+			}
+		} else if(opt$project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipseq", "mouseENCODEchipseq")) {
+			if(grepl('^f[A-Z]|^mfLiver_', data$Name[i])) {
+				data$Group[i] <- "Fetal tissues"
+			} else if(grepl('^(adipo|aggregated_lymphoid_nodule|adrenal|ammon|aorta|artery|astrocyte|bladder|body|bone|bowel|brain|breast|bronchial_epithelial_cell|cardia|cardiocyte|cerebellum|colon|coronary_artery|cortex|cortical_plate|dendritic_cell|derm|epithelial_cell_of_choroid_plexus|erythroblast|esopha|eye|fetal_umbilical_cord|fibroblast|gast|gastro|globus|glom|gonad|gyrus|heart|hepatocyte|intest|keratinocyte|kidney|limb|liver|lung|mammary_epithelial_cell|medial_popliteal_nerve|medull|medulla|mesenchymal_stem_cell|mid_neurogenesis_radial_glial_cells|muscle|myotube|neural_cell|neural_progenitor_cell|neural_stem_progenitor_cell|neuroepithelial_stem_cell|neuron|nucleus|oesteoblast|olfact|fat_pad|osteo|ovary|pancrea|placenta|pons|prostate|psoas|putamen|radial_glial_cell|renal|retina|retinal_pigment_epithelial_cell|right_atrium_auricular_region|right_lobe_of_liver|skin|spinal|spleen|stomach|test[ei]s|thymus|thyroid|tibial_artery|tibial_nerve|tongue|trophoblast_cell|urothelia|uteru|vagina|ventriculus|amniotic_stem_cell|bipolar_spindle_neuron|caput_mediale_musculus_gastrocnemius|inferior_parietal_cortex|islet_precursor_cell|midbrain|middle_frontal_gyrus|pentadactyl_limb|ascending_aorta|bipolar_neuron|epithelial_cell_of_esophagus|epithelial_cell_of_prostate|foreskin_keratinocyte|lower_leg_skin|Peyers_patch|right_cardiac_atrium|sigmoid_colon|skeletal_muscle|small_intestine|smooth_muscle_cell|suprapubic_skin|thoracic_aorta|transverse_colon|upper_lobe_of_left_lung|urinary_bladder|brown_adipose_tissue|forebrain|hindbrain|myocyte|Muller_cell|telencephalon|omental)', data$Name[i], ignore.case=T)) {
+				data$Group[i] <- "Tissues"
+			}
+			if(grepl('^CD|^[him]?A?T[HhNnRr][0-9]*$|^GM[012][0-9][0-9][0-9][0-9]|m?B_?cell|neutrophil|natural_killer|regulatory_T_cell|^MEL$|^MEL_GATA1_ER$|macrophage|CH12LX|G1E|mononuclear|megakaryocyte|dendritic|leukemia_stem_cell|^Jurkat|T\\-cell|Raji|NB4|HL\\-60|Karpas\\-422|Loucy', data$Name[i])) { data$Group[i] <- 'Hematopoietic' }
+			if(grepl('ES|^H[179]_hESC|GM23338|^iPS|^trophoblastic_cell$|^mesendoderm$|^endodermal_cell$|^ectodermal_cell$|^mesodermal_cell$|^WW6$|^ZHBTc4$|^E14TG2a.?4$|^ELF_1$|^EL$|^L1_S8$', data$Name[i])) { data$Group[i] <- 'Pluripotent' }
+			if(opt$project=="humanENCODEdnase") {
+				#Correct UMass to UW samples
+				if(data$Institution[i] == 'UMass') {
+					data$Institution[i] <- 'UW'
+				}
+				
+				#Collect Duke samples and remaining UW samples into groups
+				if(is.na(data$Group[i]) || data$Institution[i] == "Duke") {
+					data$Group[i] <- data$Institution[i]
+				}
+			} else if(opt$project %in% c("mouseENCODEdnase", "mouseENCODEchipseq", "humanENCODEchipseq")) {
+				if(opt$project =="humanENCODEchipseq" && data$Name[i]=="GM12878") { data$Group[i] <- "Tier_1" }
+				if(is.na(data$Group[i])) {
+					data$Group[i] <- "Cell lines"
+					if(opt$project =="humanENCODEchipseq") {
+						if(data$Name[i] %in% c("K562", "GM12878")) {
+							#NB H1 is tier 1 but I want to leave it in pluripotent so it is easy to find
+							data$Group[i] <- "Tier_1"
+						} else if(data$Name[i] %in% c("HepG2", "HeLa_S3", "A549", "IMR_90", "MCF_7", "SK_N_SH", "endothelial_cell_of_umbilical_vein")) {
+							data$Group[i] <- "Tier_2"
+						}
+					}
+				}
+				if(opt$project %in% c("mouseENCODEchipseq", "humanENCODEchipseq")) {
+					if(grepl("[Tt]issues$", data$Group[i]) || opt$project=="humanENCODEchipseq" && grepl("^(Cell lines|Tier_)", data$Group[i])) {
+						if(grepl('^H[234][ABFK]', data$Assay[i])) {
+							data$Group[i] <- paste0(data$Group[i], "-Histone marks")
+						} else {
+							data$Group[i] <- paste0(data$Group[i], "-TFs")
+						}
+					}
+					if(grepl('eGFP|(3x)?FLAG', data$Assay[i], ignore.case=T)) { data$Group[i] <- 'Epitope-tagged TFs' }
+					if(grepl('control', data$Assay[i], ignore.case=T)) { data$Group[i] <- 'Control' }
+					if(data$Assay[i] == "CTCF") { data$Group[i] <- 'CTCF' }
+				}
+			}
+		} else {
+			data$Group[i] <- data$Institution[i]
+		}
+		
+		data$filebase[i] <- paste0(curdir, "/", paste0(unlist(strsplit(basename(analysisFile), "\\."))[2:3], collapse="."))
 	}
 }
 
