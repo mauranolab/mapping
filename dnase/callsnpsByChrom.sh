@@ -29,7 +29,7 @@ date
 
 #TMPDIR=`pwd`/tmp.makeTracks.${name}
 #mkdir -p $TMPDIR
-echo "using $TMPDIR as TMPDIR"
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
 
 echo
@@ -135,7 +135,8 @@ ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
 #-C50 -pm2 -F0.05 -d10000
 #  -C, --adjust-MQ INT     adjust mapping quality; recommended:50, disable:0 [0]
 #  -F, --gap-frac FLOAT    minimum fraction of gapped reads [0.002]
-bcftools mpileup -r ${chrom} --redo-BAQ -f ${referencefasta} --adjust-MQ 50 --gap-frac 0.05 --max-depth 10000 -a DP,AD -O u ${sampleOutdir}/${name}.${mappedgenome}.bam |
+#2020mar21 raised max-idepth to permit calling indels from samples with coverage>250 (i.e. capture)
+bcftools mpileup -r ${chrom} --redo-BAQ -f ${referencefasta} --adjust-MQ 50 --gap-frac 0.05 --max-depth 10000 --max-idepth 20000 -a DP,AD -O u ${sampleOutdir}/${name}.${mappedgenome}.bam |
 #NB for some reason if the intermediate file is saved instead of piped, bcftools call outputs a GQ of . for everything
 #Iyer et al PLoS Genet 2018 uses --multiallelic-caller
 #https://sourceforge.net/p/samtools/mailman/message/32931405/
