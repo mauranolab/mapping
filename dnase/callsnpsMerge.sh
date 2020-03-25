@@ -43,7 +43,7 @@ date
 
 #TMPDIR=`pwd`/tmp.makeTracks.${name}
 #mkdir -p $TMPDIR
-echo "using $TMPDIR as TMPDIR"
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 date
 
 
@@ -174,10 +174,14 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
         #for multisample calling, include the sample name in the variants file name
         vcfsamplename=".${sampleid}"
     fi
-    cat $TMPDIR/variants.${sampleid}.txt | awk -F "\t" 'BEGIN {OFS="\t"; num=0} $4=="." {num++; $4="var" num} {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch
+    #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt
+    cat $TMPDIR/variants.${sampleid}.txt | awk -F "\t" 'BEGIN {OFS="\t"} $4=="." {split($8, gt, "/"); gtout=gt[2]; if(length(gt)>2) {gtout=gtout "/" gt[3]}; chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 "_" gtout } {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch
     
     #NB UCSC link from analysis.sh will be wrong for multisample calling
-    unstarch ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } {split($8, gt, "/"); gtout=truncgt(gt[1]); if(length(gt)>1) {gtout=gtout "/" truncgt(gt[2])} print $1, $2, $3, $4 "_" gtout, $5}' > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
+    #Start from .txt file to simplify logic even though we have to sort again
+    #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt; for database IDs, append alt allele
+    #truncgt() is a fancy wrapper around substr for syntactic sugar and to add a "..."
+    cat $TMPDIR/variants.${sampleid}.txt | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } $4=="." {chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 } {split($8, gt, "/"); gtout=truncgt(gt[2]); if(length(gt)>2) {gtout=gtout "/" truncgt(gt[3])}; $4=$4 "_" gtout } {print}' | sort-bed - | cut -f1-5 > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
     bedToBigBed -type=bed5 $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.bb
     
     #Personal Genome SNP format displays two alleles in vertical fashion and provides amino acid changes, but doesn't permit IDs
