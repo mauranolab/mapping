@@ -52,7 +52,7 @@ echo "Jobid=$jobid (lines ${firstline}-${lastline})"
 echo
 echo "Aligning reads"
 userAlnOptions=""
-permittedMismatches=2
+permittedMismatches="0.1"
 curGenome="hg38_noalt"
 DS_nosuffix=`echo $DS | perl -pe 's/[A-Z]$//g;'`
 minMAPQ=10
