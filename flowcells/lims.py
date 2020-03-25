@@ -17,6 +17,11 @@ import glob
 #create project, service account key, share sheet with service account manually from google drive UI
 
 
+#getting warning /vol/mauranolab/mauram01/git/mapping/flowcells/lims.py:129: FutureWarning: `item` has been deprecated and will be removed in a future version
+#https://stackoverflow.com/questions/57390363/pandas-item-has-been-deprecated
+#TODO migrate to .values.item()?
+
+
 #Convenience function
 def getValueFromLIMS(lims, bs, colname):
     if lims is None:
@@ -44,6 +49,7 @@ def getLIMSsheet(sheet):
         sh = gc.open_by_key(lims_gsheets_ID)
         wks = sh.worksheet_by_title(sheet)
         df = wks.get_as_df()
+        df.fillna(value='', inplace=True) #Maybe pandas v1 problem? Or just change '' to None?
         #Remove per-FC headers and space between FCs (any row that is only empty lines)
         mask = ~df['Sample Name'].str.startswith('#') & (df!="").any(1)
     except Exception as e:
