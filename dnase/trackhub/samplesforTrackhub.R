@@ -189,6 +189,18 @@ for(curdir in mappeddirs) {
 		next # Nothing follows here except for the long 'for(analysisFile...' loop.
 	}
 	
+    # Check for duplicate analysisFiles, possibly left over from previous runs.
+	AnalysisStrings <- strsplit(analysisFiles,".",fixed=TRUE)
+    # This gets rid of the trailing ".o########"
+	PossibleDups <- lapply(AnalysisStrings, function(AnalysisString) { paste(AnalysisString[2], AnalysisString[3], sep=".") })
+	FoundDups <- analysisFiles[duplicated(PossibleDups)]
+	if(length(FoundDups) > 0) {
+		message("[samplesforTrackhub] ", "WARNING Possible duplicate analysis files found in ", curdir)
+		for(FoundDup in FoundDups) {
+			message("[samplesforTrackhub] ", "WARNING See possible dup file: ", FoundDup)
+		}
+	}
+	
 	#make_tracks.bash calls this R script only once when args.project equals "byFC", and only once when it equals "CEGS_byLocus". Each of the directories traversed may contain a unique sampleannotation.txt file so we need to look for it here rather than in make_tracks.bash
 	if(opt$project %in% c("byFC", "CEGS_byLocus") & is.null(opt$inputfile)) {
 		inputfile <- paste0(pwd, '/', dirname(curdir), "/sampleannotation.txt")
