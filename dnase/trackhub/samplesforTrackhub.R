@@ -171,6 +171,7 @@ if(opt$project == "CEGS_byLocus") {
     outputCols <- c(outputCols, "Study", "Project", "Assembly", "Type")
 }
 
+data_keys <- vector()
 data <- data.frame(matrix(ncol=length(outputCols), nrow=1))
 colnames(data) <- outputCols
 i <- 0 # This will be our "data" output variable index.
@@ -189,18 +190,6 @@ for(curdir in mappeddirs) {
 		next # Nothing follows here except for the long 'for(analysisFile...' loop.
 	}
 	
-    # Check for duplicate analysisFiles, possibly left over from previous runs.
-	AnalysisStrings <- strsplit(analysisFiles,".",fixed=TRUE)
-    # This gets rid of the trailing ".o########"
-	PossibleDups <- lapply(AnalysisStrings, function(AnalysisString) { paste(AnalysisString[2], AnalysisString[3], sep=".") })
-	FoundDups <- analysisFiles[duplicated(PossibleDups)]
-	if(length(FoundDups) > 0) {
-		message("[samplesforTrackhub] ", "WARNING Possible duplicate analysis files found in ", curdir)
-		for(FoundDup in FoundDups) {
-			message("[samplesforTrackhub] ", "WARNING See possible dup file: ", FoundDup)
-		}
-	}
-	
 	#make_tracks.bash calls this R script only once when args.project equals "byFC", and only once when it equals "CEGS_byLocus". Each of the directories traversed may contain a unique sampleannotation.txt file so we need to look for it here rather than in make_tracks.bash
 	if(opt$project %in% c("byFC", "CEGS_byLocus") & is.null(opt$inputfile)) {
 		inputfile <- paste0(pwd, '/', dirname(curdir), "/sampleannotation.txt")
@@ -210,7 +199,7 @@ for(curdir in mappeddirs) {
 			inputSampleIDs <- NULL
 		}
 	}
-	
+    
 	for(analysisFile in analysisFiles) {
 		analysisFileContents <- readLines(paste0(pwd, '/', curdir, '/', analysisFile), n=2000)
 		
@@ -433,6 +422,19 @@ for(curdir in mappeddirs) {
 		}
 		
 		data$filebase[i] <- paste0(curdir, "/", paste0(unlist(strsplit(basename(analysisFile), "\\."))[2:3], collapse="."))
+
+    	# Check for duplicate analysisFiles, possibly left over from a previous run.
+        # Note:  "data$Group" does not contain flowcell ID info when opt$project=CEGS_byLocus, so we need to get it from curdir.
+		fcID <- strsplit(curdir, "/", fixed=TRUE)[[1]][1]
+		data_key <- paste(data$SampleID[i], data$Mapped_Genome[i], fcID, sep="")
+		if(i != 1) {
+			if(data_key %in% data_keys){
+				message("[samplesforTrackhub] ", "WARNING Possible duplicate analysis files found in ", curdir)
+				msg <- paste("See:    SampleID:", data$SampleID[i], "Mapped_Genome:", data$Mapped_Genome[i], "fcID:", fcID, sep=" ")
+				message("[samplesforTrackhub] ", msg)
+			}
+		}
+		data_keys[i] <- data_key
 	}
 }
 
