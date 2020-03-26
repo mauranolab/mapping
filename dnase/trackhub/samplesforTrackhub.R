@@ -199,7 +199,7 @@ for(curdir in mappeddirs) {
 			inputSampleIDs <- NULL
 		}
 	}
-    
+	
 	for(analysisFile in analysisFiles) {
 		analysisFileContents <- readLines(paste0(pwd, '/', curdir, '/', analysisFile), n=2000)
 		
@@ -422,9 +422,9 @@ for(curdir in mappeddirs) {
 		}
 		
 		data$filebase[i] <- paste0(curdir, "/", paste0(unlist(strsplit(basename(analysisFile), "\\."))[2:3], collapse="."))
-
-    	# Check for duplicate analysisFiles, possibly left over from a previous run.
-        # Note:  "data$Group" does not contain flowcell ID info when opt$project=CEGS_byLocus, so we need to get it from curdir.
+		
+		# Check for duplicate analysisFiles, possibly left over from a previous run.
+		# Note:  "data$Group" does not contain flowcell ID info when opt$project=CEGS_byLocus, so we need to get it from curdir.
 		fcID <- strsplit(curdir, "/", fixed=TRUE)[[1]][1]
 		data_key <- paste(data$SampleID[i], data$Mapped_Genome[i], fcID, sep="")
 		if(i != 1) {
