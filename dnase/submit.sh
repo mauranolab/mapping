@@ -9,14 +9,14 @@ export OPENBLAS_NUM_THREADS=1
 
 
 #Load modules
-module load picard/2.18.15
+module load picard/2.22.1
 module load FastQC/0.11.4
-module load bedtools/2.25
+module load bedtools/2.29.2
 module load bedops/2.4.37
 module load bwa/0.7.17
-module load htslib/1.9
-module load samtools/1.9
-module load bcftools/1.9
+module load htslib/1.10.2
+module load samtools/1.10
+module load bcftools/1.10.2
 module load trimmomatic/0.39
 module load python/3.8.1
 module load samblaster/0.1.24

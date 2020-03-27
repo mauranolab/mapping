@@ -10,14 +10,13 @@ module load pigz
 module load weblogo/3.5.0
 module load python/3.8.1
 module load ImageMagick
-module load picard/1.140
 module load FastQC/0.11.4
 module load cutadapt/1.9.1
 module load samtools/1.9
-module load bwa/0.7.15
-module load bedops/2.4.35
-module load bedtools/2.25
-module load ucsckentutils/12152017
+module load bwa/0.7.17
+module load bedops/2.4.37
+module load bedtools/2.29.2
+module load ucsckentutils/379
 
 #NB python packages swalign and leven are required to be installed
 
