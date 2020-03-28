@@ -44,19 +44,20 @@ echo
 date
 echo "split fastq into 16M read chunks"
 splitreads=16000000
-#bak.fastq shouldn't exist at this point, but exclude it just in case
-for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="\t"} $0=="" {exit} {print}' | awk -v minsizetosplit=0 -F "\t" 'BEGIN {OFS="\t"} NR>1 && $1!="." && $3>minsizetosplit*2' | awk '$1~/Project_CEGS/ || $1~/Project_Maurano/' | awk -F "\t" 'BEGIN {OFS="\t"} {print $1 ";" $2}'`; do
+for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="\t"} $0=="" {exit} {print}' | awk -v minsizetosplit=0 -F "\t" 'BEGIN {OFS="\t"} NR>1 && $1!="." && $3>minsizetosplit*2' | awk '$1~/Project_CEGS/ || $1~/Project_Maurano/ || $1~/Project_SARS/' | awk -F "\t" 'BEGIN {OFS="\t"} {print $1 ";" $2}'`; do
     project=`echo ${base} | cut -d ";" -f1`
     bs=`echo ${base} | cut -d ";" -f2`
     echo
     echo -e "${project}\t${bs}"
+    #bak.fastq shouldn't exist at this point, but exclude it just in case
     for f1 in `find ${project}/Sample_${bs} -name "*_R1_*.fastq.gz" | grep -v bak.fastq`; do
         f2=`echo $f1 | perl -pe 's/_R1_/_R2_/g;'`
         echo "$f1 $f2"
-        #NB assumes PE reads
-        #/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads} ${project}/Sample_${bs}/bak.fastq
         #add ${project}/Sample_${bs}/bak.fastq to make backup
-        qsub -S /bin/bash -j y -N split.${bs} -pe threads 8 "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f1} ${f2} ${splitreads}"
+        qsub -S /bin/bash -j y -N split.${bs}.R1 -pe threads 8 "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f1} R1 ${splitreads}"
+        if [ -s "$f2" ]; then
+            qsub -S /bin/bash -j y -N split.${bs}.R2 -pe threads 8 "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f2} R2 ${splitreads}"
+        fi
     done
 done
 
@@ -65,7 +66,7 @@ echo "Tarballing collaborator projects"
 date
 basedir=`pwd`
 #Rarely in a hurry for this so might as well do in serial to simpify
-for d in `find ${basedir}  -maxdepth 1 -name "Project_*" -type d | grep -v Project_CEGS | grep -v Project_Maurano`; do
+for d in `find ${basedir}  -maxdepth 1 -name "Project_*" -type d | grep -v Project_CEGS | grep -v Project_Maurano | grep -v Project_SARS`; do
     project=`basename $d`
     echo
     echo "${project}"
