@@ -24,19 +24,18 @@ if [ -e "../../fastq/${fc}" ]; then
 fi
 
 
-#https://hpc.nih.gov/apps/bcl2fastq.html says optimal relative allocations but doesn't seem to change runtime much
-#-r 0.25 -w 0.25 -p 0.875
-#I bumped up based on observed CPU usage
-#TODO set fastq-compression-level 1 if we split everything afterwards
+#https://hpc.nih.gov/apps/bcl2fastq.html says optimal relative allocations but doesn't seem to change runtime much:- r 0.25 -w 0.25 -p 0.875
+#bumps up processing-threads over NSLOTS up based on observed CPU usage
 #Info on --use-bases-mask https://www.biostars.org/p/344768/
-bcl2fastq --fastq-compression-level 9 --no-lane-splitting --minimum-trimmed-read-length 0 --mask-short-adapter-reads 0 --barcode-mismatches 0 -r $((${NSLOTS}/4)) -w $((${NSLOTS}/4)) -p $((${NSLOTS}/7*8)) --output-dir ../../fastq/${fc} ${userDemuxOptions} > bcl2fastq.log 2>&1
+#TODO we don't split collaborator or undetermined fastqs; otherwise could compress there
+bcl2fastq --fastq-compression-level 9 --no-lane-splitting --minimum-trimmed-read-length 0 --mask-short-adapter-reads 0 --barcode-mismatches 0 --loading-threads 3 --writing-threads 3 --processing-threads $((${NSLOTS}/7*8)) --output-dir ../../fastq/${fc} ${userDemuxOptions} > bcl2fastq.log 2>&1
 
 
 #BUGBUG seems to set nonzero exit code?
 
 
-echo "Restricting permissions on non-mauranolab/CEGS projects"
-find ../../fastq/${fc}  -maxdepth 1 -name "Project_*" -type d  -not -name "Project_Maurano" -not -name "Project_CEGS" -print0 | xargs -0 --no-run-if-empty echo chgrp mauranolab-seq
+echo "Restricting permissions on non-mauranolab/CEGS/SARS projects"
+find ../../fastq/${fc}  -maxdepth 1 -name "Project_*" -type d -not -name "Project_Maurano" -not -name "Project_CEGS" -not -name "Project_SARS" -print0 | xargs -0 --no-run-if-empty echo chgrp mauranolab-seq
 
 
 #Running fastqc
