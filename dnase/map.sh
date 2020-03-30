@@ -165,6 +165,9 @@ if [ -s "/vol/mauranolab/flowcells/data/${fc/./}/info.txt" ]; then
     GTC_NovaSeq)
         readgroup="${readgroup}\\tCN:NYUMC_GTC\\tPM:NovaSeq_6000"
         ;;
+    GTC_NextSeq)
+        readgroup="${readgroup}\\tCN:NYUMC_GTC\\tPM:NextSeq_500"
+        ;;
     esac
 fi
 
@@ -313,7 +316,6 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
             bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample2}.fastq.gz > $TMPDIR/${sample2}.${curGenome}.sai
             
             #-P didn't have a major effect, but some jobs were ~10-40% faster but takes ~16GB RAM instead of 4GB
-            #TODO permit higher insert size for non-DNase?
             extractcmd="sampe ${bwaAlnExtractOpts} -a ${maxInsertSize} ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample2}.${curGenome}.sai $TMPDIR/${sample1}.fastq.gz $TMPDIR/${sample2}.fastq.gz"
             
             #Only map unpaired reads if the file nonzero
@@ -343,10 +345,6 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         #I could not find any effect of '-Y'; in some spot checking I hever see bwa output anything with $6~/H/, though I can find some soft-clipped supplementary alignments with or without the option
         bwaMemOptions="-Y -K 100000000"
         
-#        if [[ "${curGenome}" =~ ^cegsvectors ]]; then
-#            Mainly seems to add spurious secondary alignments where one read in the pair maps to a different reference within cegsvectors
-#            bwaMemOptions="-a"
-#        fi
         extractcmd="mem ${bwaMemOptions} ${userAlnOptions} -t ${NSLOTS} -R ${readgroup} ${bwaIndex} $TMPDIR/${sample1}.fastq.gz"
         if [[ "$PErun" == "TRUE" ]] ; then
             extractcmd="${extractcmd} $TMPDIR/${sample2}.fastq.gz"
@@ -427,12 +425,9 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     echo
     echo "QC metrics to be done on un-merged data"
     date
-    #TODO break out as separate job?
-    
     
     echo
     echo "Mean quality by cycle"
-    date
     #BUGBUG performs badly for SRR jobs -- some assumption not met?
     #BUGBUG reports "WARNING   2019-12-17 09:08:12     SinglePassSamProgram    File reports sort order 'queryname', assuming it's coordinate sorted anyway." mainly on cegsvectors? baseq still seems to be output. Not sure why it cares about sort order.
     java -XX:ParallelGCThreads=2 -Xmx3g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MeanQualityByCycle -INPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -OUTPUT $TMPDIR/${curfile}.baseQ.txt -CHART_OUTPUT $TMPDIR/${curfile}.baseQ.pdf -VALIDATION_STRINGENCY LENIENT
