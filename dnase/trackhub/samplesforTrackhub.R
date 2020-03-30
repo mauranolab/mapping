@@ -427,7 +427,7 @@ for(curdir in mappeddirs) {
 		# Note:  "data$Group" does not contain flowcell ID info when opt$project=CEGS_byLocus, so we need to get it from curdir.
 		fcID <- strsplit(curdir, "/", fixed=TRUE)[[1]][1]
 		data_key <- paste(data$SampleID[i], data$Mapped_Genome[i], fcID, sep="")
-		if(i != 1) {
+		if(i > 1) {
 			if(data_key %in% data_keys){
 				message("[samplesforTrackhub] ", "WARNING Possible duplicate analysis files found in ", curdir)
 				msg <- paste("See:    SampleID:", data$SampleID[i], "Mapped_Genome:", data$Mapped_Genome[i], "fcID:", fcID, sep=" ")
