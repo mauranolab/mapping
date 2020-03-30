@@ -161,6 +161,8 @@ trackcolor=$(getcolor ${name})
 projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab|isg\/encode)\///g;' | perl -pe 's/\/new$//g;'`
 if [[ `pwd` =~ ^\/vol\/cegs\/ ]]; then
     UCSCbase="bigDataUrl=https://cegs@cascade.isg.med.nyu.edu/cegs/${projectdir}/${sampleOutdir}"
+elif [[ `pwd` =~ ^\/vol\/mauranolab\/sars\/ ]]; then
+    UCSCbase="bigDataUrl=https://sars@cascade.isg.med.nyu.edu/sars/${projectdir}/${sampleOutdir}"
 elif [[ `pwd` =~ ^\/vol\/isg\/encode\/ ]]; then
     UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/${projectdir}/${sampleOutdir}"
 else
@@ -327,7 +329,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
         genomelen=`awk -F "\t" 'BEGIN {OFS="\t"} {sum+=$2} END {print sum}' ${chromsizes}`
         genomecov=`echo "${sequencedbases}/${genomelen}" | bc -l -q`
         genomecov=$(round ${genomecov} 2)
-
+        
         meanCov=`awk -v col="MEAN_COVERAGE" -F "\t" 'BEGIN {OFS="\t"; parse=0} $1=="GENOME_TERRITORY" {for(i=1; i<=NF; i++) {if($i==col) {colnum=i; parse=1; next}}} parse==1 {print $colnum; exit}' ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics`
         sdCov=`awk -v col="SD_COVERAGE" -F "\t" 'BEGIN {OFS="\t"; parse=0} $1=="GENOME_TERRITORY" {for(i=1; i<=NF; i++) {if($i==col) {colnum=i; parse=1; next}}} parse==1 {print $colnum; exit}' ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics`
         pctBases10xCov=`awk -v col="PCT_10X" -F "\t" 'BEGIN {OFS="\t"; parse=0} $1=="GENOME_TERRITORY" {for(i=1; i<=NF; i++) {if($i==col) {colnum=i; parse=1; next}}} parse==1 {print $colnum; exit}' ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics`
@@ -544,7 +546,6 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
     
     
     if [ "${callHotspots2}" == 1 ]; then
-        #TODO does not exist for cegsvectors
         hotspot2centersites="/vol/isg/annotation/bed/${annotationgenome}/hotspots2/${annotationgenome}.CenterSites.starch"
         #hotspot2.sh seems to require a 0 in column 2, unlike the UCSC standard
         hotspot2chromsizes="/vol/isg/annotation/bed/${annotationgenome}/hotspots2/${annotationgenome}.chrom.sizes"
