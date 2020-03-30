@@ -119,7 +119,7 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggrega
     #http://seqanswers.com/forums/showthread.php?t=4246
     #BUGBUG Can make huge log files despite these options
     #http://sourceforge.net/p/samtools/mailman/message/32910359/
-    #java -Xmx6g -jar /home/maurano/bin/picard-tools/MarkDuplicates.jar INPUT=${name}.${mappedgenome}.bam OUTPUT=${name}.markedDups.bam METRICS_FILE=$TMPDIR/${name}.picardDups.txt QUIET=TRUE VERBOSITY=ERROR COMPRESSION_LEVEL=9 ASSUME_SORTED=TRUE VALIDATION_STRINGENCY=LENIENT && mv ${name}.markedDups.bam ${name}.${mappedgenome}.bam
+    #java -Xmx6g -jar ${PICARDPATH}/MarkDuplicates.jar INPUT=${name}.${mappedgenome}.bam OUTPUT=${name}.markedDups.bam METRICS_FILE=$TMPDIR/${name}.picardDups.txt QUIET=TRUE VERBOSITY=ERROR COMPRESSION_LEVEL=9 ASSUME_SORTED=TRUE VALIDATION_STRINGENCY=LENIENT && mv ${name}.markedDups.bam ${name}.${mappedgenome}.bam
     #BUGBUG samblaster is faster because it makes a single pass and doesn't pick dup with lowest BQ sum -- https://github.com/CCDG/Pipeline-Standardization/blob/master/PipelineStandard.md
     #TODO maybe go back to picard, but using bam sorted by name? Like this:
     #java -XX:ParallelGCThreads=2 -Xmx6g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MarkDuplicates -INPUT=/dev/stdin -OUTPUT=$TMPDIR/${name}.${mappedgenome}.markedDups.bam -METRICS_FILE=$TMPDIR/${name}.picardDups.txt -QUIET=TRUE -VERBOSITY=ERROR -COMPRESSION_LEVEL=0 -ASSUME_SORT_ORDER=queryname
