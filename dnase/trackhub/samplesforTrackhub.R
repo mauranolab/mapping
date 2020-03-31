@@ -327,7 +327,7 @@ for(curdir in mappeddirs) {
 					data$Group[i] <- paste0(flowcell_dates[[curFC]] , "_" , data$Group[i])
 				}
 			} else if(opt$project=="CEGS_byLocus") {
-				#Group values will be in the form of Study ID
+				#Group values will be in the form of [Study ID]_[FC ID]
 				
 				if(is.na(data$Genetic_Modification[i])) {
 					#Based on sample name
@@ -368,7 +368,8 @@ for(curdir in mappeddirs) {
 						}
 					}
 					data$Type[i] <- CEGSsampleType
-					data$Group[i] <- data$Study[i]
+					fcID <- strsplit(curdir, "/", fixed=TRUE)[[1]][1]
+					data$Group[i] <- paste0(data$Study[i], "_", fcID)
 				}
 			} else {
 				stop("ERROR Impossible!")
@@ -424,13 +425,12 @@ for(curdir in mappeddirs) {
 		data$filebase[i] <- paste0(curdir, "/", paste0(unlist(strsplit(basename(analysisFile), "\\."))[2:3], collapse="."))
 		
 		# Check for duplicate analysisFiles, possibly left over from a previous run.
-		# Note:  "data$Group" does not contain flowcell ID info when opt$project=CEGS_byLocus, so we need to get it from curdir.
-		fcID <- strsplit(curdir, "/", fixed=TRUE)[[1]][1]
-		data_key <- paste(data$SampleID[i], data$Mapped_Genome[i], fcID, sep="")
-		if(i > 1) {
+		# Note: When project==CEGS_byLocus, items with Group=NA are deleted near the end of this script.
+		data_key <- paste0(data$SampleID[i], data$Mapped_Genome[i], data$Group[i] )
+		if( (!is.na(data$Group[i])) && (i > 1) ) {
 			if(data_key %in% data_keys){
 				message("[samplesforTrackhub] ", "WARNING Possible duplicate analysis files found in ", curdir)
-				msg <- paste("See:    SampleID:", data$SampleID[i], "Mapped_Genome:", data$Mapped_Genome[i], "fcID:", fcID, sep=" ")
+				msg <- paste0("See:    SampleID: ", data$SampleID[i], " Mapped_Genome: ", data$Mapped_Genome[i], " Group: ", data$Group[i])
 				message("[samplesforTrackhub] ", msg)
 			}
 		}
