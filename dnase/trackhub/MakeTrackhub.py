@@ -411,7 +411,7 @@ for assay_type in assays:
                             visibility="full",
                             parentonoff=DensCovTracksDefaultDisplayMode,
                             tracktype="bigWig",
-                            viewLimits="0:60",
+                            viewLimits="0:500", #Keep high since it becomes a hard limit in the UI
                             autoScale='on',
                             alwaysZero='on',
                             maxHeightPixels="100:30:10",
