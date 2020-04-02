@@ -8,7 +8,7 @@ TMP_OUT=$1
 # hub_type: CEGS has additional features
 hub_type=$2
 
-path_to_main_driver_script=$3
+src=$3
 
 assemblyBaseDir=$4
 
@@ -29,7 +29,7 @@ outfile=${outfile_base}"_all.tsv"
 
 
 echo
-Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
+Rscript --vanilla ${src}/samplesforTrackhub.R \
         --out ${outfile} \
         --workingDir ${assemblyBaseDir}/mapped \
         --descend \
@@ -55,7 +55,7 @@ head -n 1 ${outfile} > "${TMP_OUT}/header"
 
 if [ ${hub_type} = "CEGS" ]; then
     echo
-    Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
+    Rscript --vanilla ${src}/samplesforTrackhub.R \
             --out ${outfile} \
             --workingDir ${assemblyBaseDir}/mapped \
             --descend \
@@ -135,7 +135,7 @@ agg_pub_loop () {
         inputfile="--inputfile ${workingDir}/sampleannotation.txt"
     fi
     
-    Rscript --vanilla ${path_to_main_driver_script}/samplesforTrackhub.R \
+    Rscript --vanilla ${src}/samplesforTrackhub.R \
             --out ${outfile} \
             --workingDir ${workingDir} \
             ${inputfile} \
@@ -294,7 +294,7 @@ make_tracks () {
         supertrackPriority=99
     fi
     
-    python ${path_to_main_driver_script}/MakeTrackhub.py ${infile} \
+    python ${src}/MakeTrackhub.py ${infile} \
            ${generateHTMLdescription} \
            ${includeSampleIDinSampleCol} \
            ${tracknameprefix} \
