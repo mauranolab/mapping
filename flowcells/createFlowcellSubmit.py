@@ -82,7 +82,7 @@ def getBasedir(lab, sampleType, fc):
             if lab == "Maurano":
                 basedir = "/vol/mauranolab/mapped/"
             elif lab == "SARS":
-                basedir = "/vol/mauranolab/sars/mapped/"
+                basedir = "/vol/sars/mapped/"
             elif lab == "CEGS":
                 basedir = "/vol/cegs/mapped/"
             else:

@@ -2,15 +2,16 @@
 ##############################################################################
 # Pass in the input parameters:
 
-path_to_main_driver_script=$1
-hub_type=$2
-hub_target=$3
+src=$1
+assemblyBaseDir=$2
+hub_type=$3
+hub_target=$4
 
 # We need a tmp directory to store intermediate files.
 # One was established in the calling script.
-TMPDIR=$4
+TMPDIR=$5
 
-shift 4
+shift 5
 genome_array=("$@")
 
 ##############################################################################
@@ -29,7 +30,7 @@ make_html () {
         rm ${infile}
     else
         # Make the html version of the genome's readcounts data.
-        Rscript ${path_to_main_driver_script}/makeDescHtml.R ${infile} "${infile}.html"
+        Rscript ${src}/makeDescHtml.R ${infile} "${infile}.html"
     fi
     
     local tmpdir=$(dirname "${desc_file}")
@@ -171,24 +172,15 @@ find_readcounts () {
 }
 ##############################################################################
 # Make the html files.
-if [[ "${hub_type}" == "CEGS" ]]; then
-    hub_basedir="/vol/cegs"
-elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
-    hub_basedir="/vol/mauranolab"
-elif [[ "${hub_type}" == "SARS" ]]; then
-    hub_basedir="/vol/mauranolab/sars"
-else
-    echo "ERROR impossible"
-fi
 
 # flowcells
-find_readcounts ${hub_basedir}/mapped/ NA
+find_readcounts ${assemblyBaseDir}/mapped/ NA
 
 # aggregations
-find_readcounts ${hub_basedir}/aggregations/ readcounts.summary.txt
+find_readcounts ${assemblyBaseDir}/aggregations/ readcounts.summary.txt
 
 # publicdata
-find_readcounts ${hub_basedir}/publicdata/ readcounts.summary.txt
+find_readcounts ${assemblyBaseDir}/publicdata/ readcounts.summary.txt
 
 
 ###########################################################################

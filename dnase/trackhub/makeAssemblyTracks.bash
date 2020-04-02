@@ -1,7 +1,7 @@
 #!/bin/bash
 ####################################################################
 # Get input parameters
-path_to_main_driver_script=$1
+src=$1
 hub_target=$2
 TMPDIR=$3
 hub_type=$4
@@ -25,11 +25,11 @@ cd "${TMPDIR}/assembly_tracks"
 bed_N () {
     local filename=$1
     # filename is in the form:  <stuff>.bed or <stuff>.bedN or <stuff>.bedNN
-
+    
     # This retrieves everything after the last "." in filename.
     # So bedN has the form of either:  "bed" or "bedN" or "bedNN".
     local bedN=${filename##*.}
-
+    
     local N
     if [ "${bedN}" = "bed" ]; then
         N="4"
@@ -38,40 +38,40 @@ bed_N () {
         # So it leaves just the numeric part of bedN.
         N=${bedN/bed/}
     fi
-
+    
     echo ${N}  # Returns N via $()
 }
 
 make_bigBED () {
     local myBEDfile=$1                 # This is a full path name to a bed file.
     local chrom_sizes=$2               # This is a full path name of one of the NYU chrom.sizes files.
-
+    
     local out_tmp=${myBEDfile%.bed*}        # Chops off the trailing ".bed" or ".bedN" from myBEDfile.
-
+    
     local output_file=${out_tmp##*/}".bb"   # This retrieves everything after the last / in out_tmp.
                                             # Since the previous statment chopped off the bed extension,
                                             # this will leave only the short file name. We then add the ".bb".
                                             # So output_file has a short form:  <name>.bb
                                             # Note that output_file does not contain path elements.
-
+    
     local expected_N=$(bed_N ${myBEDfile})  # myBEDfile is in the form <stuff>.bed or <stuff>.bedN or <stuff>.bedNN
                                             # The function bed_N returns the N or NN from the myBEDfile name.
                                             # If myBEDfile is in the form <stuff>.bed, then bed_N returns 3.
-
+    
     # This scans the lines of myBEDfile, and looks for non-comment, non-empty lines.
     # It then checks if the number of fields in each of these lines is equal to expected_N.
     # It returns the number of these lines for which the number of fields is not equal to expected_N.
     local num_bad_lines=$(grep -v '^#' ${myBEDfile} | awk -F "\t" 'BEGIN {OFS="\t"} {print NF}' | \
          uniq | sort | uniq | grep -v '^0$' | grep -v -c ${expected_N})
-
+    
     if [ ${num_bad_lines} -ne 0 ]; then
         # Issue a warning when a line in myBEDfile contains an unexpected number of fields.
         echo "WARNING Unexpected number of fields in ${myBEDfile}"  >> make_bigBED.log
         (>&2 echo "WARNING Unexpected number of fields in ${myBEDfile}")
     fi
-
+    
     grep -v '^#' ${myBEDfile} | sort-bed - | cut -d $'\t' -f1-${expected_N} > myBEDfile_sorted.bed
-
+    
     if [ "${expected_N}" -ge 5 ]; then
         # Round column 5 of the bed file to an integer.
         # It also needs to be less than or equal to 1,000.
@@ -202,7 +202,7 @@ done
 if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes" ] ; then
     # Divert here to make the cytoband file:
     cat ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes | LC_COLLATE=C sort -k1,1 -k2,2n | awk '{print $1,0,$2,$1,"gneg"}' > cytoBandIdeo.bed
-    bedToBigBed -type=bed4 cytoBandIdeo.bed -as="${path_to_main_driver_script}/cytoband.as" ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes cytoBandIdeo.bigBed
+    bedToBigBed -type=bed4 cytoBandIdeo.bed -as="${src}/cytoband.as" ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes cytoBandIdeo.bigBed
     
     if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit" ]; then
         # Divert again to make the GC percentage file:

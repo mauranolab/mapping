@@ -18,7 +18,7 @@
 #    For production:
 #        /vol/cegs/src/trackhub/src_prod/update_tracks.bash CEGS /vol/cegs/public_html/trackhub "CEGS" "CEGS Hub"
 #        /vol/cegs/src/trackhub/src_prod/update_tracks.bash MAURANOLAB /home/cadlej01/public_html/trackhub "Maurano Lab" "Maurano Lab Hub"
-#        /vol/mauranolab/mapped/src/dnase/trackhub/update_tracks.bash SARS /vol/mauranolab/sars/public_html/trackhub "SARS-CoV2" "SARS-CoV2 Hub"
+#        /vol/mauranolab/mapped/src/dnase/trackhub/update_tracks.bash SARS /vol/sars/public_html/trackhub "SARS-CoV2" "SARS-CoV2 Hub"
 #
 # There are two sets of code, defined as development and production.
 # They are located here:
@@ -68,7 +68,7 @@ elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
     assemblyBaseDir="/vol/mauranolab"
 elif [[ "${hub_type}" == "SARS" ]]; then
     customGenomeAssembly="NA"
-    assemblyBaseDir="/vol/mauranolab/sars"
+    assemblyBaseDir="/vol/sars"
 else
     echo "ERROR You need to enter a valid hub type. Either: CEGS or MAURANOLAB or SARS. Exiting..."
     exit 1
@@ -117,13 +117,13 @@ done
 
 # Where is this file located? We use this info to find other required resources.
 # The path will have no trailing slash.
-path_to_main_driver_script=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-cd ${path_to_main_driver_script}
+src=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+cd ${src}
 
 # What genomes will we be working with?
 # These are defined in the CEGS_genomes, MAURANOLAB_genomes, and SARS_genomes files.
 # Read the applicable one here:
-readarray -t genome_array < "${path_to_main_driver_script}/${hub_type}_genomes"
+readarray -t genome_array < "${src}/${hub_type}_genomes"
 echo " "
 echo The genomes in this hub will be:
 for i in "${genome_array[@]}"; do
@@ -135,12 +135,12 @@ echo " "
 
 # We also need to make tracks for the various assemblies. Do it here:
 echo "Starting makeAssemblyTracks.bash"
-./makeAssemblyTracks.bash ${path_to_main_driver_script} ${hub_target} ${TMPDIR} ${hub_type} ${customGenomeAssembly} ${assemblyBaseDir} "${genome_array[@]}"
+./makeAssemblyTracks.bash ${src} ${hub_target} ${TMPDIR} ${hub_type} ${customGenomeAssembly} ${assemblyBaseDir} "${genome_array[@]}"
 
 # Now construct the "flowcell" and "aggregation" tracks in TMPDIR.
 hub_dir=`basename ${hub_target}`
 echo "Starting make_tracks.bash"
-./make_tracks.bash ${TMPDIR} ${hub_type} ${path_to_main_driver_script} ${assemblyBaseDir} ${hub_target} "${genome_array[@]}"
+./make_tracks.bash ${TMPDIR} ${hub_type} ${src} ${assemblyBaseDir} ${hub_target} "${genome_array[@]}"
 
 ######################################################################################
 # Now copy the track information to the hub location.
@@ -186,8 +186,8 @@ fi
 
 echo
 echo "Making description files"
-cd ${path_to_main_driver_script}
-./makeDescFiles.bash ${path_to_main_driver_script} ${hub_type} ${hub_target} ${TMPDIR} "${genome_array[@]}"
+cd ${src}
+./makeDescFiles.bash ${src} ${assemblyBaseDir} ${hub_type} ${hub_target} ${TMPDIR} "${genome_array[@]}"
 ######################################################################################
 # Make the hub.txt and genomes.txt files, and populate the structure with other fixed, hand made assets.
 
@@ -205,7 +205,7 @@ echo "descriptionUrl description.html" >> "${hub_target}/hub.txt"
 
 echo
 echo "Deploying trackhub"
-cd ${path_to_main_driver_script}
+cd ${src}
 
 cp -R assets/${hub_type}/. ${hub_target}
 
