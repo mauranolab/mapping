@@ -44,9 +44,18 @@ echo
 date
 echo "split fastq into 16M read chunks"
 splitreads=16000000
-for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="\t"} $0=="" {exit} {print}' | awk -v minsizetosplit=0 -F "\t" 'BEGIN {OFS="\t"} NR>1 && $1!="." && $3>minsizetosplit*2' | awk '$1~/Project_CEGS/ || $1~/Project_Maurano/ || $1~/Project_SARS/' | awk -F "\t" 'BEGIN {OFS="\t"} {print $1 ";" $2}'`; do
+for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="\t"} $0=="" {exit} {print}' | awk -v minsizetosplit=0 -F "\t" 'BEGIN {OFS="\t"} NR>1 && $1!="." && $3>minsizetosplit*2' | awk '$1~/Project_CEGS/ || $1~/Project_Maurano/ || $1~/Project_SARS/' | awk -F "\t" 'BEGIN {OFS="\t"} {print $1 ";" $2 ";" $3}'`; do
     project=`echo ${base} | cut -d ";" -f1`
     bs=`echo ${base} | cut -d ";" -f2`
+    numreads=`echo ${base} | cut -d ";" -f3`
+    
+    if [[ "${numreads}" -lt 200000000 ]]; then
+        nthreads=8
+    else
+        #There can't be too many samples this large per FC, so safe to use a lot of threads
+        nthreads=24
+    fi
+    
     echo
     echo -e "${project}\t${bs}"
     #bak.fastq shouldn't exist at this point, but exclude it just in case
@@ -54,9 +63,9 @@ for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="
         f2=`echo $f1 | perl -pe 's/_R1_/_R2_/g;'`
         echo "$f1 $f2"
         #add ${project}/Sample_${bs}/bak.fastq to make backup
-        qsub -S /bin/bash -j y -N split.${bs}.R1 -pe threads 8 "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f1} R1 ${splitreads}"
+        qsub -S /bin/bash -j y -N split.${bs}.R1 -pe threads ${nthreads} "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f1} R1 ${splitreads}"
         if [ -s "$f2" ]; then
-            qsub -S /bin/bash -j y -N split.${bs}.R2 -pe threads 8 "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f2} R2 ${splitreads}"
+            qsub -S /bin/bash -j y -N split.${bs}.R2 -pe threads ${nthreads} "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f2} R2 ${splitreads}"
         fi
     done
 done
