@@ -78,7 +78,7 @@ esac
 R1primerlen=45
 R2primerlen=18
 # R1 read adapters
-#BUGBUG don
+#BUGBUG move this so it isn't hard coded
 altDpnSeq="GATCTTTGTCCAAACTCATCGAGCTCGG"
 R2PrimerSeq=$(echo $plasmidSeq | tr "[ATGC]" "[TACG]" | rev)
 # R2 read adapters

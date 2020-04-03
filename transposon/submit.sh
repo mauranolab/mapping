@@ -12,7 +12,6 @@ module load python/3.8.1
 module load ImageMagick
 module load picard/1.140
 module load FastQC/0.11.4
-module load cutadapt/1.9.1
 module load samtools/1.9
 module load bwa/0.7.15
 module load bedops/2.4.35
