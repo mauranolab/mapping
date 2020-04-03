@@ -77,18 +77,24 @@ esac
 #BUGBUG hardcoded primer lengths
 R1primerlen=45
 R2primerlen=18
-
-echo "Trimming $R2primerlen bp primer from R2"
-zcat -f $f2 | 
-awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-awk -v trim=$R2primerlen '{if(NR % 4==2 || NR % 4==0) {print substr($0, trim+1)} else if (NR % 4==1) {print $1} else {print}}' |
-pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.genome.fastq.gz
-
+# R1 read adapters
+#BUGBUG don
+altDpnSeq="GATCTTTGTCCAAACTCATCGAGCTCGG"
+R2PrimerSeq=$(echo $plasmidSeq | tr "[ATGC]" "[TACG]" | rev)
+# R2 read adapters
+firstDpnRevSeq=$(echo ${BCreadSeq} | awk '{ print substr($0, 0, length($0)-4) }' | tr "[ATGCB]" "[TACGN]" | rev)
+altDpnRevSeq=$(echo ${altDpnSeq} | tr "[ATGC]" "[TACG]" | rev)
 
 echo
 date
 ## Require BC read have 49 + 20 bp length to run paired mapping
 if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END { print 4 * sum/NR }')" -le 69 ]; then
+
+    echo "Trimming $R2primerlen bp primer from R2"
+    zcat -f $f2 | 
+    awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
+    cutadapt -j $NSLOTS -Z -o $TMPDIR/${sample}.genome.fastq.gz -u $R2primerlen -
+
     # Single-end mapping using bwa aln
     bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t ${NSLOTS} -Y"
     
@@ -100,11 +106,15 @@ if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END
     extractcmd="samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${sample}.genome.sai $TMPDIR/${sample}.genome.fastq.gz"
 else
     # Paired-end mapping using bwa mem
-    echo "Trimming $R1primerlen bp primer from R1"
+    echo "Adaptative trimming of R1"
     zcat -f $f1 |
     awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-    awk -v trim=$R1primerlen '{if(NR % 4==2 || NR % 4==0) {print substr($0, trim+1)} else if (NR % 4==1) {print $1} else {print}}' |
-    pigz -p ${NSLOTS} -c -1 > $TMPDIR/${sample}.R1.fastq.gz
+    cutadapt -Z -j $NSLOTS -o $TMPDIR/${sample}.R1.fastq.gz -u ${R1primerlen} -a ${R2PrimerSeq} -g X${altDpnSeq} -
+    
+    echo "Trimming $R2primerlen bp primer from R2"
+    zcat -f $f2 | 
+    awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
+    cutadapt -Z -j $NSLOTS -u 18 -a ${firstDpnRevSeq} -a ${altDpnRevSeq} -o $TMPDIR/${sample}.genome.fastq.gz -
     
     bwaMemOptions="-Y -K 100000000"
     extractcmd="mem ${bwaMemOptions} -t ${NSLOTS} -R @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix} ${bwaIndex} $TMPDIR/${sample}.R1.fastq.gz $TMPDIR/${sample}.genome.fastq.gz"
