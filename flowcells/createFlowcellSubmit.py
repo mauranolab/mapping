@@ -17,21 +17,21 @@ version="1.5"
 
 parser = argparse.ArgumentParser(prog = "createFlowcellSubmit", description = "Outputs submit commands for all samples from the info.txt located in the flowcell data folder", allow_abbrev=False)
 
-parser.add_argument('--flowcellIDs', action='store', type = str, help='Flowcell IDs (will look for /vol/mauranolab/flowcells/FCxxx/info.txt, multiple FCs separated by comma)', required=True)
-parser.add_argument('--samplenames', action='store', type = str, help='Only process samples with matching names (multiple samples separated by comma, done as string matching)', required=False)
-parser.add_argument('--samples', action='store', type = str, help='Only process samples matching this BS number (multiple samples separated by comma, done as string matching)', required=False)
-parser.add_argument('--projects', action='store', type = str, help='Only process samples in these projects (multiple projects separated by comma)', required=False)
-parser.add_argument('--people', action='store', type = str, help='Only process samples made by these people (multiple names separated by comma)', required=False)
-parser.add_argument('--sampletypes', action='store', type = str, help='Only process samples of this type (multiple projects separated by comma)', required=False)
-parser.add_argument("--aggregate", action='store_true', default=False, help = "Aggregate samples with the same BS number")
-parser.add_argument("--aggregate-sublibraries", action='store_true', default=False, help = "Aggregate samples with the same BS number and sublibrary, and remark duplicates")
-parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
-parser.add_argument('--version', action='version', version='%(prog)s ' + version)
+parser.add_argument("--flowcellIDs", action="store", type = str, help="Flowcell IDs (will look for /vol/mauranolab/flowcells/FCxxx/info.txt, multiple FCs separated by comma)", required=True)
+parser.add_argument("--samplenames", action="store", type = str, help="Only process samples with matching names (multiple samples separated by comma, done as string matching)", required=False)
+parser.add_argument("--samples", action="store", type = str, help="Only process samples matching this BS number (multiple samples separated by comma, done as string matching)", required=False)
+parser.add_argument("--projects", action="store", type = str, help="Only process samples in these projects (multiple projects separated by comma)", required=False)
+parser.add_argument("--people", action="store", type = str, help="Only process samples made by these people (multiple names separated by comma)", required=False)
+parser.add_argument("--sampletypes", action="store", type = str, help="Only process samples of this type (multiple projects separated by comma)", required=False)
+parser.add_argument("--aggregate", action="store_true", default=False, help = "Aggregate samples with the same BS number")
+parser.add_argument("--aggregate-sublibraries", action="store_true", default=False, help = "Aggregate samples with the same BS number and sublibrary, and remark duplicates")
+parser.add_argument("--verbose", action="store_true", default=False, help = "Verbose mode")
+parser.add_argument("--version", action="version", version="%(prog)s " + version)
 
 try:
     args = parser.parse_args()
 except argparse.ArgumentError as exc:
-    print(exc.message, '\n', exc.argument)
+    print(exc.message, "\n", exc.argument)
     sys.exit(2)
 
 if args.verbose:
@@ -88,7 +88,7 @@ def getBasedir(lab, sampleType, fc):
             else:
                 raise Exception("Don't know how to aggregate data from " + lab)
             basedir += fc + "/" + bwaPipelineAnalysisCommandMap[sampleType] + "/"
-        elif sampleType in ['Transposon DNA', 'Transposon RNA', 'Transposon 10xRNA', 'Transposon iPCR', 'Transposon iPCR Capture']:
+        elif sampleType in ["Transposon DNA", "Transposon RNA", "Transposon 10xRNA", "Transposon iPCR", "Transposon iPCR Capture"]:
            basedir = "/vol/mauranolab/transposon/" + fc
         else:
             raise Exception("Don't know how to aggregate data for " + sampleType) 
@@ -101,13 +101,13 @@ def getBasedir(lab, sampleType, fc):
 def getFlowcellInfoFromFile(flowcellID):
     flowcellInfoFileName = "/vol/mauranolab/flowcells/data/" + flowcellID + "/info.txt"
     
-    flowcellInfoFile = open(flowcellInfoFileName, 'r')
-    #flowcellInfoFile = open("/vol/mauranolab/flowcells/data/FCHM2LKBGX9/info.txt", 'r')
+    flowcellInfoFile = open(flowcellInfoFileName, "r")
+    #flowcellInfoFile = open("/vol/mauranolab/flowcells/data/FCHM2LKBGX9/info.txt", "r")
     flowcellInfoFileContent = flowcellInfoFile.readlines()
     
     flowcellInfoFile.close()
     
-    flowcellInfoFileContent = [line.rstrip().split('\t') for line in flowcellInfoFileContent]
+    flowcellInfoFileContent = [line.rstrip().split("\t") for line in flowcellInfoFileContent]
     
     startRow=0
     while(flowcellInfoFileContent[startRow][0] != "#Sample Name"):
@@ -117,7 +117,7 @@ def getFlowcellInfoFromFile(flowcellID):
         print("Reading", flowcellInfoFileName, "starting at line", startRow, file=sys.stderr)
     
     curFlowcellFile = pd.DataFrame(flowcellInfoFileContent[startRow:], columns = flowcellInfoFileContent[startRow]).iloc[1:]
-    curFlowcellFile['FC'] = flowcellID
+    curFlowcellFile["FC"] = flowcellID
     
     return curFlowcellFile
 
@@ -126,18 +126,18 @@ def getFlowcellInfoFromFile(flowcellID):
 #Each function takes dict representing a single row from the FC file iterator and returns the processing command line
 #Transposon pipeline
 def aggregateTransposonSamples(lines):
-    return '/vol/mauranolab/mapped/src/transposon/submitMerge.sh ' + lines.iloc[0]['Sample #'] + "-" + lines.iloc[0]['#Sample Name'] + " " + ' '.join([ getBasedir(None, line['Sample Type'], line['FC']) + "/" + line['Original Sample #'] + "-" + line['#Sample Name'] + '/' for index, line in lines.iterrows() ])
+    return "/vol/mauranolab/mapped/src/transposon/submitMerge.sh " + lines.iloc[0]["Sample #"] + "-" + lines.iloc[0]["#Sample Name"] + " " + " ".join([ getBasedir(None, line["Sample Type"], line["FC"]) + "/" + line["Original Sample #"] + "-" + line["#Sample Name"] + "/" for index, line in lines.iterrows() ])
 
 
 def transposonSamples(line):
     fullSampleName = line["Sample #"] + "-" + line["#Sample Name"]
     sampleType = line["Sample Type"]
-    sampleTypeShort= sampleType.split(' ')[1]
+    sampleTypeShort= sampleType.split(" ")[1]
     
     #Might like to put submit logfile in sample directory but would need to mkdir first, or change qsub to do mkdir on -o: ' -o ' + fullSampleName + 
     qsub = "qsub -S /bin/bash -j y -b y -N submit." + fullSampleName + ' "/vol/mauranolab/mapped/src/transposon/submit.sh '
     
-    fileLocation = getBasedir(line['Lab'], sampleType, line['FC']) + "Sample_" + line["Sample #"] + '/"'
+    fileLocation = getBasedir(line["Lab"], sampleType, line["FC"]) + "Sample_" + line["Sample #"] + '/"'
     
     #default parameters that can be overriden below
     bclen = "16"
@@ -146,7 +146,7 @@ def transposonSamples(line):
         raise Exception("Missing trim values")
     
     #Unique line to each library 
-    if sampleType in ['Transposon DNA', 'Transposon RNA']:
+    if sampleType in ["Transposon DNA", "Transposon RNA"]:
         BCreadSeq = "CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBGCTAGTTGTGGGATCTTTGTCCAAACTCATCGAGCTCGGGA"
         plasmidSeq="AGCTGCACAGCAACACCGAGCTGGGCATCGTGGAGTACCAGCACGCCTTCAAGACCCCCATCGCCTTCGCCAGATC"
         extractBCargs="--no-BCrevcomp"
@@ -174,7 +174,7 @@ def transposonSamples(line):
         extractBCargs="\'--BCrevcomp  --cellBCsuffix 1\'"
     else:
         raise Exception("Can't handle sampleType" + sampleType)
-    submitCommand = ' '.join([qsub + fullSampleName, sampleTypeShort, line["R1 Trim (P5)"], line["R2 Trim (P7)"], bcread, bclen, BCreadSeq, plasmidSeq, extractBCargs, fileLocation])
+    submitCommand = " ".join([qsub + fullSampleName, sampleTypeShort, line["R1 Trim (P5)"], line["R2 Trim (P7)"], bcread, bclen, BCreadSeq, plasmidSeq, extractBCargs, fileLocation])
     
     global doTransposonCleanup
     doTransposonCleanup = True
@@ -193,7 +193,7 @@ def chromConfCapture(line):
     
     sampleUnique = "/home/maagj01/scratch/transposon/captureC/config/config_Dpn.txt  /home/maagj01/scratch/transposon/captureC/genomeFrag/hg38_dpnii.bed K562_Dpn " + organism
     
-    fileLocation = getBasedir(line['Lab'], line["Sample Type"], line['FC']) + "Sample_" + line["Sample #"] + '/"'
+    fileLocation = getBasedir(line["Lab"], line["Sample Type"], line["FC"]) + "Sample_" + line["Sample #"] + '/"'
     
     submitCommand = qsub + sampleUnique + " " + fileLocation
     return(submitCommand)
@@ -201,7 +201,7 @@ def chromConfCapture(line):
 
 #BWA pipeline for DNA / DNase / ChIP-seq
 bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ChIP-seq": "chipseq", "DNA": "dna", "DNA Capture": "capture" }
-bwaPipelineFragmentLengthsMap = { 'DNase-seq': 300, 'Nano-DNase': 300, 'ChIP-seq': 500, 'DNA': 750 , 'DNA Capture': 750 }
+bwaPipelineFragmentLengthsMap = { "DNase-seq": 300, "Nano-DNase": 300, "ChIP-seq": 500, "DNA": 750 , "DNA Capture": 750 }
 
 
 def getBwaPipelineOutdir(sampleType):
@@ -217,7 +217,7 @@ def checkForCEGSreferences(requestedReferencesForMapping, warn=False):
     genomesToMap = []
     for curRequestedReference in requestedReferencesForMapping:
         #Note if geneticModification/customReference are empty strings, then the list will contain an empty string
-        if curRequestedReference != '':
+        if curRequestedReference != "":
             #Genome must match entire contents of a field (e.g., HPRT1 doesn't match dHPRT1), excepting the square brackets denoting integration site
             if curRequestedReference in cegsGenomes:
                 #Add the genome including the cegsvectors_ prefix
@@ -229,7 +229,7 @@ def checkForCEGSreferences(requestedReferencesForMapping, warn=False):
 
 
 def addCEGSgenomes(line):
-    if line['Lab'] != "CEGS":
+    if line["Lab"] != "CEGS":
         return []
     else:
         sampleName = line["#Sample Name"]
@@ -238,15 +238,15 @@ def addCEGSgenomes(line):
 #        if re.search(r'_(Amplicon|BAC|Yeast)$', sampleName) is not None:
 #            return ",cegsvectors_" + "_".join(sampleName.split("_")[0:3])
         
-        geneticModifications = getValueFromLIMS(lims, line['Original Sample #'], 'Genetic Modification').split(",")
-        geneticModifications = [ re.sub(r'\[.+\]$', '', cur) for cur in geneticModifications ]
+        geneticModifications = getValueFromLIMS(lims, line["Original Sample #"], "Genetic Modification").split(",")
+        geneticModifications = [ re.sub(r"\[.+\]$", "", cur) for cur in geneticModifications ]
         #Take only first three (MenDel) fields in case there are comments/constructs (no longer supported -- must now match exactly)
         #geneticModifications = [ "_".join(cur.split("_")[0:3]) for cur in geneticModifications ]
         
-        customReferences = getValueFromLIMS(lims, line['Original Sample #'], 'Custom Reference').split(",")
+        customReferences = getValueFromLIMS(lims, line["Original Sample #"], "Custom Reference").split(",")
         
         if args.verbose:
-            print("\nWill look for genetic modifications ", ','.join(geneticModifications), " and custom references ",  ','.join(customReferences), sep="", file=sys.stderr)
+            print("\nWill look for genetic modifications ", ",".join(geneticModifications), " and custom references ",  ",".join(customReferences), sep="", file=sys.stderr)
         
         additionalGenomesToMap = checkForCEGSreferences(geneticModifications, warn=False)
         additionalGenomesToMap = additionalGenomesToMap + checkForCEGSreferences(customReferences, warn=True)
@@ -257,23 +257,23 @@ def addCEGSgenomes(line):
 def getBwaReference(species):
     if sampleType in ["DNA", "DNA Capture"]:
         speciesToGenomeReference = {
-            'Human': 'hg38_full',
-            'Mouse': 'mm10',
-            'Rat': 'rn6',
-            'Human+yeast': 'hg38_sacCer3',
-            'Mouse+yeast': 'mm10_sacCer3',
-            'Rat+yeast': 'rn6_sacCer3',
-            'Yeast': 'sacCer3',
-            'SARS-Cov2': 'wuhCor1',
-            'Human+SARS-Cov2': 'hg38_full_wuhCor1',
-            'Plasmid': None,
+            "Human": "hg38_full",
+            "Mouse": "mm10",
+            "Rat": "rn6",
+            "Human+yeast": "hg38_sacCer3",
+            "Mouse+yeast": "mm10_sacCer3",
+            "Rat+yeast": "rn6_sacCer3",
+            "Yeast": "sacCer3",
+            "SARS-Cov2": "wuhCor1",
+            "Human+SARS-Cov2": "hg38_full_wuhCor1",
+            "Plasmid": None,
         }
     elif sampleType in ["Nano-DNase", "ChIP-seq", "DNase-seq"]:
         speciesToGenomeReference = {
-            'Human': 'hg38_noalt',
-            'Mouse': 'mm10',
-            'Rat': 'rn6',
-            'Plasmid': None,
+            "Human": "hg38_noalt",
+            "Mouse": "mm10",
+            "Rat": "rn6",
+            "Plasmid": None,
             }
     else:
         raise Exception("Can't parse " + sampleType)
@@ -290,7 +290,7 @@ def getBwaReference(species):
 def bwaPipeline(line):
     sampleType = line["Sample Type"]
     
-    mappedgenomes = [ getBwaReference(curSpecies) for curSpecies in getValueFromLIMS(lims, line['Original Sample #'], 'Species').split(",") ]
+    mappedgenomes = [ getBwaReference(curSpecies) for curSpecies in getValueFromLIMS(lims, line["Original Sample #"], "Species").split(",") ]
     if None in mappedgenomes:
         #None is used for a special case of species we silently do not map to, e.g. Plasmid is not handled right now except as a custom reference
         mappedgenomes.remove(None)
@@ -311,24 +311,24 @@ def bwaPipeline(line):
         else:
             raise Exception("Can't parse " + sampleType)
     
-    if line["Sample Type"]=="DNA Capture":
+    if line["Sample Type"] in ["DNA Capture"]:
         global doDNACaptureCleanup
         doDNACaptureCleanup = True
     
     sampleAnnotation = [ ]
-    sex = getValueFromLIMS(lims, line['Original Sample #'], 'Sex')
+    sex = getValueFromLIMS(lims, line["Original Sample #"], "Sex")
     if sex != "":
         sampleAnnotation.append("Sex=" + sex)
-    bait_set = getValueFromLIMS(lims, line['Original Sample #'], 'Bait set')
+    bait_set = getValueFromLIMS(lims, line["Original Sample #"], "Bait set")
     if bait_set != "":
         sampleAnnotation.append("Bait_set=" + bait_set)
-    geneticModification = getValueFromLIMS(lims, line['Original Sample #'], 'Genetic Modification')
+    geneticModification = getValueFromLIMS(lims, line["Original Sample #"], "Genetic Modification")
     if geneticModification != "":
         sampleAnnotation.append("Genetic_Modification=" + geneticModification)
     
     submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["#Sample Name"] + " " + line["Sample #"]
     if len(sampleAnnotation) > 0:
-        submitCommand += " \"" + ';'.join(sampleAnnotation) + "\""
+        submitCommand += " \"" + ";".join(sampleAnnotation) + "\""
     
     global doBwaCleanup
     doBwaCleanup = True
@@ -348,63 +348,63 @@ for flowcellID in flowcellIDs:
     flowcellFile = pd.concat([flowcellFile, getFlowcellInfoFromFile(flowcellID)])
 
 ###Pre-processing
-print("#", ' '.join([ quoteStringsWithSpaces(arg) for arg in sys.argv ]), sep="")
+print("#", " ".join([ quoteStringsWithSpaces(arg) for arg in sys.argv ]), sep="")
 print()
 
-#Subset to samples we're interested in
-flowcellFile = flowcellFile[flowcellFile['Sample Type' ] != "Pool"]
+#Subset to samples we"re interested in
+flowcellFile = flowcellFile[flowcellFile["Sample Type" ] != "Pool"]
 if sampletypes is not None:
-    flowcellFile = flowcellFile[flowcellFile['Sample Type'].isin(sampletypes)]
+    flowcellFile = flowcellFile[flowcellFile["Sample Type"].isin(sampletypes)]
 if projects is not None:
-    flowcellFile = flowcellFile[flowcellFile['Lab'].isin(projects)]
+    flowcellFile = flowcellFile[flowcellFile["Lab"].isin(projects)]
 if people is not None:
-    flowcellFile = flowcellFile[flowcellFile['Made By'].isin(people)]
+    flowcellFile = flowcellFile[flowcellFile["Made By"].isin(people)]
 if samples is not None:
     #Do partial string matching rather than exact equality to allow flexible subsetting of certain sublibraries or of all sublibraries for a given BS number
-    flowcellFile = flowcellFile[flowcellFile['Sample #'].apply(lambda bs: any([s in bs for s in samples]))]
+    flowcellFile = flowcellFile[flowcellFile["Sample #"].apply(lambda bs: any([s in bs for s in samples]))]
 if samplenames is not None:
     #Do partial string matching rather than exact equality to allow flexible subsetting of certain sublibraries or of all sublibraries for a given BS number
-    flowcellFile = flowcellFile[flowcellFile['#Sample Name'].apply(lambda bs: any([s in bs for s in samplenames]))]
+    flowcellFile = flowcellFile[flowcellFile["#Sample Name"].apply(lambda bs: any([s in bs for s in samplenames]))]
 
 
 #Initialize inputs.txt - must be done before we drop duplicate sample rows
-if len(set(flowcellFile['Sample Type']).intersection(set(bwaPipelineFragmentLengthsMap.keys()))) > 0:
+if len(set(flowcellFile["Sample Type"]).intersection(set(bwaPipelineFragmentLengthsMap.keys()))) > 0:
     dirs = set([])
-    for index, line in flowcellFile[flowcellFile['Sample Type'].isin(bwaPipelineFragmentLengthsMap.keys())].iterrows():
-        dirs.add(getBasedir(line['Lab'], line['Sample Type'], line['FC']) + '*')
-    findCmd =  'find ' + ' '.join(dirs) + ' -maxdepth 1 -regextype posix-awk -regex "^.+(' + '|'.join(sorted(flowcellFile['Sample #'].unique())) + ').+$"'
+    for index, line in flowcellFile[flowcellFile["Sample Type"].isin(bwaPipelineFragmentLengthsMap.keys())].iterrows():
+        dirs.add(getBasedir(line["Lab"], line["Sample Type"], line["FC"]) + "*")
+    findCmd =  "find " + " ".join(dirs) + ' -maxdepth 1 -regextype posix-awk -regex "^.+(' + '|'.join(sorted(flowcellFile['Sample #'].unique())) + ').+$"'
     if args.aggregate or args.aggregate_sublibraries:
         findCmd += ' -name "*.bam"'
     else:
         findCmd += ' -name "*.fastq.gz"'
-    print(findCmd + ' | sort > inputs.txt')
+    print(findCmd + " | sort > inputs.txt")
     print()
 
 
 #Adjust sample IDs and drop duplicate rows to handle aggregations
-flowcellFile['Original Sample #'] = flowcellFile['Sample #']
+flowcellFile["Original Sample #"] = flowcellFile["Sample #"]
 if args.aggregate or args.aggregate_sublibraries:
-    #Sort aggregations by BS number since sample sheet order doesn't matter
-    flowcellFile = flowcellFile.sort_values(by='Sample #')
+    #Sort aggregations by BS number since sample sheet order doesn"t matter
+    flowcellFile = flowcellFile.sort_values(by="Sample #")
     if args.aggregate:
-        flowcellFile['Sample #'] = flowcellFile['Sample #'].apply(lambda bs: re.sub("(BS[0-9]{5})[A-Z]", "\\1", bs))
+        flowcellFile["Sample #"] = flowcellFile["Sample #"].apply(lambda bs: re.sub("(BS[0-9]{5})[A-Z]", "\\1", bs))
     #BWA pipeline just needs last entry per sample
-    if len(set(flowcellFile['Sample Type']).intersection(set(bwaPipelineFragmentLengthsMap.keys()))) > 0:
-        flowcellFile = flowcellFile[~flowcellFile.duplicated('Sample #', keep='last')]
+    if len(set(flowcellFile["Sample Type"]).intersection(set(bwaPipelineFragmentLengthsMap.keys()))) > 0:
+        flowcellFile = flowcellFile[~flowcellFile.duplicated("Sample #", keep="last")]
 
 
 #Some aggregations must be processed in groups of samples
 if args.aggregate or args.aggregate_sublibraries:
-    if len(set(flowcellFile['Sample Type']).intersection(set(['Transposon DNA', 'Transposon RNA', 'Transposon 10xRNA', 'Transposon iPCR', 'Transposon iPCR Capture']))) > 0:
-        for curSample in set(flowcellFile[flowcellFile['Sample Type'].isin(['Transposon DNA', 'Transposon RNA', 'Transposon 10xRNA', 'Transposon iPCR', 'Transposon iPCR Capture'])]['Sample #']):
-            print(aggregateTransposonSamples(flowcellFile[flowcellFile['Sample #']==curSample]))
+    if len(set(flowcellFile["Sample Type"]).intersection(set(["Transposon DNA", "Transposon RNA", "Transposon 10xRNA", "Transposon iPCR", "Transposon iPCR Capture"]))) > 0:
+        for curSample in set(flowcellFile[flowcellFile["Sample Type"].isin(["Transposon DNA", "Transposon RNA", "Transposon 10xRNA", "Transposon iPCR", "Transposon iPCR Capture"])]["Sample #"]):
+            print(aggregateTransposonSamples(flowcellFile[flowcellFile["Sample #"]==curSample]))
 
 
 ###Dispatch appropriate function handler per sample line
 #Will map to these custom genomes when specified, stored as they appear in LIMS (without cegsvectors_ prefix)
-cegsGenomes = [ re.sub(r'^cegsvectors_', '', os.path.basename(x)) for x in glob.glob("/vol/cegs/sequences/cegsvectors_*") ]
+cegsGenomes = [ re.sub(r"^cegsvectors_", "", os.path.basename(x)) for x in glob.glob("/vol/cegs/sequences/cegsvectors_*") ]
 if args.verbose:
-    print("\nFound custom references:" + ','.join(cegsGenomes), file=sys.stderr)
+    print("\nFound custom references:" + ",".join(cegsGenomes), file=sys.stderr)
 
 
 doBwaCleanup = False
@@ -419,10 +419,10 @@ for index, line in flowcellFile.iterrows():
     sampleType = line["Sample Type"]
     
     try:
-        if re.compile(r'^BS[0-9]{5}[A-Z]?$').search(sampleID) is None:
+        if re.compile(r"^BS[0-9]{5}[A-Z]?$").search(sampleID) is None:
             raise Exception("Can't parse " + sampleID + " as BS number")
         
-        if sampleType in ['Transposon DNA', 'Transposon RNA', 'Transposon 10xRNA', 'Transposon iPCR', 'Transposon iPCR Capture']:
+        if sampleType in ["Transposon DNA", "Transposon RNA", "Transposon 10xRNA", "Transposon iPCR", "Transposon iPCR Capture"]:
             if args.aggregate or args.aggregate_sublibraries:
                 continue
             qsubLine = transposonSamples(line)
@@ -442,7 +442,7 @@ for index, line in flowcellFile.iterrows():
 
 ###Cleanup calls
 if doBwaCleanup:
-    for sampleType in flowcellFile['Sample Type'][flowcellFile['Sample Type'].isin(bwaPipelineAnalysisCommandMap.keys())].unique():
+    for sampleType in flowcellFile["Sample Type"][flowcellFile["Sample Type"].isin(bwaPipelineAnalysisCommandMap.keys())].unique():
         basedir = getBwaPipelineOutdir(sampleType)
         if args.aggregate or args.aggregate_sublibraries:
             sgeoutput = ""
@@ -460,7 +460,7 @@ if doBwaCleanup:
 #TODO placeholder for now
 if doDNACaptureCleanup:
     print()
-    print("#qsub -b y -S /bin/bash -j y -N analyzeCapture -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir('DNA Capture') + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeCapture.sh mappedgenome bait dirs\"")
+    print("#qsub -b y -S /bin/bash -j y -N analyzeCapture -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir("DNA Capture") + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeCapture.sh mappedgenome bait dirs\"")
 
 
 #BUGBUG doesn't work since we don't have the pid of the final job at submission time
@@ -468,4 +468,3 @@ if doDNACaptureCleanup:
 #    print()
 #    print("qsub -S /bin/bash -b y -j y -N transposon_info -hold_jid `cat sgeid.merge | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/transposon/Flowcell_Info.sh /home/mauram01/public_html/flowcellInfo/\"")
 #    print("rm -f sgeid.merge")
-
