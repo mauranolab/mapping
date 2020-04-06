@@ -49,11 +49,12 @@ for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="
     bs=`echo ${base} | cut -d ";" -f2`
     numreads=`echo ${base} | cut -d ";" -f3`
     
-    if [[ "${numreads}" -lt 200000000 ]]; then
-        nthreads=8
+    if [[ "${numreads}" -lt 150000000 ]]; then
+        #slightly lower priority so that big jobs start first if possible
+        qsubargs="-pe threads 8 -p -1"
     else
         #There can't be too many samples this large per FC, so safe to use a lot of threads
-        nthreads=24
+        qsubargs="-pe threads 24"
     fi
     
     echo
@@ -63,9 +64,9 @@ for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="
         f2=`echo $f1 | perl -pe 's/_R1_/_R2_/g;'`
         echo "$f1 $f2"
         #add ${project}/Sample_${bs}/bak.fastq to make backup
-        qsub -S /bin/bash -j y -N split.${bs}.R1 -pe threads ${nthreads} "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f1} R1 ${splitreads}"
+        qsub -S /bin/bash -j y -N split.${bs}.R1 ${qsubargs} "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f1} R1 ${splitreads}"
         if [ -s "$f2" ]; then
-            qsub -S /bin/bash -j y -N split.${bs}.R2 -pe threads ${nthreads} "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f2} R2 ${splitreads}"
+            qsub -S /bin/bash -j y -N split.${bs}.R2 ${qsubargs} "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f2} R2 ${splitreads}"
         fi
     done
 done
