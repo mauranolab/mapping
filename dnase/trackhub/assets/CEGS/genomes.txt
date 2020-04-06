@@ -7,4 +7,5 @@ organism CEGS
 scientificName .
 defaultPos LP087:1-6634
 htmlPath description.html
+blat genome.isg.med.nyu.edu 17779
  
