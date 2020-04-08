@@ -185,24 +185,29 @@ cat $TMPDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4=".
 
 #columns: chrom, start, end, BC seq, count, strand
 #Combine subsequent lines having the same barcode at slightly different sites
-cat $TMPDIR/${sample}.barcodes.coords.bed | sort -k4,4 -k1,1 -k2,2g |
-awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"} \
-NR==1 {split($0, last)} \
-NR>1 { \
-    if(last[1] != $1 || $2 - last[2] > maxstep || $3 - last[3] > maxstep || last[4] != $4 || last[6] != $6) { 
-        #not the same site or BC, so print \
-        print last[1], last[2], last[3], last[4], last[5], last[6]; \
-        split($0, last); \
-    } else { #the same BC \
-        if($5 > last[5]) { \
-            #Use the coords from this site since it has more reads \
-            last[2]=$2; last[3]=$3; \
+if [ "$(cat $TMPDIR/${sample}.barcodes.coords.bed | wc -l)" -gt 0 ];
+then
+    cat $TMPDIR/${sample}.barcodes.coords.bed | sort -k4,4 -k1,1 -k2,2g |
+    awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"} \
+    NR==1 {split($0, last)} \
+    NR>1 { \
+        if(last[1] != $1 || $2 - last[2] > maxstep || $3 - last[3] > maxstep || last[4] != $4 || last[6] != $6) { 
+            #not the same site or BC, so print \
+            print last[1], last[2], last[3], last[4], last[5], last[6]; \
+            split($0, last); \
+        } else { #the same BC \
+            if($5 > last[5]) { \
+                #Use the coords from this site since it has more reads \
+                last[2]=$2; last[3]=$3; \
+            } \
+            last[5] += $5; #add the counts \
         } \
-        last[5] += $5; #add the counts \
     } \
-} \
-END {print last[1], last[2], last[3], last[4], last[5], last[6]}' |
-sort-bed - > $TMPDIR/${sample}.barcodes.coords.collapsed.bed
+    END {print last[1], last[2], last[3], last[4], last[5], last[6]}' |
+    sort-bed - > $TMPDIR/${sample}.barcodes.coords.collapsed.bed
+else
+    cp $TMPDIR/${sample}.barcodes.coords.bed $TMPDIR/${sample}.barcodes.coords.collapsed.bed
+fi
 
 echo -n -e "${sample}\tNumber of BC+insertions after collapsing nearby ones\t"
 cat $TMPDIR/${sample}.barcodes.coords.collapsed.bed | wc -l
@@ -285,8 +290,12 @@ cat $OUTDIR/${sample}.uniqcoords.bed | bedops --range 5 -m - | uniq | wc -l
 
 
 echo -n -e "${sample}\tProportion of unique insertion sites at TA\t"
-cat $OUTDIR/${sample}.uniqcoords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$2-=2; $3-=1; print}' |  /home/mauram01/bin/bed2fasta.pl - /vol/isg/annotation/fasta/hg38 2>/dev/null | grep -v -e "^>" | tr '[a-z]' '[A-Z]' | awk -F "\t" 'BEGIN {OFS="\t"; count=0} $0=="TA" {count+=1} END {print count/NR}'
-
+if [ $(cat $OUTDIR/${sample}.uniqcoords.bed | wc -l) -gt 0 ];
+then
+    cat $OUTDIR/${sample}.uniqcoords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$2-=2; $3-=1; print}' |  /home/mauram01/bin/bed2fasta.pl - /vol/isg/annotation/fasta/hg38 2>/dev/null | grep -v -e "^>" | tr '[a-z]' '[A-Z]' | awk -F "\t" 'BEGIN {OFS="\t"; count=0} $0=="TA" {count+=1} END {print count/NR}'
+else
+    echo 0
+fi
 
 echo
 echo "Histogram of number of insertions between two neighboring DNase sites"
