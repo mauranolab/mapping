@@ -66,7 +66,6 @@ echo -n -e "${sample}\tTotal unmapped reads\t"
 samtools view -f 516 -c $OUTDIR/${sample}.bam
 
 echo -n -e "${sample}\tTotal reads mapped to unscaffolded contigs\t"
-#BUGBUG nonzero exit if those chroms are not present
 samtools view -f 512 $OUTDIR/${sample}.bam | cut -f3 | awk '$0 ~ /hap|random|^chrUn_|_alt$|scaffold|^C\d+/' | wc -l
 
 echo
