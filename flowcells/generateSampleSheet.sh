@@ -28,7 +28,7 @@ tee info.txt |
 #NB our sample sheet records RC for BC2/i5, which according to https://support.illumina.com/content/dam/illumina-support/documents/documentation/system_documentation/miseq/indexed-sequencing-overview-guide-15057455-04.pdf is valid for iSeq 100, MiniSeq, NextSeq, HiSeq X, HiSeq 4000, or HiSeq 3000. Therefore for runs on NovaSeqTM 6000, MiSeqTM, HiSeq 2500, and HiSeq 2000, BC2 must be RC back to the original sequence.
 #NB this is hardcoded to put all samples in lane 1
 awk -f ${src}/flowcells/revcomp.awk -F "\t" --source  'BEGIN {OFS=","; split("8,8", bclens, ",")} \
-    $1=="#Instrument" { if($2~/NovaSeq/) {doRevComp=1} else {doRevComp=0} } \
+    $1=="#Instrument" { if($2~/NovaSeq/ || $2~/MiSeq/) {doRevComp=1} else {doRevComp=0} } \
     $1=="#Indices" && $2!="" {split($2, bclens, ",")} \
     $0!~/^#/ && $1!="" && $5!="Pool" { \
         if(bclens[1]==0) {$6="_"} \
