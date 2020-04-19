@@ -282,7 +282,7 @@ def getBwaReference(species):
         print("WARNING Species was not provided", e, sep="", file=sys.stderr)
     
     if species not in speciesToGenomeReference:
-        raise Exception("Can't find reference for species" + species)
+        raise Exception("Can't find reference for species " + species)
     
     return(speciesToGenomeReference[species])
 
