@@ -136,7 +136,7 @@ ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
 #  -C, --adjust-MQ INT     adjust mapping quality; recommended:50, disable:0 [0]
 #  -F, --gap-frac FLOAT    minimum fraction of gapped reads [0.002]
 #2020mar21 raised max-idepth to permit calling indels from samples with coverage>250 (i.e. capture)
-bcftools mpileup -r ${chrom} --redo-BAQ -f ${referencefasta} --adjust-MQ 50 --gap-frac 0.05 --max-depth 10000 --max-idepth 100000 -a DP,AD -O u ${sampleOutdir}/${name}.${mappedgenome}.bam |
+bcftools mpileup -r ${chrom} -f ${referencefasta} --redo-BAQ --adjust-MQ 50 --gap-frac 0.05 --max-depth 10000 --max-idepth 200000 -a DP,AD -O u ${sampleOutdir}/${name}.${mappedgenome}.bam |
 #NB for some reason if the intermediate file is saved instead of piped, bcftools call outputs a GQ of . for everything
 #Iyer et al PLoS Genet 2018 uses --multiallelic-caller
 #https://sourceforge.net/p/samtools/mailman/message/32931405/
