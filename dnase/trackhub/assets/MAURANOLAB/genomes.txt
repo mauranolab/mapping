@@ -7,4 +7,5 @@ organism MauranoLab
 scientificName .
 defaultPos pSB:1-6489
 htmlPath description.html
+blat genome.isg.med.nyu.edu 17778
  
