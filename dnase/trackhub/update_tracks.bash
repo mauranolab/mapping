@@ -270,7 +270,7 @@ else
     exit 5
 fi
 ######################################################################################
-# exit 0  # Skip BLAT update.
+# exit 0  # Skip BLAT update. 
 
 # Enable BLAT for custom assemblies...
 if [[ "${hub_type}" == "CEGS" ]]; then
