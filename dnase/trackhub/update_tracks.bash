@@ -272,26 +272,22 @@ fi
 ######################################################################################
 # exit 0  # Skip BLAT update.
 
-# Get local BLAT working...
+# Enable BLAT for custom assemblies...
 if [[ "${hub_type}" == "CEGS" ]]; then
-    echo "Copying development version of cegsvectors.2bit to cadlej01_shared..."
-    cp -p /vol/cegs/public_html/trackhub_dev/cegsvectors/data/cegsvectors.2bit /vol/isg/cadlej01_shared/cegsvectors.2bit
-    echo "Done copying."
-    
-    echo "Restarting server..."
-    # First time users will be prompted for ssh key setup here.
-    # Also, a password will be required everytime it is run.
-    ssh isglcdcpvm001.nyumc.org '/usr/local/bin/blat/gfServer stop localhost 17779 -log=/vol/isg/cadlej01_shared/stop_gfServer_VM.log; cd /vol/isg/cadlej01_shared; /usr/local/bin/blat/gfServer start localhost 17779 cegsvectors.2bit -canStop -log=/vol/isg/cadlej01_shared/start_gfServer_VM.log -stepSize=5 > /dev/null &'
-    echo "Exiting restart."
+    port=17779
 elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
-    echo "Copying mauranolab.2bit to cadlej01_shared..."
-    cp -p /home/cadlej01/public_html/trackhub/mauranolab/data/mauranolab.2bit /vol/isg/cadlej01_shared/mauranolab.2bit
-    echo "Done copying."
-    
-    echo "Restarting server..."
-    # First time users will be prompted for ssh key setup here.
-    # Also, a password will be required everytime it is run.
-    ssh isglcdcpvm001.nyumc.org '/usr/local/bin/blat/gfServer stop localhost 17778 -log=/vol/isg/cadlej01_shared/stop_gfServer_VM_mauranolab.log; cd /vol/isg/cadlej01_shared; /usr/local/bin/blat/gfServer start localhost 17778 mauranolab.2bit -canStop -log=/vol/isg/cadlej01_shared/start_gfServer_VM_mauranolab.log -stepSize=5 > /dev/null &'
-    echo "Exiting restart."
+    port=17778
+else
+    exit 0
 fi
+
+echo "Copying ${customGenomeAssembly}.2bit to cadlej01_shared..."
+cp -p "${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit" "/vol/isg/cadlej01_shared"
+echo "Done copying."
+
+echo "Restarting gfServer..."
+# First time users will be prompted for ssh key setup here.
+# Also, a password will be required everytime it is run.
+ssh isglcdcpvm001.nyumc.org "/usr/local/bin/blat/gfServer stop localhost ${port} -log=/vol/isg/cadlej01_shared/stop_gfServer_VM_${hub_type}.log; cd /vol/isg/cadlej01_shared; /usr/local/bin/blat/gfServer start localhost ${port} ${customGenomeAssembly}.2bit -canStop -log=/vol/isg/cadlej01_shared/start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
+echo "Exiting restart of gfServer."
 
