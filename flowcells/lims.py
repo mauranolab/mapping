@@ -17,11 +17,6 @@ import glob
 #create project, service account key, share sheet with service account manually from google drive UI
 
 
-#getting warning /vol/mauranolab/mauram01/git/mapping/flowcells/lims.py:129: FutureWarning: `item` has been deprecated and will be removed in a future version
-#https://stackoverflow.com/questions/57390363/pandas-item-has-been-deprecated
-#TODO migrate to .values.item()?
-
-
 #Convenience function
 def getValueFromLIMS(lims, bs, colname):
     if lims is None:
@@ -87,24 +82,24 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maura
             numMultipleSamples += 1
         else:
             #Only check additional metadata for specified projects to avoid excess verbiage
-            if projects=='' or curLims['Lab'].item() in projectList:
+            if projects=='' or curLims['Lab'].values.item() in projectList:
                 for col in commonCols:
-                    if curSeq[col] != curLims[col].item():
-                        if curSeq[col] == "" or curLims[col].item() == "":
-                            print("WARNING", "missing info", SampleName, bs, col, curLims[col].item(), curSeq[col], sep=",")
+                    if curSeq[col] != curLims[col].values.item():
+                        if curSeq[col] == "" or curLims[col].values.item() == "":
+                            print("WARNING", "missing info", SampleName, bs, col, curLims[col].values.item(), curSeq[col], sep=",")
                         else:
-                            print("ERROR", "inconsistent info", SampleName, bs, col, curLims[col].item(), curSeq[col], sep=",")
+                            print("ERROR", "inconsistent info", SampleName, bs, col, curLims[col].values.item(), curSeq[col], sep=",")
                 for col in set(seq.columns.values):
                     if isinstance(curSeq[col], str) and curSeq[col] != curSeq[col].strip():
                         print("WARNING", "leading/trailing whitespace", SampleName, bs, col, "", curSeq[col], sep=",")
                 for col in set(lims.columns.values):
-                    if str(curLims[col].item()) != str(curLims[col].item()).strip():
-                        print("WARNING", "leading/trailing whitespace", SampleName, bs, col, curLims[col].item(), "", sep=",")
+                    if str(curLims[col].values.item()) != str(curLims[col].values.item()).strip():
+                        print("WARNING", "leading/trailing whitespace", SampleName, bs, col, curLims[col].values.item(), "", sep=",")
                 for bscol in ["Parent Library", "Pool ID"]:
-                    if curLims[bscol].item() != "":
+                    if curLims[bscol].values.item() != "":
                         #Require exactly 1 match
-                        if lims[limsMask & lims['Sample #'].isin([curLims[bscol].item()])].shape[0] != 1:
-                            print("ERROR", "invalid " + bscol, SampleName, bs, bscol, curLims[bscol].item(), "", sep=",")
+                        if lims[limsMask & lims['Sample #'].isin([curLims[bscol].values.item()])].shape[0] != 1:
+                            print("ERROR", "invalid " + bscol, SampleName, bs, bscol, curLims[bscol].values.item(), "", sep=",")
     
     print(str(numMissingSamples) + " total samples missing from LIMS sheet")
     print(str(numMultipleSamples) + " total samples matching multiple entries in LIMS sheet")
@@ -119,6 +114,9 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maura
 #...
 #wks.link(syncToCloud=True)
 def updateSheetFromTable(wks, df, updates, commit=True):
+    if any(updates['Sample #'].duplicated()):
+        print("ERROR: found duplicate Sample #s in update table!")
+        return
     errors = 0
     colnames = df.columns.values
     excludedCols = ['Sample #'] #Don't update data in these columns
@@ -140,9 +138,9 @@ def updateSheetFromTable(wks, df, updates, commit=True):
                 for col in set(colnames).intersection(set(updates.columns.values)).difference(excludedCols):
                     coords = (row, df.columns.get_loc(col)+1)
                     oldvalue = wks.get_value(coords)
-                    newvalue = updates[updates['Sample #'] == BS][col].item()
+                    newvalue = updates[updates['Sample #'] == BS][col].values.item()
                     if oldvalue != newvalue:
-                        print(col + "=" + oldvalue + " => " + newvalue)
+                        print(col + "=" + str(oldvalue) + " => " + str(newvalue))
                     if commit:
                         wks.update_value(coords, newvalue)
     if errors > 0:
