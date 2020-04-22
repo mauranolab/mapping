@@ -86,6 +86,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maura
             print("ERROR", "found " + str(numEntriesInLIMS) + " entries in LIMS!", SampleName, bs, "", "", "", sep=",")
             numMultipleSamples += 1
         else:
+            #Only check additional metadata for specified projects to avoid excess verbiage
             if projects=='' or curLims['Lab'].item() in projectList:
                 for col in commonCols:
                     if curSeq[col] != curLims[col].item():
@@ -99,6 +100,11 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maura
                 for col in set(lims.columns.values):
                     if str(curLims[col].item()) != str(curLims[col].item()).strip():
                         print("WARNING", "leading/trailing whitespace", SampleName, bs, col, curLims[col].item(), "", sep=",")
+                for bscol in ["Parent Library", "Pool ID"]:
+                    if curLims[bscol].item() != "":
+                        #Require exactly 1 match
+                        if lims[limsMask & lims['Sample #'].isin([curLims[bscol].item()])].shape[0] != 1:
+                            print("ERROR", "invalid " + bscol, SampleName, bs, bscol, curLims[bscol].item(), "", sep=",")
     
     print(str(numMissingSamples) + " total samples missing from LIMS sheet")
     print(str(numMultipleSamples) + " total samples matching multiple entries in LIMS sheet")
@@ -117,6 +123,9 @@ def updateSheetFromTable(wks, df, updates, commit=True):
     colnames = df.columns.values
     excludedCols = ['Sample #'] #Don't update data in these columns
     for BS in updates['Sample #']:
+        if re.match("^BS[0-9]+[A-Z]$", BS) is None:
+            print("WARNING: empty BS provided" + BS)
+            continue
         #kind of a hassle to get column access
         #loc = wks.find(BS, matchEntireCell=True)
         rows = df.index[df['Sample #'] == BS].values
