@@ -9,12 +9,11 @@ else
 fi
 
 src="/vol/mauranolab/mapped/src"
-#TODO /home/mauram01/lib/revcomp.awk
 
 echo "Paste in a full flowcell entry (including #header lines, followed by a newline and CTRL-D"
 
 #Boilerplate header
-cat ${src}/flowcells/SampleSheet.template.txt > SampleSheet.csv
+cat ${src}/flowcells/SampleSheet.template.txt > $TMPDIR/SampleSheet.withlane.csv
 
 
 ###Parse the sequencing sheet info from STDIN
@@ -26,7 +25,6 @@ perl -pe 's/^(#.+[^\t])\t+$/\1/g;' |
 #Also creates info.txt
 tee info.txt |
 #NB our sample sheet records RC for BC2/i5, which according to https://support.illumina.com/content/dam/illumina-support/documents/documentation/system_documentation/miseq/indexed-sequencing-overview-guide-15057455-04.pdf is valid for iSeq 100, MiniSeq, NextSeq, HiSeq X, HiSeq 4000, or HiSeq 3000. Therefore for runs on NovaSeqTM 6000, MiSeqTM, HiSeq 2500, and HiSeq 2000, BC2 must be RC back to the original sequence.
-#NB this is hardcoded to put all samples in lane 1
 awk -f ${src}/flowcells/revcomp.awk -F "\t" --source  'BEGIN {OFS=","; split("8,8", bclens, ",")} \
     $1=="#Instrument" { if($2~/NovaSeq/ || $2~/MiSeq/) {doRevComp=1} else {doRevComp=0} } \
     $1=="#Indices" && $2!="" {split($2, bclens, ",")} \
@@ -36,8 +34,27 @@ awk -f ${src}/flowcells/revcomp.awk -F "\t" --source  'BEGIN {OFS=","; split("8,
         split($6, bc1, "_"); \
         split($7, bc2, "_"); \
         if(doRevComp==1) { bc2[2]=revcomp(bc2[2]) } \
-        print "Sample_" $2, $2, "", "",  bc1[1], toupper(substr(bc1[2], 0, bclens[1])),  bc2[1], toupper(substr(bc2[2], 0, bclens[2])), "Project_" $3, ""; \
-    }' >> SampleSheet.csv
+        print "Sample_" $2, $2, "", "",  bc1[1], toupper(substr(bc1[2], 0, bclens[1])),  bc2[1], toupper(substr(bc2[2], 0, bclens[2])), "Project_" $3, "", $19; \
+    }' >> $TMPDIR/SampleSheet.withlane.csv
+
+
+echo
+echo
+lanestatus=`cat $TMPDIR/SampleSheet.withlane.csv | awk -F "," 'BEGIN {foundEmptyLane=0; foundLane=0} $1=="Sample_ID" {parse=1; next} parse==1 {if($11=="") {foundEmptyLane=1} else {foundLane=1}} END {if(foundEmptyLane==1 && foundLane==1) {print "ERROR, incomplete lane info"} else if(foundEmptyLane==1) {print "NOLANE"} else if (foundLane==1) {print "LANE"} else {print "IMPOSSIBLE"}}'`
+case "${lanestatus}" in
+LANE)
+    echo "Samples will be demuxed by lane"
+    mv $TMPDIR/SampleSheet.withlane.csv SampleSheet.csv
+    ;;
+NOLANE)
+    cut -d "," -f1-10 $TMPDIR/SampleSheet.withlane.csv > SampleSheet.csv
+    ;;
+*)
+    echo "${lanestatus}"
+    exit 1
+    ;;
+esac
+
 
 echo
 echo
