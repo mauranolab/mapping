@@ -114,28 +114,26 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggrega
     echo
     echo "Marking duplicates"
     date
-    ###Obsolete picard version
+    ###Obsolete picard version (coordinate sorted)
     #Used to need VALIDATION_STRINGENCY=LENIENT to avoid SAM validation error: ERROR...MAPQ should be 0 for unmapped read or CIGAR should have zero elements for unmapped read
     #http://seqanswers.com/forums/showthread.php?t=4246
     #BUGBUG Can make huge log files despite these options
     #http://sourceforge.net/p/samtools/mailman/message/32910359/
-    #java -Xmx6g -jar ${PICARDPATH}/MarkDuplicates.jar INPUT=${name}.${mappedgenome}.bam OUTPUT=${name}.markedDups.bam METRICS_FILE=$TMPDIR/${name}.picardDups.txt QUIET=TRUE VERBOSITY=ERROR COMPRESSION_LEVEL=9 ASSUME_SORTED=TRUE VALIDATION_STRINGENCY=LENIENT && mv ${name}.markedDups.bam ${name}.${mappedgenome}.bam
-    #BUGBUG samblaster is faster because it makes a single pass and doesn't pick dup with lowest BQ sum -- https://github.com/CCDG/Pipeline-Standardization/blob/master/PipelineStandard.md
-    #TODO maybe go back to picard, but using bam sorted by name? Like this:
-    #java -XX:ParallelGCThreads=2 -Xmx6g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MarkDuplicates -INPUT=/dev/stdin -OUTPUT=$TMPDIR/${name}.${mappedgenome}.markedDups.bam -METRICS_FILE=$TMPDIR/${name}.picardDups.txt -QUIET=TRUE -VERBOSITY=ERROR -COMPRESSION_LEVEL=0 -ASSUME_SORT_ORDER=queryname
-    #Would need to handle addMateTags functionality
-    #Or try sambamba -- https://github.com/FrickTobias/BLR/issues/113
+    #java -XX:ParallelGCThreads=2 -Xmx6g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MarkDuplicates -INPUT=${sampleOutdir}/${name}.${mappedgenome}.bam -OUTPUT=$TMPDIR/${name}.${mappedgenome}.markedDups.bam -METRICS_FILE=$TMPDIR/${name}.picardDups.txt -QUIET=TRUE -VERBOSITY=ERROR -COMPRESSION_LEVEL=9 -ASSUME_SORTED=TRUE && mv ${name}.markedDups.bam ${name}.${mappedgenome}.bam
     
-    ###Samblaster is faster
-    #samblaster used an average of 1GB memory mapping ENCODE DNase data to hg38. 10/889 jobs used >5GB.
+    #Picard version -- sorted by read name
+#    java -XX:ParallelGCThreads=2 -Xmx6g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MarkDuplicates -INPUT=${sampleOutdir}/${name}.${mappedgenome}.bam -OUTPUT=$TMPDIR/${name}.${mappedgenome}.markedDups.bam -METRICS_FILE=$TMPDIR/${name}.picardDups.txt -QUIET=TRUE -VERBOSITY=ERROR -COMPRESSION_LEVEL=0
+    #Doesn't seem needed, doesn't reduce memory usage
+    # -ASSUME_SORT_ORDER=queryname
+    
+    ###Samblaster
     samtools view -h ${sampleOutdir}/${name}.${mappedgenome}.bam |
     #NB bwa bwa/0.7.17 adds MC but not MQ tags. samblaster --addMateTags then adds its own. Since I don't see us using MQ anywhere, we'll remove the samblaster option and let bwa generate MC
     samblaster |
-    #BUGBUG samblaster does not add a PP field in its @PG tag; when we are merging after map PP should just be bwa, but would be the prior tag SAMBLASTER when doing aggregateRemarkDups
-    #BUGBUG samblaster blindly adds new @PG     ID:SAMBLASTER record even if it exists, causing strict (picard) validation errors
+    #samblaster does not add a PP field in its @PG tag; when we are merging after map PP should just be bwa, but would be the prior tag SAMBLASTER when doing aggregateRemarkDups
+    #samblaster blindly adds new @PG     ID:SAMBLASTER record even if it exists, causing strict (picard) validation errors
     #https://github.com/GregoryFaust/samblaster/blob/master/samblaster.cpp
     ${src}/fixDupSAMHeaderPG.py - - >$TMPDIR/${name}.${mappedgenome}.markedDups.bam
-#    samtools view -b - > $TMPDIR/${name}.${mappedgenome}.markedDups.bam
     
     samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${name}.sort -l 9 $TMPDIR/${name}.${mappedgenome}.markedDups.bam > ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam && mv ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
 fi
