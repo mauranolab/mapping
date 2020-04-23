@@ -101,7 +101,8 @@ for (i in 1:length(analysisFiles)) {
 			data[i, "Mapped reads"] <- as.numeric(splitLines('Total PF reads', '\t')$X3)
 			data[i, "Prop pSB/pTR"] <- signif(as.numeric(splitLines('Total reads mapping to pSB or pTR', '\t')$X3) / data[i, "Mapped reads"], 2)
 			data[i, "Mapped+BC reads"] <- as.numeric(splitLines('Number of reads passing all filters and having barcodes assigned', '\t')$X3)
-			data[i, "Read lengths"] <- gsub(" \\([0-9]+\\)", "", splitLines('Read lengths', '\t')$X3)
+			data[i, "Read lengths"] <- gsub(" ", "", gsub(" \\([0-9]+\\)", "", splitLines('Read lengths', '\t')$X3))
+			data[i, "Read lengths"] <- paste(min(unlist(strsplit(data[i, "Read lengths"], ","))), max(unlist(strsplit(data[i, "Read lengths"], ","))), sep="-")
 			data[i, "Raw unique sites"] <- as.numeric(splitLines('Number of unique insertion sites before collapsing nearby ones', '\t')$X3[1])
 			#Note we use tail to get "Number of unique insertion sites" rather than the "before collapsing nearby ones" one
 			data[i, "Unique sites"] <- as.numeric(tail(splitLines('Number of unique insertion sites', '\t'), 1)$X3[1])
