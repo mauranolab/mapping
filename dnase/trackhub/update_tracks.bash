@@ -271,3 +271,21 @@ else
 fi
 ######################################################################################
 
+# Enable BLAT for custom assemblies...
+if [[ "${hub_type}" == "CEGS" ]]; then
+    blatport=17779
+elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
+    blatport=17778
+else
+    blatport=0
+fi
+
+if [ ${blatport} -ne 0 ]; then
+    echo "Copying ${customGenomeAssembly}.2bit to cadlej01_shared..."
+    cp -p ${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit /vol/isg/cadlej01_shared
+    
+    echo "Restarting gfServer..."
+    ssh isglcdcpvm001.nyumc.org "/usr/local/bin/blat/gfServer stop localhost ${blatport} -log=/vol/isg/cadlej01_shared/stop_gfServer_VM_${hub_type}.log; cd /vol/isg/cadlej01_shared; /usr/local/bin/blat/gfServer start localhost ${blatport} ${customGenomeAssembly}.2bit -canStop -log=/vol/isg/cadlej01_shared/start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
+    echo "Finished restart of gfServer."
+fi
+
