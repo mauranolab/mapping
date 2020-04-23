@@ -285,7 +285,7 @@ if [ ${blatport} -ne 0 ]; then
     cp -p ${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit /vol/isg/cadlej01_shared
     
     echo "Restarting gfServer..."
-    ssh "${USER}@isglcdcpvm001.nyumc.org" "/usr/local/bin/blat/gfServer stop localhost ${blatport} -log=/vol/isg/cadlej01_shared/stop_gfServer_VM_${hub_type}.log; cd /vol/isg/cadlej01_shared; /usr/local/bin/blat/gfServer start localhost ${blatport} ${customGenomeAssembly}.2bit -canStop -log=/vol/isg/cadlej01_shared/start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
+    ssh isglcdcpvm001.nyumc.org "/usr/local/bin/blat/gfServer stop localhost ${blatport} -log=/vol/isg/cadlej01_shared/stop_gfServer_VM_${hub_type}.log; cd /vol/isg/cadlej01_shared; /usr/local/bin/blat/gfServer start localhost ${blatport} ${customGenomeAssembly}.2bit -canStop -log=/vol/isg/cadlej01_shared/start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
     echo "Finished restart of gfServer."
 fi
 
