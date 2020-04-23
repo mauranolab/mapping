@@ -270,7 +270,7 @@ else
     exit 5
 fi
 ######################################################################################
-# exit 0  # Skip BLAT update. 
+# exit 0  # Skip BLAT update.
 
 # Enable BLAT for custom assemblies...
 if [[ "${hub_type}" == "CEGS" ]]; then
@@ -278,16 +278,28 @@ if [[ "${hub_type}" == "CEGS" ]]; then
 elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
     port=17778
 else
-    exit 0
+    port=0
 fi
 
-echo "Copying ${customGenomeAssembly}.2bit to cadlej01_shared..."
-cp -p "${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit" "/vol/isg/cadlej01_shared"
-echo "Done copying."
-
-echo "Restarting gfServer..."
-# First time users will be prompted for ssh key setup here.
-# Also, a password will be required everytime it is run.
-ssh isglcdcpvm001.nyumc.org "/usr/local/bin/blat/gfServer stop localhost ${port} -log=/vol/isg/cadlej01_shared/stop_gfServer_VM_${hub_type}.log; cd /vol/isg/cadlej01_shared; /usr/local/bin/blat/gfServer start localhost ${port} ${customGenomeAssembly}.2bit -canStop -log=/vol/isg/cadlej01_shared/start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
-echo "Exiting restart of gfServer."
+if [ ${port} -ne 0 ]; then
+    echo "Copying ${customGenomeAssembly}.2bit to cadlej01_shared..."
+    cp -p ${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit /vol/isg/cadlej01_shared
+    echo "Done copying."
+    
+    # To set up remote ssh login process:
+    #    STEP #1:
+    #    ssh-keygen
+    #    When the message 'Enter file in which to save the key' appears, just leave the filename blank by pressing ENTER.
+    #    Next, when the terminal asks you to ENTER a passphrase, just leave this blank too and press Enter. You do this twice.
+    #
+    #    STEP #2:
+    #    ssh-copy-id <username>@isglcdcpvm001.nyumc.org
+    #
+    #    The keys are stored in: .ssh/authorized_keys in the remote machine.
+    #
+    # Now you can ssh in without a password.
+    echo "Restarting gfServer..."
+    ssh "${USER}@isglcdcpvm001.nyumc.org" "/usr/local/bin/blat/gfServer stop localhost ${port} -log=/vol/isg/cadlej01_shared/stop_gfServer_VM_${hub_type}.log; cd /vol/isg/cadlej01_shared; /usr/local/bin/blat/gfServer start localhost ${port} ${customGenomeAssembly}.2bit -canStop -log=/vol/isg/cadlej01_shared/start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
+    echo "Finished restart of gfServer."
+fi
 
