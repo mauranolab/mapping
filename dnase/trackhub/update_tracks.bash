@@ -123,7 +123,7 @@ cd ${src}
 # What genomes will we be working with?
 # These are defined in the CEGS_genomes, MAURANOLAB_genomes, and SARS_genomes files.
 # Read the applicable one here:
-readarray -t genome_array < "${src}/${hub_type}_genomes"
+readarray -t genome_array < "${src}/assets/${hub_type}/${hub_type}_genomes"
 echo " "
 echo The genomes in this hub will be:
 for i in "${genome_array[@]}"; do
@@ -207,7 +207,7 @@ echo
 echo "Deploying trackhub"
 cd ${src}
 
-cp -R assets/${hub_type}/. ${hub_target}
+cp -R assets/${hub_type}/copiedFiles/. ${hub_target}
 
 for i in "${genome_array[@]}"; do
     [ "${i}" = "${customGenomeAssembly}" ] && continue
