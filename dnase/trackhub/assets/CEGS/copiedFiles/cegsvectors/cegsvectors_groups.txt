@@ -1,0 +1,5 @@
+name cegsvectors
+label CEGS
+priority 10
+defaultIsClosed 0
+
