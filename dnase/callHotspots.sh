@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#Wrapper around Hotspot 1
+
 #BUGBUG can't handle % in file names
 
 
