@@ -35,14 +35,12 @@ if [ -z "$NSLOTS" ]; then
 fi
 
 
-# the function "round()" was taken from 
-# http://stempell.com/2009/08/rechnen-in-bash/
-
-# the round function:
+# the function "round()" was taken from http://stempell.com/2009/08/rechnen-in-bash/
 round()
 {
     echo $(printf %.$2f $(echo "scale=$2;(((10^$2)*$1)+0.5)/(10^$2)" | bc))
 };
+
 
 bam2instrument()
 {
@@ -74,8 +72,10 @@ printfNA()
 }
 
 
+#Maps sample name to RGB colors
 getcolor () {
     local trackcolor
+    #Example colorset, not typically used in our pipeline
     case "$1" in
         B6129SF1J*)
                    trackcolor="238,54,36";; #red
@@ -176,7 +176,7 @@ fi
 
 
 ###Begin processing
-#NB using -F 512 delegates the thresholding on MAPQ/unpapped reads to filter_reads.py
+#NB using -F 512 essentially delegates the thresholding on MAPQ/unpapped reads to filter_reads.py
 samflags="-F 512"
 
 
@@ -216,7 +216,7 @@ for chrom in `samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | cu
         print $3, chromStart, chromEnd, insertlength, readlength, strand, flag; \
     }' |
     sort-bed --max-mem 5G - | 
-    #BUGBUG bedmap not working properly with header
+    #BUGBUG doesn't make it through starchcat
     #awk -F "\t" 'BEGIN {OFS="\t"; print "#chrom", "chromStart", "chromEnd", "insertlength", "readlength", "strand"} {print}' |
     starch - > $TMPDIR/${name}.${mappedgenome}.reads.${chrom}.starch
 done
@@ -230,8 +230,8 @@ echo "SAMtools statistics"
 samtools flagstat ${sampleOutdir}/${name}.${mappedgenome}.bam > $TMPDIR/${name}.${mappedgenome}.flagstat.txt
 cat $TMPDIR/${name}.${mappedgenome}.flagstat.txt
 
-#BUGBUG breaks for DSall or encode reps
-PFalignments=`cat $TMPDIR/${name}.${mappedgenome}.flagstat.txt | grep "in total" | awk '{print $1+$3}'`
+#Excludes secondary/supplementary alignments so we actually get read counts (flags 2304)
+PFalignments=`cat $TMPDIR/${name}.${mappedgenome}.flagstat.txt | awk 'BEGIN {total="NA"} $0~/in total/ {total = $1+$3} $0~/secondary/ || $0~/supplementary/ {total-=($1+$3)} END {print total}'`
 numMappedReadsMitochondria=`samtools view -c -F 512 ${sampleOutdir}/${name}.${mappedgenome}.bam chrM`
 if [[ "${PFalignments}" == 0 ]]; then
     pctMappedReadsMitochondria="NA"
@@ -257,7 +257,6 @@ analyzedReadsM=$(round ${analyzedReadsM} 1)
 #sequencedReads can be 0 in case there was a parsing problem above
 if [[ "${sequencedReads}" != "NA" ]] && [[ "${sequencedReads}" != 0 ]]; then
     pctPFalignments=`echo "${PFalignments}/${sequencedReads}*100" | bc -l -q`
-    #BUGBUG denominator wrong here
     pctanalyzedReads=`echo "${analyzedReads}/${sequencedReads}*100" | bc -l -q`
 else
     pctPFalignments="NA"
@@ -265,7 +264,8 @@ else
 fi
 
 #Tally how many reads were recovered from unpaired/SE reads (NB many of these may not even be PF, so are unrepresented)
-PFalignmentsSE=`samtools view -F 1 -c ${sampleOutdir}/${name}.${mappedgenome}.bam`
+#Excludes secondary/supplementary alignments so we actually get read counts (flags 2304)
+PFalignmentsSE=`samtools view -F 2305 -c ${sampleOutdir}/${name}.${mappedgenome}.bam`
 analyzedReadsSE=`samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="*" {print $1}' | xargs samtools view -F 513 -c ${sampleOutdir}/${name}.${mappedgenome}.bam | awk 'BEGIN {sum=0} {sum+=$0} END {print sum}'`
 if [ "${PFalignmentsSE}" == "0" ]; then
     pctanalyzedReadsSE="NA"
@@ -299,7 +299,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
         date
         
         #TODO this could run sooner (right after bed file)
-        #TODO switch to breaking up by coordinate rather than chromosome to split up larger jobs
+        #TODO switch to breaking up by coordinate rather than chromosome to split up larger jobs and condense smaller ones
         samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*" {print $1}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
         #unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
         n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
@@ -313,7 +313,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
         mkdir -p ${sampleOutdir}/picardmetrics
         #TODO should we exclude flag 512 like for CollectWgsMetrics?
         java -XX:ParallelGCThreads=2 -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectMultipleMetrics -INPUT ${sampleOutdir}/${name}.${mappedgenome}.bam -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome} -PROGRAM CollectGcBiasMetrics -VERBOSITY WARNING
-        #Can use CollectHsMetrics but needs bait coordinates
+        #TODO could use CollectHsMetrics but needs bait coordinates
         
         echo
         date
@@ -322,8 +322,8 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
         #NB I often see this using 4-5% of memory, about twice the available per-job average
         samtools view -h -u ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | java -XX:ParallelGCThreads=2 -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectWgsMetrics -INPUT /dev/stdin -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics -VERBOSITY WARNING -COUNT_UNPAIRED=true
         
-        #NB included reads doesn't exactly match our -F 512 or duplicates
-        #but don't have binned coverage track yet
+        #NB included reads don't exactly match our -F 512 or duplicates
+        #but aren't generating a binned coverage track
         #genomecov=`unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.binned.starch | awk -F "\t" 'BEGIN {OFS="\t"; sum=0; count=0} {sum+=$5; count+=1} END {print sum/count}'`
         #BUGBUG includes non-mappable regions, alt contigs etc.; mappable hg38 is about 82% of chrom sizes length
         sequencedbases=`awk -v col="PF_HQ_ALIGNED_Q20_BASES" -F "\t" 'BEGIN {OFS="\t"; sum=0} $1=="CATEGORY" {for(i=1; i<=NF; i++) {if($i==col) {colnum=i; next}}} $1=="PAIR" || $1=="UNPAIRED" {sum+=$colnum} END {print sum}' ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.alignment_summary_metrics`
@@ -346,7 +346,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
         echo
         echo "UCSC track links (actual tracks will be generated in parallel)"
         date
-        #Print track links here for convenience even if the files are not created yet
+        #Prints track links here for convenience even if the files are not created yet
         echo
         echo "Making coverage track"
         echo "track name=${ucscName}-cov description=\"${ucscTrackDescriptionDataType} Coverage ${name} (${analyzedReadsM}M analyzed reads), ${genomecov}x coverage\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:500 autoScale=on visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.coverage.bw"
@@ -386,7 +386,7 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
     
     awk -F "\t" 'BEGIN {OFS="\t"} $5!=0' $TMPDIR/${name}.${mappedgenome}.density.bed | starch - > ${sampleOutdir}/${name}.${mappedgenome}.density.starch
     
-    #Fails on empty wig input
+    #Avoid failure on empty wig input
     if [ -s "$TMPDIR/${name}.${mappedgenome}.density.wig" ]; then
         #Kent tools can't use STDIN
         wigToBigWig $TMPDIR/${name}.${mappedgenome}.density.wig ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.density.bw
@@ -395,7 +395,7 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
     echo "track name=${ucscName}-dens description=\"${ucscTrackDescriptionDataType} Density ${name} (${analyzedReadsM}M analyzed reads; normalized to 1M)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.density.bw"
     
     
-    #bedGraphToBigWig below fails with 0 reads, "needLargeMem: trying to allocate 0 bytes (limit: 100000000000)"
+    #Avoid bedGraphToBigWig below failure with 0 reads, "needLargeMem: trying to allocate 0 bytes (limit: 100000000000)"
     if [[ "${sampleType}" != "chipseq" ]] && [[ "${analyzedReads}" > 0 ]]; then
         echo
         echo "Making cut count track"
@@ -446,7 +446,6 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
     
     mappableFile="/vol/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K36.mappable_only.starch"
     #NB this will call hotspots only on the mammalian genome for the *_sacCer3 hybrid indices
-    #BUGBUG sacCer3 genomes?
     #For shorter old Duke data
     #mappableFile="/vol/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K20.mappable_only.starch"
     

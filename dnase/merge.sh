@@ -122,6 +122,7 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggrega
     #java -XX:ParallelGCThreads=2 -Xmx6g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MarkDuplicates -INPUT=${sampleOutdir}/${name}.${mappedgenome}.bam -OUTPUT=$TMPDIR/${name}.${mappedgenome}.markedDups.bam -METRICS_FILE=$TMPDIR/${name}.picardDups.txt -QUIET=TRUE -VERBOSITY=ERROR -COMPRESSION_LEVEL=9 -ASSUME_SORTED=TRUE && mv ${name}.markedDups.bam ${name}.${mappedgenome}.bam
     
     #Picard version -- sorted by read name
+    #BUGBUG might require Picard sort? got "Exception in thread "main" java.lang.IllegalArgumentException: Alignments added out of order in SAMFileWriterImpl.addAlignment for file:///tmp/slurm.tmp.merge.V20_0052-BS04590.hg38_full_wuhCor1.3667928/V20_0052-BS04590.hg38_full_wuhCor1.markedDups.bam. Sort order is queryname. Offending records are at [A00975:129:HJWL5DRXX:1:2101:1063:9972] and [A00975:129:HJWL5DRXX:1:2101:1063:10066]" error
 #    java -XX:ParallelGCThreads=2 -Xmx6g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MarkDuplicates -INPUT=${sampleOutdir}/${name}.${mappedgenome}.bam -OUTPUT=$TMPDIR/${name}.${mappedgenome}.markedDups.bam -METRICS_FILE=$TMPDIR/${name}.picardDups.txt -QUIET=TRUE -VERBOSITY=ERROR -COMPRESSION_LEVEL=0
     #Doesn't seem needed, doesn't reduce memory usage
     # -ASSUME_SORT_ORDER=queryname
