@@ -161,7 +161,7 @@ trackcolor=$(getcolor ${name})
 projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab|isg\/encode)\///g;' | perl -pe 's/\/new$//g;'`
 if [[ `pwd` =~ ^\/vol\/cegs\/ ]]; then
     UCSCbase="bigDataUrl=https://cegs@cascade.isg.med.nyu.edu/cegs/${projectdir}/${sampleOutdir}"
-elif [[ `pwd` =~ ^\/vol\/mauranolab\/sars\/ ]]; then
+elif [[ `pwd` =~ ^\/vol\/sars\/ ]]; then
     UCSCbase="bigDataUrl=https://sars@cascade.isg.med.nyu.edu/sars/${projectdir}/${sampleOutdir}"
 elif [[ `pwd` =~ ^\/vol\/isg\/encode\/ ]]; then
     UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/${projectdir}/${sampleOutdir}"
