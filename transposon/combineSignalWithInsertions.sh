@@ -158,6 +158,23 @@ bedmap --delim '\t' --range 100000 --echo --count $OUTPUT /vol/isg/encode/CTCF_m
 mv $OUTPUT.new $OUTPUT
 
 
+echo 'doing local insertion density'
+header="$header\tInsDens1Mb"
+bedmap --delim '\t' --range 1000000 --echo --count $OUTPUT ${ipcrfile} > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
+echo 'doing local insertion density'
+header="$header\tInsDens"
+bedmap --delim '\t' --range 100000 --echo --count $OUTPUT ${ipcrfile} > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
+echo 'doing TADid'
+header="$header\tTADid"
+bedmap --delim '\t' --bp-ovr 1 --echo --echo-map-id $OUTPUT /home/maagj01/scratch/transposon/Analysis/K562_reference_epigenome/Hi-C/K562/raodomains_5kb_KR/hg38/TADs/Id/Armatus_5kb_gamma.0.5.0.bed > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
 
 #Print to file
 echo -e $header | cat - $OUTPUT > $OUTPUT.new
