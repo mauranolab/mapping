@@ -19,7 +19,7 @@ cat ${src}/flowcells/SampleSheet.template.txt > $TMPDIR/SampleSheet.withlane.csv
 ###Parse the sequencing sheet info from STDIN
 #Clean up single-line spacer between header and data table
 perl -pe 's/^\t+$//g;' |
-awk -F "\t" 'BEGIN {OFS="\t"; parse=0} {print} $0=="" && parse==0 {parse=1; print "#Sample Name", "Sample #", "Lab", "Made By", "Sample Type", "Barcode 1 (i7)", "Barcode 2 (i5)", "R1 Trim (P5)", "R2 Trim (P7)", "Sequencing primer R1", "Indexing primer BC1 (i7)", "Indexing primer BC2 (i5)", "Sequencing primer R2", "Library concentration (pM)", "Request Type", "Requested reads (M)", "Read format", "Scale factor", "Relative representation", "Amount put on FC (uL)", "Sequenced reads", "Actual representation"}' |
+awk -F "\t" 'BEGIN {OFS="\t"; parse=0} {print} $0=="" && parse==0 {parse=1; print "#Sample Name", "Sample #", "Lab", "Made By", "Sample Type", "Barcode 1 (i7)", "Barcode 2 (i5)", "R1 Trim (P5)", "R2 Trim (P7)", "Sequencing primer R1", "Indexing primer BC1 (i7)", "Indexing primer BC2 (i5)", "Sequencing primer R2", "Library concentration (pM)", "Request Type", "Requested reads (M)", "Read format", "Scale factor", "Lane", "Relative representation", "Amount put on FC (uL)", "Sequenced reads", "Actual representation"}' |
 #Clean up trailing tabs on comment lines
 perl -pe 's/^(#.+[^\t])\t+$/\1/g;' |
 #Also creates info.txt
@@ -211,14 +211,19 @@ if (minBClen <= maxBC2len) {
     bc2range <- maxBC2len
 }
 
+if ( !"Lane" %in% colnames(data) ) {
+    data$Lane <- 0
+}
 results <- data.frame()
-for(bc1len in bc1range) {
-    for(bc2len in bc2range) {
-        if(printPairs) {
-            cat(paste0("\nbc1len=", bc1len, ";bc2len=", bc2len, ":\n"))
+for(curLane in unique(data$Lane)) {
+    for(bc1len in bc1range) {
+        for(bc2len in bc2range) {
+            if(printPairs) {
+                cat(paste0("\nbc1len=", bc1len, ";bc2len=", bc2len, ":\n"))
+            }
+            numSamplesTooClose <- countBCcollisions(data[data$Lane==curLane,], bc1len, bc2len)
+            results <- rbind(results, data.frame(lane=curLane, bc1len=bc1len, bc2len=bc2len, numSamplesTooClose=numSamplesTooClose))
         }
-        numSamplesTooClose <- countBCcollisions(data, bc1len, bc2len)
-        results <- rbind(results, data.frame(bc1len=bc1len, bc2len=bc2len, numSamplesTooClose=numSamplesTooClose))
     }
 }
 

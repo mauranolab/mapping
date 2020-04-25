@@ -38,6 +38,8 @@ duplicaterows <- function(x, copies=2) {
 
 undetermined <- read("undetermined_barcodes.txt", header=T)
 
+
+#TODO not lane aware
 data <- read.table(samplesheetfile, header=T, skip=19, sep=",", comment.char = "", quote = "", strip.white = TRUE, stringsAsFactors = F)
 
 
