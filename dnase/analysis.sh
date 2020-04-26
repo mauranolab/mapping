@@ -216,7 +216,7 @@ for chrom in `samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | cu
         print $3, chromStart, chromEnd, insertlength, readlength, strand, flag; \
     }' |
     sort-bed --max-mem 5G - | 
-    #BUGBUG doesn't make it through starchcat
+    #BUGBUG header doesn't make it through starchcat
     #awk -F "\t" 'BEGIN {OFS="\t"; print "#chrom", "chromStart", "chromEnd", "insertlength", "readlength", "strand"} {print}' |
     starch - > $TMPDIR/${name}.${mappedgenome}.reads.${chrom}.starch
 done
