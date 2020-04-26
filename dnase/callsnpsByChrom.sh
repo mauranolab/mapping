@@ -130,18 +130,20 @@ esac
 samtools view -H ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -v sex=${sex} -F "\t" 'BEGIN {OFS="\t"} $1=="@RG" {for(i=2; i<=NF; i++) {split($i, tag, ":"); if (tag[1]=="SM") {print tag[2], sex}}}' > $TMPDIR/samplesfile.txt
 ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
 
-#TODO --max-depth 10000 were carried over from 2015 nat genet paper -- still useful? Handling of the latter changed in samtools 1.9
+#TODO --max-depth 10000 was carried over from 2015 nat genet paper -- still useful? Handling of the latter changed in samtools 1.9
 #from Iyer et al PLoS Genet 2018
 #-C50 -pm2 -F0.05 -d10000
 #  -C, --adjust-MQ INT     adjust mapping quality; recommended:50, disable:0 [0]
 #  -F, --gap-frac FLOAT    minimum fraction of gapped reads [0.002]
-#2020mar21 raised max-idepth to permit calling indels from samples with coverage>250 (i.e. capture)
+#2020mar21 raised max-idepth to permit calling indels from samples with high coverage (i.e. capture)
+#had --keep-alts in here forever but seems just to complicate the VCF file for high-depth sequences
 bcftools mpileup -r ${chrom} -f ${referencefasta} --redo-BAQ --adjust-MQ 50 --gap-frac 0.05 --max-depth 10000 --max-idepth 200000 -a DP,AD -O u ${sampleOutdir}/${name}.${mappedgenome}.bam |
 #NB for some reason if the intermediate file is saved instead of piped, bcftools call outputs a GQ of . for everything
 #Iyer et al PLoS Genet 2018 uses --multiallelic-caller
 #https://sourceforge.net/p/samtools/mailman/message/32931405/
 #https://samtools.github.io/bcftools/call-m.pdf
-bcftools call ${ploidy} --keep-alts --multiallelic-caller --variants-only -f GQ --output-type v | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
+#TODO not sure splitting multiallelic sites is what we want, parseSamtoolsGenotypesToBedFiles.pl is happy to output lines for reference calls
+bcftools call ${ploidy} --multiallelic-caller --variants-only -f GQ --output-type v | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 
