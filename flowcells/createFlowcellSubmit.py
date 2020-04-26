@@ -315,6 +315,10 @@ def bwaPipeline(line):
         global doDNACaptureCleanup
         doDNACaptureCleanup = True
     
+    if line["Lab"] in ["SARS"]:
+        global doSARScleanup
+        doSARScleanup = True
+    
     sampleAnnotation = [ ]
     sex = getValueFromLIMS(lims, line["Original Sample #"], "Sex")
     if sex != "":
@@ -409,6 +413,7 @@ if args.verbose:
 
 doBwaCleanup = False
 doDNACaptureCleanup = False
+doSARScleanup = False
 doTransposonCleanup = False
 
 for index, line in flowcellFile.iterrows():
@@ -457,10 +462,19 @@ if doBwaCleanup:
     #    print("rm -f sgeid.analysis")
 
 
+if doSARScleanup:
+    print()
+    print("SARS")
+    for sampleType in flowcellFile["Sample Type"][flowcellFile["Sample Type"].isin(bwaPipelineAnalysisCommandMap.keys())].unique():
+        basedir = getBwaPipelineOutdir(sampleType)
+        print("qsub -b y -S /bin/bash -j y -N analyzeSARS -o " + basedir + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeSARS.sh " + basedir + "\"")
+
+
 #TODO placeholder for now
 if doDNACaptureCleanup:
     print()
-    print("#qsub -b y -S /bin/bash -j y -N analyzeCapture -o " + bwaPipelineAnalysisCommandMap[sampleType] + " -hold_jid `cat " + getBwaPipelineOutdir("DNA Capture") + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeCapture.sh mappedgenome bait dirs\"")
+    basedir=getBwaPipelineOutdir("DNA Capture")
+    print("#qsub -b y -S /bin/bash -j y -N analyzeCapture -o " + basedir + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeCapture.sh mappedgenome bait dirs\"")
 
 
 #BUGBUG doesn't work since we don't have the pid of the final job at submission time
