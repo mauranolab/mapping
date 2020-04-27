@@ -156,7 +156,7 @@ minGQ=99
 minDP=10
 
 bcftools norm --threads $NSLOTS --check-ref w -m - --fasta-ref ${referencefasta} --output-type u ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz |
-bcftools filter --threads $NSLOTS -i "INFO/DP>=${minDP} && QUAL>=${minSNPQ} && GQ>=${minGQ}" --SnpGap 3 --IndelGap 10 --output-type z - > $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
+bcftools filter --threads $NSLOTS -i "INFO/DP>=${minDP} & QUAL>=${minSNPQ} & GQ>=${minGQ}" --SnpGap 3 --IndelGap 10 --output-type z - > $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 bcftools index $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 
 
