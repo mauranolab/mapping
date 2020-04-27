@@ -41,7 +41,7 @@ for i in "${genome_array[@]}"; do
     declare "outfile_${i}"="${outfile_base}_${i}_consolidated.tsv"
     ref="outfile_${i}"
     head -n 1 ${outfile} > ${!ref}
-    grep ${i} ${outfile} >> ${!ref}
+    grep $'\t'${i}$'\t' ${outfile} >> ${!ref}
 done
 
 # Lastly, a "header" is needed below for various aggregation output files.
@@ -67,7 +67,7 @@ if [ ${hub_type} = "CEGS" ]; then
         declare "outfile_${i}"="${outfile_base}_${i}_consolidated_locus.tsv"
         ref="outfile_${i}"
         head -n 1 ${outfile} > ${!ref}
-        grep ${i} ${outfile} >> ${!ref}
+        grep $'\t'${i}$'\t' ${outfile} >> ${!ref}
     done
 fi
 
@@ -174,7 +174,7 @@ AWK_HEREDOC_03
         # and call this function for each one of them.
 
         ref="outfile_${i}"
-        grep ${i} ${outfile} >> ${!ref}
+        grep $'\t'${i}$'\t' ${outfile} >> ${!ref}
     done
     echo
 }
