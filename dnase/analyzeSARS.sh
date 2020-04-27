@@ -15,7 +15,7 @@ sampletype=`basename ${dir}`
 fc=`pwd | xargs basename`
 
 echo -e "FC\tSample_Type\tSample\tBS\tnumAnalyzedViralReads\tnumAnalyzedReads\tMean_Viral_Coverage\tNum_bp_20x" > ${dir}/viralcoverage.txt
-for bamfile in `find ${dir} -name "*.bam" -not -name "*R1R2*"`; do
+for bamfile in `find ${dir} -mindepth 2 -name "*.bam" -not -name "*R1R2*" -not -path "*trash*"`; do
     sample=`basename ${bamfile} .hg38_full_wuhCor1.bam`
     sampleid=`echo ${sample} | cut -d "-" -f1`
     bs=`echo ${sample} | cut -d "-" -f2`
