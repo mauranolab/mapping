@@ -38,7 +38,7 @@ Rscript --vanilla ${src}/samplesforTrackhub.R \
 
 # Split up the samplesforTrackhub.R output into separate files for each genome.
 for i in "${genome_array[@]}"; do
-    mlr --tsv filter -S "'\$Annotation_Genome == \"${i}\"'" ${outfile} > ${outfile_base}_${i}_consolidated.tsv
+    mlr --tsv filter -S "'\$Mapped_Genome =~ \".*${i}.*\"'" ${outfile} > ${outfile_base}_${i}_consolidated.tsv
 done
 
 # Lastly, a "header" is needed below for various aggregation output files.
@@ -61,7 +61,7 @@ if [ ${hub_type} = "CEGS" ]; then
     
     # Split up the samplesforTrackhub.R output into separate files for each genome.
     for i in "${genome_array[@]}"; do
-        mlr --tsv filter -S "'\$Annotation_Genome == \"${i}\"'" ${outfile} > ${outfile_base}_${i}_consolidated_locus.tsv
+        mlr --tsv filter -S "'\$Mapped_Genome =~ \".*${i}.*\"'" ${outfile} > ${outfile_base}_${i}_consolidated_locus.tsv
     done
 fi
 
@@ -169,10 +169,10 @@ AWK_HEREDOC_03
 
         if [ "${loop_type}" = "aggregations" ]; then
             # aggregations
-            mlr --tsv --headerless-csv-output filter -S "'\$Annotation_Genome == \"${i}\"'" ${outfile} >> ${outfile_base}_${i}_consolidated_agg.tsv
+            mlr --tsv --headerless-csv-output filter -S "'\$Mapped_Genome =~ \".*${i}.*\"'" ${outfile} >> ${outfile_base}_${i}_consolidated_agg.tsv
         else
             # publicdata
-            mlr --tsv --headerless-csv-output filter -S "'\$Annotation_Genome == \"${i}\"'" ${outfile} >> ${outfile_base}_${i}_consolidated_pub.tsv
+            mlr --tsv --headerless-csv-output filter -S "'\$Mapped_Genome =~ \".*${i}.*\"'" ${outfile} >> ${outfile_base}_${i}_consolidated_pub.tsv
         fi
     done
     echo
