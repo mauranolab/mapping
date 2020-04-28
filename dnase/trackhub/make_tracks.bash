@@ -38,10 +38,7 @@ Rscript --vanilla ${src}/samplesforTrackhub.R \
 
 # Split up the samplesforTrackhub.R output into separate files for each genome.
 for i in "${genome_array[@]}"; do
-    declare "outfile_${i}"="${outfile_base}_${i}_consolidated.tsv"
-    ref="outfile_${i}"
-    head -n 1 ${outfile} > ${!ref}
-    grep $'\t'${i}$'\t' ${outfile} >> ${!ref}
+    mlr --tsv filter -S "'\$Annotation_Genome == \"${i}\"'" ${outfile} > ${outfile_base}_${i}_consolidated.tsv
 done
 
 # Lastly, a "header" is needed below for various aggregation output files.
@@ -64,10 +61,7 @@ if [ ${hub_type} = "CEGS" ]; then
     
     # Split up the samplesforTrackhub.R output into separate files for each genome.
     for i in "${genome_array[@]}"; do
-        declare "outfile_${i}"="${outfile_base}_${i}_consolidated_locus.tsv"
-        ref="outfile_${i}"
-        head -n 1 ${outfile} > ${!ref}
-        grep $'\t'${i}$'\t' ${outfile} >> ${!ref}
+        mlr --tsv filter -S "'\$Annotation_Genome == \"${i}\"'" ${outfile} > ${outfile_base}_${i}_consolidated_locus.tsv
     done
 fi
 
@@ -160,7 +154,7 @@ BEGIN{FS="\t"; OFS="\t"; dir_name2=sprintf("%s%s", dir_name, "/")}
 AWK_HEREDOC_03
 ) < ${outfile} > "${TMP_OUT}/tmp"
 
-    cp "${TMP_OUT}/tmp" ${outfile}
+    cat "${TMP_OUT}/header" "${TMP_OUT}/tmp" > ${outfile}
     rm "${TMP_OUT}/tmp"
 # Adjustment of outfile columns complete.
 ###
@@ -169,12 +163,17 @@ AWK_HEREDOC_03
     for i in "${genome_array[@]}"; do
         # Note that prior to entering this function, "outfile" was set to be: "${outfile_base}_all_agg.tsv".
         # This never changes, so each call to this function over-writes the previous "outfile".
-        # However, the output from the below call to grep is APPENDED to previous output from calls
+        # However, the output from the below call to mlr is APPENDED to previous output from calls
         # to this function. So the genome specific output files get bigger as we do more aggregation directories,
         # and call this function for each one of them.
 
-        ref="outfile_${i}"
-        grep $'\t'${i}$'\t' ${outfile} >> ${!ref}
+        if [ "${loop_type}" = "aggregations" ]; then
+            # aggregations
+            mlr --tsv --headerless-csv-output filter -S "'\$Annotation_Genome == \"${i}\"'" ${outfile} >> ${outfile_base}_${i}_consolidated_agg.tsv
+        else
+            # publicdata
+            mlr --tsv --headerless-csv-output filter -S "'\$Annotation_Genome == \"${i}\"'" ${outfile} >> ${outfile_base}_${i}_consolidated_pub.tsv
+        fi
     done
     echo
 }
@@ -187,9 +186,7 @@ AWK_HEREDOC_03
 
 # Initialize aggregation output files
 for i in "${genome_array[@]}"; do
-    declare "outfile_${i}"="${outfile_base}_${i}_consolidated_agg.tsv"
-    ref="outfile_${i}"
-    cat "${TMP_OUT}/header" > "${!ref}"
+    cat "${TMP_OUT}/header" > "${outfile_base}_${i}_consolidated_agg.tsv"
 done
 outfile="${outfile_base}_all_agg.tsv"
 
@@ -217,9 +214,7 @@ done
 if [ "${hub_type}" != "SARS" ]; then
     # Initialize publicdata output files
     for i in "${genome_array[@]}"; do
-        declare "outfile_${i}"="${outfile_base}_${i}_consolidated_pub.tsv"
-        ref="outfile_${i}"
-        cat "${TMP_OUT}/header" > "${!ref}"
+        cat "${TMP_OUT}/header" > "${outfile_base}_${i}_consolidated_pub.tsv"
     done
     outfile="${outfile_base}_all_pub.tsv"
     
