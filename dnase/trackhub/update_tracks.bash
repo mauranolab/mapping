@@ -52,6 +52,7 @@ module load ucsckentutils/379
 module load bedops/2.4.37
 module load R/3.5.0
 module load python/3.8.1
+module load miller/5.4.0
 ############################################################################
 
 hub_type=$1
