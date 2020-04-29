@@ -101,6 +101,9 @@ samtools view ${samflags} $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} 
 echo -e -n "${sample}\tNumber of reads passing all filters\t"
 cat $TMPDIR/${sample}.coords.bed | wc -l
 
+echo -n -e "${sample}\tNumber of pairedreads mapped passing all filters\t"
+samtools view -c ${samflags} -f 1 $OUTDIR/${sample}.bam
+
 
 zcat -f $OUTDIR/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' |
 sort -k2,2 > $TMPDIR/${sample}.barcodes.txt
