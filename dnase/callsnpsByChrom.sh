@@ -136,14 +136,12 @@ ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
 #  -C, --adjust-MQ INT     adjust mapping quality; recommended:50, disable:0 [0]
 #  -F, --gap-frac FLOAT    minimum fraction of gapped reads [0.002]
 #2020mar21 raised max-idepth to permit calling indels from samples with high coverage (i.e. capture)
-#had --keep-alts in here forever but seems just to complicate the VCF file for high-depth sequences
-bcftools mpileup -r ${chrom} -f ${referencefasta} --redo-BAQ --adjust-MQ 50 --gap-frac 0.05 --max-depth 10000 --max-idepth 200000 -a DP,AD -O u ${sampleOutdir}/${name}.${mappedgenome}.bam |
+bcftools mpileup -r ${chrom} -f ${referencefasta} --redo-BAQ --adjust-MQ 50 --gap-frac 0.05 --max-depth 10000 --max-idepth 200000 -a DP,AD --output-type u ${sampleOutdir}/${name}.${mappedgenome}.bam |
 #NB for some reason if the intermediate file is saved instead of piped, bcftools call outputs a GQ of . for everything
 #Iyer et al PLoS Genet 2018 uses --multiallelic-caller
 #https://sourceforge.net/p/samtools/mailman/message/32931405/
 #https://samtools.github.io/bcftools/call-m.pdf
-#TODO not sure splitting multiallelic sites is what we want, parseSamtoolsGenotypesToBedFiles.pl is happy to output lines for reference calls
-bcftools call ${ploidy} --multiallelic-caller --variants-only -f GQ --output-type v | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
+bcftools call --keep-alts ${ploidy} --multiallelic-caller --variants-only -f GQ --output-type v | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
 
@@ -155,8 +153,12 @@ minSNPQ=10
 minGQ=99
 minDP=10
 
+#Normalize and split multiallelics
 bcftools norm --threads $NSLOTS --check-ref w -m - --fasta-ref ${referencefasta} --output-type u ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz |
-bcftools filter --threads $NSLOTS -i "INFO/DP>=${minDP} & QUAL>=${minSNPQ} & GQ>=${minGQ}" --SnpGap 3 --IndelGap 10 --output-type z - > $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
+#Single ampersand requires all filters to be met in the same sample, FORMAT/DP checks per-sample depth, and --set-GTs masks genotypes failing filters. It doesn't usually matter here since there's only one sample, but it does if this code gets applied to multisample VCF file
+bcftools filter -i "INFO/DP>=${minDP} & QUAL>=${minSNPQ} & GQ>=${minGQ} & FORMAT/DP>=${minDP}" --SnpGap 3 --IndelGap 10 --set-GTs . --output-type u |
+#Keep only SNPs with a nonref genotype. --trim-alt-alleles cleans up after --keep-alts above
+bcftools view -i 'GT="alt"' --trim-alt-alleles --output-type z - > $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 bcftools index $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 
 
