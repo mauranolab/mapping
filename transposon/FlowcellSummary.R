@@ -111,7 +111,7 @@ for (i in 1:length(analysisFiles)) {
 			data[i, "#BC 1 site"] <- as.numeric(getInsert(Sample)[1])
 			data[i, "#BC 2+ sites"] <- as.numeric(getInsert(Sample)[2])
 			data[i, "Prop BC 2+ sites"] <- signif(data[i, "#BC 2+ sites"] / (data[i, "#BC 1 site" ] + data[i, "#BC 2+ sites"]), 2)
-			data[i, "Prop Reads Chimeric"] <- signif(1 - as.numeric(splitLines('Number of BC+insertions passing minPropReadsAtSite cutoff', '\t')$X3[1]) / as.numeric(splitLines('Number of BC+insertions after collapsing nearby ones', '\t')$X3[1]), 2)
+			data[i, "Prop. BC+insertions chimeric"] <- signif(1 - as.numeric(splitLines('Number of BC+insertions passing minPropReadsAtSite cutoff', '\t')$X3[1]) / as.numeric(splitLines('Number of BC+insertions after collapsing nearby ones', '\t')$X3[1]), 2)
 		} else if(data[i, "Type"] == "10xRNA") {
 			data[i, "Prop Reads Chimeric"] <- signif(1 - as.numeric(splitLines('Number of reads passing minPropReadsForBC filter', '\t')$X3[1]) / as.numeric(splitLines('Number of reads passing minPropReadsForBC filter', '\t')$X4[1]), 2)
 			print(t(splitLines('Number of reads passing minPropReadsForBC filter', '\t')))
