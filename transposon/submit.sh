@@ -204,8 +204,7 @@ if [ ${runPreprocess} -eq 1 ]; then
     ###Weblogo of processed reads
     echo "Weblogo of processed reads"
     date
-    zcat -f $OUTDIR/${sample}.BC.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
-    weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} BC processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.BC.processed.eps
+    zcat -f $OUTDIR/${sample}.BC.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' | weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} BC processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.BC.processed.eps
     convert $TMPDIR/${sample}.BC.processed.eps $OUTDIR/${sample}.BC.processed.png
     
     #BUGBUG needs to be manually disabled if nothing left on plasmid read (e.g. 28bp sequencing of 10xRNA R1)
