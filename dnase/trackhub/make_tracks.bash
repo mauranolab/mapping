@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eu -o pipefail
 ##############################################################################
 # Pass in the input parameters:
 

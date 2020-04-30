@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eu -o pipefail
 ####################################################################
 # Get input parameters
 src=$1
@@ -160,23 +161,15 @@ HEREDOC_02
     fi
     
     cd ${assemblyBaseDir}/sequences/${genome}
-    assmbly_dirs=($(ls -d */))   # Elements will look like:  HPRT1/
-    
-    for assmbly in "${assmbly_dirs[@]}"; do
-        if [[ "${assmbly}" == "bak"* ]] || [[ "${assmbly}" == "trash"* ]]; then
-            continue
-        fi
-        
+    for assmbly in $(find . -mindepth 1 -maxdepth 1 -type d -not -path "./bak*" -not -path "./trash*" -printf '%f/\n'); do       # assmbly looks like:  HPRT1/
         # Create an html file for this assembly. Later it will get moved to "descriptions" subdirectory.
         echo "<pre>" > "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
         echo "Source data located in: ${assemblyBaseDir}/sequences/${genome}${assmbly%/}" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
         echo "</pre>" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
         
-        # Note we that ignore emacs backups in the next line via the [/d]?$
-        bed_files=($(ls "${assemblyBaseDir}/sequences/${genome}${assmbly}"* | egrep *[.]bed[0-9]*$))
-        
         cd "${TMPDIR}/assembly_tracks"
-        for bed_file in "${bed_files[@]}"; do
+        # Note that we ignore emacs backups in the next line via the [0-9]*$
+        for bed_file in $(find "${assemblyBaseDir}/sequences/${genome}${assmbly}" -mindepth 1 -maxdepth 1 -type f -regex '.*[.]bed[0-9]*$'); do
             # 'bed_file' is in the form: <BASE><genome><assmbly><bed name>.bedN  (or ".bed" or ".bedNN")
             
             # Get just the bedN part
