@@ -168,7 +168,6 @@ HEREDOC_02
     fi
     
     for assmbly in "${assmbly_dirs[@]}"; do
-        echo "assmbly is: $assmbly" >> ${TMPDIR}/assembly_tracks/make_bigBED.log
         if [[ "${assmbly}" == "bak"* ]] || [[ "${assmbly}" == "trash"* ]]; then
             continue
         fi
