@@ -161,13 +161,8 @@ HEREDOC_02
     fi
     
     cd ${assemblyBaseDir}/sequences/${genome}
-    mapfile -t initial_assmbly_dirs < <(find . -mindepth 1 -maxdepth 1 -type d)  # initial_assmbly_dirs elements look like:  ./HPRT1
-    if [ ${#initial_assmbly_dirs[@]} -eq 0 ]; then
-        # No directories were found.
-        continue
-    fi
     declare -a assmbly_dirs=()
-    for assmbly in ${initial_assmbly_dirs[@]}; do
+    for assmbly in $(find . -mindepth 1 -maxdepth 1 -type d); do       # assmbly elements look like:  ./HPRT1
         assmbly_dirs+=("${assmbly/\.\//}"/)    # assmbly_dirs elements will look like:  HPRT1/
     done
     
@@ -181,15 +176,9 @@ HEREDOC_02
         echo "Source data located in: ${assemblyBaseDir}/sequences/${genome}${assmbly%/}" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
         echo "</pre>" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
         
-        # Note that we ignore emacs backups in the next line via the [0-9]*$
-        mapfile -t bed_files < <(find "${assemblyBaseDir}/sequences/${genome}${assmbly}" -mindepth 1 -maxdepth 1 -type f -regex '.*[.]bed[0-9]*$')
-        if [ ${#bed_files[@]} -eq 0 ]; then
-            # No files were found.
-            continue
-        fi
-        
         cd "${TMPDIR}/assembly_tracks"
-        for bed_file in "${bed_files[@]}"; do
+        # Note that we ignore emacs backups in the next line via the [0-9]*$
+        for bed_file in $(find "${assemblyBaseDir}/sequences/${genome}${assmbly}" -mindepth 1 -maxdepth 1 -type f -regex '.*[.]bed[0-9]*$'); do
             # 'bed_file' is in the form: <BASE><genome><assmbly><bed name>.bedN  (or ".bed" or ".bedNN")
             
             # Get just the bedN part
