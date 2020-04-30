@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eu -o pipefail
 ############################################################################
 #
 # This is the main driver script for the construction of a UCSC track hub.
@@ -233,43 +234,34 @@ echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> "${hub_target}/descr
 echo
 echo "Running hubCheck"
 hubCheck -noTracks -udcDir=${TMPDIR} "${hub_target}/hub.txt"
-ierr=$?
-echo "hubCheck exit code is: ${ierr}"
-
 echo
 
-if [ ${ierr} -eq 0 ]; then
-    # Clean out old hub:
-    for i in "${genome_array[@]}"; do
-        rm -rf "${hub_target_final}/${i}"
-    done
-    rm -f  ${hub_target_final}/genomes.txt
-    rm -f  ${hub_target_final}/description.html
-    rm -f  ${hub_target_final}/hub.txt
-    rm -f  ${hub_target_final}/publicdata
-    rm -f  ${hub_target_final}/aggregations
-    rm -f  ${hub_target_final}/mapped
-    
-    # Make sure there is no junk left in there:
-    if [ "$(ls -A ${hub_target_final})" ]; then
-        echo "ERROR The final target directory is not empty.  Exiting..."
-        echo "Not updating hub. Retaining TMPDIR."
-        echo "It is: ${TMPDIR}"
-        exit 4
-    fi
-    
-    # Replace old hub with new hub:
-    echo "Copying the hub."
-    cp -rpd ${hub_target}/* ${hub_target_final}
-    
-    echo "Removing TMPDIR directory."
-    rm -rf ${TMPDIR}
-    echo "Done!"
-else
+# Clean out old hub:
+for i in "${genome_array[@]}"; do
+    rm -rf "${hub_target_final}/${i}"
+done
+rm -f  ${hub_target_final}/genomes.txt
+rm -f  ${hub_target_final}/description.html
+rm -f  ${hub_target_final}/hub.txt
+rm -f  ${hub_target_final}/publicdata
+rm -f  ${hub_target_final}/aggregations
+rm -f  ${hub_target_final}/mapped
+
+# Make sure there is no junk left in there:
+if [ "$(ls -A ${hub_target_final})" ]; then
+    echo "ERROR The final target directory is not empty.  Exiting..."
     echo "Not updating hub. Retaining TMPDIR."
     echo "It is: ${TMPDIR}"
-    exit 5
+    exit 4
 fi
+
+# Replace old hub with new hub:
+echo "Copying the hub."
+cp -rpd ${hub_target}/* ${hub_target_final}
+
+echo "Removing TMPDIR directory."
+rm -rf ${TMPDIR}
+echo "Done!"
 ######################################################################################
 
 # Enable BLAT for custom assemblies...
