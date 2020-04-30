@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eu -o pipefail
 ##############################################################################
 # Pass in the input parameters:
 
@@ -146,7 +147,7 @@ find_readcounts () {
                 declare "${i}"="${TMPDIR}${htmlName}_${i}"
                 ref="${i}"
                 cat "${TMPDIR}/tmp_header" > ${!ref}
-                grep ${i} ${target} >> ${!ref}
+                grep ${i} ${target} >> ${!ref} || true  # Avoid pipefail crash when there are no readcounts lines for this genome.
                 
                 BASE=${target%readcounts.summary.txt}       # Kill trailing readcounts.summary.txt
                 desc_file="${BASE}description.html"

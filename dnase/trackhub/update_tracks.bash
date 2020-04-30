@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eu -o pipefail
 ############################################################################
 #
 # This is the main driver script for the construction of a UCSC track hub.
@@ -232,9 +233,11 @@ echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> "${hub_target}/descr
 
 echo
 echo "Running hubCheck"
+set +eu +o pipefail  # We want to know the hubCheck error code.
 hubCheck -noTracks -udcDir=${TMPDIR} "${hub_target}/hub.txt"
 ierr=$?
 echo "hubCheck exit code is: ${ierr}"
+set -eu -o pipefail
 
 echo
 

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eu -o pipefail
 ####################################################################
 # Get input parameters
 src=$1
@@ -161,8 +162,13 @@ HEREDOC_02
     
     cd ${assemblyBaseDir}/sequences/${genome}
     assmbly_dirs=($(ls -d */))   # Elements will look like:  HPRT1/
+    if [ -z "${assmbly_dirs}" ]; then
+        # No directories were found.
+        continue
+    fi
     
     for assmbly in "${assmbly_dirs[@]}"; do
+        echo "assmbly is: $assmbly" >> ${TMPDIR}/assembly_tracks/make_bigBED.log
         if [[ "${assmbly}" == "bak"* ]] || [[ "${assmbly}" == "trash"* ]]; then
             continue
         fi
@@ -172,8 +178,16 @@ HEREDOC_02
         echo "Source data located in: ${assemblyBaseDir}/sequences/${genome}${assmbly%/}" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
         echo "</pre>" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
         
-        # Note we that ignore emacs backups in the next line via the [/d]?$
-        bed_files=($(ls "${assemblyBaseDir}/sequences/${genome}${assmbly}"* | egrep *[.]bed[0-9]*$))
+        set +eu +o pipefail  # Avoid failing when there are no files found by find.
+        # Note we that ignore emacs backups in the next line via the [0-9]*$
+        bed_files=($(find "${assemblyBaseDir}/sequences/${genome}${assmbly}" -mindepth 1 -maxdepth 1 -type f | egrep *[.]bed[0-9]*$))
+        if [ -z "${bed_files}" ]; then
+            # No files were found.
+            set -eu -o pipefail  # Have to do the set here, else we get an unbound variable error in the above if statement.
+            continue
+        else
+            set -eu -o pipefail
+        fi
         
         cd "${TMPDIR}/assembly_tracks"
         for bed_file in "${bed_files[@]}"; do
