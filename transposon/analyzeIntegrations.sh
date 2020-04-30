@@ -74,6 +74,15 @@ echo -e "${sample}\tRead lengths (number of reads)\t${readlengths}"
 minReadLength=`echo "${readlengths}" | perl -pe 's/ \([0-9]+\)//g;' -e 's/, /\n/g;' | sort -n | awk 'NR==1'`
 echo -e "${sample}\tMinimum read length\t${minReadLength}"
 
+hasRead=$(samtools view ${samflags} $OUTDIR/${sample}.bam | head -n1 | wc -l)
+if [[ "$hasRead" -eq 0 ]]; then
+    echo "No read passing all filters. Exiting earlier"
+    echo
+    echo "Done!!!"
+    date
+    exit 0
+fi
+
 #Get the reads from the bam since we don't save the trimmed fastq
 #Need to trim in case not all the same length
 samtools view ${samflags} $OUTDIR/${sample}.bam | cut -f10 | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | shuf -n 1000000 | awk -F "\t" -v trim=${minReadLength} 'BEGIN {OFS="\t"} {print substr($0, 0, trim)}' | awk -F "\t" 'BEGIN {OFS="\t"} {print ">id-" NR; print}' |
