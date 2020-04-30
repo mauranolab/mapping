@@ -160,13 +160,13 @@ trackcolor=$(getcolor ${name})
 #Remove "new" from the end of path so that we can reprocess data without affecting live data
 projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab|isg\/encode)\///g;' | perl -pe 's/\/new$//g;'`
 if [[ `pwd` =~ ^\/vol\/cegs\/ ]]; then
-    UCSCbase="bigDataUrl=https://cegs@cascade.isg.med.nyu.edu/cegs/${projectdir}/${sampleOutdir}"
+    UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/cegs/${projectdir}/${sampleOutdir}"
 elif [[ `pwd` =~ ^\/vol\/sars\/ ]]; then
-    UCSCbase="bigDataUrl=https://sars@cascade.isg.med.nyu.edu/sars/${projectdir}/${sampleOutdir}"
+    UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/sars/${projectdir}/${sampleOutdir}"
 elif [[ `pwd` =~ ^\/vol\/isg\/encode\/ ]]; then
     UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/mauranolab/encode/${projectdir}/${sampleOutdir}"
 else
-    UCSCbase="bigDataUrl=https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/${projectdir}/${sampleOutdir}"
+    UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/${projectdir}/${sampleOutdir}"
 fi
 if [[ "${annotationgenome}" != "cegsvectors" ]]; then
     #db parameter does not work for track hub assemblies
