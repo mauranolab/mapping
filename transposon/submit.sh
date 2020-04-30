@@ -208,8 +208,8 @@ if [ ${runPreprocess} -eq 1 ]; then
     weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} BC processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.BC.processed.eps
     convert $TMPDIR/${sample}.BC.processed.eps $OUTDIR/${sample}.BC.processed.png
     
-    #BUGBUG needs to be manually disabled if nothing left on plasmid read (e.g. 28bp sequencing of 10xRNA R1)
-    if [ 1 -eq 1 ]; then
+    plasmidLength=`zcat -f $OUTDIR/${sample}.plasmid.fastq.gz | awk 'BEGIN {OFS="\t"} NR % 4 == 1 {split($1, readname, "_"); print length(readname[3])}' | tail -1`
+    if [[  "$plasmidLength" -gt 0 ]]; then
         zcat -f $OUTDIR/${sample}.plasmid.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
         weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} plasmid processed sequence" --stacks-per-line 100 > $TMPDIR/${sample}.plasmid.processed.eps
         convert $TMPDIR/${sample}.plasmid.processed.eps $OUTDIR/${sample}.plasmid.processed.png
