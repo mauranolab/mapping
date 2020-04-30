@@ -45,14 +45,14 @@ echo "Num of sites in browser track: ${numUCSCsites}"
 cut -f1-3,5 ${OUTBASE}.zscore.bed > $TMPDIR/${PREFIX}.zscore.bedGraph
 
 bedGraphToBigWig $TMPDIR/${PREFIX}.zscore.bedGraph ${chromsizes} ${OUTBASE}.zscore.bw
-UCSCbaseURL="https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
+UCSCbaseURL="https://cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
 echo "track name=${PREFIX}-activity description=\"${PREFIX} activity (zscore of log(RNA/DNA) scaled onto [0,1]), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:1 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.zscore.bw"
 
 
 cut -f1-3,5 ${OUTBASE}.residual.bed > $TMPDIR/${PREFIX}.residual.bedGraph
 
 bedGraphToBigWig $TMPDIR/${PREFIX}.residual.bedGraph ${chromsizes} ${OUTBASE}.residual.bw
-UCSCbaseURL="https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
+UCSCbaseURL="https://cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
 echo "track name=${PREFIX}-residual description=\"${PREFIX} residual (of RNA/DNA zscore), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:1 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.residual.bw"
 
 

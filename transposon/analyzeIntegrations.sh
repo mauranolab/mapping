@@ -277,7 +277,7 @@ cat $OUTDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4=".
 echo
 echo "Generating UCSC track"
 projectdir=`pwd | perl -pe 's/^\/vol\/mauranolab\/transposon\///g;'`
-UCSCbaseURL="https://mauranolab@cascade.isg.med.nyu.edu/~mauram01/transposon/${projectdir}/${OUTDIR}"
+UCSCbaseURL="https://cascade.isg.med.nyu.edu/~mauram01/transposon/${projectdir}/${OUTDIR}"
 echo "track name=${sample} description=${sample}-integrations db=hg38 color=$trackcolor"
 echo "${UCSCbaseURL}/${sample}.barcodes.coords.bed"
 
