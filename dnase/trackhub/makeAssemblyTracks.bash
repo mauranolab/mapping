@@ -161,9 +161,7 @@ HEREDOC_02
     fi
     
     cd ${assemblyBaseDir}/sequences/${genome}
-    for assmbly_dir in $(find . -mindepth 1 -maxdepth 1 -type d -not -path "./bak*" -not -path "./trash*"); do       # assmbly_dir elements look like:  ./HPRT1
-        assmbly="${assmbly_dir/\.\//}"/                                                                              # assmbly will look like:  HPRT1/
-        
+    for assmbly in $(find . -mindepth 1 -maxdepth 1 -type d -not -path "./bak*" -not -path "./trash*" -printf '%f/\n'); do       # assmbly looks like:  HPRT1/
         # Create an html file for this assembly. Later it will get moved to "descriptions" subdirectory.
         echo "<pre>" > "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
         echo "Source data located in: ${assemblyBaseDir}/sequences/${genome}${assmbly%/}" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
