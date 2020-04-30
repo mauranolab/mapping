@@ -161,15 +161,8 @@ HEREDOC_02
     fi
     
     cd ${assemblyBaseDir}/sequences/${genome}
-    declare -a assmbly_dirs=()
-    for assmbly in $(find . -mindepth 1 -maxdepth 1 -type d); do       # assmbly elements look like:  ./HPRT1
-        assmbly_dirs+=("${assmbly/\.\//}"/)    # assmbly_dirs elements will look like:  HPRT1/
-    done
-    
-    for assmbly in "${assmbly_dirs[@]}"; do
-        if [[ "${assmbly}" == "bak"* ]] || [[ "${assmbly}" == "trash"* ]]; then
-            continue
-        fi
+    for assmbly_dir in $(find . -mindepth 1 -maxdepth 1 -type d -not -path "./bak*" -not -path "./trash*"); do       # assmbly_dir elements look like:  ./HPRT1
+        assmbly="${assmbly_dir/\.\//}"/                                                                              # assmbly will look like:  HPRT1/
         
         # Create an html file for this assembly. Later it will get moved to "descriptions" subdirectory.
         echo "<pre>" > "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
