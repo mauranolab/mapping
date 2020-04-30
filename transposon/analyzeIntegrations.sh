@@ -77,6 +77,9 @@ echo -e "${sample}\tMinimum read length\t${minReadLength}"
 hasRead=$(samtools view ${samflags} $OUTDIR/${sample}.bam | head -n1 | wc -l)
 if [[ "$hasRead" -eq 0 ]]; then
     echo "No read passing all filters. Exiting earlier"
+    echo
+    echo "Done!!!"
+    date
     exit 0
 fi
 
