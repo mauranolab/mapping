@@ -161,11 +161,15 @@ HEREDOC_02
     fi
     
     cd ${assemblyBaseDir}/sequences/${genome}
-    assmbly_dirs=($(ls -d */))   # Elements will look like:  HPRT1/
-    if [ -z "${assmbly_dirs}" ]; then
+    mapfile -t initial_assmbly_dirs < <(find . -mindepth 1 -maxdepth 1 -type d)  # initial_assmbly_dirs elements look like:  ./HPRT1
+    if [ ${#initial_assmbly_dirs[@]} -eq 0 ]; then
         # No directories were found.
         continue
     fi
+    declare -a assmbly_dirs=()
+    for assmbly in ${initial_assmbly_dirs[@]}; do
+        assmbly_dirs+=("${assmbly/\.\//}"/)    # assmbly_dirs elements will look like:  HPRT1/
+    done
     
     for assmbly in "${assmbly_dirs[@]}"; do
         if [[ "${assmbly}" == "bak"* ]] || [[ "${assmbly}" == "trash"* ]]; then
@@ -177,15 +181,11 @@ HEREDOC_02
         echo "Source data located in: ${assemblyBaseDir}/sequences/${genome}${assmbly%/}" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
         echo "</pre>" >> "${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html"
         
-        set +eu +o pipefail  # Avoid failing when there are no files found by find.
-        # Note we that ignore emacs backups in the next line via the [0-9]*$
-        bed_files=($(find "${assemblyBaseDir}/sequences/${genome}${assmbly}" -mindepth 1 -maxdepth 1 -type f | egrep *[.]bed[0-9]*$))
-        if [ -z "${bed_files}" ]; then
+        # Note that we ignore emacs backups in the next line via the [0-9]*$
+        mapfile -t bed_files < <(find "${assemblyBaseDir}/sequences/${genome}${assmbly}" -mindepth 1 -maxdepth 1 -type f -regex '.*[.]bed[0-9]*$')
+        if [ ${#bed_files[@]} -eq 0 ]; then
             # No files were found.
-            set -eu -o pipefail  # Have to do the set here, else we get an unbound variable error in the above if statement.
             continue
-        else
-            set -eu -o pipefail
         fi
         
         cd "${TMPDIR}/assembly_tracks"
