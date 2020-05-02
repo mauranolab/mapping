@@ -167,7 +167,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     elif [[ "${sample}" =~ T021. ]]; then
         #Dec 2019 scaled
         scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/FCH7Y3NBGXC"
-        genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_shared.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_conflicting_cells.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_T0213A.txt --annotateclones /vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/bc_transfection-occurence.txt.gz"
+        genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_shared.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_conflicting_cells.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_T0213A.txt --annotateclones /vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/bc_transfection-occurrence.txt.gz"
     else
         echo "ERROR can't find the right scRNAseqbase"
         exit 1
