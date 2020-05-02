@@ -162,7 +162,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     #Tied to sample name for now
     if [[ "${sample}" =~ T0190 ]]; then
         #Aug 2019 Pilot
-        scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/merged"
+        scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/merged_T0190"
         genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/T0190/blacklist_multisite.txt"
     elif [[ "${sample}" =~ T021. ]]; then
         #Dec 2019 scaled
