@@ -20,7 +20,7 @@ src=$6
 sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
 
-if [[ "${sampleType}" != "none" ]] && [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "dna" ]] && [[ "${sampleType}" != "capture" ]]; then
+if [[ "${sampleType}" != "none" ]] && [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "dna" ]] && [[ "${sampleType}" != "capture" ]] && [[ "${sampleType}" != "amplicon" ]]; then
     echo "ERROR: unknown analysis command ${sampleType} in analysisType ${analysisType}"
     exit 1
 fi
@@ -143,6 +143,8 @@ case "${sampleType}" in
         ucscTrackDescriptionDataType="DNA";;
     capture)
         ucscTrackDescriptionDataType="Capture (${sampleAnnotationBait})";;
+    amplicon)
+        ucscTrackDescriptionDataType="Amplicon";;
     dnase)
         ucscTrackDescriptionDataType="DNase-seq";;
     atac)
@@ -280,7 +282,7 @@ echo "Making BAM track"
 echo "track name=${ucscName}-reads description=\"${ucscTrackDescriptionDataType} Reads ${name} (${analyzedReadsM}M reads analyzed)\" visibility=pack pairEndsByName=on maxItems=50000 type=bam ${UCSCbase}/${name}.${mappedgenome}.bam"
 
 
-if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
+if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "${sampleType}" == "amplicon" ]]; then
     if [ "${PFalignments}" -lt 50000000 ] && [[ "${analyzedReads}" > 0 ]]; then
         #Call hotspot 2 for debugging weird issues in coverage tracks, but not on large datasets
         callHotspots1=0
@@ -647,7 +649,7 @@ echo -e "Num_SE_pass_filter_alignments\t${PFalignmentsSE}\t\t${name}\t${mappedge
 printfNA "Num_SE_analyzed_reads\t${analyzedReadsSE}\t%.1f%%\t${name}\t${mappedgenome}\n" "${pctanalyzedReadsSE}"
 
 
-if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]]; then
+if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "${sampleType}" == "amplicon" ]]; then
     #Repeat it here for ease of parsing
     echo -e "Genomic_coverage\t\t${genomecov}\t${name}\t${mappedgenome}"
 fi

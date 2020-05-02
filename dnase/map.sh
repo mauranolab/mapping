@@ -315,7 +315,6 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         
         
         #Previously used -n 10 but never really used XA tag and maybe was causing sampe to occasionally truncate last line of output (dropping the tags)
-        #TODO perhaps I should add -N to get complete set of hits?
         bwaAlnExtractOpts="-n 3 -r ${readgroup}"
         if [[ "$PErun" == "TRUE" ]] ; then
             echo -e "\nMapping R2 ${reads2fq} for ${sample2}"
@@ -325,7 +324,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
             bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample2}.fastq.gz > $TMPDIR/${sample2}.${curGenome}.sai
             
             #-P didn't have a major effect, but some jobs were ~10-40% faster but takes ~16GB RAM instead of 4GB
-            extractcmd="sampe ${bwaAlnExtractOpts} -a ${maxInsertSize} ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample2}.${curGenome}.sai $TMPDIR/${sample1}.fastq.gz $TMPDIR/${sample2}.fastq.gz"
+            extractcmd="bwa sampe ${bwaAlnExtractOpts} -a ${maxInsertSize} ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample2}.${curGenome}.sai $TMPDIR/${sample1}.fastq.gz $TMPDIR/${sample2}.fastq.gz"
             
             #Only map unpaired reads if the file nonzero
             if [[ "${unpairedReadLines}" > 0 ]]; then
@@ -339,7 +338,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
                 echo
                 echo "Extracting unpaired reads"
                 unpairedReadsSam="$TMPDIR/${curfile}.${curGenome}.unpaired.sam"
-                unpairedExtractcmd="samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${curfile}.unpaired.${curGenome}.sai $TMPDIR/${curfile}.unpaired.fastq.gz"
+                unpairedExtractcmd="bwa samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${curfile}.unpaired.${curGenome}.sai $TMPDIR/${curfile}.unpaired.fastq.gz"
                 echo -e "unpairedExtractcmd=bwa $unpairedExtractcmd | (...)"
                 bwa $unpairedExtractcmd | grep -v "^@" > ${unpairedReadsSam}
                 
@@ -347,18 +346,23 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
             fi
             #TODO merge headers instead of dropping
         else
-            extractcmd="samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample1}.fastq.gz"
+            extractcmd="bwa samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${sample1}.${curGenome}.sai $TMPDIR/${sample1}.fastq.gz"
         fi
     elif [[ "${processingCommand}" == "mapBwaMem" ]]; then
         #parameters from ira hall consensus pipeline added 2020feb18 along with update to bwa 0.7.17        #https://github.com/CCDG/Pipeline-Standardization/blob/master/PipelineStandard.md
         #I could not find any effect of '-Y'; in some spot checking I hever see bwa output anything with $6~/H/, though I can find some soft-clipped supplementary alignments with or without the option
         bwaMemOptions="-Y -K 100000000"
         
-        extractcmd="mem ${bwaMemOptions} ${userAlnOptions} -t ${NSLOTS} -R ${readgroup} ${bwaIndex} $TMPDIR/${sample1}.fastq.gz"
+        extractcmd="bwa mem ${bwaMemOptions} ${userAlnOptions} -t ${NSLOTS} -R ${readgroup} ${bwaIndex} $TMPDIR/${sample1}.fastq.gz"
         if [[ "$PErun" == "TRUE" ]] ; then
             extractcmd="${extractcmd} $TMPDIR/${sample2}.fastq.gz"
         fi
         echo "bwa ${extractcmd}"
+    elif [[ "${processingCommand}" == "mapMinimap" ]]; then
+        #Assumes SE
+        #note this ignores the trimmed reads in $TMPDIR/${sample1}.fastq.gz
+        extractcmd="minimap2 -a -x map-ont ${referencefasta} ${readsFq}"
+        echo "${extractcmd} ..."
     else
         echo "ERROR: impossible unsupported ${processingCommand}"
         exit 6
@@ -367,10 +371,10 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     date
     echo
     echo "Extracting"
-    echo -e "extractcmd=bwa ${extractcmd} | (...)"
+    echo -e "extractcmd=${extractcmd} | (...)"
     date
     echo
-    bwa ${extractcmd} > $TMPDIR/${curfile}.${curGenome}.bwaout.bam
+    ${extractcmd} > $TMPDIR/${curfile}.${curGenome}.bwaout.bam
     
     
     echo
@@ -411,6 +415,23 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     
     echo
     date
+    
+    
+    if [[ "${sampleType}" == "amplicon" ]]; then
+        echo
+        echo "Primer soft clipping"
+        samtools view -h ${sampleOutdir}/${curfile}.${curGenome}.bam |
+        #TODO hardcoded primer coords for now
+        #BUGBUG primerclip leaves no PG record; otherwise would set samtools view --no-PG
+        #BUGBUG dumps masterparsefails.log into directory
+        #BUGBUG can't stream to stdout; passes log output through stdout?
+        primerclip /vol/sars/sequences/wuhCor1/Swift_Amplicons/sarscov2_masterfile.txt /dev/stdin  $TMPDIR/${curfile}.${curGenome}.sam
+        samtools view -@ $NSLOTS -O bam -1 $TMPDIR/${curfile}.${curGenome}.sam > ${sampleOutdir}/${curfile}.${curGenome}.bam
+        
+        echo
+        date
+    fi
+    
     
     #Add MC tag containing mate CIGAR for duplicate calling
     #Why do I need this? samblaster can add this itself but seems to miss some?

@@ -14,7 +14,7 @@ mappedgenome=$4
 src=$5
 
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
-#analysisCommand=`echo "${analysisType}" | awk -F "," '{print $2}'`
+sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
 name=`basename ${sampleOutdir}`
 
@@ -110,7 +110,11 @@ else
     samtools merge -c -@ $NSLOTS ${mergeOpts} ${sampleOutdir}/${name}.${mappedgenome}.bam ${files}
 fi
 
-if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggregateRemarkDups" ]]; then
+if [[ "${sampleType}" == "amplicon" ]]; then
+    #No duplicate marking, just sort by coordinate
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${name}.sort -l 9 ${sampleOutdir}/${name}.${mappedgenome}.bam > ${sampleOutdir}/${name}.${mappedgenome}.new.bam
+    mv ${sampleOutdir}/${name}.${mappedgenome}.new.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
+elif [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggregateRemarkDups" ]]; then
     echo
     echo "Marking duplicates"
     date
@@ -136,7 +140,8 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggrega
     #https://github.com/GregoryFaust/samblaster/blob/master/samblaster.cpp
     ${src}/fixDupSAMHeaderPG.py - - >$TMPDIR/${name}.${mappedgenome}.markedDups.bam
     
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${name}.sort -l 9 $TMPDIR/${name}.${mappedgenome}.markedDups.bam > ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam && mv ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${name}.sort -l 9 $TMPDIR/${name}.${mappedgenome}.markedDups.bam > ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam
+    mv ${sampleOutdir}/${name}.${mappedgenome}.markedDups.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
 fi
 
 
