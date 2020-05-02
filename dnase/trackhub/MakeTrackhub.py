@@ -123,7 +123,7 @@ for line in inputfile_reader:
 # in the following for loop, as well as in the various track construction blocks below.
 assays = set([])
 for assay_type in set([line.get('Assay') for line in input_data_all]):
-    if assay_type in["DNase-seq", "DNA", "DNA Capture", "None", "ATAC-seq"]:
+    if assay_type in["DNase-seq", "DNA", "DNA Capture", "Amplicon", "None", "ATAC-seq"]:
         assays.add(assay_type)
     else:
         #ChIP-seq tracks have the epitope as the assay type
@@ -172,7 +172,7 @@ if args.supertrack is not None:
 # Now build the composites, and add them all to the supertrack.
 for assay_type in assays:
     #Matches the options allowed in submit.sh and createFlowcellSubmit.py
-    bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ATAC-seq":"atac", "ChIP-seq": "chipseq", "DNA": "dna", "DNA Capture": "capture" }
+    bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ATAC-seq":"atac", "ChIP-seq": "chipseq", "DNA": "dna", "DNA Capture": "capture", "Amplicon": "amplicon" }
     assay_suffix = bwaPipelineAnalysisCommandMap[assay_type] if assay_type in bwaPipelineAnalysisCommandMap else "none"
     
     input_data = []
@@ -403,7 +403,7 @@ for assay_type in assays:
             #Avoid making entries for tracks with no reads (since there are no .bw/.bb files); the bam file still shows up in case there is something there, and the samples still show up in the summary table at bottom in UCSC browser
             if curSample['analyzed_reads']!="NA" and int(curSample['analyzed_reads'])>0:
                 #Coverage_view
-                if assay_type in ["DNA", "DNA Capture"]:
+                if assay_type in ["DNA", "DNA Capture", "Amplicon"]:
                     if Coverage_view is None:
                         Coverage_view = ViewTrack(
                             name="Coverage_view_" + curGroup_trackname,
@@ -541,7 +541,7 @@ for assay_type in assays:
                     Cuts_view.add_tracks(track)
                 
                 #Variants_view
-                if assay_type in ["DNA", "DNA Capture"]:
+                if assay_type in ["DNA", "DNA Capture", "Amplicon"]:
                     if Variants_view is None:
                         Variants_view = ViewTrack(
                             name="Variants_view_" + curGroup_trackname,
@@ -567,7 +567,7 @@ for assay_type in assays:
                     Variants_view.add_tracks(track)
                 
                 #Genotypes_view
-                if assay_type in ["DNA", "DNA Capture"]:
+                if assay_type in ["DNA", "DNA Capture", "Amplicon"]:
                     if Genotypes_view is None:
                         Genotypes_view = ViewTrack(
                             name="Genotypes_view_" + curGroup_trackname,

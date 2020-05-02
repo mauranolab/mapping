@@ -14,6 +14,7 @@ module load FastQC/0.11.4
 module load bedtools/2.29.2
 module load bedops/2.4.37
 module load bwa/0.7.17
+module load minimap2/2.17
 module load htslib/1.10.2
 module load samtools/1.10
 module load bcftools/1.10.2
@@ -24,13 +25,14 @@ module load ucsckentutils/379
 module load hotspot/4.1
 module load hotspot2/2.1.1
 module load pigz
+module load primerclip/0.3.8
 
 
 ###Hardcoded configuration options
 #Common
 qsubargs=""
-mapThreads=4
-mergeThreads=3
+mapThreads=6
+mergeThreads=6
 runBamIntersect=1
 
 #For big jobs:
@@ -56,12 +58,12 @@ fi
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
-if [[ "${processingCommand}" != "none" ]] && [[ "${processingCommand}" != "aggregate" ]] && [[ "${processingCommand}" != "aggregateRemarkDups" ]] && [[ "${processingCommand}" != "mapBwaAln" ]] && [[ "${processingCommand}" != "mapBwaMem" ]] && [[ "${processingCommand}" != "bamintersect" ]]; then
+if [[ "${processingCommand}" != "none" ]] && [[ "${processingCommand}" != "aggregate" ]] && [[ "${processingCommand}" != "aggregateRemarkDups" ]] && [[ "${processingCommand}" != "mapBwaAln" ]] && [[ "${processingCommand}" != "mapBwaMem" ]] && [[ "${processingCommand}" != "mapMinimap" ]] &&  [[ "${processingCommand}" != "bamintersect" ]]; then
     echo "ERROR submit: unknown processing command ${processingCommand} in analysisType ${analysisType}"
     exit 1
 fi
 
-if [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "dna" ]] && [[ "${sampleType}" != "capture" ]] && [[ "${sampleType}" != "none" ]]; then
+if [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${sampleType}" != "chipseq" ]] && [[ "${sampleType}" != "dna" ]] && [[ "${sampleType}" != "capture" ]] && [[ "${sampleType}" != "amplicon" ]] && [[ "${sampleType}" != "none" ]]; then
     echo "ERROR submit: unknown sample type ${sampleType} in analysisType ${analysisType}"
     exit 2
 fi

@@ -200,8 +200,8 @@ def chromConfCapture(line):
 
 
 #BWA pipeline for DNA / DNase / ChIP-seq
-bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ChIP-seq": "chipseq", "DNA": "dna", "DNA Capture": "capture" }
-bwaPipelineFragmentLengthsMap = { "DNase-seq": 300, "Nano-DNase": 300, "ChIP-seq": 500, "DNA": 750 , "DNA Capture": 750 }
+bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ChIP-seq": "chipseq", "DNA": "dna", "DNA Capture": "capture", "Amplicon": "amplicon" }
+bwaPipelineFragmentLengthsMap = { "DNase-seq": 300, "Nano-DNase": 300, "ChIP-seq": 500, "DNA": 750 , "DNA Capture": 750, "Amplicon": 500 }
 
 
 def getBwaPipelineOutdir(sampleType):
@@ -255,7 +255,7 @@ def addCEGSgenomes(line):
 
 
 def getBwaReference(species):
-    if sampleType in ["DNA", "DNA Capture"]:
+    if sampleType in ["DNA", "DNA Capture", "Amplicon"]:
         speciesToGenomeReference = {
             "Human": "hg38_full",
             "Mouse": "mm10",
@@ -304,7 +304,7 @@ def bwaPipeline(line):
     elif args.aggregate_sublibraries:
         processingCommand="aggregateRemarkDups"
     else:
-        if sampleType in ["DNA", "DNA Capture"]:
+        if sampleType in ["DNA", "DNA Capture", "Amplicon"]:
             processingCommand="mapBwaMem"
         elif sampleType in ["Nano-DNase", "ChIP-seq", "DNase-seq"]:
             processingCommand="mapBwaAln"
