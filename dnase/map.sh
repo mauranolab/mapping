@@ -425,6 +425,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         #BUGBUG primerclip leaves no PG record; otherwise would set samtools view --no-PG
         #BUGBUG dumps masterparsefails.log into directory
         #BUGBUG can't stream to stdout; passes log output through stdout?
+        #BUGBUG does not update MC, NM(?)
         primerclip /vol/sars/sequences/wuhCor1/Swift_Amplicons/sarscov2_masterfile.txt /dev/stdin  $TMPDIR/${curfile}.${curGenome}.sam
         samtools view -@ $NSLOTS -O bam -1 $TMPDIR/${curfile}.${curGenome}.sam > ${sampleOutdir}/${curfile}.${curGenome}.bam
         
@@ -432,9 +433,8 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         date
     fi
     
-    
-    #Add MC tag containing mate CIGAR for duplicate calling
-    #Why do I need this? samblaster can add this itself but seems to miss some?
+    #Add MC tag containing mate CIGAR
+    #Used to do this for all datasets before switching to samblaster. However, samblaster seems to miss some?
     #Needs to be sorted by coordinate
     #java -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar FixMateInformation -INPUT ${TMPDIR}/${curfile}.${curGenome}.bwaout.bam -OUTPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 1
     

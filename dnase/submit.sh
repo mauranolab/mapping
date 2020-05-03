@@ -31,8 +31,8 @@ module load primerclip/0.3.8
 ###Hardcoded configuration options
 #Common
 qsubargs=""
-mapThreads=6
-mergeThreads=6
+mapThreads=4
+mergeThreads=3
 runBamIntersect=1
 
 #For big jobs:
