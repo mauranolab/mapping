@@ -13,6 +13,8 @@ BS=$3
 mappedgenome=$4
 src=$5
 
+source ${src}/genomeinfo.sh ${mappedgenome}
+
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
@@ -112,7 +114,13 @@ fi
 
 if [[ "${sampleType}" == "amplicon" ]]; then
     #No duplicate marking, just sort by coordinate
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${name}.sort -l 9 ${sampleOutdir}/${name}.${mappedgenome}.bam > ${sampleOutdir}/${name}.${mappedgenome}.new.bam
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${name}.sort -l 0 ${sampleOutdir}/${name}.${mappedgenome}.bam |
+    #Fix MC tag containing mate CIGAR
+    #Needs to be sorted by coordinate
+    java -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar FixMateInformation -INPUT /dev/stdin -OUTPUT /dev/stdout -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 0 |
+    java -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar SetNmMdAndUqTags -INPUT=/dev/stdin -OUTPUT=${sampleOutdir}/${name}.${mappedgenome}.new.bam -REFERENCE_SEQUENCE=${referencefasta} -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 9
+
+    
     mv ${sampleOutdir}/${name}.${mappedgenome}.new.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
 elif [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggregateRemarkDups" ]]; then
     echo
