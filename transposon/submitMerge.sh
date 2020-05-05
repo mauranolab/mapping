@@ -12,6 +12,7 @@ module load python/3.8.1
 module load weblogo/3.5.0
 module load ImageMagick
 module load bedtools
+module load ucsckentutils/379
 module load miller
 module load pigz
 module load samtools/1.9
