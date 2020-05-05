@@ -75,7 +75,7 @@ minReadLength=`echo "${readlengths}" | perl -pe 's/ \([0-9]+\)//g;' -e 's/, /\n/
 echo -e "${sample}\tMinimum read length\t${minReadLength}"
 
 hasRead=$(samtools view -c ${samflags} $OUTDIR/${sample}.bam)
-if [[ "$hasRead" -eq 0 ]]; then
+if [ "$hasRead" -eq 0 ]; then
     echo "No read passing all filters. Exiting earlier"
     echo
     echo "Done!!!"
