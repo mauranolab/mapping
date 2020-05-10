@@ -24,7 +24,7 @@ awk -F "\t" 'BEGIN {OFS="\t"; parse=0} {print} $0=="" && parse==0 {parse=1; prin
 perl -pe 's/^(#.+[^\t])\t+$/\1/g;' |
 #Also creates info.txt
 tee info.txt |
-#NB our sample sheet records RC for BC2/i5, which according to https://support.illumina.com/content/dam/illumina-support/documents/documentation/system_documentation/miseq/indexed-sequencing-overview-guide-15057455-04.pdf is valid for iSeq 100, MiniSeq, NextSeq, HiSeq X, HiSeq 4000, or HiSeq 3000. Therefore for runs on NovaSeqTM 6000, MiSeqTM, HiSeq 2500, and HiSeq 2000, BC2 must be RC back to the original sequence.
+#NB our sample sheet records RC for BC2/i5, which according to https://support.illumina.com/content/dam/illumina-support/documents/documentation/system_documentation/miseq/indexed-sequencing-overview-guide-15057455-04.pdf is valid for iSeq 100, MiniSeq, NextSeq, HiSeq X, HiSeq 4000, or HiSeq 3000. Therefore for runs on NovaSeqTM 6000, MiSeq, HiSeq 2500, and HiSeq 2000, BC2 must be RC back to the original sequence.
 awk -f ${src}/flowcells/revcomp.awk -F "\t" --source  'BEGIN {OFS=","; split("8,8", bclens, ",")} \
     $1=="#Instrument" { if($2~/NovaSeq/ || $2~/MiSeq/) {doRevComp=1} else {doRevComp=0} } \
     $1=="#Indices" && $2!="" {split($2, bclens, ",")} \
@@ -34,7 +34,7 @@ awk -f ${src}/flowcells/revcomp.awk -F "\t" --source  'BEGIN {OFS=","; split("8,
         split($6, bc1, "_"); \
         split($7, bc2, "_"); \
         if(doRevComp==1) { bc2[2]=revcomp(bc2[2]) } \
-        print "Sample_" $2, $2, "", "",  bc1[1], toupper(substr(bc1[2], 0, bclens[1])),  bc2[1], toupper(substr(bc2[2], 0, bclens[2])), "Project_" $3, "", $19; \
+        print "Sample_" $2, $2, "", "",  bc1[1], toupper(substr(bc1[2], 0, bclens[1])),  bc2[1], toupper(substr(bc2[2], 0, bclens[2])), "Project_" $3, "", $16; \
     }' >> $TMPDIR/SampleSheet.withlane.csv
 
 
@@ -69,7 +69,7 @@ fi
 #TODO check read count total
 #TODO Better to use pool counts?
 awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Expected reads" {expectedReads=$2; programmedReads=0} \
-$0!~/^#/ && $1!="" && $5!="Pool" { programmedReads+= $16 } \
+$0!~/^#/ && $1!="" && $5!="Pool" { programmedReads+= $13 } \
 END { if(programmedReads != expectedReads) { \
         print "WARNING: Total of " programmedReads " reads requested for a FC that yields " expectedReads; \
     } \
@@ -93,8 +93,8 @@ END {\
 
 awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Format" {split($2, fcreadformat, ",")} \
 $0!~/^#/ && $1!="" { \
-    gsub(/^[SP]E /, "", $17); \
-    split($17, sampleReadFormat, ","); \
+    gsub(/^[SP]E /, "", $14); \
+    split($14, sampleReadFormat, ","); \
     if(sampleReadFormat[1]>fcreadformat[1] || sampleReadFormat[2]>fcreadformat[2]) { \
         print "WARNING: Sample " $1 "-" $2 " requires longer read lengths (" sampleReadFormat[1] "," sampleReadFormat[2] ") than programmed" \
     } \
