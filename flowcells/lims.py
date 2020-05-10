@@ -37,15 +37,17 @@ def getValueFromLIMS(lims, bs, colname):
 #Pull the LIMS sheet from google using the service account secrets file and spreadsheet ID.
 def getLIMSsheet(sheet):
     try:
+        #Read google sheets ID from the file system
         lims_gsheets_ID_file = open('/vol/mauranolab/flowcells/LIMS.gsheets_ID.txt', 'r')
         lims_gsheets_ID = lims_gsheets_ID_file.readlines()[0].rstrip("\n")
         lims_gsheets_ID_file.close()
+        
         gc = pygsheets.authorize(service_file='/vol/mauranolab/flowcells/mauranolab.json')
         sh = gc.open_by_key(lims_gsheets_ID)
         wks = sh.worksheet_by_title(sheet)
-        df = wks.get_as_df()
+        df = wks.get_as_df(value_render="UNFORMATTED_VALUE")
         df.fillna(value='', inplace=True) #Maybe pandas v1 problem? Or just change '' to None?
-        #Remove per-FC headers and space between FCs (any row that is only empty lines)
+        #Mask per-FC headers and space between FCs (any row that is only empty lines)
         mask = ~df['Sample Name'].str.startswith('#') & (df!="").any(1)
     except Exception as e:
         #Doesn't print exception name right, e.g. if header is corrupted in google docs: "AttributeError: 'KeyError' object has no attribute 'argument'"
@@ -141,7 +143,40 @@ def updateSheetFromTable(wks, df, updates, commit=True):
                     newvalue = updates[updates['Sample #'] == BS][col].values.item()
                     if oldvalue != newvalue:
                         print(col + "=" + str(oldvalue) + " => " + str(newvalue))
-                    if commit:
-                        wks.update_value(coords, newvalue)
+                        if commit:
+                            wks.update_value(coords, newvalue)
     if errors > 0:
         print("ERROR: "+ errors + " found!")
+
+
+#Search and replace functionality for FC info
+#BUGBUG I don't think this is safe to run twice in a given session
+def replaceFCinfo(seqWks, seq, key, value, newvalue, commit=False):
+    fcMask = seq['Sample Name'].str.startswith('#')
+    curFC = None
+    for seqRow in seq.index.values[fcMask]:
+        curSeq = seq.iloc[seqRow]
+        if curSeq['Sample Name']=="#Barcode":
+            #BUGBUG FC is customarily after run name, so it won't be set for the first line
+            curFC = curSeq['Sample #']
+        elif curSeq['Sample Name']=="#"+key:
+            #I think row + 2 because of 0 -> 1 based indexing plus the header row
+            coords = (seqRow+2, seq.columns.get_loc('Sample #')+1)
+            oldvalue = seqWks.get_value(coords)
+            if (value is None or oldvalue == value) and oldvalue!=newvalue:
+                print("Row ", seqRow+2, " (", curFC, "): ", key, "=", str(oldvalue), " => ", str(newvalue), sep="")
+                if commit:
+                    seqWks.update_value(coords, newvalue)
+
+
+#Remove empty FC info records matching a given key
+def removeEmptyFCinfo(seqWks, seq, key, commit=True):
+    fcMask = seq['Sample Name'].str.startswith('#')
+    #Iterate in reverse order since updating row index to account for deleted rows does not seem to work
+    for seqRow in reversed(seq.index.values[fcMask]):
+        curSeq = seq.iloc[seqRow]
+        if curSeq['Sample Name']=="#"+key and curSeq['Sample #']=="":
+            print("Removing row ", seqRow, ": ", curSeq['Sample Name'], sep="")
+            if commit:
+                #I think row + 2 because of 0 -> 1 based indexing plus the header row
+                seqWks.delete_rows(int(seqRow+2), 1)
