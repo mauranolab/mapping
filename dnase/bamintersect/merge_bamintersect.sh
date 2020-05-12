@@ -74,13 +74,16 @@ echo "Generating uninformativeRegionFile"
 #Check for a curated uninformative regions file for this combination of genomes
 #For LP integrations, exclude HAs
 #For assemblon (not LP) integrations, filter out reads in deletion (since we have the mapping to the custom assembly)
-if echo "${bam2genome}" | grep -q "^LP[0-9]\+$"; then
+if echo "${bam2genome}" | egrep -q "^LP[0-9]+$"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed ${INTERMEDIATEDIR}/HA_coords.bed"
-#TODO payload masks hardcoded by name for now
-elif echo "${bam2genome}" | grep -q "^Sox2_"; then
+#TODO masks hardcoded by payload name for now
+elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed ${INTERMEDIATEDIR}/deletion_range.bed"
-elif echo "${bam2genome}" | grep -q "^rtTA$"; then
+elif echo "${bam2genome}" | egrep -q "^rtTA$"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/rtTA_vs_mm10.bed ${INTERMEDIATEDIR}/deletion_range.bed"
+elif echo "${bam2genome}" | egrep -q "^pSpCas9"; then
+    #These files mask just mm10/hg38  right now, so ok to use the same for all the pSpCas9 derivative constructs
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/pSpCas9_vs_${bam1genome}.bed"
 elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed ${INTERMEDIATEDIR}/deletion_range.bed"
     if [[ "${bam1genome}" == "LPICE" ]]; then
@@ -96,16 +99,6 @@ else
     uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
 fi
 
-for curfile in ${uninformativeRegionFiles}; do
-    if [ ! -f "${curfile}" ]; then
-        #NB one missing file will kill the whole list
-        echo "WARNING: Can't find ${curfile}; will run without any region mask"
-        uninformativeRegionFiles=""
-    else
-        echo "Found uninformative regions file: $(basename ${curfile}) [${curfile}]"
-    fi
-done
-
 #Genomic repeat annotation
 if [ -f "/vol/isg/annotation/bed/${bam1genome}/repeat_masker/Satellite.bed" ]; then
     uninformativeRegionFiles="${uninformativeRegionFiles} /vol/isg/annotation/bed/${bam1genome}/repeat_masker/Satellite.bed"
@@ -113,6 +106,15 @@ fi
 if [ -f "/vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed" ]; then
     uninformativeRegionFiles="${uninformativeRegionFiles} /vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed"
 fi
+
+for curfile in ${uninformativeRegionFiles}; do
+    if [ ! -f "${curfile}" ]; then
+        echo "ERROR: Can't find ${curfile}; will continue without any region mask"
+        exit 1
+    else
+        echo "Found uninformative regions file: $(basename ${curfile}) [${curfile}]"
+    fi
+done
 
 #Sort exclusion files and strip comments just in case
 cat ${uninformativeRegionFiles} | awk '$0 !~ /^#/' | sort-bed - > ${TMPDIR}/uninformativeRegionFile.bed
@@ -178,7 +180,7 @@ fi
 #Remove "new" from the end of path so that we can reprocess data without affecting live data
 projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab|isg\/encode)\///g;' | perl -pe 's/\/new$//g;'`
 if [[ `pwd` =~ ^\/vol\/cegs\/ ]]; then
-    UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/cegs/${projectdir}/${sampleOutdir}"
+    UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/cegs/trackhub/${projectdir}/${sampleOutdir}"
 else
     UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/${projectdir}/${sampleOutdir}"
 fi
