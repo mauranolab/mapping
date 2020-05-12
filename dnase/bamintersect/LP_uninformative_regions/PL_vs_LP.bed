@@ -14,19 +14,17 @@ LP131	0	34	loxM
 LP131	6000	6034	loxP
 LP140	0	34	loxM
 LP140	60	1239	EF1a_promoter
-PL1_payload	0	34	LoxM
-PL1_payload	34	1213	pEF1a
-PL1_payload	2653	2687	LoxP
-Sox2_Sox2_46kb_dDistalLCR_marker	1474	2653	EF1a_promoter
+PL1	0	34	LoxM
+PL1	34	1213	pEF1a
+PL1	2653	2687	LoxP
+Sox2_Sox2_143kb_marker	0	34	loxM
 Sox2_Sox2_143kb_marker	1474	2653	EF1a_promoter
+Sox2_Sox2_143kb_marker	145317	145351	loxP
+Sox2_Sox2_46kb_dDistalLCR_marker	0	34	loxM
+Sox2_Sox2_46kb_dDistalLCR_marker	1474	2653	EF1a_promoter
+Sox2_Sox2_46kb_dDistalLCR_marker	48664	48698	loxP
 #TODO the following are mm10 only, need to have a separate file. Or maybe mask with segdup file as well?
-#low complexity segdup that comes up often
-chr18	3004270	3005519	Vmn1r238-116973bp
-chr15	75085522	75087045
+#low complexity segdup that comes up often in failed Big-IN
+chr15	75085527	75087045	1518	Ly6c2-21872bp
 #More empirical off-targets from Bl6_Cast_dPiga-BS03020A
-chr7	128699941	128699992	51	Mcmbp
-chr4	129387362	129388185	456	Zbtb8a+9247bp
-chr5	121637921	121637967	46	Acad10
-chr19	4639428	4639492	62	Gm960
 chr19	9304072	9304116	Asrgl1+168438bp
-chr4	100773231	100773370	65	Cachd1-3379bp
