@@ -37,7 +37,6 @@ if [ ${runHA} = "AB" ]; then
     
     backbone=$(samtools idxstats ${bamfile} | awk -F "\t" '$1~/_backbone$/ {print $1}')
     if [ `samtools idxstats ${bamfile} | awk -F "\t" '$1~/_backbone$/ {print $1}' | wc -l` != 1 ]; then
-        # The second chromosome is not named [assembly]_backbone
         echo "[HA_table] WARNING: Assembly does not have exactly one backbone chromosome, quitting successfully: ${assembly} ${backbone}"
         echo ""
         echo "[HA_table] samtools idxstats ${bamfile} :"
