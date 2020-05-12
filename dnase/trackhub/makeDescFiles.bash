@@ -110,8 +110,7 @@ find_readcounts () {
             echo "[makeDescFiles.bash] WARNING No subdirectories with a readcounts file in ${dir_base}${flowcell}"
             # But print the data directory path:
             
-            subdir_names=(`find ${flowcelldir} -mindepth 1 -maxdepth 1 -type d`)
-            for j in "${subdir_names[@]}"; do
+            for j in `find ${flowcelldir} -mindepth 1 -maxdepth 1 -type d`; do
                 BASEwoSlash=${j%/}        # Strip trailing slash
                 BASE=${BASEwoSlash##*/}   # Get subdir name
                 
