@@ -1,6 +1,7 @@
 #!/bin/env python3
 
 #filter_reads.py - Set SAM flag 0x200 (QC-fail) for reads failing various criteria.
+#QC fail is set with |, so does not overwrite existing fail flag.
 #
 #See also fork in Github StamLab/stampipes
 #
@@ -402,8 +403,6 @@ while(1):
 unfiltered_reads.close()
 filtered_reads.close()
 
-
-#BUGBUG getting lost sys.stderr at end now
 
 print("\n[filter_reads.py] Failure codes by read pair (", totalReads, " reads processed):", sep="", file=sys.stderr)
 print("[filter_reads.py]", readPairFailureCodes, file=sys.stderr)
