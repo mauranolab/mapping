@@ -113,13 +113,15 @@ else
 fi
 
 if [[ "${sampleType}" == "amplicon" ]]; then
+    #Don't stream to avoid memory spikes
     #No duplicate marking, just sort by coordinate
-    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${name}.sort -l 0 ${sampleOutdir}/${name}.${mappedgenome}.bam |
+    samtools sort -@ $NSLOTS -O bam -m 5000M -T $TMPDIR/${name}.sort -l 0 ${sampleOutdir}/${name}.${mappedgenome}.bam > $TMPDIR/${name}.${mappedgenome}.sorted.bam
+    
     #Fix MC tag containing mate CIGAR
     #Needs to be sorted by coordinate
-    java -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar FixMateInformation -INPUT /dev/stdin -OUTPUT /dev/stdout -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 0 |
-    java -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar SetNmMdAndUqTags -INPUT=/dev/stdin -OUTPUT=${sampleOutdir}/${name}.${mappedgenome}.new.bam -REFERENCE_SEQUENCE=${referencefasta} -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 9
-
+    java -XX:ParallelGCThreads=2 -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar FixMateInformation -INPUT $TMPDIR/${name}.${mappedgenome}.sorted.bam -OUTPUT $TMPDIR/${name}.${mappedgenome}.fixedMC.bam -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 1
+    
+    java -XX:ParallelGCThreads=2 -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar SetNmMdAndUqTags -INPUT=$TMPDIR/${name}.${mappedgenome}.fixedMC.bam -OUTPUT=${sampleOutdir}/${name}.${mappedgenome}.new.bam -REFERENCE_SEQUENCE=${referencefasta} -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 9
     
     mv ${sampleOutdir}/${name}.${mappedgenome}.new.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
 elif [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggregateRemarkDups" ]]; then
