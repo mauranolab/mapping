@@ -426,6 +426,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         #BUGBUG dumps masterparsefails.log into directory
         #BUGBUG can't stream to stdout; passes log output through stdout?
         #BUGBUG does not update MC, NM(?)
+        #TODO back up original CIGAR in OC tag
         primerclip /vol/sars/sequences/wuhCor1/Swift_Amplicons/sarscov2_masterfile.txt /dev/stdin  $TMPDIR/${curfile}.${curGenome}.sam
         samtools view -@ $NSLOTS -O bam -1 $TMPDIR/${curfile}.${curGenome}.sam > ${sampleOutdir}/${curfile}.${curGenome}.bam
         

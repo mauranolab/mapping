@@ -215,7 +215,9 @@ for chrom in `samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | cu
         } \
         #chromEnd=chromStart+readlength; \
         chromEnd=chromStart+1; \
-        print $3, chromStart, chromEnd, insertlength, readlength, strand, flag; \
+        if(chromStart<chromEnd) { \
+            print $3, chromStart, chromEnd, insertlength, readlength, strand, flag; \
+        } \
     }' |
     sort-bed --max-mem 5G - | 
     #BUGBUG header doesn't make it through starchcat
