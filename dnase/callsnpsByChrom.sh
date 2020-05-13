@@ -41,16 +41,12 @@ date
 #NB Doesn't count PCR duplicates or unmapped segments
 samtools view -F 1028 ${sampleOutdir}/${name}.${mappedgenome}.bam ${chrom} | 
 awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrEBV"' |
-awk -F "\t" 'BEGIN {OFS="\t"} { \
-    flag = $2; \
-    softclipping = 0; \
-    if(match($6, /^[0-9]+S/)) {softclipping+=substr($6, 1, RLENGTH-1)} \
-    if(match($6, /[0-9]+S$/)) {softclipping+=substr($6, RSTART)} \
-    readlength = length($10) - softclipping; \
-    chromStart=$4-1; \
-    chromEnd=chromStart+readlength; \
-    print $3, chromStart, chromEnd, flag; \
-}' |
+#sam2bed handles CIGAR string appropriately
+sam2bed --do-not-sort |
+#reformat as chrom, chromStart, chromEnd, flag
+awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $3, $7}' |
+#Filter out reads that have no aligned reference bases (e.g. 4S2I23S)
+awk -F "\t" 'BEGIN {OFS="\t"} $2<$3' |
 sort-bed --max-mem 5G - | tee ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withflag.bed |
 awk -F "\t" 'BEGIN {OFS="\t"} !and($4, 512) {print $1, $2, $3}' > ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed
 
@@ -140,6 +136,7 @@ ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
 #2020mar21 raised max-idepth to permit calling indels from samples with high coverage (i.e. capture)
 if [[ "${sampleType}" == "amplicon" ]]; then
     #Not sure why but bcftools throws away regions completely with higher threshold for swift amplicon data
+    #https://www.biostars.org/p/384808/
     pileupParams=""
 else
     pileupParams="--adjust-MQ 50"
