@@ -29,8 +29,6 @@ except argparse.ArgumentError as exc:
 unfiltered_reads = pysam.AlignmentFile(args.raw_alignment, "r")
 newheader = unfiltered_reads.header.to_dict()
 
-#uniqueProgNames = set([ prog['ID'] for prog in newheader['PG'] ])
-
 #import pprint
 #pprint.pprint(unfiltered_reads.header.to_dict())
 
