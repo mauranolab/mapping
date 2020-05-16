@@ -71,7 +71,7 @@ getReadgroup()
     if [ -s "/vol/mauranolab/flowcells/data/${fc/./}/info.txt" ]; then
         local readgroup_instrument=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Instrument" {print $2}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
         
-        local readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"; loaddate="NA"} $1=="#Load date" {loaddate=$2} END {print loaddate}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
+        local readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"; loaddate="NA"} $1=="#Load date" && $2!="" {loaddate=$2} END {print loaddate}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
         #BUGBUG hardcoded column numbers
         local readgroup_bcs=`awk -v ds=${BS} -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && 0!="" && $2==ds {split($6, bc1, "_"); split($7, bc2, "_"); print bc1[2] "-" bc2[2]}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
         #BUGBUG BC: shows up in bwa command line but at some point disappears from the bam header
@@ -86,6 +86,9 @@ getReadgroup()
             ;;
         GTC_NextSeq)
             readgroup="${readgroup}\\tCN:NYUMC_GTC\\tPM:NextSeq_500"
+            ;;
+        GTC_MiSeq)
+            readgroup="${readgroup}\\tCN:NYUMC_GTC\\tPM:MiSeq"
             ;;
         esac
     fi
