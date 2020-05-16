@@ -41,22 +41,26 @@ import argparse
 import collections
 
 
-version="1.4"
+version="1.5"
 
 
 parser = argparse.ArgumentParser(prog = "filter_reads", description = "manually corrects the flags in a single- or pair-end BAM alignment file", allow_abbrev=False)
 parser.add_argument("raw_alignment", type = str, help = "Input raw alignment file (bam; must be sorted by name")
 parser.add_argument("filtered_alignment", type = str, help = "Output filtered alignment file (uncompressed bam; sorted by name)")
+parser.add_argument("--reheader", action = "store", type = str, help = "Merge in header information from bam or text file (SAM format; alignment section ignored) [%(default)s]")
 parser.add_argument("--dropUnmappedReads", action = "store_true", default = False, help = "Omit reads where all segments are unmapped [%(default)s]")
+parser.add_argument("--copyCigar", action = "store_true", default = False, help = "Copy CIGAR string to OC tag [%(default)s]")
+
 parser.add_argument("--failUnwantedRefs", action = "store_true", default = False, help = "Reads mapping to unwanted reference sequences will be failed [%(default)s]")
 parser.add_argument("--unwanted_refs_list", action = "store", type = str, default = "hap|random|^chrUn_|_alt$|scaffold|^C\d+", help = "Regex defining unwanted reference sequences [%(default)s]")
 parser.add_argument("--min_mapq", action = "store", type = int, default = 0, help = "Reads must have at least this MAPQ to pass filter [%(default)s]")
+parser.add_argument("--max_mismatches", action = "store", type = float, help = "Maximum mismatches to pass filter, either an integer representing a fixed cutoff or a decimal [0-1] for a variable cutoff as a proportion of read length [%(default)s]")
 parser.add_argument("--reqFullyAligned", action = "store_true", default = False, help = "Require full length of read to align without insertions, deletions, or clipping")
-parser.add_argument("--reheader", action = "store", type = str, help = "Merge in header information from bam or text file (SAM format; alignment section ignored) [%(default)s]")
-parser.add_argument("--max_mismatches", action = "store", type = float, default = 2, help = "Maximum mismatches to pass filter, either an integer representing a fixed cutoff or a decimal [0-1] for a variable cutoff as a proportion of read length [%(default)s]")
+parser.add_argument("--min_reference_length", action = "store", type = int, default = 0, help = "Reads must have at least this many reference bp in their alignment [%(default)s]")
 parser.add_argument("--min_insert_size", action = "store", type = int, default = 0, help = "Minimum insert size to pass filter [%(default)s]")
-parser.add_argument("--max_insert_size", action = "store", type = int, default = 500, help = "Maximum insert size to pass filter [%(default)s]")
-parser.add_argument("--maxPermittedTrailingOverrun", action = "store", type = int, default = 2, help = "Effectively the number of bp of adapter allowed to be present at end of read (though we don't verify it matches adapter sequence or even mismatches the reference) [%(default)s]")
+parser.add_argument("--max_insert_size", action = "store", type = int, help = "Maximum insert size to pass filter [%(default)s]")
+parser.add_argument("--maxPermittedTrailingOverrun", action = "store", type = int, help = "Effectively the number of bp of adapter allowed to be present at end of read (though we don't verify it matches adapter sequence or even mismatches the reference) [%(default)s]")
+
 parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
 parser.add_argument('--version', action='version', version='%(prog)s ' + version)
 
@@ -69,30 +73,19 @@ except argparse.ArgumentError as exc:
     sys.exit(2)
 
 
-if args.verbose and args.filtered_alignment=="-":
+verbose = args.verbose
+if verbose and args.filtered_alignment=="-":
     print("Can't do verbose and pipe output to STDOUT", file=sys.stderr)
     sys.exit()
 
 
-if args.max_mismatches < 0:
+if args.max_mismatches is not None and args.max_mismatches < 0:
     print("Can't do max_mismatches less than zero", file=sys.stderr)
     sys.exit()
 
 
 print("[filter_reads.py] Parameters:", args, file=sys.stderr)
 
-#Default values
-verbose = args.verbose
-reqFullyAligned = args.reqFullyAligned
-maxNumMismatches = args.max_mismatches
-min_MAPQ = args.min_mapq
-minTemplateLength = args.min_insert_size
-maxTemplateLength = args.max_insert_size
-maxPermittedTrailingOverrun = args.maxPermittedTrailingOverrun
-failUnwantedRefs = args.failUnwantedRefs
-unwanted_refs_list = args.unwanted_refs_list
-dropUnmappedReads = args.dropUnmappedReads
-reheader = args.reheader
 
 
 class ReadException(Exception):
@@ -134,7 +127,7 @@ def set_qc_fail(read, mark = True, qc_msg = None):
 
 
 def isUnwantedChromosomeName(seqname):
-    if re.search(unwanted_refs_list, seqname) is not None:
+    if re.search(args.unwanted_refs_list, seqname) is not None:
         return True
     else:
         return False
@@ -176,6 +169,9 @@ def parseRead(read):
     
     read.query_name = readname[0]
     
+    if args.copyCigar:
+        read.setTag("OC", read.cigarstring)
+    
     return read;
 
 
@@ -206,35 +202,36 @@ def validateReadPair(read1, read2):
     return;
 
 def validateSingleRead(read):
-    if reqFullyAligned and read.is_supplementary: raise ReadException("Read is supplementary alignment")
+    if args.reqFullyAligned and read.is_supplementary: raise ReadException("Read is supplementary alignment")
     
     #TODO should we have a separate command line flag to pass unmapped reads? Technically it is orthogonal to MAPQ==0. 
     #Small number of reads with MAPQ>0 but still unmapped
     if read.is_unmapped: raise ReadException("Read must be mapped")
     
-    if read.mapping_quality < min_MAPQ: raise ReadException("Read must have MAPQ greater than cutoff", str(read.mapping_quality))
+    if read.mapping_quality < args.min_mapq: raise ReadException("Read must have MAPQ greater than cutoff", str(read.mapping_quality))
     
-    if failUnwantedRefs and isUnwantedChromosomeID(read.reference_id): raise ReadException("Maps to unwanted reference", unfiltered_reads.getrname(read.reference_id))
+    if args.failUnwantedRefs and isUnwantedChromosomeID(read.reference_id): raise ReadException("Maps to unwanted reference", unfiltered_reads.getrname(read.reference_id))
     
-    if maxNumMismatches < 1:
-        #needs pysam 0.8.2
-        if read.get_tag("NM") > maxNumMismatches * read.reference_length: raise ReadException("Too many mismatches", str(read.get_tag("NM")))
-    else:
-        if read.get_tag("NM") > maxNumMismatches: raise ReadException("Too many mismatches", str(read.get_tag("NM")))
+    if args.max_mismatches is not None:
+        if args.max_mismatches < 1:
+            #needs pysam 0.8.2
+            if read.get_tag("NM") > args.max_mismatches * read.reference_length: raise ReadException("Too many mismatches", str(read.get_tag("NM")))
+        else:
+            if read.get_tag("NM") > args.max_mismatches: raise ReadException("Too many mismatches", str(read.get_tag("NM")))
     
     #Allow N for introns
-    if reqFullyAligned and re.search('[HSPDI]', read.cigarstring) is not None: raise ReadException("Read contains indels or clipping", read.cigarstring)
+    if args.reqFullyAligned and re.search('[HSPDI]', read.cigarstring) is not None: raise ReadException("Read contains indels or clipping", read.cigarstring)
+    
+    if read.reference_length < args.min_reference_length: raise ReadException("Read has too few reference bp aligned", read.reference_length)
     
     #Do some PE template length checks in here for simplicity but they are meaningless if the references don't match
     if not read.is_unmapped and not read.mate_is_unmapped and read.is_paired and read.reference_id == read.next_reference_id:
-        #TODO check reference_length > minReadLength
-        
-        if abs(read.template_length) > maxTemplateLength: raise ReadException("Each read pair must have an insert length below " + str(maxTemplateLength), str(abs(read.template_length)))
+        if args.max_insert_size is not None and abs(read.template_length) > args.max_insert_size: raise ReadException("Each read pair must have an insert length below " + str(args.max_insert_size), str(abs(read.template_length)))
         
         #BUGBUG not sure how this works w/ supp aligns
-        if abs(read.template_length) < read.query_length - maxPermittedTrailingOverrun: raise ReadException("Each read pair must have an insert length above read length (within " + str(maxPermittedTrailingOverrun) + " bp)", str(abs(read.template_length)))
+        if args.maxPermittedTrailingOverrun is not None and abs(read.template_length) < read.query_length - args.maxPermittedTrailingOverrun: raise ReadException("Each read pair must have an insert length above read length (within " + str(args.maxPermittedTrailingOverrun) + " bp)", str(abs(read.template_length)))
         
-        if abs(read.template_length) < minTemplateLength: raise ReadException("Each read pair must have an insert length above " + str(minTemplateLength), str(abs(read.template_length)))
+        if abs(read.template_length) < args.min_insert_size: raise ReadException("Each read pair must have an insert length above " + str(args.min_insert_size), str(abs(read.template_length)))
     
     return;
 
@@ -311,14 +308,14 @@ unfiltered_reads = pysam.AlignmentFile(args.raw_alignment, "rb")
 print("[filter_reads.py] Processing header", file=sys.stderr)
 newheader = unfiltered_reads.header.to_dict()
 
-if reheader is not None:
+if args.reheader is not None:
     try:
-        if re.search('\.bam$', reheader) is not None:
-            reheaderFile = pysam.AlignmentFile(reheader, "rb")
+        if re.search('\.bam$', args.reheader) is not None:
+            reheaderFile = pysam.AlignmentFile(args.reheader, "rb")
             reheaderDict = reheaderFile.header.to_dict()
         else:
             #Read in header lines from a text file, in sam format but we ignore the non-header lines
-            reheaderFile = open(reheader, 'rt')
+            reheaderFile = open(args.reheader, 'rt')
             headerLineRE = re.compile(r'^@')
             reheaderDict = pysam.AlignmentHeader.from_text(''.join(filter(headerLineRE.search, reheaderFile.readlines()))).to_dict()
         newheader = mergeSamHeadersAsDict(newheader, reheaderDict)
@@ -387,13 +384,13 @@ while(1):
         for read in curreads:
             set_qc_fail(read, qc_fail, qc_msg)
             
-            if dropUnmappedReads and allReadsUnmapped:
+            if args.dropUnmappedReads and allReadsUnmapped:
                 totalReadsDropped+=1
             else:
                 # write to file
                 filtered_reads.write(read)
         
-        if dropUnmappedReads and allReadsUnmapped:
+        if args.dropUnmappedReads and allReadsUnmapped:
             if verbose: print(" (dropped)")
         else:
             if verbose: print("")
