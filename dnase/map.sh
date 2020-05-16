@@ -165,8 +165,11 @@ if [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "${
     trimmomaticSteps="${trimmomaticSteps} CROP:36"
 fi
 
+minReferenceLength=0
 if [ "${readsLongEnough}" -eq 1 ]; then
     trimmomaticSteps="${trimmomaticSteps} MINLEN:27"
+    #This is the minimum aligned length, which matters for sampleTypes where we don't require the full read to be aligned
+    minReferenceLength=27
 fi
 
 #BUGBUG a bit fragile
@@ -393,6 +396,12 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         unwanted_refs=""
     fi
     
+    if [[ "${sampleType}" == "amplicon" ]]; then
+        copyCigar="--copyCigar"
+    else
+        copyCigar=""
+    fi
+    
     if [[ "${curGenome}" =~ ^cegsvectors ]]; then
         dropUnmappedReads="--dropUnmappedReads"
         minMAPQ=0
@@ -411,7 +420,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     
     samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${curfile}.sortbyname -l 1 -n $TMPDIR/${curfile}.${curGenome}.bwaout.bam |
     #not much gain other than avoiding disk IO doing this in a pipe as I don't think sort prints any intermediate results. Perhaps sorting fastq before mapping would be faster? https://www.biostars.org/p/15011/
-    ${src}/filter_reads.py --reheader $TMPDIR/${curfile}.${curGenome}.dict ${unwanted_refs} ${dropUnmappedReads} --max_mismatches ${permittedMismatches} --min_mapq ${minMAPQ} --min_insert_size 0 --max_insert_size ${maxInsertSize} --maxPermittedTrailingOverrun 2 - ${sampleOutdir}/${curfile}.${curGenome}.bam
+    ${src}/filter_reads.py --reheader $TMPDIR/${curfile}.${curGenome}.dict ${unwanted_refs} ${dropUnmappedReads} ${copyCigar} --max_mismatches ${permittedMismatches} --min_reference_length ${minReferenceLength} --min_mapq ${minMAPQ} --min_insert_size 0 --max_insert_size ${maxInsertSize} --maxPermittedTrailingOverrun 2 - ${sampleOutdir}/${curfile}.${curGenome}.bam
     
     echo
     date
@@ -426,9 +435,16 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         #BUGBUG dumps masterparsefails.log into directory
         #BUGBUG can't stream to stdout; passes log output through stdout?
         #BUGBUG does not update MC, NM(?)
-        #TODO back up original CIGAR in OC tag
+        #BUGBUG does not back up original CIGAR in OC tag (we have to do this above)
         primerclip /vol/sars/sequences/wuhCor1/Swift_Amplicons/sarscov2_masterfile.txt /dev/stdin  $TMPDIR/${curfile}.${curGenome}.sam
-        samtools view -@ $NSLOTS -O bam -1 $TMPDIR/${curfile}.${curGenome}.sam > ${sampleOutdir}/${curfile}.${curGenome}.bam
+        
+        samtools view -@ $NSLOTS -O bam -1 $TMPDIR/${curfile}.${curGenome}.sam |
+        #Need to re-run filter to fail any reads that drop below the minReferenceLength
+        ${src}/filter_reads.py --min_reference_length ${minReferenceLength} - - |
+        #TODO cheap fix -- filter_reads.py doesn't ensure header is unique
+        ${src}/fixDupSAMHeaderPG.py - ${sampleOutdir}/${curfile}.${curGenome}.bam.new
+        
+        mv ${sampleOutdir}/${curfile}.${curGenome}.bam.new ${sampleOutdir}/${curfile}.${curGenome}.bam
         
         echo
         date
