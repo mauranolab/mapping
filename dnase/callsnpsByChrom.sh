@@ -23,8 +23,10 @@ jobid=$SGE_TASK_ID
 #jobid=10
 
 name=`basename ${sampleOutdir}`
-chrom=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | awk -v jobid=$jobid 'NR==jobid'`
-echo "Running ${analysisType} analysis for ${chrom} of sample ${name} against genome ${mappedgenome}"
+
+jobname=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | awk -F "\t" -v jobid=$jobid 'NR==jobid {print $1}'`
+chroms=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | awk -F "\t" -v jobid=$jobid 'NR==jobid {print $2}'`
+echo "Running ${analysisType} analysis for ${chroms} of sample ${name} against genome ${mappedgenome}"
 echo -e "SampleAnnotation\t${sampleAnnotation}"
 date
 
@@ -39,7 +41,7 @@ echo "Extracting reads for coverage track"
 date
 #Coordinates are the positions covered by the read
 #NB Doesn't count PCR duplicates or unmapped segments
-samtools view -F 1028 ${sampleOutdir}/${name}.${mappedgenome}.bam ${chrom} | 
+samtools view -F 1028 ${sampleOutdir}/${name}.${mappedgenome}.bam ${chroms} |
 awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrEBV"' |
 #sam2bed handles CIGAR string appropriately
 sam2bed --do-not-sort |
@@ -47,16 +49,16 @@ sam2bed --do-not-sort |
 awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $2, $3, $7}' |
 #Filter out reads that have no aligned reference bases (e.g. 4S2I23S)
 awk -F "\t" 'BEGIN {OFS="\t"} $2<$3' |
-sort-bed --max-mem 5G - | tee ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withflag.bed |
-awk -F "\t" 'BEGIN {OFS="\t"} !and($4, 512) {print $1, $2, $3}' > ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed
+sort-bed --max-mem 5G - | tee ${TMPDIR}/${name}.${mappedgenome}.${jobname}.reads.withflag.bed |
+awk -F "\t" 'BEGIN {OFS="\t"} !and($4, 512) {print $1, $2, $3}' > ${TMPDIR}/${name}.${mappedgenome}.${jobname}.reads.passed.bed
 
 
 echo
 echo "Making coverage track"
 date
 #This track excludes PCR duplicates, unmapped segments, and QC fail reads
-bedops --chrom ${chrom} --chop 1 ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed |
-bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed |
+bedops --chop 1 ${TMPDIR}/${name}.${mappedgenome}.${jobname}.reads.passed.bed |
+bedmap --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${jobname}.reads.passed.bed |
 awk -F "\t" 'BEGIN {OFS="\t"} \
     lastChrom!=$1 || $2!=lastEnd || $4!=lastScore { \
         if(NR>1) { \
@@ -69,15 +71,15 @@ awk -F "\t" 'BEGIN {OFS="\t"} \
     { \
         lastStart=$2; lastEnd=$3; \
     } \
-END {curOutputLine++; if(NR!=lastPrinted) {print lastChrom, firstStart, lastEnd, ".", lastScore}}' | starch - > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.coverage.starch
+END {curOutputLine++; if(NR!=lastPrinted) {print lastChrom, firstStart, lastEnd, ".", lastScore}}' | starch - > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.coverage.starch
 
 
 echo
 echo "Making allreads coverage track"
 date
 #This track excludes PCR duplicates and unmapped segments
-bedops --chrom ${chrom} --chop 1 ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withflag.bed |
-bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.withflag.bed |
+bedops --chop 1 ${TMPDIR}/${name}.${mappedgenome}.${jobname}.reads.withflag.bed |
+bedmap --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${jobname}.reads.withflag.bed |
 awk -F "\t" 'BEGIN {OFS="\t"} \
     lastChrom!=$1 || $2!=lastEnd || $4!=lastScore { \
         if(NR>1) { \
@@ -90,7 +92,7 @@ awk -F "\t" 'BEGIN {OFS="\t"} \
     { \
         lastStart=$2; lastEnd=$3; \
     } \
-END {curOutputLine++; if(NR!=lastPrinted) {print lastChrom, firstStart, lastEnd, ".", lastScore}}' | starch - > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.coverage.allreads.starch
+END {curOutputLine++; if(NR!=lastPrinted) {print lastChrom, firstStart, lastEnd, ".", lastScore}}' | starch - > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.coverage.allreads.starch
 
 
 echo
@@ -98,12 +100,14 @@ echo "Making windowed coverage track"
 date
 #Make windowed coverage track of number of overlapping reads per fixed 100-bp window
 #This track excludes PCR duplicates, unmapped segments, and QC fail reads
-awk -v chrom=${chrom} -F "\t" 'BEGIN {OFS="\t"} $1==chrom' ${chromsizes} | 
-awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - | cut -f1,3 | awk -v step=100 -v binwidth=100 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
-bedmap --chrom ${chrom} --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${chrom}.reads.passed.bed |
+for chrom in chroms; do
+    awk -v chrom=${chrom} -F "\t" 'BEGIN {OFS="\t"} $1==chrom' ${chromsizes}
+done |
+awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - | cut -f1,3 | awk -v step=100 -v binwidth=100 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' |
+bedmap --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${jobname}.reads.passed.bed |
 #Transform score column into average coverage of base pairs within bin
 awk -v binwidth=100 -F "\t" 'BEGIN {OFS="\t"} {$NF=$NF/binwidth; print}' |
-starch - > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.coverage.binned.starch
+starch - > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.coverage.binned.starch
 
 
 echo
@@ -142,14 +146,14 @@ else
     pileupParams="--adjust-MQ 50"
 fi
 
-bcftools mpileup -r ${chrom} -f ${referencefasta} --redo-BAQ ${pileupParams} --gap-frac 0.05 --max-depth 10000 --max-idepth 200000 -a DP,AD --output-type u ${sampleOutdir}/${name}.${mappedgenome}.bam |
+bcftools mpileup -r `echo ${chroms} | perl -pe 's/ /,/g;'` -f ${referencefasta} --redo-BAQ ${pileupParams} --gap-frac 0.05 --max-depth 10000 --max-idepth 200000 -a DP,AD --output-type u ${sampleOutdir}/${name}.${mappedgenome}.bam |
 #NB for some reason if the intermediate file is saved instead of piped, bcftools call outputs a GQ of . for everything
 #Iyer et al PLoS Genet 2018 uses --multiallelic-caller
 #https://sourceforge.net/p/samtools/mailman/message/32931405/
 #https://samtools.github.io/bcftools/call-m.pdf
-bcftools call --keep-alts ${ploidy} --multiallelic-caller --variants-only -f GQ --output-type v | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
-bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
-tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz
+bcftools call --keep-alts ${ploidy} --multiallelic-caller --variants-only -f GQ --output-type v | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.vcf.gz
+bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.vcf.gz
+tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.vcf.gz
 
 
 echo "Filter and normalize variants"
@@ -160,12 +164,12 @@ minGQ=99
 minDP=10
 
 #Normalize and split multiallelics
-bcftools norm --threads $NSLOTS --check-ref w -m - --fasta-ref ${referencefasta} --output-type u ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz |
+bcftools norm --threads $NSLOTS --check-ref w -m - --fasta-ref ${referencefasta} --output-type u ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.vcf.gz |
 #Single ampersand requires all filters to be met in the same sample, FORMAT/DP checks per-sample depth, and --set-GTs masks genotypes failing filters. It doesn't usually matter here since there's only one sample, but it does if this code gets applied to multisample VCF file
 bcftools filter -i "INFO/DP>=${minDP} & QUAL>=${minSNPQ} & GQ>=${minGQ} & FORMAT/DP>=${minDP}" --SnpGap 3 --IndelGap 10 --set-GTs . --output-type u |
 #Keep only SNPs with a nonref genotype. --trim-alt-alleles cleans up after --keep-alts above
-bcftools view -i 'GT="alt"' --trim-alt-alleles --output-type z - > $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
-bcftools index $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
+bcftools view -i 'GT="alt"' --trim-alt-alleles --output-type z - > $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
+bcftools index $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 
 
 #Annotate vcf with rsIDs
@@ -173,16 +177,16 @@ bcftools index $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
 if [[ -f "${dbsnpvcf}" && "${dbsnpvcf}" != "/dev/null" ]]; then
     echo "Adding dbSNP IDs and compressing"
     date
-    bcftools annotate -r ${chrom} --annotations ${dbsnpvcf} --columns ID --output-type v $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz | 
-    bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
+    bcftools annotate -r ${chroms} --annotations ${dbsnpvcf} --columns ID --output-type v $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz | 
+    bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 else
     echo "No dbSNP IDs to add -- just compressing"
     date
-    bcftools view --output-type v $TMPDIR/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz | 
-    bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.filtered.vcf.gz
+    bcftools view --output-type v $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz | 
+    bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 fi
 
-rm -f ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz.csi ${sampleOutdir}/${name}.${mappedgenome}.${chrom}.vcf.gz.tbi
+rm -f ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.vcf.gz.csi ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.vcf.gz.tbi
 
 echo
 echo -e "\nDone!"
