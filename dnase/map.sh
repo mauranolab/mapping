@@ -437,7 +437,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         #BUGBUG primerclip leaves no PG record; otherwise would set samtools view --no-PG
         #BUGBUG dumps masterparsefails.log into directory
         #BUGBUG can't stream to stdout; passes log output through stdout?
-        #BUGBUG does not update MC, NM(?)
+        #BUGBUG does not update TLEN, MC, NM(?)
         #BUGBUG does not back up original CIGAR in OC tag (we have to do this above)
         primerclip /vol/sars/sequences/wuhCor1/Swift_Amplicons/sarscov2_masterfile.txt /dev/stdin  $TMPDIR/${curfile}.${curGenome}.sam
         
