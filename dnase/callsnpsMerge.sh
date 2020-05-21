@@ -70,7 +70,7 @@ echo
 echo "Merge coverage tracks"
 date
 #NB: for hg38_full, many jobs will not generate coverage tracks
-covfiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.starch"`
+covfiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.starch"`
 covfiles=$(getFilesToMerge ${covfiles})
 starchcat ${covfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch
 rm -f ${covfiles}
@@ -89,7 +89,7 @@ echo
 echo "Merge allreads coverage tracks"
 date
 #NB: for hg38_full, many jobs will not generate coverage tracks
-allreadscovfiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.allreads.starch"`
+allreadscovfiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.allreads.starch"`
 allreadscovfiles=$(getFilesToMerge ${allreadscovfiles})
 starchcat ${allreadscovfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.starch
 rm -f ${allreadscovfiles}
@@ -109,7 +109,7 @@ echo
 echo "Merge windowed coverage tracks"
 date
 #NB: for hg38_full, many jobs will not generate coverage tracks
-windowedcovfiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.binned.starch"`
+windowedcovfiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.binned.starch"`
 windowedcovfiles=$(getFilesToMerge ${windowedcovfiles})
 starchcat ${windowedcovfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.binned.starch
 rm -f ${windowedcovfiles}
@@ -118,7 +118,7 @@ rm -f ${windowedcovfiles}
 echo
 echo "Merge SNPs"
 date
-fullvcffiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.vcf.gz"`
+fullvcffiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.vcf.gz"`
 fullvcffiles=$(getFilesToMerge ${fullvcffiles})
 numfullvcffiles=`echo "${fullvcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
 case "${numfullvcffiles}" in
@@ -135,7 +135,7 @@ tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.vcf.gz
 rm -f ${fullvcffiles}
 
 
-fltvcffiles=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.filtered.vcf.gz"`
+fltvcffiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.filtered.vcf.gz"`
 fltvcffiles=$(getFilesToMerge ${fltvcffiles})
 numfltvcffiles=`echo "${fullvcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
 case "${numfltvcffiles}" in

@@ -220,7 +220,7 @@ for chrom in `samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | cu
         } \
     }' |
     sort-bed --max-mem 5G - | 
-    #BUGBUG header doesn't make it through starchcat
+    #BUGBUG header survive starchcat
     #awk -F "\t" 'BEGIN {OFS="\t"; print "#chrom", "chromStart", "chromEnd", "insertlength", "readlength", "strand"} {print}' |
     starch - > $TMPDIR/${name}.${mappedgenome}.reads.${chrom}.starch
 done
@@ -302,10 +302,22 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
         echo "Calling SNPs"
         date
         
-        #TODO this could run sooner (right after bed file)
-        #TODO switch to breaking up by coordinate rather than chromosome to split up larger jobs and condense smaller ones
-        samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*" {print $1}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
-        #unstarch --list-chromosomes ${sampleOutdir}/${name}.${mappedgenome}.reads.starch > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
+        #TODO this could run sooner (before bed file)
+        samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' |
+        #Chunk bam file based on >5M read chunks of chromosomes to reduce array job size for large runs
+        awk -v maxchunksize=5000000 -v prefix="" -F "\t" 'BEGIN {OFS="\t"; chunknum=0; chroms=""; chunksize=0} {\
+            #Check if adding current line would make the chunk too big
+            if(chunksize + $3+$4 > maxchunksize) {\
+                chunknum+=1;\
+                print prefix chunknum, chroms;\
+                chroms = ""
+                chunksize=0;
+            }
+            chroms = chroms " " $1; \
+            #$3+$4 adds mapped and unmapped reads \
+            chunksize += $3+$4; \
+        }\
+        END {if(chunksize>0) {chunknum+=1; print prefix chunknum, chroms}}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
         n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
         qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
         qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;'
@@ -372,9 +384,9 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
     
     #Make density track of number of overlapping reads per 150-bp window
     #BUGBUG double counts fragments where both reads are in window
-    cat ${chromsizes} | 
+    cat ${chromsizes} |
     awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="chrEBV"' |
-    awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - | cut -f1,3 | awk -v step=20 -v binwidth=150 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
+    awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - | cut -f1,3 | awk -v step=20 -v binwidth=150 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' |
     #--faster is ok since we are dealing with bins and read starts
     bedmap --faster --delim "\t" --bp-ovr 1 --echo --count - ${sampleOutdir}/${name}.${mappedgenome}.reads.starch |
     #resize intervals down from full bin width to step size
