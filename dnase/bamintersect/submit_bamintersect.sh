@@ -1,7 +1,4 @@
 #!/bin/bash
-############################################################
-# Setting up.
-
 set -eu -o pipefail
 
 shopt -s expand_aliases
