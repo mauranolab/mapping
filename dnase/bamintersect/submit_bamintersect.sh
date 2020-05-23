@@ -297,15 +297,16 @@ function make_chrom_inputfile {
     
     #Chunk bam file based on >5M read chunks of chromosomes to reduce array job size for large runs
     cat ${TMPDIR}/idxstats.txt | awk -v maxchunksize=5000000 -v prefix=${prefix} -F "\t" 'BEGIN {OFS="\t"; chunknum=0; chroms=""; chunksize=0} {\
-        chroms = chroms " " $1; \
-        #$3+$4 adds mapped and unmapped reads \
-        chunksize += $3+$4; \
-        if(chunksize>maxchunksize) {\
+        #Check if adding current line would make the chunk too big
+        if(NR >1 && chunksize + $3+$4 > maxchunksize) {\
             chunknum+=1;\
             print prefix chunknum, chroms;\
             chroms = ""
             chunksize=0;
         }
+        chroms = chroms " " $1; \
+        #$3+$4 adds mapped and unmapped reads \
+        chunksize += $3+$4; \
     }\
     END {if(chunksize>0) {chunknum+=1; print prefix chunknum, chroms}}'
 }
