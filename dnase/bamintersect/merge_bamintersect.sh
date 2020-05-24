@@ -82,7 +82,7 @@ elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1)"; then
 elif echo "${bam2genome}" | egrep -q "^rtTA$"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/rtTA_vs_mm10.bed ${INTERMEDIATEDIR}/deletion_range.bed"
 elif echo "${bam2genome}" | egrep -q "^pSpCas9"; then
-    #These files mask just mm10/hg38  right now, so ok to use the same for all the pSpCas9 derivative constructs
+    #These files mask just mm10/hg38 right now, so ok to use the same for all the pSpCas9 derivative constructs
     uninformativeRegionFiles="${src}/LP_uninformative_regions/pSpCas9_vs_${bam1genome}.bed"
 elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed ${INTERMEDIATEDIR}/deletion_range.bed"
@@ -124,11 +124,13 @@ echo "Applying uninformativeRegionFile"
 #Starts out with bam1 coordinates
 cat ${sampleOutdir}/${sample_name}.bed | 
 #Remove bam1 reads that overlap the ranges defined in uninformativeRegionFile.bed file via submit_bamintersect.sh
-bedops -n 1 - ${TMPDIR}/uninformativeRegionFile.bed |
+#Require 20 bp mapped outside uninformative region
+bedmap --delim "|" --echo --bases-uniq - ${TMPDIR}/uninformativeRegionFile.bed | awk -v minUniqBp=20 -F "|" 'BEGIN {OFS="\t"} {split($1, read, "\t"); readlength=read[3]-read[2]; if(readlength-$2>minUniqBp) {print $1}}' |
 #Switch to bam2
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - |
 #Sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the uninformativeRegionFile:
-bedops -n 1 - ${TMPDIR}/uninformativeRegionFile.bed |
+#Require 20 bp mapped outside uninformative region
+bedmap --delim "|" --echo --bases-uniq - ${TMPDIR}/uninformativeRegionFile.bed | awk -v minUniqBp=20 -F "|" 'BEGIN {OFS="\t"} {split($1, read, "\t"); readlength=read[3]-read[2]; if(readlength-$2>minUniqBp) {print $1}}' |
 #Switch back to bam1 coordinates
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - > ${sampleOutdir}/${sample_name}.informative.bed
 
