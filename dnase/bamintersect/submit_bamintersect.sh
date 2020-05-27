@@ -389,20 +389,8 @@ fi
 echo
 echo "merge_bamintersect"
 
-export_vars="sampleOutdir=${sampleOutdir}"
-export_vars="${export_vars},src=${src}"
-export_vars="${export_vars},sample_name=${sample_name}"
-export_vars="${export_vars},bam1genome=${bam1genome}"
-export_vars="${export_vars},bam2genome=${bam2genome}"
-export_vars="${export_vars},make_bed=${make_bed}"
-export_vars="${export_vars},make_table=${make_table}"
-export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
-export_vars="${export_vars},bam1=${bam1}"
-export_vars="${export_vars},bam2=${bam2}"
-export_vars="${export_vars},verbose=${verbose}"
-export_vars="${export_vars},ReqFullyAligned=${ReqFullyAligned}"
-
-qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh" > /dev/null
+# qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${make_table} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${verbose} ${make_bed} ${ReqFullyAligned}" > /dev/null
+qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${make_table} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${verbose} ${make_bed} ${ReqFullyAligned}" > /dev/null
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
 
 echo
