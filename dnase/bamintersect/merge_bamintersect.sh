@@ -7,6 +7,19 @@ alias bedmap='bedmap --ec --header --sweep-all'
 #alias starch='starch --header'
 alias closest-features='closest-features --header'
 
+sampleOutdir=$1
+src=$2
+sample_name=$3
+bam1genome=$4
+bam2genome=$5
+make_table=$6
+INTERMEDIATEDIR=$7
+bam1=$8
+bam2=$9
+verbose=$10
+make_bed=${11-}          # BUGBUG Is blank if --make_bed is unset via --no_bed in submit_bamintersect. Then ReqFullyAligned may be shifted.
+ReqFullyAligned=${12-}   # Is blank if --noReqFullyAligned in submit_bamintersect
+
 ## This function implements verbose output for debugging purposes.
 debug_fa() {
     if [ ${verbose} = "True" ]; then
