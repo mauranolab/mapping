@@ -389,7 +389,6 @@ fi
 echo
 echo "merge_bamintersect"
 
-# qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${make_table} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${verbose} ${make_bed} ${ReqFullyAligned}" > /dev/null
 qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${make_table} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${verbose} ${make_bed} ${ReqFullyAligned}" > /dev/null
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
 
