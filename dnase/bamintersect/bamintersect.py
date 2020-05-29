@@ -19,23 +19,24 @@ def reads_match(fileA_read, fileB_read, same):
         return fileA_read.is_read1 != fileB_read.is_read1
 
 
-def validateBothReads(max_mismatches, file1_read, file2_read):
-    return validateSingleRead(max_mismatches, file1_read) and validateSingleRead(max_mismatches, file2_read)
+def validateBothReads(max_mismatches, ReqFullyAligned, file1_read, file2_read):
+    return validateSingleRead(max_mismatches, ReqFullyAligned, file1_read) and validateSingleRead(max_mismatches, ReqFullyAligned, file2_read)
 
-def validateSingleRead(max_mismatches, read):
+def validateSingleRead(max_mismatches, ReqFullyAligned, read):
     # Make sure it is exact matches to the reference.
     if read.get_tag('NM') > max_mismatches:
         return False
     
-    # Before writing the read info to output, make sure they are both fully aligned.
-    if re.search('[HSPDI]', read.cigarstring) is not None:
-        return False
+    if ReqFullyAligned:
+        # Before writing the read info to output, make sure they are both fully aligned.
+        if re.search('[HSPDI]', read.cigarstring) is not None:
+            return False
     
     return True
 
 
-def write_output(bed_writer, bam1in_file, bam2in_file, file1_read, file2_read, bedout, bam1out_file, bam2out_file, max_mismatches):
-    if not validateBothReads(max_mismatches, file1_read, file2_read):
+def write_output(bed_writer, bam1in_file, bam2in_file, file1_read, file2_read, bedout, bam1out_file, bam2out_file, max_mismatches, ReqFullyAligned):
+    if not validateBothReads(max_mismatches, ReqFullyAligned, file1_read, file2_read):
         return
     
     global totalReadpairsOut
@@ -124,7 +125,7 @@ def getNextRead(bamfile):
     return read
 
 
-def bam_intersect_f(bam_name1, bam_name2, same, bedout, bam1out, bam2out, max_mismatches):
+def bam_intersect_f(bam_name1, bam_name2, same, bedout, bam1out, bam2out, max_mismatches, ReqFullyAligned):
     # Get iterator handles for bam input files #1 and #2.
     bam1in_file = pysam.AlignmentFile(bam_name1, "rb")
     bam2in_file = pysam.AlignmentFile(bam_name2, "rb")
@@ -166,7 +167,7 @@ def bam_intersect_f(bam_name1, bam_name2, same, bedout, bam1out, bam2out, max_mi
         elif file1_read.query_name == file2_read.query_name:
             if reads_match(file1_read, file2_read, same):
                 # Found a match. Print, then get new file1 and file2 reads.
-                write_output(bed_writer, bam1in_file, bam2in_file, file1_read, file2_read, bedout, bam1out_file, bam2out_file, max_mismatches)
+                write_output(bed_writer, bam1in_file, bam2in_file, file1_read, file2_read, bedout, bam1out_file, bam2out_file, max_mismatches, ReqFullyAligned)
                 
                 file1_read = getNextRead(bam1in_file)
                 file2_read = getNextRead(bam2in_file)
@@ -182,13 +183,13 @@ def bam_intersect_f(bam_name1, bam_name2, same, bedout, bam1out, bam2out, max_mi
                 if file1_read is not None and file1_read.query_name == old_file1_read.query_name:
                     # We were able to get a new read from file1, and it matches the previous file1 readID.
                     if reads_match(file1_read, old_file2_read, same):
-                        write_output(bed_writer, bam1in_file, bam2in_file, file1_read, old_file2_read, bedout, bam1out_file, bam2out_file, max_mismatches)
+                        write_output(bed_writer, bam1in_file, bam2in_file, file1_read, old_file2_read, bedout, bam1out_file, bam2out_file, max_mismatches, ReqFullyAligned)
                         file1_read = getNextRead(bam1in_file)
                 
                 if file2_read is not None and file2_read.query_name == old_file2_read.query_name:
                     # We were able to get a new read from file2, and it matches the previous file2 readID.
                     if reads_match(old_file1_read, file2_read, same):
-                        write_output(bed_writer, bam1in_file, bam2in_file, old_file1_read, file2_read, bedout, bam1out_file, bam2out_file, max_mismatches)
+                        write_output(bed_writer, bam1in_file, bam2in_file, old_file1_read, file2_read, bedout, bam1out_file, bam2out_file, max_mismatches, ReqFullyAligned)
                         file2_read = getNextRead(bam2in_file)
         else:
             # The file1 readID is bigger than the file2 readID. Get another file2 line, and check again.
@@ -217,6 +218,8 @@ if (__name__ == '__main__'):
     
     parser.add_argument('--reads_match', action='store_true', help='True if looking to match read1/read1, or if the reads are unpaired. False if looking to match read1/read2.')
     parser.add_argument('--max_mismatches', type=int, default=1, help='Maximum number of mismatches a read is allowed to have. The number of mismatches is the value of the read NM tag')
+    #parser.add_argument('--ReqFullyAligned', action='store_true', help='If set, require reads to be fully aligned.')
+    ReqFullyAligned = True
     
     parser.add_argument('--src', type=str, help='Full path to source code directory.', required = True) # src directory (needed to locate the C shared library).
     
@@ -236,7 +239,7 @@ if (__name__ == '__main__'):
     
     totalReadpairsOut = 0
     
-    bam_intersect_f(args.bam1, args.bam2, args.reads_match, args.bedout, args.bam1out, args.bam2out, args.max_mismatches)
+    bam_intersect_f(args.bam1, args.bam2, args.reads_match, args.bedout, args.bam1out, args.bam2out, args.max_mismatches, ReqFullyAligned)
     
     print("[bamintersect.py] Wrote", totalReadpairsOut, "read pairs", file=sys.stderr)
 
