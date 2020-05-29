@@ -3,10 +3,8 @@ set -eu -o pipefail
 
 src=$1
 INTERMEDIATEDIR=$2
-ReqFullyAligned=$3
-max_mismatches=$4
-make_bed=${5-} #optional
-reads_match=${6-} #optional, BUGBUG if --make_bed not specified
+max_mismatches=$3
+reads_match=${4-} #optional
 
 
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
@@ -23,8 +21,7 @@ echo "outfile: ${outfile}"
 ## reads_match=True means that we are looking to pair up read1's with read1's, and read2's with read2's.
 ##             True is also used for unpaired reads.
 ## reads_match=False means that we are looking to pair up read1's with read2's.
-#BUGBUG doesn't respect ${make_bed}
-${src}/bamintersect.py ${bam1} ${bam2} --src ${src} --bedout ${TMPDIR}/bamintersect_out.bed --max_mismatches ${max_mismatches} ${reads_match} ${ReqFullyAligned} --bam1out ${TMPDIR}/bamintersect_out.bam1.bam --bam2out ${TMPDIR}/bamintersect_out.bam2.bam
+${src}/bamintersect.py ${bam1} ${bam2} --src ${src} --bedout ${TMPDIR}/bamintersect_out.bed --max_mismatches ${max_mismatches} ${reads_match} --bam1out ${TMPDIR}/bamintersect_out.bam1.bam --bam2out ${TMPDIR}/bamintersect_out.bam2.bam
 
 echo
 echo "Sorting bed file"
