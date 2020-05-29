@@ -161,7 +161,7 @@ cat $OUTDIR/${sample}.barcodes.readnames.coords.bed | cut -f6 | sort | uniq -c |
 #Only dedup UMIs if the length is over 5
 #Go through entire file with awk despite only looking at first line so zcat terminates properly
 minUMILength=`zcat -f $OUTDIR/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($3)}' | uniq | sort -n | awk 'NR==1'`
-if [[ "${minUMILength}" -gt "5" ]]; then
+if [[ "${minUMILength}" -ge "5" ]]; then
     #never implemented deduping
     echo
     echo "Analyzing UMIs"
