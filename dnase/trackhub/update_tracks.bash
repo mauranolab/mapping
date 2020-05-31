@@ -226,6 +226,27 @@ fi
 time_stamp=$(date +"%m-%d-%y %T")
 echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> "${hub_target}/description.html"
 
+######################################################################################
+# Make a reference vs chromosomes table for the cegsvectors description page.
+
+chrom_sizes_file_list=$(find "/vol/cegs/sequences" -mindepth 2 -maxdepth 2 -path "/vol/cegs/sequences/cegsvectors_*" -type f -name "*sizes")
+
+for chrom_sizes_file in ${chrom_sizes_file_list}; do
+    IFS=/ read -a get_assmbly <<< ${chrom_sizes_file}
+    outputLine="${get_assmbly[4]#cegsvectors_}|"
+
+    while read chromSizes_line_in; do
+        read chrom all_other <<< ${chromSizes_line_in}
+        outputLine="${outputLine}<a href=http://genome.isg.med.nyu.edu/cgi-bin/hgTracks?genome=cegsvectors&position=${chrom}>${chrom}</a><br>"
+    done < ${chrom_sizes_file}
+
+    outputLine="${outputLine%<br>}"
+    echo "${outputLine}"
+done | sort -k1,1 > "${TMPDIR}/chroms_per_cegsvector.txt"
+
+Rscript makeChroms_per_cegsvectorHtml.R "${TMPDIR}/chroms_per_cegsvector.txt" "${TMPDIR}/chroms_per_cegsvector.html"
+
+cat "${TMPDIR}/chroms_per_cegsvector.html" >> "${hub_target}/description.html"
 
 ######################################################################################
 # Check for hub errors.
