@@ -97,7 +97,7 @@ samtools view  -L ${TMPDIR}/zone1.bed ${TMPDIR}/subsetBAM_output_sorted.bam | te
 samtools view ${TMPDIR}/subsetBAM_output_sorted.bam | grep -v -F -f ${TMPDIR}/Zone1reads_noHdr.sam | cat ${TMPDIR}/header.sam - | samtools view -h -b | samtools sort -n > ${TMPDIR}/bamfile_Zone2reads.bam
 
 # Now call bamintersect.py to build the bed12 file.
-${src}/bamintersect.py ${TMPDIR}/bamfile_Zone1reads.bam ${TMPDIR}/bamfile_Zone2reads.bam --src ${src} --bedout ${TMPDIR}/bamintersect_out.bed
+${src}/bamintersect.py --ReqFullyAligned ${TMPDIR}/bamfile_Zone1reads.bam ${TMPDIR}/bamfile_Zone2reads.bam --src ${src} --bedout ${TMPDIR}/bamintersect_out.bed
 sort-bed ${TMPDIR}/bamintersect_out.bed > ${outputBed}
 
 echo "[HA_table] Done!"

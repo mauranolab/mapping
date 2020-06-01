@@ -218,8 +218,7 @@ if (__name__ == '__main__'):
     
     parser.add_argument('--reads_match', action='store_true', help='True if looking to match read1/read1, or if the reads are unpaired. False if looking to match read1/read2.')
     parser.add_argument('--max_mismatches', type=int, default=1, help='Maximum number of mismatches a read is allowed to have. The number of mismatches is the value of the read NM tag')
-    #parser.add_argument('--ReqFullyAligned', action='store_true', help='If set, require reads to be fully aligned.')
-    ReqFullyAligned = True
+    parser.add_argument('--ReqFullyAligned', action='store_true', help='If set, require reads to be fully aligned.')
     
     parser.add_argument('--src', type=str, help='Full path to source code directory.', required = True) # src directory (needed to locate the C shared library).
     
@@ -239,7 +238,7 @@ if (__name__ == '__main__'):
     
     totalReadpairsOut = 0
     
-    bam_intersect_f(args.bam1, args.bam2, args.reads_match, args.bedout, args.bam1out, args.bam2out, args.max_mismatches, ReqFullyAligned)
+    bam_intersect_f(args.bam1, args.bam2, args.reads_match, args.bedout, args.bam1out, args.bam2out, args.max_mismatches, args.ReqFullyAligned)
     
     print("[bamintersect.py] Wrote", totalReadpairsOut, "read pairs", file=sys.stderr)
 
