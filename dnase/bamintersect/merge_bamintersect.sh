@@ -7,6 +7,16 @@ alias bedmap='bedmap --ec --header --sweep-all'
 #alias starch='starch --header'
 alias closest-features='closest-features --header'
 
+sampleOutdir=$1
+src=$2
+sample_name=$3
+bam1genome=$4
+bam2genome=$5
+INTERMEDIATEDIR=$6
+bam1=$7
+bam2=$8
+verbose=$9
+
 ## This function implements verbose output for debugging purposes.
 debug_fa() {
     if [ ${verbose} = "True" ]; then
@@ -50,19 +60,6 @@ debug_fa "Finished sorting dsgrep.bed"
 
 ##########################################################################################################
 ## Create the final output tables.
-
-if [ ${make_bed} != "--make_bed" ]; then
-    # Need the bed file to make the table.
-    # Maybe make both bed and bam files, and delete bed file later?
-    echo "Made 2 bam files, so exiting merge_bamintersect.sh"
-    exit 0
-fi
-
-if [ ${make_table} != "True" ]; then
-    echo "Summary counts tables not requested; quitting successfully."
-    exit 0
-fi
-
 
 #Unfiltered
 echo
@@ -144,7 +141,7 @@ echo
 if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis."
     
-    ${src}/HA_table.sh HA ${bam1} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} ${homologyArmExcludeFlags} ${ReqFullyAligned}
+    ${src}/HA_table.sh HA ${bam1} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} ${homologyArmExcludeFlags}
     ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam1genome} ${bam1genome} ${sampleOutdir}/${sample_name}.HA.bed
 else
     echo -e "No HAs available, so there will be no HA analysis."
@@ -153,7 +150,7 @@ fi
 
 echo
 echo "Look for reads spanning the assembly and the backbone."
-${src}/HA_table.sh AB ${bam2} ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} ${assemblyBackboneExcludeFlags} ${ReqFullyAligned}
+${src}/HA_table.sh AB ${bam2} ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} ${assemblyBackboneExcludeFlags}
 ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
 echo
 

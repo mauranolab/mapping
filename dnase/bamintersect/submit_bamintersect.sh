@@ -65,8 +65,6 @@ Usage: $(basename "$0") [Options]
   Optional Arguments:
     --max_mismatches {The max number of mismatches a read is allowed to have vs the reference. The value is in the read's NM tag. Default = 1}
     
-    --noReqFullyAligned {If set, the default requirement that reads must be fully aligned is disabled. Default = Not set}
-    
     --bam1_keep_flags {a sam format flag value required of all bam1 reads to be included in the analysis. Default = 1}
         # Require read is paired
     
@@ -85,14 +83,6 @@ Usage: $(basename "$0") [Options]
            # If set, reads should be matched like [read1 read1], or [read2 read2].
            # If unset, reads are paired like [read1 read2], or [read2 read1].
            # Set this option for unpaired reads.
-           # The default is to have it unset.
-    
-     --no_bed {no argument}
-           # Main output is a single bed file (unset), or 2 bam files (set).
-           # The default is to have it unset.
-    
-     --no_countstable {no argument}
-           # Output a "counts.txt" table summarizing results (unset), or no table (set).
            # The default is to have it unset.
     
      --verbose {no argument}
@@ -127,10 +117,7 @@ long_arg_list=(
     bam2_keep_flags:
     bam2_exclude_flags:
     max_mismatches:
-    noReqFullyAligned
     reads_match
-    no_csv
-    no_countstable
     verbose
     help
 )
@@ -171,8 +158,6 @@ echo "Parameters: ${options}"
 eval set -- "${options}"
 
 # getopt default values:
-    make_bed="--make_bed"
-    make_table=True
     reads_match=""
     integrationsite="null"
     bam1_keep_flags="1"
@@ -181,7 +166,6 @@ eval set -- "${options}"
     bam2_exclude_flags="3078"
     verbose=False
     max_mismatches=1
-    ReqFullyAligned="--ReqFullyAligned"
 
 
 # Extract options and their arguments into variables.
@@ -211,14 +195,8 @@ while true ; do
             bam2_exclude_flags=$2 ; shift 1 ;;
         --max_mismatches)
             max_mismatches=$2 ; shift 1 ;;
-        --noReqFullyAligned)
-            ReqFullyAligned="" ;;
         --reads_match)
             reads_match="--reads_match" ;;
-        --no_bed)
-            make_bed="" ;;
-        --no_countstable)
-            make_table=False ;;
         --verbose)
             verbose=True ;;
         -h|--help) usage; exit 0 ;;
@@ -340,7 +318,7 @@ done
 
 
 n=$(wc -l < ${INTERMEDIATEDIR}/inputs.bamintersect.txt)
-qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${src} ${INTERMEDIATEDIR} ${ReqFullyAligned} ${max_mismatches} ${make_bed} ${reads_match}" > ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
+qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${src} ${INTERMEDIATEDIR} ${max_mismatches} ${reads_match}" > ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
 rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
@@ -389,20 +367,7 @@ fi
 echo
 echo "merge_bamintersect"
 
-export_vars="sampleOutdir=${sampleOutdir}"
-export_vars="${export_vars},src=${src}"
-export_vars="${export_vars},sample_name=${sample_name}"
-export_vars="${export_vars},bam1genome=${bam1genome}"
-export_vars="${export_vars},bam2genome=${bam2genome}"
-export_vars="${export_vars},make_bed=${make_bed}"
-export_vars="${export_vars},make_table=${make_table}"
-export_vars="${export_vars},INTERMEDIATEDIR=${INTERMEDIATEDIR}"
-export_vars="${export_vars},bam1=${bam1}"
-export_vars="${export_vars},bam2=${bam2}"
-export_vars="${export_vars},verbose=${verbose}"
-export_vars="${export_vars},ReqFullyAligned=${ReqFullyAligned}"
-
-qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` --export=ALL,${export_vars} -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh" > /dev/null
+qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${verbose}" > /dev/null
 rm -f ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
 
 echo
