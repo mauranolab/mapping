@@ -113,8 +113,11 @@ starch - > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.coverage.binned.st
 echo
 echo "Calling variants for genome ${mappedgenome} using ploidy ${ploidy} and reference ${referencefasta}. Will annotate dbSNP IDs from ${dbsnpvcf}"
 date
-
 #Current documentation at https://samtools.github.io/bcftools/howtos/index.html
+
+minSNPQ=10
+minGQ=99
+minDP=10
 
 #Set up ploidy
 sampleAnnotationSex=`echo "${sampleAnnotation}" | awk -v key="Sex" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
@@ -151,22 +154,19 @@ bcftools mpileup -r `echo ${chroms} | perl -pe 's/ /,/g;'` -f ${referencefasta} 
 #Iyer et al PLoS Genet 2018 uses --multiallelic-caller
 #https://sourceforge.net/p/samtools/mailman/message/32931405/
 #https://samtools.github.io/bcftools/call-m.pdf
-bcftools call --keep-alts ${ploidy} --multiallelic-caller --variants-only -f GQ --output-type v | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.vcf.gz
-bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.vcf.gz
-tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.vcf.gz
+bcftools call --threads $NSLOTS --keep-alts ${ploidy} --multiallelic-caller -f GQ --output-type u |
+#Apply only the DP filter now to keep bcf file size down
+bcftools filter -i "INFO/DP>=${minDP}" --output-type b > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.bcf
+bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.bcf
 
 
 echo "Filter and normalize variants"
 date
 
-minSNPQ=10
-minGQ=99
-minDP=10
-
 #Normalize and split multiallelics
-bcftools norm --threads $NSLOTS --check-ref w -m - --fasta-ref ${referencefasta} --output-type u ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.vcf.gz |
+bcftools norm --threads $NSLOTS --check-ref w -m - --fasta-ref ${referencefasta} --output-type u ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.bcf |
 #Single ampersand requires all filters to be met in the same sample, FORMAT/DP checks per-sample depth, and --set-GTs masks genotypes failing filters. It doesn't usually matter here since there's only one sample, but it does if this code gets applied to multisample VCF file
-bcftools filter -i "INFO/DP>=${minDP} & QUAL>=${minSNPQ} & GQ>=${minGQ} & FORMAT/DP>=${minDP}" --SnpGap 3 --IndelGap 10 --set-GTs . --output-type u |
+bcftools filter -i "QUAL>=${minSNPQ} & GQ>=${minGQ} & FORMAT/DP>=${minDP}" --SnpGap 3 --IndelGap 10 --set-GTs . --output-type u |
 #Keep only SNPs with a nonref genotype. --trim-alt-alleles cleans up after --keep-alts above
 bcftools view -i 'GT="alt"' --trim-alt-alleles --output-type z - > $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 bcftools index $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
@@ -185,8 +185,6 @@ else
     bcftools view --output-type v $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz | 
     bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 fi
-
-rm -f ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.vcf.gz.csi ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.vcf.gz.tbi
 
 echo
 echo -e "\nDone!"

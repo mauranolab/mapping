@@ -118,26 +118,25 @@ rm -f ${windowedcovfiles}
 echo
 echo "Merge SNPs"
 date
-fullvcffiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.vcf.gz"`
-fullvcffiles=$(getFilesToMerge ${fullvcffiles})
-numfullvcffiles=`echo "${fullvcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
-case "${numfullvcffiles}" in
+fullbcffiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.bcf"`
+fullbcffiles=$(getFilesToMerge ${fullbcffiles})
+numfullbcffiles=`echo "${fullbcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
+case "${numfullbcffiles}" in
 0)
     ;;
 1)
     #bcftools concat fails when there is only one file
-    cp ${fullvcffiles} ${sampleOutdir}/${name}.${mappedgenome}.vcf.gz;;
+    cp ${fullbcffiles} ${sampleOutdir}/${name}.${mappedgenome}.bcf;;
 *)
-    bcftools concat --output-type v ${fullvcffiles} | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.vcf.gz;;
+    bcftools concat --threads $NSLOTS --output-type b ${fullbcffiles} > ${sampleOutdir}/${name}.${mappedgenome}.bcf;;
 esac
-bcftools index ${sampleOutdir}/${name}.${mappedgenome}.vcf.gz
-tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.vcf.gz
-rm -f ${fullvcffiles}
+bcftools index ${sampleOutdir}/${name}.${mappedgenome}.bcf
+rm -f ${fullbcffiles}
 
 
 fltvcffiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.filtered.vcf.gz"`
 fltvcffiles=$(getFilesToMerge ${fltvcffiles})
-numfltvcffiles=`echo "${fullvcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
+numfltvcffiles=`echo "${fltvcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
 case "${numfltvcffiles}" in
 0)
     ;;
