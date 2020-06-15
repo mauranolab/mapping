@@ -32,6 +32,7 @@ getFilteredDirs <- function(path) {
 	dirs <- dirs[grep('^new', sapply(dirs, basename), invert=TRUE)]
 	dirs <- dirs[grep('^bak', sapply(dirs, basename), invert=TRUE)]
 	dirs <- dirs[grep('^trash', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^unused$', sapply(dirs, basename), invert=TRUE)]
 	dirs <- dirs[grep('^fastq$', sapply(dirs, basename), invert=TRUE)]
 	dirs <- dirs[grep('^sra$', sapply(dirs, basename), invert=TRUE)]
 	dirs <- dirs[grep('^src$', sapply(dirs, basename), invert=TRUE)]
