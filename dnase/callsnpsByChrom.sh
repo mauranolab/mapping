@@ -100,7 +100,7 @@ echo "Making windowed coverage track"
 date
 #Make windowed coverage track of number of overlapping reads per fixed 100-bp window
 #This track excludes PCR duplicates, unmapped segments, and QC fail reads
-for chrom in chroms; do
+for chrom in ${chroms}; do
     awk -v chrom=${chrom} -F "\t" 'BEGIN {OFS="\t"} $1==chrom' ${chromsizes}
 done |
 awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - | cut -f1,3 | awk -v step=100 -v binwidth=100 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' |
@@ -154,6 +154,7 @@ bcftools mpileup -r `echo ${chroms} | perl -pe 's/ /,/g;'` -f ${referencefasta} 
 #Iyer et al PLoS Genet 2018 uses --multiallelic-caller
 #https://sourceforge.net/p/samtools/mailman/message/32931405/
 #https://samtools.github.io/bcftools/call-m.pdf
+#TODO would --gvcf merge hzref calls into blocks?
 bcftools call --threads $NSLOTS --keep-alts ${ploidy} --multiallelic-caller -f GQ --output-type u |
 #Apply only the DP filter now to keep bcf file size down
 bcftools filter -i "INFO/DP>=${minDP}" --output-type b > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.bcf
