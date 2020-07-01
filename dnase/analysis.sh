@@ -189,7 +189,7 @@ date
 #Do per-chromosome to reduce size of sorts
 i=0
 for chrom in `samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*" {print $1, 0, 1}' | sort-bed - | cut -f1`; do
-    i=$((i++))
+    i=$((++i))
     samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam ${chrom} | 
     awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrEBV"' |
     awk -F "\t" 'BEGIN {OFS="\t"} { \
