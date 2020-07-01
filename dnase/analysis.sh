@@ -187,7 +187,9 @@ echo "Making bed file"
 date
 #Coordinates are the 5' end of the read
 #Do per-chromosome to reduce size of sorts
+i=0
 for chrom in `samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | cut -f1 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*" {print $1, 0, 1}' | sort-bed - | cut -f1`; do
+    i=$((i++))
     samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam ${chrom} | 
     awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrEBV"' |
     awk -F "\t" 'BEGIN {OFS="\t"} { \
@@ -222,7 +224,8 @@ for chrom in `samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | cu
     sort-bed --max-mem 5G - | 
     #BUGBUG header survive starchcat
     #awk -F "\t" 'BEGIN {OFS="\t"; print "#chrom", "chromStart", "chromEnd", "insertlength", "readlength", "strand"} {print}' |
-    starch - > $TMPDIR/${name}.${mappedgenome}.reads.${chrom}.starch
+    #Use index to avoid problems with long chromosome names
+    starch - > $TMPDIR/${name}.${mappedgenome}.reads.${i}.starch
 done
 starchcat $TMPDIR/${name}.${mappedgenome}.reads.*.starch > ${sampleOutdir}/${name}.${mappedgenome}.reads.starch
 
@@ -336,7 +339,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
         #Need to make second pass as CollectWgsMetrics can't be run by CollectMultipleMetrics
         #Exclude flag 512 rather than it's default MAPQ/BQ filters
         #NB I often see this using 4-5% of memory, about twice the available per-job average
-        samtools view -h -u ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | java -XX:ParallelGCThreads=1 -Xmx5g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectWgsMetrics -INPUT /dev/stdin -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics -VERBOSITY WARNING -COUNT_UNPAIRED=true
+        samtools view -h -u ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | java -XX:ParallelGCThreads=1 -Xmx11g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectWgsMetrics -INPUT /dev/stdin -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics -VERBOSITY WARNING -COUNT_UNPAIRED=true
         
         #NB included reads don't exactly match our -F 512 or duplicates
         #but aren't generating a binned coverage track
