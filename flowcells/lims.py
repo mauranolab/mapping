@@ -17,6 +17,12 @@ import glob
 #create project, service account key, share sheet with service account manually from google drive UI
 
 
+#https://stackoverflow.com/questions/26987222/checking-whitespace-in-a-string-python/26987329
+import string
+def contains_whitespace(s):
+    return True in [c in s for c in string.whitespace]
+
+
 #Convenience function
 def getValueFromLIMS(lims, bs, colname):
     if lims is None:
@@ -69,7 +75,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maura
     commonCols = set(lims.columns.values).intersection(set(seq.columns.values))
     numMissingSamples = 0
     numMultipleSamples = 0
-    #Iterate through the sequencing sheet
+    #Iterate through the sequencing sheet one row at a time, pulling any matching rows from LIMS
     for seqRow in seq.index.values[seqMask]:
         curSeq = seq.iloc[seqRow]
         bs = curSeq['Sample #']
@@ -83,6 +89,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maura
             print("ERROR", "found " + str(numEntriesInLIMS) + " entries in LIMS!", SampleName, bs, "", "", "", sep=",")
             numMultipleSamples += 1
         else:
+            #Exactly one LIMS entry, but curLims still needs to be accessed using .values.item():
             #Only check additional metadata for specified projects to avoid excess verbiage
             if projects=='' or curLims['Lab'].values.item() in projectList:
                 for col in commonCols:
@@ -93,13 +100,16 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maura
                             print("ERROR", "inconsistent info", SampleName, bs, col, curLims[col].values.item(), curSeq[col], sep=",")
                 for col in set(seq.columns.values):
                     if isinstance(curSeq[col], str) and curSeq[col] != curSeq[col].strip():
-                        print("WARNING", "leading/trailing whitespace", SampleName, bs, col, "", curSeq[col], sep=",")
+                        print("WARNING", "leading/trailing whitespace in sequencing sheet", SampleName, bs, col, "", curSeq[col], sep=",")
                 for col in set(lims.columns.values):
                     if str(curLims[col].values.item()) != str(curLims[col].values.item()).strip():
-                        print("WARNING", "leading/trailing whitespace", SampleName, bs, col, curLims[col].values.item(), "", sep=",")
+                        print("WARNING", "leading/trailing whitespace in LIMS", SampleName, bs, col, curLims[col].values.item(), "", sep=",")
+                for col in ['Genetic Modification', 'Bait set', 'Custom Reference']:
+                    if contains_whitespace(str(curLims[col].values.item())):
+                        print("WARNING", "whitespace", SampleName, bs, col, curLims[col].values.item(), "", sep=",")
                 for bscol in ["Parent Library", "Pool ID"]:
                     if curLims[bscol].values.item() != "":
-                        #Require exactly 1 match
+                        #Require exactly 1 match in LIMS
                         if lims[limsMask & lims['Sample #'].isin([curLims[bscol].values.item()])].shape[0] != 1:
                             print("ERROR", "invalid " + bscol, SampleName, bs, bscol, curLims[bscol].values.item(), "", sep=",")
     
