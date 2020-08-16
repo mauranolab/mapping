@@ -23,8 +23,3 @@ Sox2_Sox2_143kb_marker	145317	145351	loxP
 Sox2_Sox2_46kb_dDistalLCR_marker	0	34	loxM
 Sox2_Sox2_46kb_dDistalLCR_marker	1474	2653	EF1a_promoter
 Sox2_Sox2_46kb_dDistalLCR_marker	48664	48698	loxP
-#TODO the following are mm10 only, need to have a separate file. Or maybe mask with segdup file as well?
-#low complexity segdup that comes up often in failed Big-IN
-chr15	75085527	75087045	1518	Ly6c2-21872bp
-#More empirical off-targets from Bl6_Cast_dPiga-BS03020A
-chr19	9304072	9304116	Asrgl1+168438bp
