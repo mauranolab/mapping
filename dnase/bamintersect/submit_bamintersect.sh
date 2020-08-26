@@ -68,15 +68,14 @@ Usage: $(basename "$0") [Options]
     --bam1_keep_flags {a sam format flag value required of all bam1 reads to be included in the analysis. Default = 1}
         # Require read is paired
     
-    --bam1_exclude_flags {a sam format flag value for bam1 reads to be excluded from the analysis. Default = 3078}
-        # Exclude mapped in proper pair
-        # Exclude read unmapped.
+    --bam1_exclude_flags {a sam format flag value for bam1 reads to be excluded from the analysis. Default = 3076}
+        # Exclude unmapped read.
         # Exclude PCR or optical duplicates.
         # Exclude supplementary aligments.
     
     --bam2_keep_flags {a sam format flag value required of all bam2 reads to be included in the analysis. Default = 9}
     
-    --bam2_exclude_flags {a sam format flag value for bam2 reads to be excluded from the analysis. Default = 3078}
+    --bam2_exclude_flags {a sam format flag value for bam2 reads to be excluded from the analysis. Default = 3076}
     
     --reads_match {no argument}
            # This flag tells bam_intersect.py how to match the reads from each bam file.
@@ -161,9 +160,9 @@ eval set -- "${options}"
     reads_match=""
     integrationsite="null"
     bam1_keep_flags="1"
-    bam1_exclude_flags="3078"
+    bam1_exclude_flags="3076"
     bam2_keep_flags="9"
-    bam2_exclude_flags="3078"
+    bam2_exclude_flags="3076"
     verbose=False
     max_mismatches=1
 
