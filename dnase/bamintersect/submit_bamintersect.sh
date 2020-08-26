@@ -69,8 +69,7 @@ Usage: $(basename "$0") [Options]
         # Require read is paired
     
     --bam1_exclude_flags {a sam format flag value for bam1 reads to be excluded from the analysis. Default = 3076}
-        # Exclude mapped in proper pair
-        # Exclude read unmapped.
+        # Exclude unmapped read.
         # Exclude PCR or optical duplicates.
         # Exclude supplementary aligments.
     
