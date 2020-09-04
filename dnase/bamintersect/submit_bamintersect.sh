@@ -74,6 +74,8 @@ Usage: $(basename "$0") [Options]
         # Exclude supplementary aligments.
     
     --bam2_keep_flags {a sam format flag value required of all bam2 reads to be included in the analysis. Default = 9}
+        # Require read is paired
+        # Require read mate unmapped
     
     --bam2_exclude_flags {a sam format flag value for bam2 reads to be excluded from the analysis. Default = 3076}
     
