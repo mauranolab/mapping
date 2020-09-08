@@ -319,7 +319,7 @@ done
 
 
 n=$(wc -l < ${INTERMEDIATEDIR}/inputs.bamintersect.txt)
-qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${src} ${INTERMEDIATEDIR} ${max_mismatches} ${reads_match}" > ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
+qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${src} ${INTERMEDIATEDIR} ${max_mismatches} ${reads_match}" > ${sampleOutdir}/sgeid.bamintersect.${sample_name}
 rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
@@ -368,8 +368,8 @@ fi
 echo
 echo "merge_bamintersect"
 
-qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${verbose}" > /dev/null
-rm -f ${sampleOutdir}/sgeid.merge_bamintersect.${sample_name}
+qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${verbose}" > /dev/null
+rm -f ${sampleOutdir}/sgeid.bamintersect.${sample_name}
 
 echo
 echo "Done!!!"
