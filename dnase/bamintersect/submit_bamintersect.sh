@@ -59,6 +59,7 @@ Usage: $(basename "$0") [Options]
         HA table is run on bam1, backbone analysis on bam2
         Reads must have unmapped mates in bam2 (we can't require this for bam1 since typically the payload matches some/all of the reference so it would mask internal reads)
         Reads for counts tables are clustered first in bam1, then separate bam2region clusters are defined for each bam1region
+        Bam1 mapped read count is used to normalize read counts in output
     
     2) Mammalian genomes should use the annotationgenome name (hg38, not hg38_full)
     
