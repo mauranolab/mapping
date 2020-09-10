@@ -32,8 +32,10 @@ if [ ${TMPDIR} = "/tmp" ]; then
 fi
 ############################################################
 
-module load samtools
-module load bedops
+module load samtools/1.10
+module load bedops/2.4.37
+module load python/3.8.1
+module load miller/5.4.0
 
 ############################################################
 # Start of "getopt" section
@@ -81,7 +83,7 @@ Usage: $(basename "$0") [Options]
     --bam2_exclude_flags {a sam format flag value for bam2 reads to be excluded from the analysis. Default = 3076}
     
     --reads_match {no argument}
-           # This flag tells bam_intersect.py how to match the reads from each bam file.
+           # This flag tells bamintersect.py how to match the reads from each bam file.
            # If set, reads should be matched like [read1 read1], or [read2 read2].
            # If unset, reads are paired like [read1 read2], or [read2 read1].
            # Set this option for unpaired reads.
@@ -325,7 +327,9 @@ rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/s
 
 
 ################################################################################################
-# Make the filter files for merge_bamintersect.sh and filter_tsv.sh.orig
+# Make the filter files for merge_bamintersect.sh
+touch ${INTERMEDIATEDIR}/HA_coords.bed
+touch ${TMPDIR}/deletion_range.bed
 if [ "${integrationsite}" != "null" ]; then
     # In the next line we rely on HA1 being the 5p side HA.
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
@@ -335,33 +339,80 @@ if [ "${integrationsite}" != "null" ]; then
     if [ -s "${HA_file}" ]; then
         if grep -q "${integrationSiteName}_${HA1}$" ${HA_file} && grep -q "${integrationSiteName}_${HA2}$" ${HA_file}; then
             # Get the HA coordinates:
-            grep "${integrationSiteName}_${HA1}$" ${HA_file} > "${INTERMEDIATEDIR}/HA_coords.bed"
-            grep "${integrationSiteName}_${HA2}$" ${HA_file} >> "${INTERMEDIATEDIR}/HA_coords.bed"
+            grep "${integrationSiteName}_${HA1}$" ${HA_file} > ${INTERMEDIATEDIR}/HA_coords.bed
+            grep "${integrationSiteName}_${HA2}$" ${HA_file} >> ${INTERMEDIATEDIR}/HA_coords.bed
             
-            echo -n "Found homology arm coordinates:"
-            cat ${INTERMEDIATEDIR}/HA_coords.bed
-            
-            # Get the deletion range coordinates:
-            cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${INTERMEDIATEDIR}/deletion_range.bed
+            cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${TMPDIR}/deletion_range.bed
             echo -n "Found coordinates for deletion spanning (bp): "
-            awk -F "\t" 'BEGIN {OFS="\t"} {print $3-$2}' ${INTERMEDIATEDIR}/deletion_range.bed
+            awk -F "\t" 'BEGIN {OFS="\t"} {print $3-$2}' ${TMPDIR}/deletion_range.bed
         else
             echo "WARNING could not find homology arm coordinates for ${integrationSiteName}_${HA1} or ${integrationSiteName}_${HA2} in ${HA_file}"
         fi
     else
-        echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no Deletion Range"
-        echo ""
-        
-        touch "${INTERMEDIATEDIR}/HA_coords.bed"
-        touch "${INTERMEDIATEDIR}/deletion_range.bed"
+        echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no deletion_range"
     fi
 else
-    echo "No integration site was provided, and so there is no Deletion Range."
-    echo ""
-    
-    touch "${INTERMEDIATEDIR}/HA_coords.bed"
-    touch "${INTERMEDIATEDIR}/deletion_range.bed"
+    echo "No integration site was provided, and so there is no deletion_range."
 fi
+echo
+
+
+echo "Generating uninformativeRegionFile"
+#Check for a curated uninformative regions file for this combination of genomes
+if echo "${bam2genome}" | egrep -q "^pSpCas9"; then
+    #These files mask just mm10/hg38 right now, so ok to use the same for all the pSpCas9 derivative constructs
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/pSpCas9_vs_${bam1genome}.bed"
+    maskFile=""
+elif echo "${bam2genome}" | egrep -q "^LP[0-9]+$"; then
+    #For LP integrations, exclude HAs
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed ${INTERMEDIATEDIR}/HA_coords.bed"
+    maskFile=""
+#For assemblon (not LP) integrations, filter out reads in deletion (since we have the mapping to the custom assembly)
+elif [[ "${bam2genome}" == "rtTA" ]]; then
+    #Include Rosa26 deleted sequence
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
+    maskFile="${TMPDIR}/deletion_range.bed"
+#NB masks hardcoded by payload name for now
+elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed"
+    maskFile="${TMPDIR}/deletion_range.bed"
+    if [[ "${bam1genome}" == "LPICE" ]]; then
+        #Need also to mask the SV40pA on the assembly
+        if [ ! -f "/vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed" ]; then
+            echo "WARNING could not find bed file to mask SV40 poly(A) signal in ${bam2genome} genome"
+        else
+            awk -F "\t" '$4=="SV40 poly(A) signal"' /vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed > $TMPDIR/ICE_SV40pA.bed
+            maskFile="${maskFile} $TMPDIR/ICE_SV40pA.bed"
+        fi
+    fi
+elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1)"; then
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed"
+    maskFile="${TMPDIR}/deletion_range.bed"
+else
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
+    maskFile=""
+fi
+
+#Genomic repeat annotation
+annotationBase="/vol/isg/annotation/bed"
+if [ -f "${annotationBase}/${bam1genome}/repeat_masker/Satellite.bed" ]; then
+    maskFile="${maskFile} ${annotationBase}/${bam1genome}/repeat_masker/Satellite.bed"
+fi
+if [ -f "${annotationBase}/${bam2genome}/repeat_masker/Satellite.bed" ]; then
+    maskFile="${maskFile} ${annotationBase}/${bam2genome}/repeat_masker/Satellite.bed"
+fi
+
+for curfile in ${maskFile}; do
+    if [ ! -f "${curfile}" ]; then
+        echo "ERROR: Can't find ${curfile}; will continue without any region mask"
+        exit 1
+    else
+        echo "Found uninformative regions file: $(basename ${curfile}) [${curfile}]"
+    fi
+done
+
+#Sort exclusion files and strip comments just in case
+cat ${uninformativeRegionFiles} ${maskFile} | awk '$0 !~ /^#/' | sort-bed - > ${INTERMEDIATEDIR}/counts_table_mask.bed
 
 
 ################################################################################################

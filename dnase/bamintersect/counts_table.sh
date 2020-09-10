@@ -52,16 +52,17 @@ annotateNearestGeneName() {
     
     # Set the appropriate gene annotation file.
     # Note that hg38_full, etc. was converted to just "hg38" prior to calling bamintersect.
+    local annotationBase="/vol/isg/annotation/bed"
     local geneAnnotationFile=""
     case "${genome}" in
     mm10)
-        geneAnnotationFile=/vol/isg/annotation/bed/mm10/gencodev23/GencodevM23.gene.bed
+        geneAnnotationFile=${annotationBase}/mm10/gencodev23/GencodevM23.gene.bed
         ;;
     rn6)
-        geneAnnotationFile=/vol/isg/annotation/bed/rn6/ensembl96/Ensemblv96_Rnor.gene.bed
+        geneAnnotationFile=${annotationBase}/rn6/ensembl96/Ensemblv96_Rnor.gene.bed
         ;;
     hg38)
-        geneAnnotationFile=/vol/isg/annotation/bed/hg38/gencodev31/Gencodev31.gene.bed
+        geneAnnotationFile=${annotationBase}/hg38/gencodev31/Gencodev31.gene.bed
         ;;
     *)
         geneAnnotationFile="CEGS"
@@ -115,33 +116,31 @@ merge_tight() {
     bedmap --delim "\t" --echo --echo-ref-name -
 }
 
-bamintersectBED12_byStrand="${TMPDIR}/${sample_name}.bamintersectBED12_byStrand.bed"
 for strand_bam1 in "+" "-"; do
     for strand_bam2 in "+" "-"; do
         # Get reads from just one strand.
-        awk -v strand1=${strand_bam1} -v strand2=${strand_bam2} 'BEGIN {FS="\t";OFS="\t"} {if($6==strand1 && $12==strand2){print $0}}' ${bamintersectBED12} > ${bamintersectBED12_byStrand}
-        if [ ! -s ${bamintersectBED12_byStrand} ]; then
+        awk -F "\t" -v strand_bam1=${strand_bam1} -v strand_bam2=${strand_bam2} 'BEGIN {OFS="\t"} $6==strand_bam1 && $12==strand_bam2' ${bamintersectBED12} > ${TMPDIR}/${sample_name}.bed12_byStrand.bed
+        if [ ! -s ${TMPDIR}/${sample_name}.bed12_byStrand.bed ]; then
             # No reads for this strand combination are present.
             continue
         fi
         
         #Generate bam1 regions
-        merge_tight ${bamintersectBED12_byStrand} 500 > ${TMPDIR}/${sample_name}.regions.bam1.bed
+        merge_tight ${TMPDIR}/${sample_name}.bed12_byStrand.bed 500 > ${TMPDIR}/${sample_name}.regions.bam1.bed
         
         #Split output into separate files by bam1 region
-        mkdir $TMPDIR/bam2readsByBam1region
-        bedmap --bp-ovr 1 --delim "|" --multidelim "|" --echo --echo-map ${TMPDIR}/${sample_name}.regions.bam1.bed ${bamintersectBED12_byStrand} |
+        mkdir $TMPDIR/bam2readsByBam1region_${strand_bam1}_${strand_bam2}
+        bedmap --bp-ovr 1 --delim "|" --multidelim "|" --echo --echo-map ${TMPDIR}/${sample_name}.regions.bam1.bed ${TMPDIR}/${sample_name}.bed12_byStrand.bed |
         #Output format: bam2 chrom chromStart, chromEnd, bam1region
-        awk -v outdir=$TMPDIR/bam2readsByBam1region -F "|" 'BEGIN {OFS="\t"} {split($1, bam1region, "\t"); for(i=2; i<=NF; i++) {split($i, bam2read, "\t"); print bam2read[7], bam2read[8], bam2read[9], bam1region[4] > outdir "/" NR ".unsorted.bam2.bed"}}'
-        
-        for file in $TMPDIR/bam2readsByBam1region/*.unsorted.bam2.bed; do
-            cur=`basename ${file} .unsorted.bam2.bed`
-            cat ${file} | sort-bed - > $TMPDIR/bam2readsByBam1region/${cur}.sorted.bam2.bed
-            
+        awk -v outdir=$TMPDIR/bam2readsByBam1region_${strand_bam1}_${strand_bam2} -F "|" 'BEGIN {OFS="\t"} {split($1, bam1region, "\t"); for(i=2; i<=NF; i++) {split($i, bam2read, "\t"); print bam2read[7], bam2read[8], bam2read[9], bam1region[4] > outdir "/" NR ".unsorted.bam2.bed"}}'
+        for curfile in $TMPDIR/bam2readsByBam1region_${strand_bam1}_${strand_bam2}/*.unsorted.bam2.bed; do
+            cur=`basename ${curfile} .unsorted.bam2.bed`
             #Generate bam2 regions for the set of reads from each bam1 region
-            merge_tight $TMPDIR/bam2readsByBam1region/${cur}.sorted.bam2.bed 500 | cut -f1-3 |
+            sort-bed ${curfile} > $TMPDIR/bam2readsByBam1region_${strand_bam1}_${strand_bam2}/${cur}.sorted.bam2.bed
+            
+            merge_tight $TMPDIR/bam2readsByBam1region_${strand_bam1}_${strand_bam2}/${cur}.sorted.bam2.bed 500 | cut -f1-3 |
             #Add a bam1 region id for each read that maps to this bam2 region
-            bedmap --delim "\t" --multidelim ";" --echo --echo-map-id - $TMPDIR/bam2readsByBam1region/${cur}.sorted.bam2.bed |
+            bedmap --delim "\t" --multidelim ";" --echo --echo-map-id - $TMPDIR/bam2readsByBam1region_${strand_bam1}_${strand_bam2}/${cur}.sorted.bam2.bed |
             awk -F "\t" 'BEGIN {OFS="\t"} {split($4, bam1region, ";"); for(i=1; i<=length(bam1region); i++) {print $1, $2, $3, bam1region[i]}}'
         done |
         #Each line is the pair of bam1/bam2 regions spanned by a single mate pair, so now count them
@@ -154,22 +153,17 @@ for strand_bam1 in "+" "-"; do
         awk -F "\t" 'BEGIN {OFS="\t"} {print $6, $7, $8, $9, $5, $1, $2, $3, $4, $10}' | sort-bed - |
         #Add gene name to bam1
         annotateNearestGeneName - ${bam1genome} |
-        #Sort by Reads, chrom_bam2, chromStart_bam2
-        #tried mlr but it doesn't like the field name below
-        #mlr --tsv sort -nr Reads -f ${#chrom_bam2} -n chromStart_bam2
-        sort -k5,5nr -k1,1 -k2,2n |
+        mlr --tsv sort -nr ReadsPer10M -f \#chrom_bam2 -n chromStart_bam2 |
         #Reorder columns to put bam1 gene where it belongs
-        awk -v num_bam1_reads=${num_bam1_reads} -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -v strand1=${strand_bam1} -v strand2=${strand_bam2} -F "\t" 'BEGIN {OFS="\t"; print "#chrom_bam1", "chromStart_bam1", "chromEnd_bam1", "Width_bam1", "NearestGene_bam1", "Strand_bam1", "Reads", "chrom_bam2", "chromStart_bam2", "chromEnd_bam2", "Width_bam2", "NearestGene_bam2", "Strand_bam2", "Sample"} {print $1, $2, $3, $4, $11, strand1, int(10000000 * $5 / num_bam1_reads + 0.5), $6, $7, $8, $9, $10, strand2, short_sample_name}' >> ${OUTBASE}.counts.tmp.txt
+        awk -v num_bam1_reads=${num_bam1_reads} -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -v strand_bam1=${strand_bam1} -v strand_bam2=${strand_bam2} -F "\t" 'BEGIN {OFS="\t"; print "#chrom_bam1", "chromStart_bam1", "chromEnd_bam1", "Width_bam1", "NearestGene_bam1", "Strand_bam1", "ReadsPer10M", "chrom_bam2", "chromStart_bam2", "chromEnd_bam2", "Width_bam2", "NearestGene_bam2", "Strand_bam2", "Sample"} {print $1, $2, $3, $4, $11, strand_bam1, 10000000 * $5 / num_bam1_reads, $6, $7, $8, $9, $10, strand_bam2, short_sample_name}'
+        #NB Output goes to stdout and is redirected below
         
         #Cleanup
-        rm -rf $TMPDIR/bam2readsByBam1region
+        rm -rf $TMPDIR/bam2readsByBam1region_${strand_bam1}_${strand_bam2}
     done
-done
-
+done |
 # Delete extra column header lines, and sort.
-awk 'BEGIN {FS="\t";OFS="\t"} {if(NR==1 || $1!="#chrom_bam1"){print $0}else{next}}' ${OUTBASE}.counts.tmp.txt |
-mlr --tsv sort -f \#chrom_bam1 -n chromStart_bam1 > ${OUTBASE}.counts.txt
-rm ${OUTBASE}.counts.tmp.txt
+awk -F "\t" 'BEGIN {OFS="\t"} NR==1 || $1!="#chrom_bam1"' | mlr --tsv sort -f \#chrom_bam1 -n chromStart_bam1 > ${OUTBASE}.counts.txt
 
 #####################################################################################
 

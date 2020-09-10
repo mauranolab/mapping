@@ -38,7 +38,7 @@ echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
 ## Variables are passed in via sbatch export.
 
-echo "Merging the bam_intersect output files"
+echo "Merging bamintersect output files"
 #xargs and bedops -u don't work well for some reason, so pipe everything through cat first; performance shouldn't be a huge deal
 cat ${INTERMEDIATEDIR}/inputs.bamintersect.txt | cut -f3 | xargs cat | sort-bed - > ${sampleOutdir}/${sample_name}.bed
 
@@ -63,63 +63,11 @@ debug_fa "Finished sorting dsgrep.bed"
 
 #Unfiltered
 num_bam1_reads=$(samtools view -c -F 512 ${bam1})
-echo "bam1 is: ${bam1}"
-echo "num_bam1_reads = ${num_bam1_reads}"
+echo "Normalizing to 10M reads using bam1 read depth of ${num_bam1_reads}"
 
 echo
 ${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.bed ${num_bam1_reads}
 echo
-
-
-echo "Generating uninformativeRegionFile"
-#Check for a curated uninformative regions file for this combination of genomes
-if echo "${bam2genome}" | egrep -q "^pSpCas9"; then
-    #These files mask just mm10/hg38 right now, so ok to use the same for all the pSpCas9 derivative constructs
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/pSpCas9_vs_${bam1genome}.bed"
-elif echo "${bam2genome}" | egrep -q "^LP[0-9]+$"; then
-    #For LP integrations, exclude HAs
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed ${INTERMEDIATEDIR}/HA_coords.bed"
-#For assemblon (not LP) integrations, filter out reads in deletion (since we have the mapping to the custom assembly)
-elif [[ "${bam2genome}" == "rtTA" ]]; then
-    #Include Rosa26 deleted sequence
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed ${INTERMEDIATEDIR}/deletion_range.bed"
-#TODO masks hardcoded by payload name for now
-elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed ${INTERMEDIATEDIR}/deletion_range.bed"
-    if [[ "${bam1genome}" == "LPICE" ]]; then
-        #Need also to mask the SV40pA on the assembly
-        if [ ! -f "/vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed" ]; then
-            echo "WARNING could not find bed file to mask SV40 poly(A) signal in ${bam2genome} genome"
-        else
-            awk -F "\t" '$4=="SV40 poly(A) signal"' /vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed > $TMPDIR/ICE_SV40pA.bed
-            uninformativeRegionFiles="${uninformativeRegionFiles} $TMPDIR/ICE_SV40pA.bed"
-        fi
-    fi
-elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1)"; then
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed ${INTERMEDIATEDIR}/deletion_range.bed"
-else
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
-fi
-
-#Genomic repeat annotation
-if [ -f "/vol/isg/annotation/bed/${bam1genome}/repeat_masker/Satellite.bed" ]; then
-    uninformativeRegionFiles="${uninformativeRegionFiles} /vol/isg/annotation/bed/${bam1genome}/repeat_masker/Satellite.bed"
-fi
-if [ -f "/vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed" ]; then
-    uninformativeRegionFiles="${uninformativeRegionFiles} /vol/isg/annotation/bed/${bam2genome}/repeat_masker/Satellite.bed"
-fi
-
-for curfile in ${uninformativeRegionFiles}; do
-    if [ ! -f "${curfile}" ]; then
-        echo "ERROR: Can't find ${curfile}; will continue without any region mask"
-        exit 1
-    else
-        echo "Found uninformative regions file: $(basename ${curfile}) [${curfile}]"
-    fi
-done
-
-#Sort exclusion files and strip comments just in case
-cat ${uninformativeRegionFiles} | awk '$0 !~ /^#/' | sort-bed - > ${TMPDIR}/uninformativeRegionFile.bed
 
 
 echo "Applying uninformativeRegionFile"
@@ -127,12 +75,12 @@ echo "Applying uninformativeRegionFile"
 cat ${sampleOutdir}/${sample_name}.bed | 
 #Remove bam1 reads that overlap the ranges defined in uninformativeRegionFile.bed file via submit_bamintersect.sh
 #Require 20 bp mapped outside uninformative region
-bedmap --delim "|" --echo --bases-uniq - ${TMPDIR}/uninformativeRegionFile.bed | awk -v minUniqBp=20 -F "|" 'BEGIN {OFS="\t"} {split($1, read, "\t"); readlength=read[3]-read[2]; if(readlength-$2>minUniqBp) {print $1}}' |
+bedmap --delim "|" --echo --bases-uniq - ${INTERMEDIATEDIR}/counts_table_mask.bed | awk -v minUniqBp=20 -F "|" 'BEGIN {OFS="\t"} {split($1, read, "\t"); readlength=read[3]-read[2]; if(readlength-$2>minUniqBp) {print $1}}' |
 #Switch to bam2
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - |
 #Sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the uninformativeRegionFile:
 #Require 20 bp mapped outside uninformative region
-bedmap --delim "|" --echo --bases-uniq - ${TMPDIR}/uninformativeRegionFile.bed | awk -v minUniqBp=20 -F "|" 'BEGIN {OFS="\t"} {split($1, read, "\t"); readlength=read[3]-read[2]; if(readlength-$2>minUniqBp) {print $1}}' |
+bedmap --delim "|" --echo --bases-uniq - ${INTERMEDIATEDIR}/counts_table_mask.bed | awk -v minUniqBp=20 -F "|" 'BEGIN {OFS="\t"} {split($1, read, "\t"); readlength=read[3]-read[2]; if(readlength-$2>minUniqBp) {print $1}}' |
 #Switch back to bam1 coordinates
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - > ${sampleOutdir}/${sample_name}.informative.bed
 
@@ -146,7 +94,7 @@ echo
 if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis."
     
-    ${src}/HA_table.sh HA ${bam1} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} ${homologyArmExcludeFlags}
+    ${src}/HA_table.sh HA ${bam1} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR}/HA_coords.bed ${src} ${homologyArmExcludeFlags}
     ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam1genome} ${bam1genome} ${sampleOutdir}/${sample_name}.HA.bed ${num_bam1_reads}
 else
     echo -e "No HAs available, so there will be no HA analysis."

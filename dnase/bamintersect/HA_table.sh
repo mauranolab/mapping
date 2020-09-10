@@ -14,7 +14,7 @@ runHA=$1             # can equal HA ("Homology Arms") or AB ("Assembly Backbone"
 bamfile=$2           # This bam file needs to have an associated bai file.
 sampleOutdir=$3
 sample_name=$4
-INTERMEDIATEDIR=$5
+HAfile=$5
 src=$6
 exclude_flags=$7
 
@@ -55,7 +55,7 @@ if [ ${runHA} = "AB" ]; then
 elif [ ${runHA} = "HA" ]; then
     echo "[HA_table] Generating HA table"
     # Define Zone 1. We want it to be the HAs (both of them).
-    cp ${INTERMEDIATEDIR}/HA_coords.bed ${TMPDIR}/zone1.bed
+    cp ${HAfile} ${TMPDIR}/zone1.bed
     outputBed="${sampleOutdir}/${sample_name}.HA.bed"
 else
     echo "[HA_table] Bad runHA parameter in consolidated_HA_AB_table.sh"
