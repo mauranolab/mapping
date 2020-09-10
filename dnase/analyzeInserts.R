@@ -100,8 +100,8 @@ if(is.null(results)) {
 	quit(save="no", status=0)
 }
 
-results$mappedgenome <- factor(gsub("^.+\\.(hg19|hg38|mm10|rn6)(_full|_noalt|_sacCer3|_full_wuhCor1)?$", "\\1\\2", results$name, perl=T))
-results$sample <- factor(gsub(".(hg19|hg38|mm10|rn6)(_full|_noalt|_sacCer3|_full_wuhCor1)?$", "", results$name))
+results$mappedgenome <- factor(gsub("^.+\\.(hg19|hg38|mm10|rn6|talOcc4)(_full|_noalt|_sacCer3|_full_wuhCor1)?$", "\\1\\2", results$name, perl=T))
+results$sample <- factor(gsub(".(hg19|hg38|mm10|rn6|talOcc4)(_full|_noalt|_sacCer3|_full_wuhCor1)?$", "", results$name))
 results$BS <- sapply(as.character(results$sample), function(x) {unlist(strsplit(x, "-"))[2]})
 results$sublibrary <- sapply(results$BS, FUN=function(x) {substr(x, 8, 8)})
 
