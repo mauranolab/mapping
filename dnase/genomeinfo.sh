@@ -49,16 +49,10 @@ hg19)
     referencefasta=/vol/isg/annotation/fasta/hg19/hg19.fa
     dbsnpvcf=/vol/isg/annotation/bed/hg19/snp151/src/All_20180418.vcf.gz
     ;;
-hg38_noalt)
-    bwaIndex=/vol/isg/annotation/bwaIndex/hg38_noalt/hg38_noalt
+hg38_noalt|hg38_full|hg38_sacCer3)
+    bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy GRCh38"
-    referencefasta=/vol/isg/annotation/fasta/hg38_noalt/hg38_noalt.fa.gz
-    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/src/All_20180418.vcf.gz
-    ;;
-hg38_full)
-    bwaIndex=/vol/isg/annotation/bwaIndex/hg38_full/hg38_full
-    ploidy="--ploidy GRCh38"
-    referencefasta=/vol/isg/annotation/fasta/hg38_full/hg38_full.fa.gz
+    referencefasta=/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/src/All_20180418.vcf.gz
     ;;
 mm10)
@@ -69,47 +63,35 @@ mm10)
     #the v6 genotypes have changed dramatically so stick to v5 for now
     dbsnpvcf=/vol/mauranolab/mauram01/hybridmice/genotyping/v5/mgp.v5.merged.snps.indels.dbSNP142.vcf.gz
     ;;
-rn6)
-    bwaIndex=/vol/isg/annotation/bwaIndex/rn6/rn6
-    ploidy="--ploidy-file /vol/isg/annotation/fasta/rn6/rn6.ploidy.txt"
-    referencefasta=/vol/isg/annotation/fasta/rn6/rn6.fa.gz
-    dbsnpvcf=/dev/null
-    ;;
-hg38_sacCer3)
-    bwaIndex=/vol/isg/annotation/bwaIndex/hg38_sacCer3/hg38_sacCer3
-    ploidy="--ploidy GRCh38"
-    referencefasta=/vol/isg/annotation/fasta/hg38_sacCer3/hg38_sacCer3.fa.gz
-    dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/src/All_20180418.vcf.gz
-    ;;
 mm10_sacCer3)
-    bwaIndex=/vol/isg/annotation/bwaIndex/mm10_sacCer3/mm10_sacCer3
+    bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy-file /vol/isg/annotation/fasta/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set.ploidy.txt"
-    referencefasta=/vol/isg/annotation/fasta/mm10_sacCer3/mm10_sacCer3.fa.gz
+    referencefasta=/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/vol/mauranolab/mauram01/hybridmice/genotyping/v5/mgp.v5.merged.snps.indels.dbSNP142.vcf.gz
     ;;
-rn6_sacCer3)
-    bwaIndex=/vol/isg/annotation/bwaIndex/rn6_sacCer3/rn6_sacCer3
+rn6|rn6_sacCer3)
+    bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy-file /vol/isg/annotation/fasta/rn6/rn6.ploidy.txt"
-    referencefasta=/vol/isg/annotation/fasta/rn6_sacCer3/rn6_sacCer3.fa.gz
+    referencefasta=/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/dev/null
     ;;
 sacCer3)
-    bwaIndex=/vol/isg/annotation/bwaIndex/sacCer3/sacCer3
+    bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     #Maybe better to leave as diploid?
     ploidy="--ploidy 1"
-    referencefasta=/vol/isg/annotation/fasta/sacCer3/sacCer3.fa.gz
+    referencefasta=/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/dev/null
     ;;
-wuhCor1)
-    bwaIndex=/vol/isg/annotation/bwaIndex/wuhCor1/wuhCor1
+wuhCor1|hg38_full_wuhCor1)
+    bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy 1"
-    referencefasta=/vol/isg/annotation/fasta/wuhCor1/wuhCor1.fa.gz
+    referencefasta=/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/dev/null
     ;;
-hg38_full_wuhCor1)
-    bwaIndex=/vol/isg/annotation/bwaIndex/hg38_full_wuhCor1/hg38_full_wuhCor1
-    ploidy="--ploidy 1"
-    referencefasta=/vol/isg/annotation/fasta/hg38_full_wuhCor1/hg38_full_wuhCor1.fa.gz
+talOcc4|talOcc4_sacCer3)
+    bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
+    ploidy="--ploidy-file /vol/isg/annotation/fasta/talOcc4/talOcc4.ploidy.txt"
+    referencefasta=/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/dev/null
     ;;
 cegsvectors*)
