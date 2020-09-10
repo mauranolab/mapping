@@ -30,6 +30,7 @@ sample_name=$2
 bam1genome=$3
 bam2genome=$4
 bamintersectBED12=$5
+num_bam1_reads=$6
 
 echo "[counts_table] Making counts_table from ${bamintersectBED12}; will output to ${OUTBASE}.counts.txt"
 
@@ -158,7 +159,7 @@ for strand_bam1 in "+" "-"; do
         #mlr --tsv sort -nr Reads -f ${#chrom_bam2} -n chromStart_bam2
         sort -k5,5nr -k1,1 -k2,2n |
         #Reorder columns to put bam1 gene where it belongs
-        awk -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -v strand1=${strand_bam1} -v strand2=${strand_bam2} -F "\t" 'BEGIN {OFS="\t"; print "#chrom_bam1", "chromStart_bam1", "chromEnd_bam1", "Width_bam1", "NearestGene_bam1", "Strand_bam1", "Reads", "chrom_bam2", "chromStart_bam2", "chromEnd_bam2", "Width_bam2", "NearestGene_bam2", "Strand_bam2", "Sample"} {print $1, $2, $3, $4, $11, strand1, $5, $6, $7, $8, $9, $10, strand2, short_sample_name}' >> ${OUTBASE}.counts.tmp.txt
+        awk -v num_bam1_reads=${num_bam1_reads} -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -v strand1=${strand_bam1} -v strand2=${strand_bam2} -F "\t" 'BEGIN {OFS="\t"; print "#chrom_bam1", "chromStart_bam1", "chromEnd_bam1", "Width_bam1", "NearestGene_bam1", "Strand_bam1", "Reads", "chrom_bam2", "chromStart_bam2", "chromEnd_bam2", "Width_bam2", "NearestGene_bam2", "Strand_bam2", "Sample"} {print $1, $2, $3, $4, $11, strand1, int(10000000 * $5 / num_bam1_reads + 0.5), $6, $7, $8, $9, $10, strand2, short_sample_name}' >> ${OUTBASE}.counts.tmp.txt
         
         #Cleanup
         rm -rf $TMPDIR/bam2readsByBam1region

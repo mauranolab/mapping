@@ -62,8 +62,12 @@ debug_fa "Finished sorting dsgrep.bed"
 ## Create the final output tables.
 
 #Unfiltered
+num_bam1_reads=$(samtools view -c -F 512 ${bam1})
+echo "bam1 is: ${bam1}"
+echo "num_bam1_reads = ${num_bam1_reads}"
+
 echo
-${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.bed
+${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.bed ${num_bam1_reads}
 echo
 
 
@@ -132,7 +136,7 @@ bedmap --delim "|" --echo --bases-uniq - ${TMPDIR}/uninformativeRegionFile.bed |
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - > ${sampleOutdir}/${sample_name}.informative.bed
 
 echo
-${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.informative.bed
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.informative.bed ${num_bam1_reads}
 
 
 # HA analysis:
@@ -142,7 +146,7 @@ if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis."
     
     ${src}/HA_table.sh HA ${bam1} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR} ${src} ${homologyArmExcludeFlags}
-    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam1genome} ${bam1genome} ${sampleOutdir}/${sample_name}.HA.bed
+    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam1genome} ${bam1genome} ${sampleOutdir}/${sample_name}.HA.bed ${num_bam1_reads}
 else
     echo -e "No HAs available, so there will be no HA analysis."
 fi
@@ -151,7 +155,7 @@ fi
 echo
 echo "Look for reads spanning the assembly and the backbone."
 ${src}/HA_table.sh AB ${bam2} ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} ${assemblyBackboneExcludeFlags}
-${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${num_bam1_reads}
 echo
 
 # Number of reads
