@@ -125,7 +125,7 @@ def getNextRead(bamfile):
     return read
 
 
-def bam_intersect_f(bam_name1, bam_name2, same, bedout, bam1out, bam2out, max_mismatches, ReqFullyAligned):
+def bamintersect_f(bam_name1, bam_name2, same, bedout, bam1out, bam2out, max_mismatches, ReqFullyAligned):
     # Get iterator handles for bam input files #1 and #2.
     bam1in_file = pysam.AlignmentFile(bam_name1, "rb")
     bam2in_file = pysam.AlignmentFile(bam_name2, "rb")
@@ -207,7 +207,7 @@ def bam_intersect_f(bam_name1, bam_name2, same, bedout, bam1out, bam2out, max_mi
 
 
 if (__name__ == '__main__'):
-    parser = argparse.ArgumentParser(prog = "bam_intersect.py", description = "Given 2 bam files sorted by name (samtools sort, not picard or lexographical sort), produces a bed12 file which pairs read1 from bam file #1 with read2 from bam file #2 (with the same read IDs), and vice versa.", add_help = True)
+    parser = argparse.ArgumentParser(prog = "bamintersect.py", description = "Given 2 bam files sorted by name (samtools sort, not picard or lexographical sort), produces a bed12 file which pairs read1 from bam file #1 with read2 from bam file #2 (with the same read IDs), and vice versa.", add_help = True)
     
     parser.add_argument('bam1', type=str, help='A full path bam file name, or stdin')
     parser.add_argument('bam2', type=str, help='A full path bam file name, or stdin')
@@ -238,7 +238,7 @@ if (__name__ == '__main__'):
     
     totalReadpairsOut = 0
     
-    bam_intersect_f(args.bam1, args.bam2, args.reads_match, args.bedout, args.bam1out, args.bam2out, args.max_mismatches, args.ReqFullyAligned)
+    bamintersect_f(args.bam1, args.bam2, args.reads_match, args.bedout, args.bam1out, args.bam2out, args.max_mismatches, args.ReqFullyAligned)
     
     print("[bamintersect.py] Wrote", totalReadpairsOut, "read pairs", file=sys.stderr)
 
