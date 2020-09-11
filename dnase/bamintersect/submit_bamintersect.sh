@@ -57,7 +57,7 @@ Usage: $(basename "$0") [Options]
     
     Genome notes:
     1) The mammalian genome is customarily passed as bam1. This affects:
-        Files for uninformative read masking differ
+        Files for read masking differ
         HA table is run on bam1, backbone analysis on bam2
         Reads must have unmapped mates in bam2 (we can't require this for bam1 since typically the payload matches some/all of the reference so it would mask internal reads)
         Reads for counts tables are clustered first in bam1, then separate bam2region clusters are defined for each bam1region
@@ -261,72 +261,6 @@ fi
 
 
 ################################################################################################
-# Make a two-column chromosome list for the sort array jobs, where first column is short job name and second is the list of chromsomes for samtools view
-echo
-echo "sort_bamintersect"
-
-#Outputs array job inputfile to stdout by collapsing chromosomes if too many
-#Output is tab-delimited file with two columns: short name, list of chromosomes separated by spaces
-function make_chrom_inputfile {
-    local bamfile=$1
-    local prefix=$2
-    
-    samtools idxstats ${bamfile} | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' > ${TMPDIR}/idxstats.txt
-    n=$(wc -l < ${TMPDIR}/idxstats.txt)
-    
-    #Chunk bam file based on >5M read chunks of chromosomes to reduce array job size for large runs
-    cat ${TMPDIR}/idxstats.txt | awk -v maxchunksize=5000000 -v prefix=${prefix} -F "\t" 'BEGIN {OFS="\t"; chunknum=0; chroms=""; chunksize=0} {\
-        #Check if adding current line would make the chunk too big
-        if(NR >1 && chunksize + $3+$4 > maxchunksize) {\
-            chunknum+=1;\
-            print prefix chunknum, chroms;\
-            chroms = ""
-            chunksize=0;
-        }
-        chroms = chroms " " $1; \
-        #$3+$4 adds mapped and unmapped reads \
-        chunksize += $3+$4; \
-    }\
-    END {if(chunksize>0) {chunknum+=1; print prefix chunknum, chroms}}'
-}
-
-make_chrom_inputfile ${bam1} "bam1_" > ${INTERMEDIATEDIR}/inputs.sort.bam1.txt
-make_chrom_inputfile ${bam2} "bam2_" > ${INTERMEDIATEDIR}/inputs.sort.bam2.txt
-
-if [ ! -s "${INTERMEDIATEDIR}/inputs.sort.bam1.txt" ]; then
-    echo "No reads left in bam1; quitting successfully"
-    exit 0
-fi
-if [ ! -s "${INTERMEDIATEDIR}/inputs.sort.bam2.txt" ]; then
-    echo "No reads left in bam2; quitting successfully"
-    exit 0
-fi
-
-
-num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam1.txt)
-qsub -S /bin/bash -cwd -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam1} 1 ${bam1_keep_flags} ${bam1_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
-
-num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam2.txt)
-qsub -S /bin/bash -cwd -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam2} 2 ${bam2_keep_flags} ${bam2_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
-
-
-################################################################################################
-# Call bamintersect.py on each pairwise chrom combination via the bamintersect.sh array job:
-echo
-echo "bamintersect"
-for bam1chromname in `cut -f1 ${INTERMEDIATEDIR}/inputs.sort.bam1.txt`; do
-    for bam2chromname in `cut -f1 ${INTERMEDIATEDIR}/inputs.sort.bam2.txt`; do
-        echo -e "${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam1chromname}.bam\t${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam2chromname}.bam\t${INTERMEDIATEDIR}/bamintersectPyOut/${bam1chromname}_vs_${bam2chromname}.bed" >> ${INTERMEDIATEDIR}/inputs.bamintersect.txt
-    done
-done
-
-
-n=$(wc -l < ${INTERMEDIATEDIR}/inputs.bamintersect.txt)
-qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${src} ${INTERMEDIATEDIR} ${max_mismatches} ${reads_match}" > ${sampleOutdir}/sgeid.bamintersect.${sample_name}
-rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
-
-
-################################################################################################
 # Make the filter files for merge_bamintersect.sh
 touch ${INTERMEDIATEDIR}/HA_coords.bed
 touch ${TMPDIR}/deletion_range.bed
@@ -357,7 +291,7 @@ fi
 echo
 
 
-echo "Generating uninformativeRegionFile"
+echo "Generating counts_table_mask"
 #Check for a curated uninformative regions file for this combination of genomes
 if echo "${bam2genome}" | egrep -q "^pSpCas9"; then
     #These files mask just mm10/hg38 right now, so ok to use the same for all the pSpCas9 derivative constructs
@@ -367,7 +301,7 @@ elif echo "${bam2genome}" | egrep -q "^LP[0-9]+$"; then
     #For LP integrations, exclude HAs
     uninformativeRegionFiles="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed ${INTERMEDIATEDIR}/HA_coords.bed"
     maskFile=""
-#For assemblon (not LP) integrations, filter out reads in deletion (since we have the mapping to the custom assembly)
+#For payload (not LP) integrations, filter out reads in deletion (since we mapping to the custom PL assembly)
 elif [[ "${bam2genome}" == "rtTA" ]]; then
     #Include Rosa26 deleted sequence
     uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
@@ -412,7 +346,75 @@ for curfile in ${maskFile}; do
 done
 
 #Sort exclusion files and strip comments just in case
+cat ${uninformativeRegionFiles} | awk '$0 !~ /^#/' | sort-bed - > ${INTERMEDIATEDIR}/uninformativeRegionFile.bed
 cat ${uninformativeRegionFiles} ${maskFile} | awk '$0 !~ /^#/' | sort-bed - > ${INTERMEDIATEDIR}/counts_table_mask.bed
+
+
+################################################################################################
+# Make a two-column chromosome list for the sort array jobs, where first column is short job name and second is the list of chromsomes for samtools view
+echo
+echo "sort_bamintersect"
+
+#Outputs array job inputfile to stdout by collapsing chromosomes if too many
+#Output is tab-delimited file with two columns: short name, list of chromosomes separated by spaces
+function make_chrom_inputfile {
+    local bamfile=$1
+    local prefix=$2
+    
+    samtools idxstats ${bamfile} | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' > ${TMPDIR}/idxstats.txt
+    n=$(wc -l < ${TMPDIR}/idxstats.txt)
+    
+    #Chunk bam file based on >5M read chunks of chromosomes to reduce array job size for large runs
+    cat ${TMPDIR}/idxstats.txt | awk -v maxchunksize=5000000 -v prefix=${prefix} -F "\t" 'BEGIN {OFS="\t"; chunknum=0; chroms=""; chunksize=0} {\
+        #Check if adding current line would make the chunk too big
+        if(NR >1 && chunksize + $3+$4 > maxchunksize) {\
+            chunknum+=1;\
+            print prefix chunknum, chroms;\
+            chroms = ""
+            chunksize=0;
+        }
+        chroms = chroms " " $1; \
+        #$3+$4 adds mapped and unmapped reads \
+        chunksize += $3+$4; \
+    }\
+    END {if(chunksize>0) {chunknum+=1; print prefix chunknum, chroms}}'
+}
+
+make_chrom_inputfile ${bam1} "bam1_" > ${INTERMEDIATEDIR}/inputs.sort.bam1.txt
+make_chrom_inputfile ${bam2} "bam2_" > ${INTERMEDIATEDIR}/inputs.sort.bam2.txt
+
+if [ ! -s "${INTERMEDIATEDIR}/inputs.sort.bam1.txt" ]; then
+    echo "No reads left in bam1; quitting successfully"
+    exit 0
+fi
+if [ ! -s "${INTERMEDIATEDIR}/inputs.sort.bam2.txt" ]; then
+    echo "No reads left in bam2; quitting successfully"
+    exit 0
+fi
+
+
+num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam1.txt)
+qsub -S /bin/bash -cwd -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh ${src} ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam1} 1 ${bam1_keep_flags} ${bam1_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
+
+num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam2.txt)
+qsub -S /bin/bash -cwd -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh ${src} ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam2} 2 ${bam2_keep_flags} ${bam2_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+
+
+################################################################################################
+# Call bamintersect.py on each pairwise chrom combination via the bamintersect.sh array job:
+echo
+echo "bamintersect"
+for bam1chromname in `cut -f1 ${INTERMEDIATEDIR}/inputs.sort.bam1.txt`; do
+    for bam2chromname in `cut -f1 ${INTERMEDIATEDIR}/inputs.sort.bam2.txt`; do
+        echo -e "${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam1chromname}.bam\t${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam2chromname}.bam\t${INTERMEDIATEDIR}/bamintersectPyOut/${bam1chromname}_vs_${bam2chromname}.bed" >> ${INTERMEDIATEDIR}/inputs.bamintersect.txt
+    done
+done
+
+
+n=$(wc -l < ${INTERMEDIATEDIR}/inputs.bamintersect.txt)
+qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${src} ${INTERMEDIATEDIR} ${max_mismatches} ${reads_match}" > ${sampleOutdir}/sgeid.bamintersect.${sample_name}
+rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+
 
 
 ################################################################################################

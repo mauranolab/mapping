@@ -4,13 +4,14 @@ set -eu -o pipefail
 ########################################################
 ## Variables passed in via sbatch export.
 ########################################################
-INTERMEDIATEDIR=$1
-sampleOutdir=$2
-sample_name=$3
-BAM=$4
-BAM_N=$5
-BAM_K=$6 # Required. Use "0" if necessary.
-BAM_E=$7 # Required. Use "0" if necessary.
+src=$1
+INTERMEDIATEDIR=$2
+sampleOutdir=$3
+sample_name=$4
+BAM=$5
+BAM_N=$6
+BAM_K=$7 # Required. Use "0" if necessary.
+BAM_E=$8 # Required. Use "0" if necessary.
 
 
 jobid=$SLURM_ARRAY_TASK_ID
@@ -24,15 +25,19 @@ echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 date
 echo
 
+#Identify read names overlapping the uninformativeRegionFile for removal
+#We could implement bed input directly in subsetBAM.py to avoid a second pass, but I think we would need to require the file be sorted
+samtools view -L ${INTERMEDIATEDIR}/uninformativeRegionFile.bed -h -u -f ${BAM_K} -F ${BAM_E} -O SAM ${BAM} ${chroms} | cut -f1 | uniq > $TMPDIR/uninformativeReads.txt
+
 ## Sort bam file by read name.  Done by samtools via strnum_cmp.c
 #     Query names are split into alternating subfields of pure nondigits and pure digits.
 #     
 #     To sort a pair of query names, the corresponding subfields of each query name are compared sequentially:
-#         When a nondigit subfield is compared to a nondigit subfield, the sort is lexigraphic.
+#         When a nondigit subfield is compared to a nondigit subfield, the sort is lexicographic.
 #         When a all-digit subfield is compared to a all-digit subfield, the sort is numeric.
-#         When a all-digit subfield is compared to a nondigit subfield, the sort is lexigraphic.
+#         When a all-digit subfield is compared to a nondigit subfield, the sort is lexicographic.
 #       
-#     Lexigraphic sorts by left justifying both subfields, and comparing them from left to right, character by character.
+#     Lexicographic sorts by left justifying both subfields, and comparing them from left to right, character by character.
 #     The character comparisons are made by ASCII value.
 #     
 #     Numeric sorts do not entail character by character comparisons.  The entire subfield is considered as one integer, and
@@ -40,7 +45,9 @@ echo
 #     more leading zeroes is placed before the subfield with fewer leading zeroes. 
 
 #Since the next set of jobs will be reading this heavily, might be worthwhile to use high compression (-l 9) for big bam files
-samtools view -h -u -f ${BAM_K} -F ${BAM_E} ${BAM} ${chroms} | samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/sortbyname -l 1 -n -o ${BAM_OUT}
+samtools view -h -u -f ${BAM_K} -F ${BAM_E} ${BAM} ${chroms} |
+${src}/subsetBAM.py --exclude_readnames $TMPDIR/uninformativeReads.txt - - |
+samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/sortbyname -l 1 -n -o ${BAM_OUT}
 
 echo "Done!!!"
 date

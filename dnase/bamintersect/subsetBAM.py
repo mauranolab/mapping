@@ -1,61 +1,82 @@
 #!/usr/bin/env python3
-##################################################################################################################
-# Usage:
-#
-# subsetBAM.py --exclude_flags <int> --readNames <text file containing a list of readnames> --bamFile_in <inputFile.bam> --bamFile_out <outputFile.bam>
-##################################################################################################################
+
+# subsetBAM.py - Select reads from a BAM file. Will filter all alignments for a given readname.
+
+#Usage:
+#subsetBAM.py in.bam out.bam
 
 import sys
 import argparse
 import pysam
 
-parser = argparse.ArgumentParser(prog = "subsetBAM.py",
-                                 description = "Returns a BAM file subsetted by a list of read names.",
-                                 add_help = True)
+version="1.1"
 
-parser.add_argument('--exclude_flags', action='store', type=int, default=0, help='SAM flags to filter out certain reads.')
-parser.add_argument('--readNames', action='store', type=str, required=True, help='Name of a file containing readnames to be extracted from bamFile_in.')
-parser.add_argument('--bamFile_in', action='store', type=str, required=True, help='Name of the bam file from which bam lines will be retrieved.')
-parser.add_argument('--bamFile_out', action='store', type=str, required=True, help='Name of the bam file to which subsetted bam lines will be written.')
+parser = argparse.ArgumentParser(prog = "subsetBAM.py", description = "Returns a BAM file subsetted by a list of read names.", allow_abbrev=False, add_help = True)
+parser.add_argument('raw_alignment', type=str, help='Input alignment filename (BAM/SAM)')
+parser.add_argument('filtered_alignment', type=str, help='Output alignment filename (BAM)')
+parser.add_argument('--exclude_flags', type=int, default=0, help='SAM flags to filter out reads')
+parser.add_argument('--include_readnames', type=str, required=False, help='Name of a file containing readnames to be retained')
+parser.add_argument('--exclude_readnames', type=str, required=False, help='Name of a file containing readnames to be excluded')
+parser.add_argument('--version', action='version', version='%(prog)s ' + version)
 
-args = parser.parse_args()
+#argparse does not set an exit code upon this error
+#https://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
+try:
+    args = parser.parse_args()
+except argparse.ArgumentError as exc:
+    print(exc.message, '\n', exc.argument)
+    sys.exit(2)
 
 print("[subsetBAM.py] Parameters:", args, file=sys.stderr)
 
 
 # Open the read name file, strip off any trailing CRLF characters, then put all the read names into a set.
-with open(args.readNames, 'r') as readNameFile:
-    readNameSet = set(readName.rstrip('\r\n') for readName in readNameFile)
+if args.include_readnames is not None:
+    with open(args.include_readnames, 'r') as readNameFile:
+        include_readnames = set(readName.rstrip('\r\n') for readName in readNameFile)
 
-# Open the existing bam file.
-bamFile_in = pysam.AlignmentFile(args.bamFile_in, "rb")
+if args.exclude_readnames is not None:
+    with open(args.exclude_readnames, 'r') as readNameFile:
+        exclude_readnames = set(readName.rstrip('\r\n') for readName in readNameFile)
+
+# Open the existing bam/sam file.
+bamFile_in = pysam.AlignmentFile(args.raw_alignment, "r")
+
 
 # Get the old header and make a new header and PG tag from it.
-header = pysam.AlignmentFile(args.bamFile_in,'rb').header
-headerDict = header.to_dict()
-version="1.0"
-pg={'ID':'subsetBAM.py', 'PP':header['PG'][-1]['ID'], 'PN':'subsetBAM.py', 'VN':version, 'CL':' '.join(sys.argv)}
-headerDict['PG'].append(pg)
+newheader = bamFile_in.header.to_dict()
+pg={'ID':'subsetBAM.py', 'PP':newheader['PG'][-1]['ID'], 'PN':'subsetBAM.py', 'VN':version, 'CL':' '.join(sys.argv)}
+newheader['PG'].append(pg)
 
 # Open the new bam file with the new header.
-bamFile_out = pysam.AlignmentFile(args.bamFile_out, "wb", header=headerDict)
+bamFile_out = pysam.AlignmentFile(args.filtered_alignment, "wb", header=newheader)
 
-# Read the bamfile, line by line.
+# Read the bamfile line by line.
+alignmentsRead = 0
+alignmentsSkipped = 0
 while True:
     try:
         bamFileRead = next(bamFile_in)
-
-        # Exclude some reads.
-        if (bamFileRead.flag & args.exclude_flags) > 0:
-            continue
-
-        bamFileQname = bamFileRead.query_name
     except:
         # We ran out of lines, so exit.
-         sys.exit(0)
-
-    # Is the qname is in our readNameSet? 
-    # Regarding speed, see: https://stackoverflow.com/questions/3949310/how-is-set-implemented
-    if bamFileQname in readNameSet:
+         break
+        
+    # Exclude some reads.
+    alignmentsRead += 1
+    if bamFileRead.flag & args.exclude_flags > 0:
+        alignmentsSkipped += 1
+        continue
+    
+    readname = bamFileRead.query_name
+    
+    if args.exclude_readnames is not None and readname in exclude_readnames:
+        alignmentsSkipped += 1
+        continue
+        
+    
+    if args.include_readnames is None or readname in include_readnames:
         bamFile_out.write(bamFileRead)
+    else:
+        alignmentsSkipped += 1
 
+print("[subsetBAM.py] Finished reading ", alignmentsRead, " alignments, of which ", alignmentsSkipped, " were skipped.", file=sys.stderr, sep="")
