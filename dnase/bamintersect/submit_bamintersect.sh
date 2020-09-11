@@ -38,7 +38,7 @@ module load python/3.8.1
 module load miller/5.4.0
 
 
-qsubargs="-q testq"
+qsubargs=""
 
 
 ############################################################
