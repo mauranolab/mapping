@@ -91,7 +91,7 @@ echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tare potentia
 
 
 echo
-${src}/counts_table.sh ${sampleOutdir}/${sample_name} ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.bed ${num_bam1_reads}
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.bed ${num_bam1_reads}
 
 
 # HA analysis:
@@ -125,7 +125,7 @@ if [ -s "${TMPDIR}/${sample_name}.readNames.txt" ]; then
     
     ${src}/subsetBAM.py --include_readnames ${TMPDIR}/${sample_name}.readNames.txt $TMPDIR/${sample_name}.bam - |
     samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.bam
-
+    
     samtools index ${sampleOutdir}/${sample_name}.bam
 fi
 
