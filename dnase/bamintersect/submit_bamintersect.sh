@@ -336,9 +336,9 @@ if [ -f "${annotationBase}/${bam2genome}/repeat_masker/Satellite.bed" ]; then
     maskFile="${maskFile} ${annotationBase}/${bam2genome}/repeat_masker/Satellite.bed"
 fi
 
-for curfile in ${maskFile}; do
+for curfile in ${uninformativeRegionFiles} ${maskFile}; do
     if [ ! -f "${curfile}" ]; then
-        echo "ERROR: Can't find ${curfile}; will continue without any region mask"
+        echo "ERROR: Can't find mask file ${curfile}"
         exit 1
     else
         echo "Found uninformative regions file: $(basename ${curfile}) [${curfile}]"
