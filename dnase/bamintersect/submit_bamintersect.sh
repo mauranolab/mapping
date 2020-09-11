@@ -368,8 +368,8 @@ function make_chrom_inputfile {
     samtools idxstats ${bamfile} | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' > ${TMPDIR}/idxstats.txt
     n=$(wc -l < ${TMPDIR}/idxstats.txt)
     
-    #Chunk bam file based on >5M read chunks of chromosomes to reduce array job size for large runs
-    cat ${TMPDIR}/idxstats.txt | awk -v maxchunksize=5000000 -v prefix=${prefix} -F "\t" 'BEGIN {OFS="\t"; chunknum=0; chroms=""; chunksize=0} {\
+    #Chunk bam file based on >10M read chunks of chromosomes to reduce array job size for large runs
+    cat ${TMPDIR}/idxstats.txt | awk -v maxchunksize=10000000 -v prefix=${prefix} -F "\t" 'BEGIN {OFS="\t"; chunknum=0; chroms=""; chunksize=0} {\
         #Check if adding current line would make the chunk too big
         if(NR >1 && chunksize + $3+$4 > maxchunksize) {\
             chunknum+=1;\
@@ -398,10 +398,10 @@ fi
 
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam1.txt)
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh ${src} ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam1} 1 ${bam1_keep_flags} ${bam1_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${src} ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam1} 1 ${bam1_keep_flags} ${bam1_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam2.txt)
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh ${src} ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam2} 2 ${bam2_keep_flags} ${bam2_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${src} ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam2} 2 ${bam2_keep_flags} ${bam2_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
 ################################################################################################
