@@ -25,9 +25,13 @@ echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 date
 echo
 
+
+#Likely more IO efficient to cache the subsetted BAM locally
+samtools view -@ ${NSLOTS} -f ${BAM_K} -F ${BAM_E} -O BAM -1 ${BAM} ${chroms} > $TMPDIR/${sample_name}.${jobname}.bam
+
 #Identify read names overlapping the uninformativeRegionFile for removal
 #We could implement bed input directly in subsetBAM.py to avoid a second pass, but I think we would need to require the file be sorted
-samtools view -L ${INTERMEDIATEDIR}/uninformativeRegionFile.bed -h -u -f ${BAM_K} -F ${BAM_E} -O SAM ${BAM} ${chroms} | cut -f1 | uniq > $TMPDIR/uninformativeReads.txt
+samtools view -L ${INTERMEDIATEDIR}/uninformativeRegionFile.bed $TMPDIR/${sample_name}.${jobname}.bam | cut -f1 | uniq > $TMPDIR/uninformativeReads.txt
 
 ## Sort bam file by read name.  Done by samtools via strnum_cmp.c
 #     Query names are split into alternating subfields of pure nondigits and pure digits.
@@ -45,8 +49,7 @@ samtools view -L ${INTERMEDIATEDIR}/uninformativeRegionFile.bed -h -u -f ${BAM_K
 #     more leading zeroes is placed before the subfield with fewer leading zeroes. 
 
 #Since the next set of jobs will be reading this heavily, might be worthwhile to use high compression (-l 9) for big bam files
-samtools view -h -u -f ${BAM_K} -F ${BAM_E} ${BAM} ${chroms} |
-${src}/subsetBAM.py --exclude_readnames $TMPDIR/uninformativeReads.txt - - |
+${src}/subsetBAM.py --exclude_readnames $TMPDIR/uninformativeReads.txt $TMPDIR/${sample_name}.${jobname}.bam - |
 samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/sortbyname -l 1 -n -o ${BAM_OUT}
 
 echo "Done!!!"

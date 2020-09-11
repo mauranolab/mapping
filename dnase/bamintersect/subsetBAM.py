@@ -13,7 +13,7 @@ version="1.1"
 
 parser = argparse.ArgumentParser(prog = "subsetBAM.py", description = "Returns a BAM file subsetted by a list of read names.", allow_abbrev=False, add_help = True)
 parser.add_argument('raw_alignment', type=str, help='Input alignment filename (BAM/SAM)')
-parser.add_argument('filtered_alignment', type=str, help='Output alignment filename (BAM)')
+parser.add_argument('filtered_alignment', type=str, help='Output alignment filename (uncompressed BAM)')
 parser.add_argument('--exclude_flags', type=int, default=0, help='SAM flags to filter out reads')
 parser.add_argument('--include_readnames', type=str, required=False, help='Name of a file containing readnames to be retained')
 parser.add_argument('--exclude_readnames', type=str, required=False, help='Name of a file containing readnames to be excluded')
@@ -48,8 +48,8 @@ newheader = bamFile_in.header.to_dict()
 pg={'ID':'subsetBAM.py', 'PP':newheader['PG'][-1]['ID'], 'PN':'subsetBAM.py', 'VN':version, 'CL':' '.join(sys.argv)}
 newheader['PG'].append(pg)
 
-# Open the new bam file with the new header.
-bamFile_out = pysam.AlignmentFile(args.filtered_alignment, "wb", header=newheader)
+# Open the new uncompressed bam file with the new header.
+bamFile_out = pysam.AlignmentFile(args.filtered_alignment, "wbu", header=newheader)
 
 # Read the bamfile line by line.
 alignmentsRead = 0

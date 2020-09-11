@@ -123,7 +123,9 @@ cut -f4 ${sampleOutdir}/${sample_name}.bed > ${TMPDIR}/${sample_name}.readNames.
 if [ -s "${TMPDIR}/${sample_name}.readNames.txt" ]; then
     debug_fa "${sample_name}.readNames.txt was found"
     
-    ${src}/subsetBAM.py --include_readnames ${TMPDIR}/${sample_name}.readNames.txt $TMPDIR/${sample_name}.bam ${sampleOutdir}/${sample_name}.bam
+    ${src}/subsetBAM.py --include_readnames ${TMPDIR}/${sample_name}.readNames.txt $TMPDIR/${sample_name}.bam - |
+    samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.bam
+
     samtools index ${sampleOutdir}/${sample_name}.bam
 fi
 

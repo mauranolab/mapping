@@ -37,6 +37,10 @@ module load bedops/2.4.37
 module load python/3.8.1
 module load miller/5.4.0
 
+
+qsubargs="-q testq"
+
+
 ############################################################
 # Start of "getopt" section
 ############################################################
@@ -394,10 +398,10 @@ fi
 
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam1.txt)
-qsub -S /bin/bash -cwd -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh ${src} ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam1} 1 ${bam1_keep_flags} ${bam1_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh ${src} ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam1} 1 ${bam1_keep_flags} ${bam1_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam2.txt)
-qsub -S /bin/bash -cwd -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh ${src} ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam2} 2 ${bam2_keep_flags} ${bam2_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal "${src}/sort_bamintersect.sh ${src} ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam2} 2 ${bam2_keep_flags} ${bam2_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
 ################################################################################################
@@ -412,7 +416,7 @@ done
 
 
 n=$(wc -l < ${INTERMEDIATEDIR}/inputs.bamintersect.txt)
-qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${src} ${INTERMEDIATEDIR} ${max_mismatches} ${reads_match}" > ${sampleOutdir}/sgeid.bamintersect.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${src} ${INTERMEDIATEDIR} ${max_mismatches} ${reads_match}" > ${sampleOutdir}/sgeid.bamintersect.${sample_name}
 rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
@@ -422,7 +426,7 @@ rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/s
 echo
 echo "merge_bamintersect"
 
-qsub -S /bin/bash -cwd -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${verbose}" > /dev/null
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${verbose}" > /dev/null
 rm -f ${sampleOutdir}/sgeid.bamintersect.${sample_name}
 
 echo
