@@ -153,7 +153,12 @@ for strand_bam1 in "+" "-"; do
         awk -F "\t" 'BEGIN {OFS="\t"} {print $6, $7, $8, $9, $5, $1, $2, $3, $4, $10}' | sort-bed - |
         #Add gene name to bam1
         annotateNearestGeneName - ${bam1genome} |
-        mlr --tsv sort -nr ReadsPer10M -f \#chrom_bam2 -n chromStart_bam2 |
+        # At this point in the pipeline, there are no headers in the output from annotateNearestGeneName. This headerless output is being passed as input to mlr.
+        # In the particular case of BS04412A, for each +/- strand combination there are only zero or one lines coming out from annotateNearestGeneName. So that one
+        # line is interpreted by mlr as a header, and no output at all is passed from mlr to awk. This eventually results in an empty counts.txt file.
+        # I'm fixing this by using sort instead of mlr.
+        # mlr --tsv sort -nr ReadsPer10M -f \#chrom_bam2 -n chromStart_bam2 |
+        sort -k5,5nr -k1,1 -k2,2n |
         #Reorder columns to put bam1 gene where it belongs
         awk -v num_bam1_reads=${num_bam1_reads} -v short_sample_name=`echo "${sample_name}" | cut -d "." -f1` -v strand_bam1=${strand_bam1} -v strand_bam2=${strand_bam2} -F "\t" 'BEGIN {OFS="\t"; print "#chrom_bam1", "chromStart_bam1", "chromEnd_bam1", "Width_bam1", "NearestGene_bam1", "Strand_bam1", "ReadsPer10M", "chrom_bam2", "chromStart_bam2", "chromEnd_bam2", "Width_bam2", "NearestGene_bam2", "Strand_bam2", "Sample"} {print $1, $2, $3, $4, $11, strand_bam1, 10000000 * $5 / num_bam1_reads, $6, $7, $8, $9, $10, strand_bam2, short_sample_name}'
         #NB Output goes to stdout and is redirected below
