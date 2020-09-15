@@ -293,14 +293,15 @@ echo "Saturation curves"
 #BUGBUG does not consider UMIs for thresholding
 #NB hardcoded limit of 120M reads
 for i in `echo {10000,50000,100000,250000,500000,1000000,2000000,3000000,4000000,5000000,10000000,15000000,20000000,25000000,30000000,35000000,40000000,45000000,50000000,55000000,60000000,70000000,80000000,90000000,100000000,110000000,120000000} | tr ' ' '\n' | gawk -v subset=${numTotalReads} '$1<=subset'`; do 
-    if [ "${minUMILength}" -ge 5 ]; then
+    if [ "${minCellBCLength}" -gt 0 ]; then
+        saturation=$(zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | shuf -n $i | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $3, $4}' | uniq | sort | uniq | awk -F "\t" '{print $1, $3}' | sort | uniq -c | awk -v minReadCutoff=${minReadCutoff} '$1>=minReadCutoff {print $2, $3}' | wc -l)
+    elif [ "${minUMILength}" -ge 5 ]; then
         saturation=$(zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | shuf -n $i | awk -F "\t" 'BEGIN {OFS="\t"} {print $1, $3}' | uniq | sort | uniq | awk -F "\t" '{print $1}' | sort | uniq -c | awk -v minReadCutoff=${minReadCutoff} '$1>=minReadCutoff {print $2}' | wc -l)
     else
         saturation=$(zcat -f ${OUTDIR}/${sample}.barcodes.txt.gz | shuf -n $i | awk -F "\t" '{print $1}' | sort | uniq -c | awk -v minReadCutoff=${minReadCutoff} '$1>=minReadCutoff {print $2}' | wc -l)
     fi
     echo "$i $saturation minreads${minReadCutoff}" 
 done > ${OUTDIR}/${sample}.Saturation.minReads_${minReadCutoff}.txt
-
 
 echo
 echo "Done!!!"
