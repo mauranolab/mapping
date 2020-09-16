@@ -483,7 +483,7 @@ if __name__ == "__main__":
                 if G.nodes[n]['type'] == 'cell':
                     G.nodes[n]['transfection'] = 'cellBC'
         
-        printGraph_kwds = { 'node_color': 'transfection', 'node_color_dict': {'cellBC': 'black', 'T0215A': 'orange', 'T0216B': 'purple', 'T0217B': 'green'} }
+        printGraph_kwds = { 'node_color': 'transfection', 'node_color_dict': {'cellBC': 'black', 'conflicting': 'yellow', 'T0215A': 'orange', 'T0216B': 'purple', 'T0217B': 'green', 'T0219A': 'orange', 'T0220B': 'purple', 'T0221B': 'green', 'T0222B': 'red'} }
     else:
         printGraph_kwds = {}
 
