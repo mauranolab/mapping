@@ -79,16 +79,18 @@ for(d in c(list.dirs(path=dir, recursive=F, full.names=T))) {
 	for(f in list.files(path=d, pattern=".insertlengths.txt.gz$", recursive=F, full.names=T)) {
 		cat("Doing", f, "\n")
 		data <- read(f)
-		if(ncol(data)==1) {
-			colnames(data) <- c("length")
-		} else {
-			#as of 2019-02-04, name no longer included to save space
-			#Backwards compatible for now
-			colnames(data) <- c("name", "length")
+		if(!is.null(data)) {
+			if(ncol(data)==1) {
+				colnames(data) <- c("length")
+			} else {
+				#as of 2019-02-04, name no longer included to save space
+				#Backwards compatible for now
+				colnames(data) <- c("name", "length")
+			}
+			dens <- density(subset(data, length<=maxlength & length>=27)$length, bw=10)
+			#can also get name from data[1, "name"]; though note mappedgenome was only included inside file from 2018-12-29 on
+			results <- rbind(results, data.frame(name=gsub(".insertlengths.txt.gz$", "", basename(f)), x=dens$x, y=dens$y, stringsAsFactors=F))
 		}
-		dens <- density(subset(data, length<=maxlength & length>=27)$length, bw=10)
-		#can also get name from data[1, "name"]; though note mappedgenome was only included inside file from 2018-12-29 on
-		results <- rbind(results, data.frame(name=gsub(".insertlengths.txt.gz$", "", basename(f)), x=dens$x, y=dens$y, stringsAsFactors=F))
 	}
 }
 
@@ -114,7 +116,7 @@ save(list=c("results", "breaks", "maxlength"), file=paste0(dir, "/insertlengths.
 #results <- subset(results, grepl("Hba_", name))
 #results$cleanup <- sapply(results$sample, FUN=function(x) {unlist(strsplit(as.character(x), "_"))[5]})
 #results$polymerase <- sapply(results$sample, FUN=function(x) {unlist(strsplit(as.character(x), "_"))[6]})
-
+#results <- subset(results, !grepl("^WaterControl", name))
 
 p <- ggplot(data=subset(results, x>=27 & x<=maxlength), aes(x=x, y=y, group=name, label=BS, color=BS)) +
 labs(title="") +
