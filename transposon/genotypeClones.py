@@ -450,6 +450,7 @@ def postCleanUp(G, annotation, maxRate):
     skip = ["conflicting", "uninformative", "None"]
     # Check if all BCs are annotated
     if not all([annotation in G.nodes[x] for x in G.nodes if G.nodes[x]["type"] == "BC"]):
+        print("[postCleanUp] Some BCs are missing `%s` annotation. Skipping postCleanUp." % annotation, file=sys.stderr)
         return
     node_to_remove = []
     edge_to_remove = []
@@ -509,7 +510,7 @@ if __name__ == "__main__":
     parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
 
     parser.add_argument("--postCleanUp", action="store_true", default=False, help="Run a post-processing clean-up and remove conflicting cells")
-    parser.add_argument("--transfectionAnnotation", action="store", type=str, default="transfection", help="Keyword used to identify BCs transfections from annotateclones file.")
+    parser.add_argument("--transfectionAnnotation", action="store", type=str, default=None, help="Keyword used to identify BCs transfections from annotateclones file.")
     parset.add_argument("--maxConflictRate", action="store", type=float, default=0.0, help="Maximum non-majority transfection UMI rate to remove a conflicting cells")
 
     parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
@@ -571,5 +572,8 @@ if __name__ == "__main__":
     
     clones = identifyClones(G)
     if args.postCleanUp:
-        postCleanUp(G, args.transfectionAnnotation, args.maxConflictRate)
+        if args.transfectionAnnotation is None:
+            print("[genotypeClones] transfectionAnnotation is required to run postCleanUp, but none was provided. Skipping postCleanUp", file=sys.stderr)
+        else:
+            postCleanUp(G, args.transfectionAnnotation, args.maxConflictRate)
     writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
