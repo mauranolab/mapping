@@ -429,11 +429,11 @@ def toJaccard(G):
     cells = [n for n in G.nodes if G.nodes[n]['type'] == 'cell']
     return nx.bipartite.generic_weighted_projected_graph(G, cells, weight_function=jaccard)
 
-def computeTransfectionRate(G, node, skip):
+def computeTransfectionRate(G, node, skip, annotation):
     total = 0
     count = dict()
     for e in G.edges(node):
-        transfection = G.nodes[e[1]]["transfection"]
+        transfection = G.nodes[e[1]][annotation]
         weight = G.edges[e]["weight"]
         if (transfection in skip):
             continue
@@ -446,9 +446,10 @@ def computeTransfectionRate(G, node, skip):
     return(count)
 
 ## Post-processing clean-up - remove conflict cells
-def postCleanUp(G, maxRate):
+def postCleanUp(G, annotation, maxRate):
     skip = ["conflicting", "uninformative", "None"]
-    if not all(["transfection" in G.nodes[x].keys() for x in G.nodes if G.nodes[x]["type"] == "BC"]):
+    # Check if all BCs are annotated
+    if not all([annotation in G.nodes[x] for x in G.nodes if G.nodes[x]["type"] == "BC"]):
         return
     node_to_remove = []
     edge_to_remove = []
@@ -459,7 +460,7 @@ def postCleanUp(G, maxRate):
         bcs = [x for x in subG.nodes if subG.nodes[x]['type'] == 'BC']
         cells = [x for x in subG.nodes if subG.nodes[x]['type'] == 'cell']
 
-        bc_transfection = set([subG.nodes[x]["transfection"] for x in bcs])
+        bc_transfection = set([subG.nodes[x][annotation] for x in bcs])
         bc_transfection = bc_transfection - set(skip)
         # Skip if clone is not conflicting
         if len(bc_transfection) <= 1:
@@ -468,13 +469,13 @@ def postCleanUp(G, maxRate):
         pruned = False
         # Classify cells
         for cell in cells:
-            rate = computeTransfectionRate(subG, cell, skip)
+            rate = computeTransfectionRate(subG, cell, skip, annotation)
             if len(rate) <= 1:
                 continue
             pruned = True
             maxTransfection = max(rate, key = rate.get)
             if (1 - rate[maxTransfection]) <= maxRate:
-                conflict_edges = [ e for e in subG.edges(cell) if subG.nodes[e[1]]["transfection"] not in [maxTransfection] + skip]
+                conflict_edges = [ e for e in subG.edges(cell) if subG.nodes[e[1]][annotation] not in [maxTransfection] + skip]
                 edge_to_remove += conflict_edges
             else:
                 node_to_remove.append(cell)
@@ -508,6 +509,7 @@ if __name__ == "__main__":
     parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
 
     parser.add_argument("--postCleanUp", action="store_true", default=False, help="Run a post-processing clean-up and remove conflicting cells")
+    parser.add_argument("--transfectionAnnotation", action="store", type=str, default="transfection", help="Keyword used to identify BCs transfections from annotateclones file.")
     parset.add_argument("--maxConflictRate", action="store", type=float, default=0.0, help="Maximum non-majority transfection UMI rate to remove a conflicting cells")
 
     parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
@@ -569,5 +571,5 @@ if __name__ == "__main__":
     
     clones = identifyClones(G)
     if args.postCleanUp:
-        postCleanUp(G, args.maxConflictRate)
+        postCleanUp(G, args.transfectionAnnotation, args.maxConflictRate)
     writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
