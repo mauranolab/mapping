@@ -511,7 +511,7 @@ if __name__ == "__main__":
     parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
 
     parser.add_argument("--splitConflictingClones", action="store", type=str, default=None, help="Run a post-processing clean-up and remove conflicting cells based on BCs annotation.")
-    parset.add_argument("--maxConflictRate", action="store", type=float, default=0.0, help="Maximum non-majority transfection UMI rate to remove a conflicting cells")
+    parser.add_argument("--maxConflictRate", action="store", type=float, default=0.0, help="Maximum non-majority transfection UMI rate to remove a conflicting cells")
 
     parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
     
