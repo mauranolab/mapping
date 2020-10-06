@@ -1,6 +1,16 @@
-chr9	78480948	78481072	EF-1-alpha promoter
-chr10	4856946	4857194	ERT2, contained by Esr1
-chr10	4997824	4998017	ERT2, contained by Esr1
-chrX	164422700	164423364	Piga
-chrX	164427929	164428065	Piga
-chrX	164428537	164428674	Piga
+chr10	4856946	5001291	ESr1_ex1_similar_to_ERT2
+chr10	4939228	4939350	ESr1_ex2_similar_to_ERT2
+chr10	4969168	4969292	ESr1_ex3_similar_to_ERT2
+chr10	4997829	4997962	ESr1_ex4_similar_to_ERT2
+chr10	5001188	5001291	ESr1_ex1_similar_to_ERT2
+chr13	64914915	64915118	Intragenic_similar_to_EIF1pA
+chr13	74341457	74341598	Intragenic_similar_to_EIF1pA
+chr14	40007124	40007325	Intragenic_similar_to_EIF1pA
+chr9	44955817	44956448	Ube4a_similar_to_hmPIGA
+chr9	78480948	78481773	Eef1a1_similar_to_pEF1a
+chrX	164422738	164423363	Piga_ex1_similar_to_hmPiga
+chrX	164427936	164428064	Piga_ex2_similar_to_hmPiga
+chrX	164428546	164428672	Piga_ex2_similar_to_hmPiga
+chrX	164428825	164429017	Piga_ex2_similar_to_hmPiga
+chrX	164431749	164431836	Piga_ex2_similar_to_hmPiga
+

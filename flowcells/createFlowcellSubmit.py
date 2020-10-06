@@ -268,6 +268,7 @@ def getBwaReference(species):
             "Human+SARS-Cov2": "hg38_full_wuhCor1",
             "Mole": "talOcc4",
             "Mole+yeast": "talOcc4_sacCer3",
+            "Fugu+yeast": "sacCer3", #Do not have Fugu assembly at the moment
             "Plasmid": None,
         }
     elif sampleType in ["Nano-DNase", "ChIP-seq", "DNase-seq"]:

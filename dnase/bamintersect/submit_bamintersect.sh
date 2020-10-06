@@ -323,7 +323,7 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
             maskFile="${maskFile} $TMPDIR/ICE_SV40pA.bed"
         fi
     fi
-elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1)"; then
+elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed"
     maskFile="${TMPDIR}/deletion_range.bed"
 else

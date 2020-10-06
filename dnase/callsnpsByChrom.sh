@@ -57,6 +57,7 @@ echo
 echo "Making coverage track"
 date
 #This track excludes PCR duplicates, unmapped segments, and QC fail reads
+#N.B. bedops --chop is only run at locations covered by 1+ read, therefore there will be no entries for bases with 0 coverage
 bedops --chop 1 ${TMPDIR}/${name}.${mappedgenome}.${jobname}.reads.passed.bed |
 bedmap --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${jobname}.reads.passed.bed |
 awk -F "\t" 'BEGIN {OFS="\t"} \
