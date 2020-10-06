@@ -172,7 +172,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
         #June 2020 scaled
         scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/merged_T0219toT0222"
         #/vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_conflicting_cells.txt
-        genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_shared.txt --annotateclones /vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/bc_transfection-occurrence.txt.gz"
+        genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_shared.txt --annotateclones /vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/bc_transfection-occurrence.txt.gz --splitConflictingClones transfection"
     else
         echo "ERROR can't find the right scRNAseqbase"
         exit 1

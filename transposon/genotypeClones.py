@@ -429,6 +429,68 @@ def toJaccard(G):
     cells = [n for n in G.nodes if G.nodes[n]['type'] == 'cell']
     return nx.bipartite.generic_weighted_projected_graph(G, cells, weight_function=jaccard)
 
+def computeTransfectionRate(G, node, skip, annotation):
+    total = 0
+    count = dict()
+    for e in G.edges(node):
+        transfection = G.nodes[e[1]][annotation]
+        weight = G.edges[e]["weight"]
+        if (transfection in skip):
+            continue
+        if transfection not in count:
+            count[transfection] = 0
+        total += weight
+        count[transfection] += weight
+    for k in count.keys():
+        count[k] /= total
+    return(count)
+
+## Post-processing clean-up - remove conflict cells
+def postCleanUp(G, annotation, maxRate):
+    ##TODO avoid hard coding this annotations
+    skip = ["conflicting", "uninformative", "None"]
+    # Check if all BCs are annotated
+    if not all([annotation in G.nodes[x] for x in G.nodes if G.nodes[x]["type"] == "BC"]):
+        print("[postCleanUp] Some BCs are missing `%s` annotation. Skipping postCleanUp." % annotation, file=sys.stderr)
+        return
+    node_to_remove = []
+    edge_to_remove = []
+    conflicting_clones = 0
+    conflicting_clones_pruned = 0
+    # Go through each clone/connect components
+    for subG in [G.subgraph(c) for c in nx.connected_components(G)]:
+        bcs = [x for x in subG.nodes if subG.nodes[x]['type'] == 'BC']
+        cells = [x for x in subG.nodes if subG.nodes[x]['type'] == 'cell']
+
+        bc_transfection = set([subG.nodes[x][annotation] for x in bcs])
+        bc_transfection = bc_transfection - set(skip)
+        # Skip if clone is not conflicting
+        if len(bc_transfection) <= 1:
+            continue
+        conflicting_clones += 1
+        pruned = False
+        # Classify cells
+        for cell in cells:
+            rate = computeTransfectionRate(subG, cell, skip, annotation)
+            if len(rate) <= 1:
+                continue
+            pruned = True
+            maxTransfection = max(rate, key = rate.get)
+            if (1 - rate[maxTransfection]) <= maxRate:
+                conflict_edges = [ e for e in subG.edges(cell) if subG.nodes[e[1]][annotation] not in [maxTransfection] + skip]
+                edge_to_remove += conflict_edges
+            else:
+                node_to_remove.append(cell)
+        if pruned:
+            conflicting_clones_pruned += 1
+    edge_to_remove += list(G.edges(node_to_remove))
+    remove_edges(G, edge_to_remove)
+    G.remove_nodes_from(node_to_remove)
+    pruneOrphanNodes(G)
+
+    print("[postCleanUp] identified %d conflicting clones and pruned %d of them." % (conflicting_clones, conflicting_clones_pruned), file=sys.stderr)
+    print("[postCleanUp] removed %d edges and %d nodes." % (len(edge_to_remove), len(node_to_remove)), file=sys.stderr)
+
 
 ###Command line operation
 if __name__ == "__main__":
@@ -447,7 +509,10 @@ if __name__ == "__main__":
     parser.add_argument('--minPropOfCellReads', action='store', type=float, default=0.02, help='Each BC-cell edge must represent at least this proportion of UMIs for cell')
     parser.add_argument('--minCentrality', action='store', type=float, default=0.2, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
     parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
-    
+
+    parser.add_argument("--splitConflictingClones", action="store", type=str, default=None, help="Run a post-processing clean-up and remove conflicting cells based on BCs annotation.")
+    parset.add_argument("--maxConflictRate", action="store", type=float, default=0.0, help="Maximum non-majority transfection UMI rate to remove a conflicting cells")
+
     parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
     
     parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
@@ -506,4 +571,6 @@ if __name__ == "__main__":
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
     
     clones = identifyClones(G)
+    if args.splitConflictingClones is not None:
+        postCleanUp(G, args.splitConflictingClones, args.maxConflictRate)
     writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
