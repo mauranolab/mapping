@@ -1,8 +1,7 @@
 #!/bin/bash
 set -eu -o pipefail
 
-# src=/vol/mauranolab/mapped/src/transposon
-src=/vol/mauranolab/ribeia01/transposon_10x/mapping/transposon
+src=/vol/mauranolab/mapped/src/transposon
 
 #TODO inconsistently applied
 minReadCutoff=$1
