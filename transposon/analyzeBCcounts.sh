@@ -1,7 +1,8 @@
 #!/bin/bash
 set -eu -o pipefail
 
-src=/vol/mauranolab/mapped/src/transposon
+# src=/vol/mauranolab/mapped/src/transposon
+src=/vol/mauranolab/ribeia01/transposon_10x/mapping/transposon
 
 #TODO inconsistently applied
 minReadCutoff=$1
@@ -172,7 +173,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
         #June 2020 scaled
         scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/merged_T0219toT0222"
         #/vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_conflicting_cells.txt
-        genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_shared.txt --annotateclones /vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/bc_transfection-occurrence.txt.gz --splitConflictingClones transfection"
+        genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_shared.txt --annotateclones /vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/bc_transfection-occurrence.txt.gz"
     else
         echo "ERROR can't find the right scRNAseqbase"
         exit 1
