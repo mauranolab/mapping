@@ -497,8 +497,8 @@ if __name__ == "__main__":
     parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
 
     parser.add_argument("--transfectionKey", action="store", type=str, default=None, help="Attribute key used to identify BCs transfections")
-    parser.add_argument("--maxConflictRate", action="store", type=float, default=None, help="Maximum non-majority transfection UMI rate to be remove from conflicting cells. It requires `transfectionKey` to execute")
-    parser.add_argument("--removeConflictingCells", action='store_true', default=False, help = "Removes conflict clones after all clean-up. It requires `transfectionKey` to execute")
+    parser.add_argument("--cleanCellsMaxConflictRate", action="store", type=float, default=None, help="Removes edges of non-majority transfection from conflict cells with at most this UMI rate of non-majority transfection. It requires `transfectionKey`")
+    parser.add_argument("--removeConflictingCells", action='store_true', default=False, help="Removes cells linked to BCs from 2+ transfections. It requires `transfectionKey`")
 
     parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
     
@@ -558,14 +558,14 @@ if __name__ == "__main__":
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
     
     clones = identifyClones(G)
-    if args.maxConflictRate is not None:
+    if args.cleanCellsMaxConflictRate is not None:
         if args.transfectionKey is not None:
             print("[genotypeClones] WARNING `--transfectionKey` is required to clean conflicting edges", file=sys.stderr)
         else:
-            pruneConflictingEdges(G, args.transfectionKey, args.maxConflictRate)
+            pruneConflictingEdges(G, args.transfectionKey, args.cleanCellsMaxConflictRate)
     if args.transfectionKey is not None and args.removeConflictingCells:
         if args.transfectionKey is not None:
             print("[genotypeClones] WARNING `--transfectionKey` is required to remove conflicting cells", file=sys.stderr)
         else:
-            pruneConflictingCells(G, args.transfectionKey, args.maxConflictRate)
+            pruneConflictingCells(G, args.transfectionKey)
     writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
