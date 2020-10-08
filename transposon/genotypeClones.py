@@ -558,8 +558,14 @@ if __name__ == "__main__":
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
     
     clones = identifyClones(G)
-    if args.transfectionKey is not None and args.maxConflictRate is not None:
-        pruneConflictingEdges(G, args.transfectionKey, args.maxConflictRate)
+    if args.maxConflictRate is not None:
+        if args.transfectionKey is not None:
+            print("[genotypeClones] WARNING `--transfectionKey` is required to clean conflicting edges", file=sys.stderr)
+        else:
+            pruneConflictingEdges(G, args.transfectionKey, args.maxConflictRate)
     if args.transfectionKey is not None and args.removeConflictingCells:
-        pruneConflictingCells(G, args.transfectionKey, args.maxConflictRate)
+        if args.transfectionKey is not None:
+            print("[genotypeClones] WARNING `--transfectionKey` is required to remove conflicting cells", file=sys.stderr)
+        else:
+            pruneConflictingCells(G, args.transfectionKey, args.maxConflictRate)
     writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
