@@ -178,7 +178,7 @@ def pruneEdgesLowPropOfReads(G, minPropOfBCReads, minPropOfCellReads):
     print("[genotypeClones] pruneEdgesLowPropOfReads - Removed ", len(edgesToRemove), " total edges", sep="", file=sys.stderr)
     pruneOrphanNodes(G)
 
-# Computes and return a dictionary of the [key] attribute value UMI proportion among a set of [nodes]
+# Within a set of nodes, return a dictionary mapping key attribute values to the proportion of total UMIs each attribute value represent
 def computeKeyRate(G, nodes, key):
     total = 0
     rate = dict()
