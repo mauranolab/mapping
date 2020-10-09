@@ -497,7 +497,7 @@ if __name__ == "__main__":
     parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
 
     key_arg = parser.add_argument("--transfectionKey", action="store", type=str, default=None, help="Attribute key used to identify BCs transfections")
-    parser.add_argument("--cleanCellsMaxConflictRate", action="store", type=float, default=None, help="Removes edges of non-majority transfection from conflict cells with at most this UMI rate of non-majority transfection. It requires `transfectionKey`")
+    parser.add_argument("--removeMinorityBCsFromConflictingCells", action="store", type=float, default=None, help="For cells with BCs from more than one transfection, removes BCs from minority transfections that together represent at most this proportion of UMIs for that cell. Requires `transfectionKey`")
     parser.add_argument("--removeConflictingCells", action='store_true', default=False, help="Removes cells linked to BCs from 2+ transfections. It requires `transfectionKey`")
 
     parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
@@ -507,8 +507,8 @@ if __name__ == "__main__":
     
     try:
         args = parser.parse_args()
-        if args.cleanCellsMaxConflictRate is not None and args.transfectionKey is None:
-            raise ArgumentError(key_arg, "`--transfectionKey` is required to use `--cleanCellsMaxConflictRate`")
+        if args.removeMinorityBCsFromConflictingCells is not None and args.transfectionKey is None:
+            raise ArgumentError(key_arg, "`--transfectionKey` is required to use `--removeMinorityBCsFromConflictingCells`")
         if args.transfectionKey is not None and args.removeConflictingCells and args.transfectionKey is None:
             raise ArgumentError(key_arg, "`--transfectionKey` is required to use `--removeConflictingCells`")
     except argparse.ArgumentError as exc:
@@ -562,8 +562,8 @@ if __name__ == "__main__":
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
     
     clones = identifyClones(G)
-    if args.cleanCellsMaxConflictRate is not None:
-        pruneConflictingEdges(G, args.transfectionKey, args.cleanCellsMaxConflictRate)
+    if args.removeMinorityBCsFromConflictingCells is not None:
+        pruneConflictingEdges(G, args.transfectionKey, args.removeMinorityBCsFromConflictingCells)
     if args.transfectionKey is not None and args.removeConflictingCells:
         pruneConflictingCells(G, args.transfectionKey)
     writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
