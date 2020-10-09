@@ -496,7 +496,7 @@ if __name__ == "__main__":
     parser.add_argument('--minCentrality', action='store', type=float, default=0.2, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
     parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
 
-    parser.add_argument("--transfectionKey", action="store", type=str, default=None, help="Attribute key used to identify BCs transfections")
+    key_arg = parser.add_argument("--transfectionKey", action="store", type=str, default=None, help="Attribute key used to identify BCs transfections")
     parser.add_argument("--cleanCellsMaxConflictRate", action="store", type=float, default=None, help="Removes edges of non-majority transfection from conflict cells with at most this UMI rate of non-majority transfection. It requires `transfectionKey`")
     parser.add_argument("--removeConflictingCells", action='store_true', default=False, help="Removes cells linked to BCs from 2+ transfections. It requires `transfectionKey`")
 
@@ -507,6 +507,10 @@ if __name__ == "__main__":
     
     try:
         args = parser.parse_args()
+        if args.cleanCellsMaxConflictRate is not None and args.transfectionKey is None:
+            raise ArgumentError(key_arg, "`--transfectionKey` is required to use `--cleanCellsMaxConflictRate`")
+        if args.transfectionKey is not None and args.removeConflictingCells and args.transfectionKey is None:
+            raise ArgumentError(key_arg, "`--transfectionKey` is required to use `--removeConflictingCells`")
     except argparse.ArgumentError as exc:
         print(exc.message, '\n', exc.argument, file=sys.stderr)
         sys.exit(1)
@@ -559,13 +563,7 @@ if __name__ == "__main__":
     
     clones = identifyClones(G)
     if args.cleanCellsMaxConflictRate is not None:
-        if args.transfectionKey is not None:
-            print("[genotypeClones] WARNING `--transfectionKey` is required to clean conflicting edges", file=sys.stderr)
-        else:
-            pruneConflictingEdges(G, args.transfectionKey, args.cleanCellsMaxConflictRate)
+        pruneConflictingEdges(G, args.transfectionKey, args.cleanCellsMaxConflictRate)
     if args.transfectionKey is not None and args.removeConflictingCells:
-        if args.transfectionKey is not None:
-            print("[genotypeClones] WARNING `--transfectionKey` is required to remove conflicting cells", file=sys.stderr)
-        else:
-            pruneConflictingCells(G, args.transfectionKey)
+        pruneConflictingCells(G, args.transfectionKey)
     writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
