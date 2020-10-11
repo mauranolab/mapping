@@ -201,8 +201,10 @@ def pruneConflictingEdges(G, transfectionKey, maxConflict):
         bcs = [x for (_, x) in G.edges(cell) if G.nodes[x][transfectionKey] not in skip]
         transfection_rate = computeKeyRate(G, bcs, transfectionKey)
         ## Skip cells with BCs from single transfection or no transfection and those with too high conflict rate
-        if len(transfection_rate) > 1 and (1 - transfection_rate[transfection_majority]) <= maxConflict:
+        if len(transfection_rate) > 1:
             transfection_majority = max(transfection_rate, key = transfection_rate.get)
+            if (1 - transfection_rate[transfection_majority]) > maxConflict:
+                continue
             keep = [transfection_majority] + skip
             edges_to_remove.update([(cell, x) for x in bcs if G.nodes[x][transfectionKey] not in keep])
     remove_edges(G, edges_to_remove)
