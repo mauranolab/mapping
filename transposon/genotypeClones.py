@@ -178,6 +178,56 @@ def pruneEdgesLowPropOfReads(G, minPropOfBCReads, minPropOfCellReads):
     print("[genotypeClones] pruneEdgesLowPropOfReads - Removed ", len(edgesToRemove), " total edges", sep="", file=sys.stderr)
     pruneOrphanNodes(G)
 
+# Within a set of nodes, return a dictionary mapping key attribute values to the proportion of total UMIs each attribute value represent
+def computeKeyRate(G, nodes, key):
+    total = 0
+    rate = dict()
+    ## Count UMI per key value
+    for x in nodes:
+        total += G.nodes[x]['weight']
+        value = G.nodes[x][key]
+        rate[value] = rate.get(value, 0) + G.nodes[x]['weight']
+    ## Compute rate by key value
+    for value in rate.keys():
+        rate[value] /= total
+    return rate
+
+
+def pruneConflictingEdges(G, transfectionKey, maxConflict):
+    edges_to_remove = set()
+    ## TODO: remove hard-coding of labels to skip
+    skip = ["conflicting", "uninformative", "None"]
+    for cell in [x for x in G.nodes if G.nodes[x]['type'] == "cell"]:
+        bcs = [x for (_, x) in G.edges(cell) if G.nodes[x][transfectionKey] not in skip]
+        transfection_rate = computeKeyRate(G, bcs, transfectionKey)
+        ## Skip cells with BCs from single transfection or no transfection and those with too high conflict rate
+        if len(transfection_rate) > 1:
+            transfection_majority = max(transfection_rate, key = transfection_rate.get)
+            if (1 - transfection_rate[transfection_majority]) > maxConflict:
+                continue
+            keep = [transfection_majority] + skip
+            edges_to_remove.update([(cell, x) for x in bcs if G.nodes[x][transfectionKey] not in keep])
+    remove_edges(G, edges_to_remove)
+    print("[genotypeClones] pruneConflictingEdges - Removed ", len(edges_to_remove), " total edges", sep="", file=sys.stderr)
+    pruneOrphanNodes(G)
+
+
+def pruneConflictingCells(G, transfectionKey):
+    cells_to_remove = set()
+    ## TODO: remove hard-coding of labels to skip
+    skip = ["conflicting", "uninformative", "None"]
+    for cell in [x for x in G.nodes if G.nodes[x]['type'] == "cell"]:
+        bcs = [x for (_, x) in G.edges(cell) if G.nodes[x][transfectionKey] not in skip]
+        transfections = set([G.nodes[x][transfectionKey] for x in bcs])
+        if len(transfections) > 1:
+            cells_to_remove.add(cell)
+    edges_to_remove = G.edges(cells_to_remove)
+    remove_edges(G, edges_to_remove)
+    G.remove_nodes_from(cells_to_remove)
+    print("[genotypeClones] pruneConflictingCells - Removed ", len(edges_to_remove), " total edges", sep="", file=sys.stderr)
+    print("[genotypeClones] pruneConflictingCells - Removed ", len(cells_to_remove), " total nodes", sep="", file=sys.stderr)
+    pruneOrphanNodes(G)
+
 
 #Break up weakly connected communities
 def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=False, verbose=True, graphOutput=None):
@@ -429,68 +479,6 @@ def toJaccard(G):
     cells = [n for n in G.nodes if G.nodes[n]['type'] == 'cell']
     return nx.bipartite.generic_weighted_projected_graph(G, cells, weight_function=jaccard)
 
-def computeTransfectionRate(G, node, skip, annotation):
-    total = 0
-    count = dict()
-    for e in G.edges(node):
-        transfection = G.nodes[e[1]][annotation]
-        weight = G.edges[e]["weight"]
-        if (transfection in skip):
-            continue
-        if transfection not in count:
-            count[transfection] = 0
-        total += weight
-        count[transfection] += weight
-    for k in count.keys():
-        count[k] /= total
-    return(count)
-
-## Post-processing clean-up - remove conflict cells
-def postCleanUp(G, annotation, maxRate):
-    ##TODO avoid hard coding this annotations
-    skip = ["conflicting", "uninformative", "None"]
-    # Check if all BCs are annotated
-    if not all([annotation in G.nodes[x] for x in G.nodes if G.nodes[x]["type"] == "BC"]):
-        print("[postCleanUp] Some BCs are missing `%s` annotation. Skipping postCleanUp." % annotation, file=sys.stderr)
-        return
-    node_to_remove = []
-    edge_to_remove = []
-    conflicting_clones = 0
-    conflicting_clones_pruned = 0
-    # Go through each clone/connect components
-    for subG in [G.subgraph(c) for c in nx.connected_components(G)]:
-        bcs = [x for x in subG.nodes if subG.nodes[x]['type'] == 'BC']
-        cells = [x for x in subG.nodes if subG.nodes[x]['type'] == 'cell']
-
-        bc_transfection = set([subG.nodes[x][annotation] for x in bcs])
-        bc_transfection = bc_transfection - set(skip)
-        # Skip if clone is not conflicting
-        if len(bc_transfection) <= 1:
-            continue
-        conflicting_clones += 1
-        pruned = False
-        # Classify cells
-        for cell in cells:
-            rate = computeTransfectionRate(subG, cell, skip, annotation)
-            if len(rate) <= 1:
-                continue
-            pruned = True
-            maxTransfection = max(rate, key = rate.get)
-            if (1 - rate[maxTransfection]) <= maxRate:
-                conflict_edges = [ e for e in subG.edges(cell) if subG.nodes[e[1]][annotation] not in [maxTransfection] + skip]
-                edge_to_remove += conflict_edges
-            else:
-                node_to_remove.append(cell)
-        if pruned:
-            conflicting_clones_pruned += 1
-    edge_to_remove += list(G.edges(node_to_remove))
-    remove_edges(G, edge_to_remove)
-    G.remove_nodes_from(node_to_remove)
-    pruneOrphanNodes(G)
-
-    print("[postCleanUp] identified %d conflicting clones and pruned %d of them." % (conflicting_clones, conflicting_clones_pruned), file=sys.stderr)
-    print("[postCleanUp] removed %d edges and %d nodes." % (len(edge_to_remove), len(node_to_remove)), file=sys.stderr)
-
 
 ###Command line operation
 if __name__ == "__main__":
@@ -510,8 +498,9 @@ if __name__ == "__main__":
     parser.add_argument('--minCentrality', action='store', type=float, default=0.2, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
     parser.add_argument('--maxpropreads', action='store', type=int, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
 
-    parser.add_argument("--splitConflictingClones", action="store", type=str, default=None, help="Run a post-processing clean-up and remove conflicting cells based on BCs annotation.")
-    parser.add_argument("--maxConflictRate", action="store", type=float, default=0.0, help="Maximum non-majority transfection UMI rate to remove a conflicting cells")
+    key_arg = parser.add_argument("--transfectionKey", action="store", type=str, default=None, help="Attribute key used to identify BCs transfections")
+    parser.add_argument("--removeMinorityBCsFromConflictingCells", action="store", type=float, default=None, help="For cells with BCs from more than one transfection, removes BCs from minority transfections that together represent at most this proportion of UMIs for that cell. Requires `transfectionKey`")
+    parser.add_argument("--removeConflictingCells", action='store_true', default=False, help="Removes cells linked to BCs from 2+ transfections. It requires `transfectionKey`")
 
     parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
     
@@ -520,6 +509,10 @@ if __name__ == "__main__":
     
     try:
         args = parser.parse_args()
+        if args.removeMinorityBCsFromConflictingCells is not None and args.transfectionKey is None:
+            raise ArgumentError(key_arg, "`--transfectionKey` is required to use `--removeMinorityBCsFromConflictingCells`")
+        if args.transfectionKey is not None and args.removeConflictingCells and args.transfectionKey is None:
+            raise ArgumentError(key_arg, "`--transfectionKey` is required to use `--removeConflictingCells`")
     except argparse.ArgumentError as exc:
         print(exc.message, '\n', exc.argument, file=sys.stderr)
         sys.exit(1)
@@ -571,6 +564,8 @@ if __name__ == "__main__":
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
     
     clones = identifyClones(G)
-    if args.splitConflictingClones is not None:
-        postCleanUp(G, args.splitConflictingClones, args.maxConflictRate)
+    if args.removeMinorityBCsFromConflictingCells is not None:
+        pruneConflictingEdges(G, args.transfectionKey, args.removeMinorityBCsFromConflictingCells)
+    if args.transfectionKey is not None and args.removeConflictingCells:
+        pruneConflictingCells(G, args.transfectionKey)
     writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
