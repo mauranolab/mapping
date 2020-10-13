@@ -221,7 +221,7 @@ def pruneConflictingCells(G, transfectionKey):
         transfections = set([G.nodes[x][transfectionKey] for x in bcs])
         if len(transfections) > 1:
             cells_to_remove.add(cell)
-    edges_to_remove = G.edges(cells_to_remove)
+    edges_to_remove = list(G.edges(cells_to_remove))
     remove_edges(G, edges_to_remove)
     G.remove_nodes_from(cells_to_remove)
     print("[genotypeClones] pruneConflictingCells - Removed ", len(edges_to_remove), " total edges", sep="", file=sys.stderr)
@@ -563,9 +563,10 @@ if __name__ == "__main__":
     #Do twice to break up some of the bigger graphs since we don't iterate internally, 3x doesn't do anything else
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
     
-    clones = identifyClones(G)
     if args.removeMinorityBCsFromConflictingCells is not None:
         pruneConflictingEdges(G, args.transfectionKey, args.removeMinorityBCsFromConflictingCells)
     if args.transfectionKey is not None and args.removeConflictingCells:
         pruneConflictingCells(G, args.transfectionKey)
+
+    clones = identifyClones(G)
     writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
