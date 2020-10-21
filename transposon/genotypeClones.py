@@ -142,6 +142,8 @@ def pruneOrphanNodes(G):
 
 #Remove list of edges, keeping node weights in sync
 def remove_edges(G, edgesToRemove):
+    #Convert to set to speed-up inclusion check
+    edgesToRemove = set(edgesToRemove)
     #Update node weights first
     #Make sure we only subtract umis once per edge, regardless of representation (i.e. node order) in edgesToRemove
     for edge in [e for e in G.edges if e in edgesToRemove]:
