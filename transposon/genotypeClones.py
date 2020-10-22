@@ -242,7 +242,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
         bcs = [x for x in subG.nodes if subG.nodes[x]['type'] == 'BC']
         cells = [x for x in subG.nodes if subG.nodes[x]['type'] == 'cell']
         
-        nodesToPrune = []
+        nodesToPrune = set()
         
         if len(bcs) > 0 and len(cells) > 0:
             precloneid += 1
@@ -277,8 +277,8 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
 #                        subG.nodes[edge[0]]['weight'] -= subG.edges[edge]['weight']
 #                        subG.nodes[edge[1]]['weight'] -= subG.edges[edge]['weight']
                         subG.edges[edge]['color'] = 'darkred'
-                        nodesToPrune.append(edge[0])
-                        nodesToPrune.append(edge[1])
+                        nodesToPrune.add(edge[0])
+                        nodesToPrune.add(edge[1])
                         
                         if verbose:
                             print("[genotypeClones] ", 'preclone-' + str(precloneid), ' ', edge, " weight:", subG.edges[edge]['weight'], ", L:", str(len(leftNodes)), " (", str(len(leftCells)), " cells, ", leftReads, " reads), R:", str(len(rightNodes)), " (", str(len(rightCells)), " cells, ", rightReads, " reads), centrality:", centrality[edge], sep="", file=sys.stderr)
