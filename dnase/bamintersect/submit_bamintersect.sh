@@ -92,6 +92,10 @@ Usage: $(basename "$0") [Options]
            # If unset, reads are paired like [read1 read2], or [read2 read1].
            # Set this option for unpaired reads.
            # The default is to have it unset.
+
+     --normbam {number of reads for normalization}
+           # Used in merge_bamintersect.sh
+           # Optional.  Default us number of reads in bam1
     
      --verbose {no argument}
            # Prints out debugging statements
@@ -126,6 +130,7 @@ long_arg_list=(
     bam2_exclude_flags:
     max_mismatches:
     reads_match
+    normbam
     verbose
     help
 )
@@ -174,6 +179,7 @@ eval set -- "${options}"
     bam2_exclude_flags="3076"
     verbose=False
     max_mismatches=1
+    normbam="NA"
 
 
 # Extract options and their arguments into variables.
@@ -205,6 +211,8 @@ while true ; do
             max_mismatches=$2 ; shift 1 ;;
         --reads_match)
             reads_match="--reads_match" ;;
+        --normbam)
+            normbam=$2 ; shift 1 ;;
         --verbose)
             verbose=True ;;
         -h|--help) usage; exit 0 ;;
@@ -426,7 +434,7 @@ rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/s
 echo
 echo "merge_bamintersect"
 
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${verbose}" > /dev/null
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${verbose} ${normbam}" > /dev/null
 rm -f ${sampleOutdir}/sgeid.bamintersect.${sample_name}
 
 echo

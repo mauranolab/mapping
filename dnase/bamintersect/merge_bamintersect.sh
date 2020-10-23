@@ -16,6 +16,8 @@ INTERMEDIATEDIR=$6
 bam1=$7
 bam2=$8
 verbose=$9
+normbam=${10}
+
 
 ## This function implements verbose output for debugging purposes.
 debug_fa() {
@@ -61,9 +63,15 @@ debug_fa "Finished sorting dsgrep.bed"
 ##########################################################################################################
 ## Create the final output tables.
 
-#Unfiltered
-num_bam1_reads=$(samtools view -c -F 512 ${bam1})
-echo "Normalizing to 10M reads using bam1 read depth of ${num_bam1_reads}"
+if [ "${normbam}" = "NA" ]; then
+    #Unfiltered
+    num_bam1_reads=$(samtools view -c -F 512 ${bam1})
+    echo "Normalizing to 10M reads using bam1 read depth of ${num_bam1_reads}"
+else
+    echo "Using special read normalization value."
+    echo "Normalizing to 10M reads using normbam read depth of ${num_bam1_reads}"
+    num_bam1_reads="${normbam}"
+fi
 
 
 echo "Applying counts_table_mask"
