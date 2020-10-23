@@ -80,12 +80,6 @@ fi
 
 # Get the bam record lines for the read IDs with only one read in Zone 1.
 # Note that we will get two lines for each such read ID: one in Zone 1, and one in Zone 2.
-
-# Old:
-# ${src}/subsetBAM.py --exclude_flags ${exclude_flags} --readNames ${TMPDIR}/Reads.txt ${bamfile} ${TMPDIR}/subsetBAM_output.bam
-#
-# New (should have been changed in the Sep 10 series of changes):
-# "stop making .counts.informative.bed files as their utility is reduced"
 ${src}/subsetBAM.py --exclude_flags ${exclude_flags} --include_readnames ${TMPDIR}/Reads.txt ${bamfile} ${TMPDIR}/subsetBAM_output.bam
 
 # Need to sort & index here so we can filter by region below.
