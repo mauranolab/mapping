@@ -179,8 +179,15 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
                     bamIntersectHold=""
                 fi
                 
+                #Hardcode the bamfile used to determine read counts for normalization
+                if [[ "${mammalianGenome}" == "cegsvectors_LPICE" ]]; then
+                    normbam="--normbam ${sampleOutdir}/${name}.mm10.bam"
+                else
+                    normbam=""
+                fi
+                
                 mkdir -p ${sampleOutdir}/bamintersect/log
-                qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${bamIntersectHold} -o ${sampleOutdir}/bamintersect/log -N submit_bamintersect.${name}.${mammalianAnnotationGenome}_vs_${cegsGenomeShort} "${src}/bamintersect/submit_bamintersect.sh --sample_name ${name} --outdir ${sampleOutdir}/bamintersect --bam1 ${sampleOutdir}/${name}.${mammalianGenome}.bam --bam1genome ${mammalianAnnotationGenome} --bam2 ${sampleOutdir}/${name}.${cegsGenome}.bam --bam2genome ${cegsGenomeShort} --integrationsite ${integrationsite}" > /dev/null
+                qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${bamIntersectHold} -o ${sampleOutdir}/bamintersect/log -N submit_bamintersect.${name}.${mammalianAnnotationGenome}_vs_${cegsGenomeShort} "${src}/bamintersect/submit_bamintersect.sh --sample_name ${name} --outdir ${sampleOutdir}/bamintersect --bam1 ${sampleOutdir}/${name}.${mammalianGenome}.bam --bam1genome ${mammalianAnnotationGenome} --bam2 ${sampleOutdir}/${name}.${cegsGenome}.bam --bam2genome ${cegsGenomeShort} --integrationsite ${integrationsite} ${normbam}" > /dev/null
             fi
         done
     done

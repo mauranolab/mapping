@@ -80,7 +80,7 @@ fi
 
 # Get the bam record lines for the read IDs with only one read in Zone 1.
 # Note that we will get two lines for each such read ID: one in Zone 1, and one in Zone 2.
-${src}/subsetBAM.py --exclude_flags ${exclude_flags} --readNames ${TMPDIR}/Reads.txt ${bamfile} ${TMPDIR}/subsetBAM_output.bam
+${src}/subsetBAM.py --exclude_flags ${exclude_flags} --include_readnames ${TMPDIR}/Reads.txt ${bamfile} ${TMPDIR}/subsetBAM_output.bam
 
 # Need to sort & index here so we can filter by region below.
 samtools sort ${TMPDIR}/subsetBAM_output.bam > ${TMPDIR}/subsetBAM_output_sorted.bam
