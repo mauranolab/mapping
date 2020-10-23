@@ -8,12 +8,12 @@ alias bedmap='bedmap --ec --header --sweep-all'
 alias closest-features='closest-features --header'
 
 ###Parameters
-mappedgenome=$1
-analysisType=$2
-sampleOutdir=$3
-BS=$4
-sampleAnnotation=$5
-src=$6
+mappedgenome=${1}
+analysisType=${2}
+sampleOutdir=${3}
+BS=${4}
+sampleAnnotation=${5}
+src=${6}
 
 
 #processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`

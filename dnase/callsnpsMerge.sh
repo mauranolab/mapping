@@ -24,11 +24,11 @@ alias closest-features='closest-features --header'
 
 
 ###Parameters
-mappedgenome=$1
-analysisType=$2
-sampleOutdir=$3
-sampleAnnotation=$4
-src=$5
+mappedgenome=${1}
+analysisType=${2}
+sampleOutdir=${3}
+sampleAnnotation=${4}
+src=${5}
 
 
 source ${src}/genomeinfo.sh ${mappedgenome}

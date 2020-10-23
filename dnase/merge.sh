@@ -7,11 +7,11 @@ alias bedmap='bedmap --ec --header --sweep-all'
 #alias starch='starch --header'
 alias closest-features='closest-features --header'
 
-analysisType=$1
-sampleOutdir=$2
-BS=$3
-mappedgenome=$4
-src=$5
+analysisType=${1}
+sampleOutdir=${2}
+BS=${3}
+mappedgenome=${4}
+src=${5}
 
 source ${src}/genomeinfo.sh ${mappedgenome}
 

@@ -11,12 +11,12 @@ if [ "$#" -ne 6 ]; then
 fi
 
 
-bam=$1
-dens=$2
-outdir=$3
-mappedgenome=$4
-mappableFile=$5
-chromsizes=$6
+bam=${1}
+dens=${2}
+outdir=${3}
+mappedgenome=${4}
+mappableFile=${5}
+chromsizes=${6}
 
 date
 echo "Running hotspot"

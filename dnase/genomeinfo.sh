@@ -32,7 +32,7 @@ set -u
 #- None of the above seem to use latest hg38 (p12 as of 10/15/18), can't find good inventory of changes
 
 
-mappedgenome=$1
+mappedgenome=${1}
 
 
 #Deal with some of the more complex reference index names
