@@ -238,7 +238,7 @@ if [ ${ierr} = "1" ]; then
 fi
 
 if [ "${normbam}" = "NA" ]; then
-    normbam=${bam1}
+    normbam="${bam1}"
 fi
 
 # End of getopt section.
@@ -264,15 +264,20 @@ mkdir -p ${INTERMEDIATEDIR}/sorted_bams
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
 
-if [ ! -s ${bam1} ]; then
+if [ ! -s "${bam1}" ]; then
     echo "ERROR: Could not find bam1 file ${bam1}"
-    exit 1
+    exit 2
 fi
 
-if [ ! -s ${bam2} ]; then
+if [ ! -s "${bam2}" ]; then
     echo "ERROR: Could not find bam2 file ${bam2}"
-    exit 1
+    exit 3
 fi
+
+if [ ! -s "${normbam}" ]; then
+    echo "ERROR Can not find normalization bam file ${normbam}."
+    exit 4
+ fi
 
 
 ################################################################################################
@@ -437,7 +442,7 @@ rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/s
 echo
 echo "merge_bamintersect"
 
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${verbose} ${normbam}" > /dev/null
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${normbam} ${verbose}" > /dev/null
 rm -f ${sampleOutdir}/sgeid.bamintersect.${sample_name}
 
 echo

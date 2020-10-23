@@ -15,8 +15,8 @@ bam2genome=$5
 INTERMEDIATEDIR=$6
 bam1=$7
 bam2=$8
-verbose=$9
-normbam=$10
+normbam=$9
+verbose=$10
 
 ## This function implements verbose output for debugging purposes.
 debug_fa() {
@@ -61,8 +61,8 @@ debug_fa "Finished sorting dsgrep.bed"
 
 ##########################################################################################################
 ## Create the final output tables.
+echo "Normalizing to 10M reads using read depth from ${normbam}"
 num_bam1_reads=$(samtools view -c -F 512 ${normbam})
-echo "Normalizing to 10M reads using read depth of ${num_bam1_reads} from ${normbam}"
 
 echo "Applying counts_table_mask"
 #Starts out with bam1 coordinates
