@@ -180,7 +180,7 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
                 fi
                 
                 #Hardcode the bamfile used to determine read counts for normalization
-                if [[ "${mammalianGenome}" == "LPICE" ]]; then
+                if [[ "${mammalianGenome}" == "cegsvectors_LPICE" ]]; then
                     normbam="--normbam ${sampleOutdir}/${name}.mm10.bam"
                 else
                     normbam=""
