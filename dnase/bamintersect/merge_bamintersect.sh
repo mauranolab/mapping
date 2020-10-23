@@ -68,9 +68,8 @@ if [ "${normbam}" = "NA" ]; then
     num_bam1_reads=$(samtools view -c -F 512 ${bam1})
     echo "Normalizing to 10M reads using bam1 read depth of ${num_bam1_reads}"
 else
-    echo "Using special read normalization value."
-    echo "Normalizing to 10M reads using normbam read depth of ${num_bam1_reads}"
-    num_bam1_reads="${normbam}"
+    num_bam1_reads=$(samtools view -c -F 512 ${normbam})
+    echo "Normalizing to 10M reads using ${normbam} read depth of ${num_bam1_reads}"
 fi
 
 

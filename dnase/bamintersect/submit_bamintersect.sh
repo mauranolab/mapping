@@ -93,9 +93,9 @@ Usage: $(basename "$0") [Options]
            # Set this option for unpaired reads.
            # The default is to have it unset.
 
-     --normbam {number of reads for normalization}
+     --normbam {bam file which will be used to count reads for normalization}
            # Used in merge_bamintersect.sh
-           # Optional.  Default us number of reads in bam1
+           # Optional.  Default is to use the bam1 file.
     
      --verbose {no argument}
            # Prints out debugging statements
