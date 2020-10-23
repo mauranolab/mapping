@@ -92,10 +92,9 @@ Usage: $(basename "$0") [Options]
            # If unset, reads are paired like [read1 read2], or [read2 read1].
            # Set this option for unpaired reads.
            # The default is to have it unset.
-
+    
      --normbam {bam file which will be used to count reads for normalization}
-           # Used in merge_bamintersect.sh
-           # Optional.  Default is to use the bam1 file.
+           # Optional, default is to use the bam1 file.
     
      --verbose {no argument}
            # Prints out debugging statements
