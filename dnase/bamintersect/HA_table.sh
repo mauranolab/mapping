@@ -10,13 +10,13 @@ set -eu -o pipefail
 #     runHA=AB indicates "Way 2" Zone 1 is within a cegsvector assembly, and zone 2 is within the associated cegsvector assembly backbone
 ######################################################################
 
-runHA=$1             # can equal HA ("Homology Arms") or AB ("Assembly Backbone")
-bamfile=$2           # This bam file needs to have an associated bai file.
-sampleOutdir=$3
-sample_name=$4
-HAfile=$5
-src=$6
-exclude_flags=$7
+runHA=${1}             # can equal HA ("Homology Arms") or AB ("Assembly Backbone")
+bamfile=${2}           # This bam file needs to have an associated bai file.
+sampleOutdir=${3}
+sample_name=${4}
+HAfile=${5}
+src=${6}
+exclude_flags=${7}
 
 ######################################################################
 
