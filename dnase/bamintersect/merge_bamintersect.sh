@@ -18,7 +18,6 @@ bam2=$8
 verbose=$9
 normbam=${10}
 
-
 ## This function implements verbose output for debugging purposes.
 debug_fa() {
     if [ ${verbose} = "True" ]; then
