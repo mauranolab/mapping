@@ -42,12 +42,12 @@ runBamIntersect=1
 #mergeThreads=1
 
 
-genomesToMap=$1
-analysisType=$2
-samplePrefix=$3
-BS=$4
+genomesToMap=${1}
+analysisType=${2}
+samplePrefix=${3}
+BS=${4}
 if [ "$#" -ge 5 ]; then
-    sampleAnnotation=$5
+    sampleAnnotation=${5}
 else
     #Dummy value to preserve argument position
     sampleAnnotation="NULL"

@@ -18,11 +18,11 @@ alias bedmap='bedmap --ec --header --sweep-all'
 alias closest-features='closest-features --header'
 
 
-genomesToMap=$1
-analysisType=$2
-sampleOutdir=$3
-BS=$4
-src=$5
+genomesToMap=${1}
+analysisType=${2}
+sampleOutdir=${3}
+BS=${4}
+src=${5}
 
 shift
 shift

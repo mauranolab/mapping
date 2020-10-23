@@ -2,8 +2,8 @@
 set -eu -o pipefail
 
 
-mappedgenome=$1
-bait=$2
+mappedgenome=${1}
+bait=${2}
 
 shift
 shift

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ "$#" -ge 1 ]; then
-    dir="$1"
+    dir="${1}"
 else
     dir="."
 fi
