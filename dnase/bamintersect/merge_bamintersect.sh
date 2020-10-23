@@ -62,16 +62,8 @@ debug_fa "Finished sorting dsgrep.bed"
 
 ##########################################################################################################
 ## Create the final output tables.
-
-if [ "${normbam}" = "NA" ]; then
-    #Unfiltered
-    num_bam1_reads=$(samtools view -c -F 512 ${bam1})
-    echo "Normalizing to 10M reads using bam1 read depth of ${num_bam1_reads}"
-else
-    num_bam1_reads=$(samtools view -c -F 512 ${normbam})
-    echo "Normalizing to 10M reads using ${normbam} read depth of ${num_bam1_reads}"
-fi
-
+num_bam1_reads=$(samtools view -c -F 512 ${normbam})
+echo "Normalizing to 10M reads using ${normbam} read depth of ${num_bam1_reads}"
 
 echo "Applying counts_table_mask"
 #Starts out with bam1 coordinates
