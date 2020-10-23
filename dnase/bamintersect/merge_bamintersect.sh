@@ -62,7 +62,7 @@ debug_fa "Finished sorting dsgrep.bed"
 ##########################################################################################################
 ## Create the final output tables.
 num_bam1_reads=$(samtools view -c -F 512 ${normbam})
-echo "Normalizing to 10M reads using ${normbam} read depth of ${num_bam1_reads}"
+echo "Normalizing to 10M reads using read depth of ${num_bam1_reads} from ${normbam}"
 
 echo "Applying counts_table_mask"
 #Starts out with bam1 coordinates
