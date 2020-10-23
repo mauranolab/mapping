@@ -7,16 +7,16 @@ alias bedmap='bedmap --ec --header --sweep-all'
 #alias starch='starch --header'
 alias closest-features='closest-features --header'
 
-sampleOutdir=$1
-src=$2
-sample_name=$3
-bam1genome=$4
-bam2genome=$5
-INTERMEDIATEDIR=$6
-bam1=$7
-bam2=$8
-normbam=$9
-verbose=$10
+sampleOutdir=${1}
+src=${2}
+sample_name=${3}
+bam1genome=${4}
+bam2genome=${5}
+INTERMEDIATEDIR=${6}
+bam1=${7}
+bam2=${8}
+normbam=${9}
+verbose=${10}
 
 ## This function implements verbose output for debugging purposes.
 debug_fa() {

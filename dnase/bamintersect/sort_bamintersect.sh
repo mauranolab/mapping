@@ -4,14 +4,14 @@ set -eu -o pipefail
 ########################################################
 ## Variables passed in via sbatch export.
 ########################################################
-src=$1
-INTERMEDIATEDIR=$2
-sampleOutdir=$3
-sample_name=$4
-BAM=$5
-BAM_N=$6
-BAM_K=$7 # Required. Use "0" if necessary.
-BAM_E=$8 # Required. Use "0" if necessary.
+src=${1}
+INTERMEDIATEDIR=${2}
+sampleOutdir=${3}
+sample_name=${4}
+BAM=${5}
+BAM_N=${6}
+BAM_K=${7} # Required. Use "0" if necessary.
+BAM_E=${8} # Required. Use "0" if necessary.
 
 
 jobid=$SLURM_ARRAY_TASK_ID

@@ -25,12 +25,12 @@ module load miller/5.4.0
 #
 #####################################################################################
 
-OUTBASE=$1
-sample_name=$2
-bam1genome=$3
-bam2genome=$4
-bamintersectBED12=$5
-num_bam1_reads=$6
+OUTBASE=${1}
+sample_name=${2}
+bam1genome=${3}
+bam2genome=${4}
+bamintersectBED12=${5}
+num_bam1_reads=${6}
 
 echo "[counts_table] Making counts_table from ${bamintersectBED12}; will output to ${OUTBASE}.counts.txt"
 
