@@ -130,7 +130,7 @@ long_arg_list=(
     bam2_exclude_flags:
     max_mismatches:
     reads_match
-    normbam
+    normbam:
     verbose
     help
 )
