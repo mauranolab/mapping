@@ -238,6 +238,10 @@ if [ ${ierr} = "1" ]; then
     exit 1
 fi
 
+if [ "${normbam}" = "NA" ]; then
+    normbam=${bam1}
+fi
+
 # End of getopt section.
 ################################################
 sample_name="${sample_name}.${bam1genome}_vs_${bam2genome}"
