@@ -180,15 +180,16 @@ def pruneEdgesLowPropOfReads(G, minPropOfBCReads, minPropOfCellReads):
     print("[genotypeClones] pruneEdgesLowPropOfReads - Removed ", len(edgesToRemove), " total edges", sep="", file=sys.stderr)
     pruneOrphanNodes(G)
 
-# Within a set of nodes, return a dictionary mapping key attribute values to the proportion of total UMIs each attribute value represent
-def computeKeyRate(G, nodes, key):
+# Within a set of destiny nodes and a source node, return a dictionary mapping key attribute values to the proportion of total UMIs each attribute value represent
+def computeKeyRate(G, source, dest, key):
     total = 0
     rate = dict()
     ## Count UMI per key value
-    for x in nodes:
-        total += G.nodes[x]['weight']
+    for x in dest:
         value = G.nodes[x][key]
-        rate[value] = rate.get(value, 0) + G.nodes[x]['weight']
+        weight = G.edges[(source, x)]["weight"]
+        total += weight
+        rate[value] = rate.get(value, 0) + weight
     ## Compute rate by key value
     for value in rate.keys():
         rate[value] /= total
@@ -201,7 +202,7 @@ def pruneConflictingEdges(G, transfectionKey, maxConflict):
     skip = ["conflicting", "uninformative", "None"]
     for cell in [x for x in G.nodes if G.nodes[x]['type'] == "cell"]:
         bcs = [x for (_, x) in G.edges(cell) if G.nodes[x][transfectionKey] not in skip]
-        transfection_rate = computeKeyRate(G, bcs, transfectionKey)
+        transfection_rate = computeKeyRate(G, cell, bcs, transfectionKey)
         ## Skip cells with BCs from single transfection or no transfection and those with too high conflict rate
         if len(transfection_rate) > 1:
             transfection_majority = max(transfection_rate, key = transfection_rate.get)
