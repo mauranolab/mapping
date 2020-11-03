@@ -121,7 +121,7 @@ def filterNodesFromFile(G, filename, keep=True):
         
         print("[genotypeClones] filterNodesFromFile - ", "whitelist " if keep else "blacklist ", filename, " with ", len(mask_data), " entries, matching ", nodesPresentInGraph, " nodes. Removing ", len(nodesToRemove), " nodes (", nbcs, " BCs and ", ncells, " cells).", sep="", file=sys.stderr)
         
-        remove_edges(G, [edge for edge in G.edges if edge[0] in nodesToRemove or edge[1] in nodesToRemove])
+        remove_edges(G, G.edges(nodesToRemove))
         G.remove_nodes_from(nodesToRemove)
         
         summarizeGraph(G)
