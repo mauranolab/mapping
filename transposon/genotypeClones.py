@@ -13,7 +13,6 @@ import pickle
 import networkx as nx
 from networkx import drawing
 from networkx.drawing.nx_pylab import draw_networkx
-from networkx import edge_betweenness_centrality as betweenness
 
 import matplotlib
 matplotlib.use('agg')
@@ -234,6 +233,12 @@ def pruneConflictingCells(G, transfectionKey):
     pruneOrphanNodes(G)
 
 
+# Compute centrality of bridge edges given the number of nodes on left and right side
+def bridgeCentrality(left, right):
+    n = left + right
+    return (left * right) / (n * (n-1) / 2)
+    
+
 #Break up weakly connected communities
 def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=False, verbose=True, graphOutput=None):
     precloneid = 0
@@ -246,11 +251,8 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
         cells = [x for x in subG.nodes if subG.nodes[x]['type'] == 'cell']
         
         nodesToPrune = set()
-        
         if len(bcs) > 0 and len(cells) > 0:
             precloneid += 1
-            
-            centrality = betweenness(subG, weight='weight')
             #Start with edges with lowest UMIs
             for edge in sorted(nx.bridges(subG), key=lambda e: subG.edges[e]['weight'], reverse=False):
                 subGedgeless = subG.copy()
@@ -270,9 +272,10 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
                 #Don't create orphan components with no cells or BCs
                 #Make sure we don't remove both edges from a BC node by not pruning >1 edge from any given node
                 if edge[0] not in nodesToPrune and edge[1] not in nodesToPrune and len(leftCells) >= 1 and len(rightCells) >= 1 and len(leftBCs) >= 1 and len(rightBCs) >= 1:
+                    centrality = bridgeCentrality(len(leftNodes), len(rightNodes))
                     #Separate if for tunable filters to facilitate tuning
                     #Identify communities by removing bridge edges based centrality metric.
-                    if centrality[edge] > minCentrality and G.edges[edge]['weight'] / min(leftReads, rightReads) <= maxPropReads:
+                    if centrality > minCentrality and G.edges[edge]['weight'] / min(leftReads, rightReads) <= maxPropReads:
                         nCommunities += 1
                         countsremoved += subG.edges[edge]['weight']
                         edgesToDrop.append(edge)
@@ -284,7 +287,7 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
                         nodesToPrune.add(edge[1])
                         
                         if verbose:
-                            print("[genotypeClones] ", 'preclone-' + str(precloneid), ' ', edge, " weight:", subG.edges[edge]['weight'], ", L:", str(len(leftNodes)), " (", str(len(leftCells)), " cells, ", leftReads, " reads), R:", str(len(rightNodes)), " (", str(len(rightCells)), " cells, ", rightReads, " reads), centrality:", centrality[edge], sep="", file=sys.stderr)
+                            print("[genotypeClones] ", 'preclone-' + str(precloneid), ' ', edge, " weight:", subG.edges[edge]['weight'], ", L:", str(len(leftNodes)), " (", str(len(leftCells)), " cells, ", leftReads, " reads), R:", str(len(rightNodes)), " (", str(len(rightCells)), " cells, ", rightReads, " reads), centrality:", centrality, sep="", file=sys.stderr)
             
             ###Never implemented Louvain communities (did ok but tended to split up smaller graphs)
             #pip install --upgrade --user python-louvain
