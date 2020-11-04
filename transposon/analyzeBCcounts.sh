@@ -217,7 +217,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     #Sort on BC and count reads perBC+CellBC
     sort -k1,1 -k3,3 |
     #Format: BC, cellBC, n
-    cut -f1,3 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, $3, $1}' > $TMPDIR/${sample}.barcode.counts.byCell.unfiltered.txt
+    cut -f1,3 | sort | uniq -c | awk 'BEGIN {OFS="\t"} {print $2, ($3 ~ /_\d+$/ ? $3 : $3 "_1"), $1}' > $TMPDIR/${sample}.barcode.counts.byCell.unfiltered.txt
     
     ###Filter and report statistics
     #TODO do more precise filtering of 10x whitelist BCs. we do miss some by not allowing mismatches but it's pretty few reads
