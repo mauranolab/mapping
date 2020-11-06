@@ -216,20 +216,25 @@ def pruneConflictingEdges(G, transfectionKey, maxConflict):
     pruneOrphanNodes(G)
 
 
-def pruneConflictingCells(G, transfectionKey):
-    cells_to_remove = set()
+def pruneConflictingNodes(G, transfectionKey, type = "BC"):
+    nodes_to_remove = set()
     ## TODO: remove hard-coding of labels to skip
-    skip = ["conflicting", "uninformative", "None"]
-    for cell in [x for x in G.nodes if G.nodes[x]['type'] == "cell"]:
-        bcs = [x for (_, x) in G.edges(cell) if G.nodes[x][transfectionKey] not in skip]
-        transfections = set([G.nodes[x][transfectionKey] for x in bcs])
-        if len(transfections) > 1:
-            cells_to_remove.add(cell)
-    edges_to_remove = list(G.edges(cells_to_remove))
-    remove_edges(G, edges_to_remove)
-    G.remove_nodes_from(cells_to_remove)
-    print("[genotypeClones] pruneConflictingCells - Removed ", len(edges_to_remove), " total edges", sep="", file=sys.stderr)
-    print("[genotypeClones] pruneConflictingCells - Removed ", len(cells_to_remove), " total nodes", sep="", file=sys.stderr)
+    skip = set(["conflicting", "uninformative", "None"])
+    for node in [x for x in G.nodes if G.nodes[x]["type"] == type]:
+        neighborhood = set()
+        if type == "BC":
+            for cell in G.neighbors(node):
+                neighborhood.update(G.neighbors(cell))
+        else:
+            neighborhood.update(G.neighbors(node))
+        neighborhood_transfection = set([G.nodes[x][transfectionKey] for x in neighborhood]) - skip
+        if len(neighborhood_transfection) > 1:
+            nodes_to_remove.add(bc)
+    edges_to_remove = list(G.edges(nodes_to_remove))
+    remove_edges(G, nodes_to_remove)
+    G.remove_nodes_from(nodes_to_remove)
+    print("[genotypeClones] pruneConflictingNodes - Removed ", len(edges_to_remove), " edges", sep="", file=sys.stderr)
+    print("[genotypeClones] pruneConflictingNodes - Removed ", len(nodes_to_remove), " nodes", sep="", file=sys.stderr)
     pruneOrphanNodes(G)
 
 
@@ -509,6 +514,7 @@ if __name__ == "__main__":
     key_arg = parser.add_argument("--transfectionKey", action="store", type=str, default=None, help="Attribute key used to identify BCs transfections")
     parser.add_argument("--removeMinorityBCsFromConflictingCells", action="store", type=float, default=None, help="For cells with BCs from more than one transfection, removes BCs from minority transfections that together represent at most this proportion of UMIs for that cell. Requires `transfectionKey`")
     parser.add_argument("--removeConflictingCells", action='store_true', default=False, help="Removes cells linked to BCs from 2+ transfections. It requires `transfectionKey`")
+    parser.add_argument("--removeConflictingBCs", action='store_true', default=False, help="Removes BCs linked to cells from 2+ transfections. It requires `transfectionKey`")
 
     parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
     
@@ -552,8 +558,13 @@ if __name__ == "__main__":
         printGraph_kwds = { 'node_color': 'transfection', 'node_color_dict': {'cellBC': 'black', 'conflicting': 'yellow', 'T0215A': 'orange', 'T0216B': 'purple', 'T0217B': 'green', 'T0219A': 'orange', 'T0220B': 'purple', 'T0221B': 'green', 'T0222B': 'red'} }
     else:
         printGraph_kwds = {}
-
-
+    
+    if args.removeMinorityBCsFromConflictingCells is not None:
+        pruneConflictingEdges(G, args.transfectionKey, args.removeMinorityBCsFromConflictingCells)
+    if args.transfectionKey is not None and args.removeConflictingCells:
+        pruneConflictingCells(G, args.transfectionKey)
+    if args.transfectionKey is not None and args.removeConflictingBCs:
+        pruneConflictingBCs(G, args.transfectionKey)
     
     #This filter seems more stringent on the individual libraries than the aggregate one
     pruneEdgesLowPropOfReads(G, minPropOfBCReads=args.minPropOfBCReads, minPropOfCellReads=args.minPropOfCellReads)
@@ -571,10 +582,5 @@ if __name__ == "__main__":
     #Do twice to break up some of the bigger graphs since we don't iterate internally, 3x doesn't do anything else
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
     
-    if args.removeMinorityBCsFromConflictingCells is not None:
-        pruneConflictingEdges(G, args.transfectionKey, args.removeMinorityBCsFromConflictingCells)
-    if args.transfectionKey is not None and args.removeConflictingCells:
-        pruneConflictingCells(G, args.transfectionKey)
-
     clones = identifyClones(G)
     writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
