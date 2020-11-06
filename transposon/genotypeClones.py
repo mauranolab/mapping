@@ -200,7 +200,7 @@ def computeKeyRate(G, source, dest, key):
 def pruneConflictingEdges(G, transfectionKey, maxConflict):
     edges_to_remove = set()
     ## TODO: remove hard-coding of labels to skip
-    skip = ["conflicting", "uninformative", "None"]
+    skip = set(["conflicting", "uninformative", "None"])
     for cell in [x for x in G.nodes if G.nodes[x]['type'] == "cell"]:
         bcs = [x for (_, x) in G.edges(cell) if G.nodes[x][transfectionKey] not in skip]
         transfection_rate = computeKeyRate(G, cell, bcs, transfectionKey)
@@ -209,7 +209,7 @@ def pruneConflictingEdges(G, transfectionKey, maxConflict):
             transfection_majority = max(transfection_rate, key = transfection_rate.get)
             if (1 - transfection_rate[transfection_majority]) > maxConflict:
                 continue
-            keep = [transfection_majority] + skip
+            keep = set([transfection_majority]) | skip
             edges_to_remove.update([(cell, x) for x in bcs if G.nodes[x][transfectionKey] not in keep])
     remove_edges(G, edges_to_remove)
     print("[genotypeClones] pruneConflictingEdges - Removed ", len(edges_to_remove), " total edges", sep="", file=sys.stderr)
