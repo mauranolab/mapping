@@ -562,9 +562,9 @@ if __name__ == "__main__":
     if args.removeMinorityBCsFromConflictingCells is not None:
         pruneConflictingEdges(G, args.transfectionKey, args.removeMinorityBCsFromConflictingCells)
     if args.transfectionKey is not None and args.removeConflictingCells:
-        pruneConflictingCells(G, args.transfectionKey)
+        pruneConflictingNodes(G, args.transfectionKey, type = "cell")
     if args.transfectionKey is not None and args.removeConflictingBCs:
-        pruneConflictingBCs(G, args.transfectionKey)
+        pruneConflictingNodes(G, args.transfectionKey, type = "BC")
     
     #This filter seems more stringent on the individual libraries than the aggregate one
     pruneEdgesLowPropOfReads(G, minPropOfBCReads=args.minPropOfBCReads, minPropOfCellReads=args.minPropOfCellReads)
