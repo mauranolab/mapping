@@ -229,9 +229,9 @@ def pruneConflictingNodes(G, transfectionKey, type = "BC"):
             neighborhood.update(G.neighbors(node))
         neighborhood_transfection = set([G.nodes[x][transfectionKey] for x in neighborhood]) - skip
         if len(neighborhood_transfection) > 1:
-            nodes_to_remove.add(bc)
+            nodes_to_remove.add(node)
     edges_to_remove = list(G.edges(nodes_to_remove))
-    remove_edges(G, nodes_to_remove)
+    remove_edges(G, edges_to_remove)
     G.remove_nodes_from(nodes_to_remove)
     print("[genotypeClones] pruneConflictingNodes - Removed ", len(edges_to_remove), " edges", sep="", file=sys.stderr)
     print("[genotypeClones] pruneConflictingNodes - Removed ", len(nodes_to_remove), " nodes", sep="", file=sys.stderr)
