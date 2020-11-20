@@ -103,6 +103,12 @@ cegsvectors*)
     referencefasta=/vol/cegs/sequences/${bwagenome}/${bwagenome}.fa.gz
     dbsnpvcf=/dev/null
     ;;
+t2t)
+    bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
+    ploidy="--ploidy GRCh38"
+    referencefasta=/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
+    dbsnpvcf=/dev/null
+    ;;
 *)
     echo "ERROR: Don't recognize genome ${mappedgenome}";
     exit 1;;
