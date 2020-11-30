@@ -29,6 +29,7 @@ analysisType=${2}
 sampleOutdir=${3}
 sampleAnnotation=${4}
 src=${5}
+analyzedReads=${6}
 
 
 source ${src}/genomeinfo.sh ${mappedgenome}
@@ -77,12 +78,17 @@ rm -f ${covfiles}
 
 unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch | cut -f1-3,5 > $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph
 
-#Fix problems with reads running off end of chromosome
-bedClip $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph ${chromsizes} $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph
+if [[ "${analyzedReads}" == 0 ]]; then
+    bedtools genomecov -bg -i <(echo -e "fakeChrom\t0\t1\tfakeReadID\t0\t+") -g <(echo -e "fakeChrom\t10") > $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph
+    bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph <(echo -e "fakeChrom\t10") ${sampleOutdir}/${name}.${mappedgenome}.coverage.bw
+else
+    #Fix problems with reads running off end of chromosome
+    bedClip $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph ${chromsizes} $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph
 
-#Kent tools can't use STDIN
-#gets error if run on empty file: needLargeMem: trying to allocate 0 bytes (limit: 100000000000)
-bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.coverage.bw
+    #Kent tools can't use STDIN
+    #gets error if run on empty file: needLargeMem: trying to allocate 0 bytes (limit: 100000000000)
+    bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.coverage.bw
+fi
 
 
 echo
@@ -96,13 +102,17 @@ rm -f ${allreadscovfiles}
 
 unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.starch | cut -f1-3,5 > $TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph
 
-#Fix problems with reads running off end of chromosome
-bedClip $TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph ${chromsizes} $TMPDIR/${name}.${mappedgenome}.coverage.allreads.clipped.bedGraph
+if [[ "${analyzedReads}" == 0 ]]; then
+    bedtools genomecov -bg -i <(echo -e "fakeChrom\t0\t1\tfakeReadID\t0\t+") -g <(echo -e "fakeChrom\t10") > $TMPDIR/${name}.${mappedgenome}.coverage.allreads.clipped.bedGraph
+    bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph <(echo -e "fakeChrom\t10") ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.bw
+else
+    #Fix problems with reads running off end of chromosome
+    bedClip $TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph ${chromsizes} $TMPDIR/${name}.${mappedgenome}.coverage.allreads.clipped.bedGraph
 
-#Kent tools can't use STDIN
-#gets error if run on empty file: needLargeMem: trying to allocate 0 bytes (limit: 100000000000)
-bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.coverage.allreads.clipped.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.bw
-
+    #Kent tools can't use STDIN
+    #gets error if run on empty file: needLargeMem: trying to allocate 0 bytes (limit: 100000000000)
+    bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.coverage.allreads.clipped.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.bw
+fi
 
 #TODO would going through wig instead of bedGraph save space here?
 echo
