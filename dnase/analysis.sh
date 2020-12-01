@@ -15,6 +15,7 @@ BS=${4}
 sampleAnnotation=${5}
 src=${6}
 
+
 #processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
@@ -319,7 +320,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
     END {if(chunksize>0) {chunknum+=1; print prefix chunknum, chroms}}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
     n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
     qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
-    qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src} ${analyzedReads}" | perl -pe 's/[^\d].+$//g;'
+    qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;'
     rm -f ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
     
     
