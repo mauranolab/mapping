@@ -426,14 +426,14 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
 
         #Avoid bedGraphToBigWig below failure with 0 reads, "needLargeMem: trying to allocate 0 bytes (limit: 100000000000)"
         if [[ "${analyzedReads}" == 0 ]]; then
-            bedtools genomecov -bg -i <(echo -e "fakeChrom\t0\t1\tfakeReadID\t0\t+") -g <(echo -e "fakeChrom\t10") > $TMPDIR/${name}.${mappedgenome}.perBase.clipped.bedGraph
-            bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.perBase.clipped.bedGraph <(echo -e "fakeChrom\t10") ${sampleOutdir}/${name}.${mappedgenome}.perBase.bw
+            bedgraph_chrom=$(head -n 1 ${chromsizes} | cut -f1)
+            echo -e "${bedgraph_chrom}\t0\t0\t0" > $TMPDIR/${name}.${mappedgenome}.perBase.clipped.bedGraph
         else
             #Fix problems with reads running off end of chromosome
             bedClip $TMPDIR/${name}.${mappedgenome}.perBase.bedGraph ${chromsizes} $TMPDIR/${name}.${mappedgenome}.perBase.clipped.bedGraph
-            #Kent tools can't use STDIN
-            bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.perBase.clipped.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.perBase.bw
         fi
+        #Kent tools can't use STDIN
+        bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.perBase.clipped.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.perBase.bw
         
         echo "track name=${ucscName}-cuts description=\"${ucscTrackDescriptionDataType} Cut counts ${name} (${analyzedReadsM}M analyzed reads)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.perBase.bw"
         
