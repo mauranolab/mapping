@@ -405,6 +405,11 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
     if [ -s "$TMPDIR/${name}.${mappedgenome}.density.wig" ]; then
         #Kent tools can't use STDIN
         wigToBigWig $TMPDIR/${name}.${mappedgenome}.density.wig ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.density.bw
+    else
+        # empty wig input
+        bedgraph_chrom=$(head -n 1 ${chromsizes} | cut -f1)
+        echo -e "${bedgraph_chrom}\t0\t0\t0" > $TMPDIR/${name}.${mappedgenome}.density.bedGraph
+        bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.density.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.density.bw
     fi
     
     echo "track name=${ucscName}-dens description=\"${ucscTrackDescriptionDataType} Density ${name} (${analyzedReadsM}M analyzed reads; normalized to 1M)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.density.bw"
