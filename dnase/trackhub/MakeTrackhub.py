@@ -400,8 +400,7 @@ for assay_type in assays:
             )
             Reads_view.add_tracks(track)
             
-            #Avoid making entries for tracks with no reads (since there are no .bw/.bb files); the bam file still shows up in case there is something there, and the samples still show up in the summary table at bottom in UCSC browser
-            if curSample['analyzed_reads']!="NA" and int(curSample['analyzed_reads'])>0:
+            if curSample['analyzed_reads']!="NA":
                 #Coverage_view
                 if assay_type in ["DNA", "DNA Capture", "Amplicon"]:
                     if Coverage_view is None:

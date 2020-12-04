@@ -77,8 +77,14 @@ rm -f ${covfiles}
 
 unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch | cut -f1-3,5 > $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph
 
-#Fix problems with reads running off end of chromosome
-bedClip $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph ${chromsizes} $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph
+if [ ! -s "$TMPDIR/${name}.${mappedgenome}.coverage.bedGraph" ]; then
+    # The coverage.bedGraph file is empty
+    bedgraph_chrom=$(head -n 1 ${chromsizes} | cut -f1)
+    echo -e "${bedgraph_chrom}\t0\t0\t0" > $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph
+else
+    #Fix problems with reads running off end of chromosome
+    bedClip $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph ${chromsizes} $TMPDIR/${name}.${mappedgenome}.coverage.clipped.bedGraph
+fi
 
 #Kent tools can't use STDIN
 #gets error if run on empty file: needLargeMem: trying to allocate 0 bytes (limit: 100000000000)
@@ -96,8 +102,14 @@ rm -f ${allreadscovfiles}
 
 unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.starch | cut -f1-3,5 > $TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph
 
-#Fix problems with reads running off end of chromosome
-bedClip $TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph ${chromsizes} $TMPDIR/${name}.${mappedgenome}.coverage.allreads.clipped.bedGraph
+if [ ! -s "$TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph" ]; then
+    # The coverage.allreads.bedGraph file is empty
+    bedgraph_chrom=$(head -n 1 ${chromsizes} | cut -f1)
+    echo -e "${bedgraph_chrom}\t0\t0\t0" > $TMPDIR/${name}.${mappedgenome}.coverage.allreads.clipped.bedGraph
+else
+    #Fix problems with reads running off end of chromosome
+    bedClip $TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph ${chromsizes} $TMPDIR/${name}.${mappedgenome}.coverage.allreads.clipped.bedGraph
+fi
 
 #Kent tools can't use STDIN
 #gets error if run on empty file: needLargeMem: trying to allocate 0 bytes (limit: 100000000000)
