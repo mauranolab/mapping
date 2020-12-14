@@ -72,10 +72,15 @@ date
 #NB: for hg38_full, many jobs will not generate coverage tracks
 covfiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.starch"`
 covfiles=$(getFilesToMerge ${covfiles})
-starchcat ${covfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch
-rm -f ${covfiles}
 
-unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch | cut -f1-3,5 > $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph
+if [ "${covfiles}" = "" ]; then
+    touch ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch
+    touch $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph
+else
+    starchcat ${covfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch
+    unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.starch | cut -f1-3,5 > $TMPDIR/${name}.${mappedgenome}.coverage.bedGraph
+fi
+rm -f ${covfiles}
 
 if [ ! -s "$TMPDIR/${name}.${mappedgenome}.coverage.bedGraph" ]; then
     # The coverage.bedGraph file is empty
@@ -97,10 +102,16 @@ date
 #NB: for hg38_full, many jobs will not generate coverage tracks
 allreadscovfiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.allreads.starch"`
 allreadscovfiles=$(getFilesToMerge ${allreadscovfiles})
-starchcat ${allreadscovfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.starch
+
+if [ "${allreadscovfiles}" = "" ]; then
+    touch ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.starch
+    touch $TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph
+else
+    starchcat ${allreadscovfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.starch
+    unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.starch | cut -f1-3,5 > $TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph
+fi
 rm -f ${allreadscovfiles}
 
-unstarch ${sampleOutdir}/${name}.${mappedgenome}.coverage.allreads.starch | cut -f1-3,5 > $TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph
 
 if [ ! -s "$TMPDIR/${name}.${mappedgenome}.coverage.allreads.bedGraph" ]; then
     # The coverage.allreads.bedGraph file is empty
@@ -123,7 +134,12 @@ date
 #NB: for hg38_full, many jobs will not generate coverage tracks
 windowedcovfiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.coverage.binned.starch"`
 windowedcovfiles=$(getFilesToMerge ${windowedcovfiles})
-starchcat ${windowedcovfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.binned.starch
+
+if [ "${windowedcovfiles}" = "" ]; then
+    touch ${sampleOutdir}/${name}.${mappedgenome}.coverage.binned.starch
+else
+    starchcat ${windowedcovfiles} > ${sampleOutdir}/${name}.${mappedgenome}.coverage.binned.starch
+fi
 rm -f ${windowedcovfiles}
 
 
@@ -133,73 +149,89 @@ date
 fullbcffiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.bcf"`
 fullbcffiles=$(getFilesToMerge ${fullbcffiles})
 numfullbcffiles=`echo "${fullbcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
-case "${numfullbcffiles}" in
-0)
-    ;;
-1)
-    #bcftools concat fails when there is only one file
-    cp ${fullbcffiles} ${sampleOutdir}/${name}.${mappedgenome}.bcf;;
-*)
-    bcftools concat --threads $NSLOTS --output-type b ${fullbcffiles} > ${sampleOutdir}/${name}.${mappedgenome}.bcf;;
-esac
-bcftools index ${sampleOutdir}/${name}.${mappedgenome}.bcf
-rm -f ${fullbcffiles}
 
+if [ "${fullbcffiles}" = "" ]; then
+    # Fake bb file
+    chrom=$(head -n 1 ${chromsizes} | cut -f1)
+    echo -e "${chrom}\t0\t0\t0" > $TMPDIR/tmp.bed
+    bedToBigBed -tab -type=bed4 $TMPDIR/tmp.bed ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.genotypes.bb
 
-fltvcffiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.filtered.vcf.gz"`
-fltvcffiles=$(getFilesToMerge ${fltvcffiles})
-numfltvcffiles=`echo "${fltvcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
-case "${numfltvcffiles}" in
-0)
-    ;;
-1)
-    #bcftools concat fails when there is only one file
-    cp ${fltvcffiles} ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz;;
-*)
-    bcftools concat --output-type v ${fltvcffiles} | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz;;
-esac
+    # Fake vcf file
+    echo "##fileformat=VCFv4.2" > ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf
+    echo -e "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tFakeSampleID" >> ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf
+    bgzip -f ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf
+    bcftools index ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+    tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+else
+    case "${numfullbcffiles}" in
+    0)
+        ;;
+    1)
+        #bcftools concat fails when there is only one file
+        # numfullbcffiles equals 1, even when fullbcffiles=""
+        cp ${fullbcffiles} ${sampleOutdir}/${name}.${mappedgenome}.bcf;;
+    *)
+        bcftools concat --threads $NSLOTS --output-type b ${fullbcffiles} > ${sampleOutdir}/${name}.${mappedgenome}.bcf;;
+    esac
 
-bcftools index ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
-tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
-rm -f ${fltvcffiles}
-
-
-echo
-echo "Parsing VCF track"
-date
-#No additional filtering, just extract genotypes to starch
-#NB repeated from perChrom analysis
-minSNPQ=0
-#
-minTotalDP=0
-minAlleleDP=0
-
-${src}/parseSamtoolsGenotypesToBedFiles.pl ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz $TMPDIR/variants ${minSNPQ} ${minTotalDP} ${minAlleleDP}
-
-nvcfsamples=`bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz | wc -l`
-#rsids
-for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz`; do
-    if [[ "${nvcfsamples}" = 1 ]]; then
-        vcfsamplename=""
-    else
-        #for multisample calling, include the sample name in the variants file name
-        vcfsamplename=".${sampleid}"
-    fi
-    #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt
-    cat $TMPDIR/variants.${sampleid}.txt | awk -F "\t" 'BEGIN {OFS="\t"} $4=="." {split($8, gt, "/"); gtout=gt[1]; if(length(gt)>2) {gtout=gtout "/" gt[2]}; chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 "_" gtout } {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch
+    bcftools index ${sampleOutdir}/${name}.${mappedgenome}.bcf
+    rm -f ${fullbcffiles}
     
-    #NB UCSC link from analysis.sh will be wrong for multisample calling
-    #Start from .txt file to simplify logic even though we have to sort again
-    #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt; for database IDs, append alt allele
-    #truncgt() is a fancy wrapper around substr for syntactic sugar and to add a "..."
-    cat $TMPDIR/variants.${sampleid}.txt | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } $4=="." {chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 } {split($8, gt, "/"); gtout=truncgt(gt[1]); if(length(gt)>2) {gtout=gtout "/" truncgt(gt[2])}; $4=$4 "_" gtout } {print}' | sort-bed - | cut -f1-5 > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
-    bedToBigBed -type=bed5 $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.bb
     
-    #Personal Genome SNP format displays two alleles in vertical fashion and provides amino acid changes, but doesn't permit IDs
-    #awk -F "\t" 'BEGIN {OFS="\t"} {split($8, gt, "/"); print $1, $2, $3, $8, length(gt), "0,0", "0,0"}'
-    #https://genome.ucsc.edu/FAQ/FAQformat.html#format10
-done
-
+    fltvcffiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.filtered.vcf.gz"`
+    fltvcffiles=$(getFilesToMerge ${fltvcffiles})
+    numfltvcffiles=`echo "${fltvcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
+    case "${numfltvcffiles}" in
+    0)
+        ;;
+    1)
+        #bcftools concat fails when there is only one file
+        cp ${fltvcffiles} ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz;;
+    *)
+        bcftools concat --output-type v ${fltvcffiles} | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz;;
+    esac
+    
+    bcftools index ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+    tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+    rm -f ${fltvcffiles}
+    
+    
+    echo
+    echo "Parsing VCF track"
+    date
+    #No additional filtering, just extract genotypes to starch
+    #NB repeated from perChrom analysis
+    minSNPQ=0
+    #
+    minTotalDP=0
+    minAlleleDP=0
+    
+    ${src}/parseSamtoolsGenotypesToBedFiles.pl ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz $TMPDIR/variants ${minSNPQ} ${minTotalDP} ${minAlleleDP}
+    
+    nvcfsamples=`bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz | wc -l`
+    #rsids
+    for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz`; do
+        if [[ "${nvcfsamples}" = 1 ]]; then
+            vcfsamplename=""
+        else
+            #for multisample calling, include the sample name in the variants file name
+            vcfsamplename=".${sampleid}"
+        fi
+        #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt
+        cat $TMPDIR/variants.${sampleid}.txt | awk -F "\t" 'BEGIN {OFS="\t"} $4=="." {split($8, gt, "/"); gtout=gt[1]; if(length(gt)>2) {gtout=gtout "/" gt[2]}; chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 "_" gtout } {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch
+        
+        #NB UCSC link from analysis.sh will be wrong for multisample calling
+        #Start from .txt file to simplify logic even though we have to sort again
+        #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt; for database IDs, append alt allele
+        #truncgt() is a fancy wrapper around substr for syntactic sugar and to add a "..."
+        cat $TMPDIR/variants.${sampleid}.txt | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } $4=="." {chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 } {split($8, gt, "/"); gtout=truncgt(gt[1]); if(length(gt)>2) {gtout=gtout "/" truncgt(gt[2])}; $4=$4 "_" gtout } {print}' | sort-bed - | cut -f1-5 > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
+        bedToBigBed -type=bed5 $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.bb
+        
+        #Personal Genome SNP format displays two alleles in vertical fashion and provides amino acid changes, but doesn't permit IDs
+        #awk -F "\t" 'BEGIN {OFS="\t"} {split($8, gt, "/"); print $1, $2, $3, $8, length(gt), "0,0", "0,0"}'
+        #https://genome.ucsc.edu/FAQ/FAQformat.html#format10
+    done
+fi
 
 echo
 echo -e "\nDone!"

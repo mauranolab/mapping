@@ -8,12 +8,12 @@ alias bedmap='bedmap --ec --header --sweep-all'
 alias closest-features='closest-features --header'
 
 ###Parameters
-mappedgenome=${1}
-analysisType=${2}
-sampleOutdir=${3}
-BS=${4}
-sampleAnnotation=${5}
-src=${6}
+# mappedgenome=${1}
+# analysisType=${2}
+# sampleOutdir=${3}
+# BS=${4}
+# sampleAnnotation=${5}
+# src=${6}
 
 
 #processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
@@ -317,10 +317,10 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
         #$3+$4 adds mapped and unmapped reads \
         chunksize += $3+$4; \
     }\
-    END {if(chunksize>0) {chunknum+=1; print prefix chunknum, chroms}}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
+    END {if(chunksize>0 || (chunksize==0 && chunknum==0)) {chunknum+=1; print prefix chunknum, chroms}}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
     n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
-    qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
-    qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;'
+    qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src2}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
+    qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src2}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;'
     rm -f ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
     
     
@@ -429,6 +429,7 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
         #Skip chrM since UCSC doesn't like the cut count to the right of the last bp in a chromosome
         unstarch ${sampleOutdir}/${name}.${mappedgenome}.perBase.starch | cut -f1-3,5 | awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM"' > $TMPDIR/${name}.${mappedgenome}.perBase.bedGraph
 
+
         #Avoid bedGraphToBigWig below failure with 0 reads, "needLargeMem: trying to allocate 0 bytes (limit: 100000000000)"
         if [[ "${analyzedReads}" == 0 ]]; then
             bedgraph_chrom=$(head -n 1 ${chromsizes} | cut -f1)
@@ -439,7 +440,7 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
         fi
         #Kent tools can't use STDIN
         bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.perBase.clipped.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.perBase.bw
-        
+
         echo "track name=${ucscName}-cuts description=\"${ucscTrackDescriptionDataType} Cut counts ${name} (${analyzedReadsM}M analyzed reads)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.perBase.bw"
         
         
