@@ -439,7 +439,7 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
         fi
         #Kent tools can't use STDIN
         bedGraphToBigWig $TMPDIR/${name}.${mappedgenome}.perBase.clipped.bedGraph ${chromsizes} ${sampleOutdir}/${name}.${mappedgenome}.perBase.bw
-		
+        
         echo "track name=${ucscName}-cuts description=\"${ucscTrackDescriptionDataType} Cut counts ${name} (${analyzedReadsM}M analyzed reads)\" maxHeightPixels=30 color=${trackcolor} viewLimits=0:3 autoScale=off visibility=full type=bigWig ${UCSCbase}/${name}.${mappedgenome}.perBase.bw"
         
         
