@@ -29,7 +29,7 @@ debug_fa() {
 # Exclude reads with flags: read unmapped, mate unmapped, read is duplicate, or read is sup alignment
 assemblyBackboneExcludeFlags=3084
 # Exclude reads with flags: read unmapped, mate unmapped, failed QC flag, read is duplicate, or read is sup alignment
-homologyArmExcludeFlags=3596
+HAExcludeFlags=3596
 
 
 ##########################################################################################################
@@ -97,14 +97,15 @@ if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis"
     
     #Do each HA separately so we can detect spurious junctions between them (i.e. head-to-tail or other integrants)
-    ${src}/HA_table.sh ${bam1} ${INTERMEDIATEDIR}/HA1_coords.bed ${TMPDIR}/${sample_name}.HA1.bed ${src} ${homologyArmExcludeFlags}
-    ${src}/HA_table.sh ${bam1} ${INTERMEDIATEDIR}/HA2_coords.bed ${TMPDIR}/${sample_name}.HA2.bed ${src} ${homologyArmExcludeFlags}
+    ${src}/HA_table.sh ${bam1} ${INTERMEDIATEDIR}/HA1_coords.bed ${TMPDIR}/${sample_name}.HA1.bed ${src} ${HAExcludeFlags}
+    ${src}/HA_table.sh ${bam1} ${INTERMEDIATEDIR}/HA2_coords.bed ${TMPDIR}/${sample_name}.HA2.bed ${src} ${HAExcludeFlags}
     bedops -u ${TMPDIR}/${sample_name}.HA1.bed ${TMPDIR}/${sample_name}.HA2.bed > ${sampleOutdir}/${sample_name}.HA.bed
     
     ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam1genome} ${bam1genome} ${sampleOutdir}/${sample_name}.HA.bed ${num_bam1_reads}
 else
     echo
-    echo -e "No HAs available, so there will be no HA analysis."
+    echo "No HAs available, so there will be no HA analysis."
+    touch ${sampleOutdir}/${sample_name}.HA.bed
 fi
 
 
@@ -168,6 +169,18 @@ fi
 echo ""
 echo "Paths for custom tracks to bam files with informative reads:"
 echo "track name=\"${sample_name}\" description=\"${sample_name} Reads\" visibility=pack pairEndsByName=F maxItems=10000 type=bam ${UCSCbase}/${sample_name}.bam"
+
+
+echo
+echo "Subset bam files for HA"
+cut -f4 ${sampleOutdir}/${sample_name}.HA.bed > ${TMPDIR}/${sample_name}.HA.readNames.txt
+
+if [ -s "${TMPDIR}/${sample_name}.HA.readNames.txt" ]; then
+    ${src}/subsetBAM.py --exclude_flags ${HAExcludeFlags} --include_readnames ${TMPDIR}/${sample_name}.HA.readNames.txt ${bam1} - |
+    samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/${sample_name}.sort -l 9 -o ${sampleOutdir}/${sample_name}.HA.bam
+    samtools index ${sampleOutdir}/${sample_name}.HA.bam
+fi
+echo
 
 
 echo
