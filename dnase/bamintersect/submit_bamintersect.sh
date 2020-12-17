@@ -292,9 +292,10 @@ if [ "${integrationsite}" != "null" ]; then
     
     if [ -s "${HA_file}" ]; then
         if grep -q "${integrationSiteName}_${HA1}$" ${HA_file} && grep -q "${integrationSiteName}_${HA2}$" ${HA_file}; then
-            # Get the HA coordinates:
-            grep "${integrationSiteName}_${HA1}$" ${HA_file} > ${INTERMEDIATEDIR}/HA_coords.bed
-            grep "${integrationSiteName}_${HA2}$" ${HA_file} >> ${INTERMEDIATEDIR}/HA_coords.bed
+            # Get the HA coordinates
+            grep "${integrationSiteName}_${HA1}$" ${HA_file} > ${INTERMEDIATEDIR}/HA1_coords.bed
+            grep "${integrationSiteName}_${HA2}$" ${HA_file} > ${INTERMEDIATEDIR}/HA2_coords.bed
+            cat ${INTERMEDIATEDIR}/HA1_coords.bed ${INTERMEDIATEDIR}/HA2_coords.bed > ${INTERMEDIATEDIR}/HA_coords.bed
             
             cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${TMPDIR}/deletion_range.bed
             echo -n "Found coordinates for deletion spanning (bp): "

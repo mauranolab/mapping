@@ -96,7 +96,11 @@ if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo
     echo -e "Starting HA analysis"
     
-    ${src}/HA_table.sh ${bam1} ${INTERMEDIATEDIR}/HA_coords.bed ${sampleOutdir}/${sample_name}.HA.bed ${src} ${homologyArmExcludeFlags}
+    #Do each HA separately so we can detect spurious junctions between them (i.e. head-to-tail or other integrants)
+    ${src}/HA_table.sh ${bam1} ${INTERMEDIATEDIR}/HA1_coords.bed ${TMPDIR}/${sample_name}.HA1.bed ${src} ${homologyArmExcludeFlags}
+    ${src}/HA_table.sh ${bam1} ${INTERMEDIATEDIR}/HA2_coords.bed ${TMPDIR}/${sample_name}.HA2.bed ${src} ${homologyArmExcludeFlags}
+    bedops -u ${TMPDIR}/${sample_name}.HA1.bed ${TMPDIR}/${sample_name}.HA2.bed > ${sampleOutdir}/${sample_name}.HA.bed
+    
     ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam1genome} ${bam1genome} ${sampleOutdir}/${sample_name}.HA.bed ${num_bam1_reads}
 else
     echo
@@ -128,9 +132,9 @@ else
         echo "[HA_table] backbone is: ${backbone}"
         
         # Define region of interest as payload chromosome.
-        echo -e "${payload}\t0\t${payload_length}" > ${INTERMEDIATEDIR}/zone1.bed
+        echo -e "${payload}\t0\t${payload_length}" > ${INTERMEDIATEDIR}/payload.bed
         
-        ${src}/HA_table.sh ${bam2} ${INTERMEDIATEDIR}/zone1.bed ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${src} ${assemblyBackboneExcludeFlags}
+        ${src}/HA_table.sh ${bam2} ${INTERMEDIATEDIR}/payload.bed ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${src} ${assemblyBackboneExcludeFlags}
         ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${num_bam1_reads}
     fi
 fi
