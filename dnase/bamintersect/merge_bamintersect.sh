@@ -92,23 +92,48 @@ echo
 ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.bed ${num_bam1_reads}
 
 
-# HA analysis:
-echo
-#Al
 if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
-    echo -e "Starting HA analysis."
+    echo
+    echo -e "Starting HA analysis"
     
-    ${src}/HA_table.sh HA ${bam1} ${sampleOutdir} ${sample_name} ${INTERMEDIATEDIR}/HA_coords.bed ${src} ${homologyArmExcludeFlags}
+    ${src}/HA_table.sh ${bam1} ${INTERMEDIATEDIR}/HA_coords.bed ${sampleOutdir}/${sample_name}.HA.bed ${src} ${homologyArmExcludeFlags}
     ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam1genome} ${bam1genome} ${sampleOutdir}/${sample_name}.HA.bed ${num_bam1_reads}
 else
+    echo
     echo -e "No HAs available, so there will be no HA analysis."
 fi
 
 
 echo
-echo "Look for reads spanning the assembly and the backbone."
-${src}/HA_table.sh AB ${bam2} ${sampleOutdir} ${sample_name} $INTERMEDIATEDIR{} ${src} ${assemblyBackboneExcludeFlags}
-${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${num_bam1_reads}
+echo "Starting backbone analysis"
+#Parse first line of idxstats, which is required to be the payload
+read -r payload payload_length all_other <<< $(samtools idxstats ${bam2})
+# Require exactly two chromosomes, one of which ends in "_backbone"
+numChroms=$(samtools idxstats ${bam2} | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' | wc -l)
+if [[ "${numChroms}" != 2 ]]; then
+    echo "[HA_table] ${payload} has wrong number of chromosomes, skipping table."
+    touch ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
+else
+    backbone=$(samtools idxstats ${bam2} | awk -F "\t" '$1~/_backbone$/ {print $1}')
+    if [ `samtools idxstats ${bam2} | awk -F "\t" '$1~/_backbone$/ {print $1}' | wc -l` != 1 ]; then
+        echo "[HA_table] WARNING: Assembly does not have exactly one backbone chromosome, quitting successfully: ${payload} ${backbone}"
+        echo ""
+        echo "[HA_table] samtools idxstats ${bam2} :"
+        samtools idxstats ${bam2}
+        touch ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
+    else
+        # Success: the naming conventions are being followed
+        
+        echo "[HA_table] payload is: ${payload}"
+        echo "[HA_table] backbone is: ${backbone}"
+        
+        # Define region of interest as payload chromosome.
+        echo -e "${payload}\t0\t${payload_length}" > ${INTERMEDIATEDIR}/zone1.bed
+        
+        ${src}/HA_table.sh ${bam2} ${INTERMEDIATEDIR}/zone1.bed ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${src} ${assemblyBackboneExcludeFlags}
+        ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${num_bam1_reads}
+    fi
+fi
 echo
 
 
