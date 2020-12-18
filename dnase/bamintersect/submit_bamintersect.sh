@@ -295,11 +295,16 @@ if [ "${integrationsite}" != "null" ]; then
             # Get the HA coordinates
             grep "${integrationSiteName}_${HA1}$" ${HA_file} > ${INTERMEDIATEDIR}/HA1_coords.bed
             grep "${integrationSiteName}_${HA2}$" ${HA_file} > ${INTERMEDIATEDIR}/HA2_coords.bed
-            cat ${INTERMEDIATEDIR}/HA1_coords.bed ${INTERMEDIATEDIR}/HA2_coords.bed > ${INTERMEDIATEDIR}/HA_coords.bed
+            sort-bed ${INTERMEDIATEDIR}/HA1_coords.bed ${INTERMEDIATEDIR}/HA2_coords.bed > ${INTERMEDIATEDIR}/HA_coords.bed
             
             cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${TMPDIR}/deletion_range.bed
-            echo -n "Found coordinates for deletion spanning (bp): "
-            awk -F "\t" 'BEGIN {OFS="\t"} {print $3-$2}' ${TMPDIR}/deletion_range.bed
+            deletion_size=`awk -F "\t" 'BEGIN {OFS="\t"} {print $3-$2}' ${TMPDIR}/deletion_range.bed`
+            echo "Found coordinates for deletion spanning (bp): ${deletion_size}"
+            if [[ "${deletion_size}" -le 0 ]]; then
+                echo "WARNING homology arms overlap, will not include deletion range in mask."
+                #Overwrite with empty file
+                echo > ${TMPDIR}/deletion_range.bed
+            fi
         else
             echo "WARNING could not find homology arm coordinates for ${integrationSiteName}_${HA1} or ${integrationSiteName}_${HA2} in ${HA_file}"
         fi
