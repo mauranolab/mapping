@@ -28,8 +28,8 @@ debug_fa() {
 
 # Exclude reads with flags: read unmapped, mate unmapped, read is duplicate, or read is sup alignment
 assemblyBackboneExcludeFlags=3084
-# Exclude reads with flags: read unmapped, mate unmapped, failed QC flag, read is duplicate, or read is sup alignment
-HAExcludeFlags=3596
+# Exclude reads with flags: read unmapped, mate unmapped, read is duplicate, or read is sup alignment
+HAExcludeFlags=3084
 
 
 ##########################################################################################################
