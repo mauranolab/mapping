@@ -38,14 +38,18 @@ samtools sort ${TMPDIR}/subsetBAM_output.bam > ${TMPDIR}/subsetBAM_output_sorted
 samtools index ${TMPDIR}/subsetBAM_output_sorted.bam
 
 # Get only the reads inside region of interest
-samtools view  -L ${HAfile} ${TMPDIR}/subsetBAM_output_sorted.bam | tee ${TMPDIR}/Zone1reads_noHdr.sam | cat ${TMPDIR}/header.sam - | samtools view -h -b | samtools sort -n > ${TMPDIR}/bamfile_Zone1reads.bam
+samtools view  -L ${HAfile} ${TMPDIR}/subsetBAM_output_sorted.bam | tee ${TMPDIR}/zone1reads_noHdr.sam | cat ${TMPDIR}/header.sam - | samtools view -h -b | samtools sort -n > ${TMPDIR}/bamfile_zone1reads.bam
 
 # Get the reads which are outside region of interest
-samtools view ${TMPDIR}/subsetBAM_output_sorted.bam | grep -v -F -f ${TMPDIR}/Zone1reads_noHdr.sam | cat ${TMPDIR}/header.sam - | samtools view -h -b | samtools sort -n > ${TMPDIR}/bamfile_Zone2reads.bam
+samtools view ${TMPDIR}/subsetBAM_output_sorted.bam | grep -v -F -f ${TMPDIR}/zone1reads_noHdr.sam | cat ${TMPDIR}/header.sam - | samtools view -h -b | samtools sort -n > ${TMPDIR}/bamfile_Zone2reads.bam
 
 # Now call bamintersect.py to build the bed12 file.
-${src}/bamintersect.py --ReqFullyAligned ${TMPDIR}/bamfile_Zone1reads.bam ${TMPDIR}/bamfile_Zone2reads.bam --src ${src} --bedout ${TMPDIR}/bamintersect_out.bed
-sort-bed ${TMPDIR}/bamintersect_out.bed > ${outputBed}
+${src}/bamintersect.py --ReqFullyAligned ${TMPDIR}/bamfile_zone1reads.bam ${TMPDIR}/bamfile_Zone2reads.bam --src ${src} --bedout ${TMPDIR}/bamintersect_out.bed12
+
+cat ${TMPDIR}/bamintersect_out.bed12 |
+#In the case that we return reads on the same chromosome regularize output so that leftmost starting coord appears as bam1
+awk -F "\t" 'BEGIN {OFS="\t"} {if($1==$7 && $8<$2) {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6} else {print}}' |
+sort-bed - > ${outputBed}
 
 echo "[HA_table] Done!"
 date

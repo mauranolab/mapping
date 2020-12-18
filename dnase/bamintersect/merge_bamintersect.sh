@@ -99,7 +99,9 @@ if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     #Do each HA separately so we can detect spurious junctions between them (i.e. head-to-tail or other integrants)
     ${src}/HA_table.sh ${bam1} ${INTERMEDIATEDIR}/HA1_coords.bed ${TMPDIR}/${sample_name}.HA1.bed ${src} ${HAExcludeFlags}
     ${src}/HA_table.sh ${bam1} ${INTERMEDIATEDIR}/HA2_coords.bed ${TMPDIR}/${sample_name}.HA2.bed ${src} ${HAExcludeFlags}
-    bedops -u ${TMPDIR}/${sample_name}.HA1.bed ${TMPDIR}/${sample_name}.HA2.bed > ${sampleOutdir}/${sample_name}.HA.bed
+    bedops -u ${TMPDIR}/${sample_name}.HA1.bed ${TMPDIR}/${sample_name}.HA2.bed |
+    #uniq is in case of reciprocal hits that appear in both tables
+    uniq > ${sampleOutdir}/${sample_name}.HA.bed
     
     ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam1genome} ${bam1genome} ${sampleOutdir}/${sample_name}.HA.bed ${num_bam1_reads}
 else
