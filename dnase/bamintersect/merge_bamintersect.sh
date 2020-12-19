@@ -7,16 +7,16 @@ alias bedmap='bedmap --ec --header --sweep-all'
 #alias starch='starch --header'
 alias closest-features='closest-features --header'
 
-sampleOutdir=${1}
-src=${2}
-sample_name=${3}
-bam1genome=${4}
-bam2genome=${5}
-INTERMEDIATEDIR=${6}
-bam1=${7}
-bam2=${8}
-normbam=${9}
-verbose=${10}
+bam1=${1}
+bam1genome=${2}
+bam2=${3}
+bam2genome=${4}
+normbam=${5}
+sampleOutdir=${6}
+sample_name=${7}
+verbose=${8}
+INTERMEDIATEDIR=${9}
+src=${10}
 
 ## This function implements verbose output for debugging purposes.
 debug_fa() {
@@ -32,7 +32,7 @@ assemblyBackboneExcludeFlags=3084
 HAExcludeFlags=3084
 
 
-##########################################################################################################
+###################
 
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
@@ -46,7 +46,7 @@ cat ${INTERMEDIATEDIR}/inputs.bamintersect.txt | cut -f3 | xargs cat | sort-bed 
 
 if [ ! -s ${TMPDIR}/${sample_name}.bed ]; then
     # Don't generate an error. Create some appropriately empty output files.
-    echo "" > "${sampleOutdir}/${sample_name}.bed"
+    echo "" > ${sampleOutdir}/${sample_name}.bed
     echo "There are no reads left to analyze."
     # Not generating bam files for this case.
     
@@ -59,7 +59,7 @@ fi
 
 debug_fa "Finished sorting dsgrep.bed"
 
-##########################################################################################################
+###################
 ## Create the final output tables.
 echo "Normalizing to 10M reads using read depth from ${normbam}"
 num_bam1_reads=$(samtools view -c -F 512 ${normbam})
@@ -89,7 +89,7 @@ echo -e "Mapped reads with unmapped mates:\t${n1}\tof which\t${n2}\tare potentia
 
 
 echo
-${src}/counts_table.sh ${sampleOutdir}/${sample_name}.informative ${sample_name} ${bam1genome} ${bam2genome} ${sampleOutdir}/${sample_name}.bed ${num_bam1_reads}
+${src}/counts_table.sh ${sampleOutdir}/${sample_name}.bed ${bam1genome} ${bam2genome} ${num_bam1_reads} ${sampleOutdir}/${sample_name}.informative ${sample_name}
 
 
 if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
@@ -97,13 +97,13 @@ if [ -s "${INTERMEDIATEDIR}/HA_coords.bed" ]; then
     echo -e "Starting HA analysis"
     
     #Do each HA separately so we can detect spurious junctions between them (i.e. head-to-tail or other integrants)
-    ${src}/HA_table.sh ${bam1} ${INTERMEDIATEDIR}/HA1_coords.bed ${TMPDIR}/${sample_name}.HA1.bed ${src} ${HAExcludeFlags}
-    ${src}/HA_table.sh ${bam1} ${INTERMEDIATEDIR}/HA2_coords.bed ${TMPDIR}/${sample_name}.HA2.bed ${src} ${HAExcludeFlags}
+    ${src}/bedOverlapPE.sh ${bam1} ${INTERMEDIATEDIR}/HA1_coords.bed ${HAExcludeFlags} ${TMPDIR}/${sample_name}.HA1.bed ${src}
+    ${src}/bedOverlapPE.sh ${bam1} ${INTERMEDIATEDIR}/HA2_coords.bed ${HAExcludeFlags} ${TMPDIR}/${sample_name}.HA2.bed ${src}
     bedops -u ${TMPDIR}/${sample_name}.HA1.bed ${TMPDIR}/${sample_name}.HA2.bed |
     #uniq is in case of reciprocal hits that appear in both tables
     uniq > ${sampleOutdir}/${sample_name}.HA.bed
     
-    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA "${sample_name}.HA" ${bam1genome} ${bam1genome} ${sampleOutdir}/${sample_name}.HA.bed ${num_bam1_reads}
+    ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.HA.bed ${bam1genome} ${bam1genome} ${num_bam1_reads} ${sampleOutdir}/${sample_name}.HA ${sample_name}.HA
 else
     echo
     echo "No HAs available, so there will be no HA analysis."
@@ -118,33 +118,33 @@ read -r payload payload_length all_other <<< $(samtools idxstats ${bam2})
 # Require exactly two chromosomes, one of which ends in "_backbone"
 numChroms=$(samtools idxstats ${bam2} | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' | wc -l)
 if [[ "${numChroms}" != 2 ]]; then
-    echo "[HA_table] ${payload} has wrong number of chromosomes, skipping table."
+    echo "${payload} has wrong number of chromosomes, skipping table."
     touch ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
 else
     backbone=$(samtools idxstats ${bam2} | awk -F "\t" '$1~/_backbone$/ {print $1}')
     if [ `samtools idxstats ${bam2} | awk -F "\t" '$1~/_backbone$/ {print $1}' | wc -l` != 1 ]; then
-        echo "[HA_table] WARNING: Assembly does not have exactly one backbone chromosome, quitting successfully: ${payload} ${backbone}"
+        echo "WARNING: Assembly does not have exactly one backbone chromosome, quitting successfully: ${payload} ${backbone}"
         echo ""
-        echo "[HA_table] samtools idxstats ${bam2} :"
+        echo "samtools idxstats ${bam2} :"
         samtools idxstats ${bam2}
         touch ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
     else
         # Success: the naming conventions are being followed
         
-        echo "[HA_table] payload is: ${payload}"
-        echo "[HA_table] backbone is: ${backbone}"
+        echo "payload is: ${payload}"
+        echo "backbone is: ${backbone}"
         
         # Define region of interest as payload chromosome.
         echo -e "${payload}\t0\t${payload_length}" > ${INTERMEDIATEDIR}/payload.bed
         
-        ${src}/HA_table.sh ${bam2} ${INTERMEDIATEDIR}/payload.bed ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${src} ${assemblyBackboneExcludeFlags}
-        ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone "${sample_name}.assemblyBackbone" ${bam2genome} ${bam2genome} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${num_bam1_reads}
+        ${src}/bedOverlapPE.sh ${bam2} ${INTERMEDIATEDIR}/payload.bed ${assemblyBackboneExcludeFlags} ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${src}
+        ${src}/counts_table.sh ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${bam2genome} ${bam2genome} ${num_bam1_reads} ${sampleOutdir}/${sample_name}.assemblyBackbone ${sample_name}.assemblyBackbone
     fi
 fi
 echo
 
 
-###########################################################################################################################################
+####################################################
 echo
 echo "Merging bam files"
 bamfiles=`cat ${INTERMEDIATEDIR}/inputs.bamintersect.txt | cut -f3 | perl -pe 's/\.bed$/.bam1.bam/g;'; cat ${INTERMEDIATEDIR}/inputs.bamintersect.txt | cut -f3 | perl -pe 's/\.bed$/.bam2.bam/g;'`
@@ -198,10 +198,10 @@ echo
 
 debug_fa "Done with the samtools section."
 
-#############################################################################
+
+
 ## Cleanup
 rm -r ${INTERMEDIATEDIR}
-#############################################################################
 
 echo
 echo "Done!!!"

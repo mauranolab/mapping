@@ -1,9 +1,9 @@
 #!/bin/bash
 set -eu -o pipefail
 
-src=${1}
+max_mismatches=${1}
 INTERMEDIATEDIR=${2}
-max_mismatches=${3}
+src=${3}
 reads_match=${4-} #optional
 
 

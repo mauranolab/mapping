@@ -25,12 +25,12 @@ module load miller/5.4.0
 #
 #####################################################################################
 
-OUTBASE=${1}
-sample_name=${2}
-bam1genome=${3}
-bam2genome=${4}
-bamintersectBED12=${5}
-num_bam1_reads=${6}
+bamintersectBED12=${1}
+bam1genome=${2}
+bam2genome=${3}
+num_bam1_reads=${4}
+OUTBASE=${5}
+sample_name=${6}
 
 echo "[counts_table] Making counts_table from ${bamintersectBED12}; will output to ${OUTBASE}.counts.txt"
 
@@ -165,7 +165,6 @@ done |
 # Delete extra column header lines, and sort.
 awk -F "\t" 'BEGIN {OFS="\t"} NR==1 || $1!="#chrom_bam1"' | mlr --tsv sort -f \#chrom_bam1 -n chromStart_bam1 > ${OUTBASE}.counts.txt
 
-#####################################################################################
 
 echo "[counts_table] Done"
 date

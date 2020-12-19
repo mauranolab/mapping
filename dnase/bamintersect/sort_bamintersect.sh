@@ -1,37 +1,34 @@
 #!/bin/bash
 set -eu -o pipefail
 
-########################################################
-## Variables passed in via sbatch export.
-########################################################
-src=${1}
-INTERMEDIATEDIR=${2}
-sampleOutdir=${3}
-sample_name=${4}
-BAM=${5}
-BAM_N=${6}
-BAM_K=${7} # Required. Use "0" if necessary.
-BAM_E=${8} # Required. Use "0" if necessary.
+bam=${1}
+inputsfile=${2}
+bam_keep_flags=${3} # Required. Use "0" if necessary
+bam_exclude_flags=${4} # Required. Use "0" if necessary
+uninformativeRegionFile=${5}
+OUTBASE=${6}
+src=${7}
 
 
 jobid=$SLURM_ARRAY_TASK_ID
-jobname=`awk -F "\t" -v jobid=$jobid 'NR==jobid {print $1}' ${INTERMEDIATEDIR}/inputs.sort.bam${BAM_N}.txt`
-chroms=`awk -F "\t" -v jobid=$jobid 'NR==jobid {print $2}' ${INTERMEDIATEDIR}/inputs.sort.bam${BAM_N}.txt`
+jobname=`awk -F "\t" -v jobid=$jobid 'NR==jobid {print $1}' ${inputsfile}`
+chroms=`awk -F "\t" -v jobid=$jobid 'NR==jobid {print $2}' ${inputsfile}`
 
-BAM_OUT="${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${jobname}.bam"
+bam_out="${OUTBASE}.${jobname}.bam"
 
-echo "Sorting ${chroms} of ${BAM}"
+
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
+echo "Sorting ${chroms} of ${bam} to ${bam_out}"
 date
 echo
 
 
 #Likely more IO efficient to cache the subsetted BAM locally
-samtools view -@ ${NSLOTS} -f ${BAM_K} -F ${BAM_E} -O BAM ${BAM} ${chroms} > $TMPDIR/${sample_name}.${jobname}.bam
+samtools view -@ ${NSLOTS} -f ${bam_keep_flags} -F ${bam_exclude_flags} -O BAM ${bam} ${chroms} > $TMPDIR/sort.${jobname}.bam
 
 #Identify read names overlapping the uninformativeRegionFile for removal
 #We could implement bed input directly in subsetBAM.py to avoid a second pass, but I think we would need to require the file be sorted
-samtools view -L ${INTERMEDIATEDIR}/uninformativeRegionFile.bed $TMPDIR/${sample_name}.${jobname}.bam -O SAM | cut -f1 | uniq > $TMPDIR/uninformativeReads.txt
+samtools view -L ${uninformativeRegionFile} $TMPDIR/sort.${jobname}.bam -O SAM | cut -f1 | uniq > $TMPDIR/uninformativeReads.txt
 
 ## Sort bam file by read name.  Done by samtools via strnum_cmp.c
 #     Query names are split into alternating subfields of pure nondigits and pure digits.
@@ -49,9 +46,8 @@ samtools view -L ${INTERMEDIATEDIR}/uninformativeRegionFile.bed $TMPDIR/${sample
 #     more leading zeroes is placed before the subfield with fewer leading zeroes. 
 
 #Since the next set of jobs will be reading this heavily, it's likely worthwhile to use high compression for big bam files; also note that the sort is likely limiting
-${src}/subsetBAM.py --exclude_readnames $TMPDIR/uninformativeReads.txt $TMPDIR/${sample_name}.${jobname}.bam - |
-samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/sortbyname -l 8 -n -o ${BAM_OUT}
+${src}/subsetBAM.py --exclude_readnames $TMPDIR/uninformativeReads.txt $TMPDIR/sort.${jobname}.bam - |
+samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/sortbyname -l 8 -n -o ${bam_out}
 
 echo "Done!!!"
 date
-

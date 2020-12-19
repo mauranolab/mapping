@@ -8,7 +8,7 @@ alias bedmap='bedmap --ec --header --sweep-all'
 alias closest-features='closest-features --header'
 
 
-############################################################
+#####################################################################################
 # Where is this file located? We use this info to find and set other resources.
 #
 # This version of the code for setting src does not necessarily return a full path to the source directory.
@@ -30,7 +30,7 @@ src=$( dirname "${BASH_SOURCE[0]}" )
 if [ ${TMPDIR} = "/tmp" ]; then
     TMPDIR=`mktemp -d`   # TMPDIR has no trailing slash
 fi
-############################################################
+#####################################################################################
 
 module load samtools/1.10
 module load bedops/2.4.37
@@ -41,9 +41,8 @@ module load miller/5.4.0
 qsubargs=""
 
 
-############################################################
+###################
 # Start of "getopt" section
-############################################################
 # For use with the getopt "-h" flag:
 
 function usage {
@@ -103,7 +102,7 @@ Usage: $(basename "$0") [Options]
 
 USAGE
 }
-############################################################
+###################
 # Defining the getopt arguments:
 #
 # No colons = option does not have an argument.
@@ -151,7 +150,7 @@ for i in "${rqd_arg_names[@]}"; do
     rqd_arg_status["${i}"]="0"
 done
 
-############################################################
+###################
 # Parsing the getopt arguments:
 
 long_args=$(printf "%s," "${long_arg_list[@]}")   # Turn the arg array into a string with commas.
@@ -243,6 +242,8 @@ fi
 
 # End of getopt section.
 ################################################
+
+
 sample_name="${sample_name}.${bam1genome}_vs_${bam2genome}"
 
 
@@ -280,7 +281,7 @@ if [ ! -s "${normbam}" ]; then
  fi
 
 
-################################################################################################
+################################################
 # Make the filter files for merge_bamintersect.sh
 touch ${INTERMEDIATEDIR}/HA_coords.bed
 touch ${TMPDIR}/deletion_range.bed
@@ -376,7 +377,7 @@ cat ${uninformativeRegionFiles} | awk '$0 !~ /^#/' | sort-bed - > ${INTERMEDIATE
 cat ${uninformativeRegionFiles} ${maskFile} | awk '$0 !~ /^#/' | sort-bed - > ${INTERMEDIATEDIR}/counts_table_mask.bed
 
 
-################################################################################################
+################################################
 # Make a two-column chromosome list for the sort array jobs, where first column is short job name and second is the list of chromsomes for samtools view
 echo
 echo "sort_bamintersect"
@@ -420,35 +421,36 @@ fi
 
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam1.txt)
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${src} ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam1} 1 ${bam1_keep_flags} ${bam1_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${bam1} ${INTERMEDIATEDIR}/inputs.sort.bam1.txt ${bam1_keep_flags} ${bam1_exclude_flags} ${INTERMEDIATEDIR}/uninformativeRegionFile.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam2.txt)
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${src} ${INTERMEDIATEDIR} ${sampleOutdir} ${sample_name} ${bam2} 2 ${bam2_keep_flags} ${bam2_exclude_flags}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${bam2} ${INTERMEDIATEDIR}/inputs.sort.bam2.txt ${bam2_keep_flags} ${bam2_exclude_flags} ${INTERMEDIATEDIR}/uninformativeRegionFile.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
-################################################################################################
+################################################
 # Call bamintersect.py on each pairwise chrom combination via the bamintersect.sh array job:
 echo
 echo "bamintersect"
-for bam1chromname in `cut -f1 ${INTERMEDIATEDIR}/inputs.sort.bam1.txt`; do
-    for bam2chromname in `cut -f1 ${INTERMEDIATEDIR}/inputs.sort.bam2.txt`; do
-        echo -e "${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam1chromname}.bam\t${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam2chromname}.bam\t${INTERMEDIATEDIR}/bamintersectPyOut/${bam1chromname}_vs_${bam2chromname}.bed" >> ${INTERMEDIATEDIR}/inputs.bamintersect.txt
+rm -f ${INTERMEDIATEDIR}/inputs.bamintersect.txt
+for bam1chrom in `cut -f1 ${INTERMEDIATEDIR}/inputs.sort.bam1.txt`; do
+    for bam2chrom in `cut -f1 ${INTERMEDIATEDIR}/inputs.sort.bam2.txt`; do
+        echo -e "${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam1chrom}.bam\t${INTERMEDIATEDIR}/sorted_bams/${sample_name}.${bam2chrom}.bam\t${INTERMEDIATEDIR}/bamintersectPyOut/${bam1chrom}_vs_${bam2chrom}.bed" >> ${INTERMEDIATEDIR}/inputs.bamintersect.txt
     done
 done
 
 
 n=$(wc -l < ${INTERMEDIATEDIR}/inputs.bamintersect.txt)
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${src} ${INTERMEDIATEDIR} ${max_mismatches} ${reads_match}" > ${sampleOutdir}/sgeid.bamintersect.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${max_mismatches} ${INTERMEDIATEDIR} ${src} ${reads_match}" > ${sampleOutdir}/sgeid.bamintersect.${sample_name}
 rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
 
-################################################################################################
-## Merge output from the array jobs.
+################################################
+# Merge output from the array jobs.
 echo
 echo "merge_bamintersect"
 
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${sampleOutdir} ${src} ${sample_name} ${bam1genome} ${bam2genome} ${INTERMEDIATEDIR} ${bam1} ${bam2} ${normbam} ${verbose}" > /dev/null
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${bam1} ${bam1genome} ${bam2} ${bam2genome} ${normbam} ${sampleOutdir} ${sample_name} ${verbose} ${INTERMEDIATEDIR} ${src}" > /dev/null
 rm -f ${sampleOutdir}/sgeid.bamintersect.${sample_name}
 
 echo
