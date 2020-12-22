@@ -64,17 +64,17 @@ debug_fa "Finished sorting dsgrep.bed"
 echo "Normalizing to 10M reads using read depth from ${normbam}"
 num_bam1_reads=$(samtools view -c -F 512 ${normbam})
 
-echo "Applying counts_table_mask"
+echo "Applying countsTableMaskFile"
 #Starts out with bam1 coordinates
 cat ${TMPDIR}/${sample_name}.bed |
-#Remove bam1 reads that overlap the ranges defined in counts_table_mask.bed file via submit_bamintersect.sh
+#Remove bam1 reads that overlap the ranges defined in countsTableMaskFile.bed file via submit_bamintersect.sh
 #Require 20 bp of read to be mapped outside masked region
-bedmap --delim "|" --echo --bases-uniq - ${INTERMEDIATEDIR}/counts_table_mask.bed | awk -v minUniqBp=20 -F "|" 'BEGIN {OFS="\t"} {split($1, read, "\t"); readlength=read[3]-read[2]; if(readlength-$2>minUniqBp) {print $1}}' |
+bedmap --delim "|" --echo --bases-uniq - ${INTERMEDIATEDIR}/countsTableMaskFile.bed | awk -v minUniqBp=20 -F "|" 'BEGIN {OFS="\t"} {split($1, read, "\t"); readlength=read[3]-read[2]; if(readlength-$2>minUniqBp) {print $1}}' |
 #Switch to bam2
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - |
-#Sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the counts_table_mask:
+#Sort by the bam2 reads, then keep only the bam2 reads (and their bam1 mates) that do not overlap the countsTableMaskFile:
 #Require 20 bp of read to be mapped outside masked region
-bedmap --delim "|" --echo --bases-uniq - ${INTERMEDIATEDIR}/counts_table_mask.bed | awk -v minUniqBp=20 -F "|" 'BEGIN {OFS="\t"} {split($1, read, "\t"); readlength=read[3]-read[2]; if(readlength-$2>minUniqBp) {print $1}}' |
+bedmap --delim "|" --echo --bases-uniq - ${INTERMEDIATEDIR}/countsTableMaskFile.bed | awk -v minUniqBp=20 -F "|" 'BEGIN {OFS="\t"} {split($1, read, "\t"); readlength=read[3]-read[2]; if(readlength-$2>minUniqBp) {print $1}}' |
 #Switch back to bam1 coordinates
 awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed - > ${sampleOutdir}/${sample_name}.bed
 

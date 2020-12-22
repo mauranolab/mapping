@@ -318,67 +318,68 @@ fi
 echo
 
 
-echo "Generating counts_table_mask"
-#Check for a curated uninformative regions file for this combination of genomes
+echo "Building uninformative regions and counts table mask"
+#Reads overlapping uninformative regions are dropped from the bam in which they overlap
+#Results for which 1 or more read overlaps counts table mask are dropped from counts tables
 if echo "${bam2genome}" | egrep -q "^pSpCas9"; then
     #These files mask just mm10/hg38 right now, so ok to use the same for all the pSpCas9 derivative constructs
     uninformativeRegionFiles="${src}/LP_uninformative_regions/pSpCas9_vs_${bam1genome}.bed"
-    maskFile=""
+    countsTableMaskFiles=""
 elif echo "${bam2genome}" | egrep -q "^LP[0-9]+$"; then
     #For LP integrations, exclude HAs
     uninformativeRegionFiles="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed ${INTERMEDIATEDIR}/HA_coords.bed"
-    maskFile=""
+    countsTableMaskFiles=""
 #For payload (not LP) integrations, filter out reads in deletion (since we map to the custom PL assembly)
 elif [[ "${bam2genome}" == "rtTA" ]]; then
     #Include Rosa26 deleted sequence
     uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
-    maskFile="${TMPDIR}/deletion_range.bed"
+    countsTableMaskFiles="${TMPDIR}/deletion_range.bed"
 #NB masks hardcoded by payload name for now
 elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed"
-    maskFile="${TMPDIR}/deletion_range.bed"
+    countsTableMaskFiles="${TMPDIR}/deletion_range.bed"
     if [[ "${bam1genome}" == "LPICE" ]]; then
         #Need also to mask the SV40pA on the assembly
         if [ ! -f "/vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed" ]; then
             echo "WARNING could not find bed file to mask SV40 poly(A) signal in ${bam2genome} genome"
         else
             awk -F "\t" '$4=="SV40 poly(A) signal"' /vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed > $TMPDIR/ICE_SV40pA.bed
-            maskFile="${maskFile} $TMPDIR/ICE_SV40pA.bed"
+            countsTableMaskFiles="${countsTableMaskFiles} $TMPDIR/ICE_SV40pA.bed"
         fi
     fi
 elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed"
-    maskFile="${TMPDIR}/deletion_range.bed"
+    countsTableMaskFiles="${TMPDIR}/deletion_range.bed"
 else
     uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
     if [ ! -f "${curfile}" ]; then
         echo "WARNING Can't find uninformative regions file $(basename ${curfile}) [${curfile}]"
         uninformativeRegionFiles=""
     fi
-    maskFile=""
+    countsTableMaskFiles=""
 fi
 
 #Genomic repeat annotation
 annotationBase="/vol/isg/annotation/bed"
 if [ -f "${annotationBase}/${bam1genome}/repeat_masker/Satellite.bed" ]; then
-    maskFile="${maskFile} ${annotationBase}/${bam1genome}/repeat_masker/Satellite.bed"
+    countsTableMaskFiles="${countsTableMaskFiles} ${annotationBase}/${bam1genome}/repeat_masker/Satellite.bed"
 fi
 if [ -f "${annotationBase}/${bam2genome}/repeat_masker/Satellite.bed" ]; then
-    maskFile="${maskFile} ${annotationBase}/${bam2genome}/repeat_masker/Satellite.bed"
+    countsTableMaskFiles="${countsTableMaskFiles} ${annotationBase}/${bam2genome}/repeat_masker/Satellite.bed"
 fi
 
-for curfile in ${uninformativeRegionFiles} ${maskFile}; do
+for curfile in ${uninformativeRegionFiles} ${countsTableMaskFiles}; do
     if [ ! -f "${curfile}" ]; then
-        echo "ERROR: Can't find uninformative regions or mask file ${curfile}"
+        echo "ERROR: Can't find uninformative regions or counts table mask file ${curfile}"
         exit 1
     else
-        echo "Found uninformative regions file: $(basename ${curfile}) [${curfile}]"
+        echo "Found uninformative regions or counts table mask file: $(basename ${curfile}) [${curfile}]"
     fi
 done
 
 #Sort exclusion files and strip comments just in case
 cat ${uninformativeRegionFiles} | awk '$0 !~ /^#/' | sort-bed - > ${INTERMEDIATEDIR}/uninformativeRegionFile.bed
-cat ${uninformativeRegionFiles} ${maskFile} | awk '$0 !~ /^#/' | sort-bed - > ${INTERMEDIATEDIR}/counts_table_mask.bed
+cat ${uninformativeRegionFiles} ${countsTableMaskFiles} | awk '$0 !~ /^#/' | sort-bed - > ${INTERMEDIATEDIR}/countsTableMaskFile.bed
 
 
 ################################################
