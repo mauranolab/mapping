@@ -282,12 +282,13 @@ if [ ! -s "${normbam}" ]; then
 
 
 ################################################
-# Make the filter files for merge_bamintersect.sh
-touch ${INTERMEDIATEDIR}/HA_coords.bed
+# Make the mask files to be used in sort_bamintersect.sh and merge_bamintersect.sh
+touch ${sampleOutdir}/log/HA_coords.${bam1genome}_vs_${bam2genome}.bed
 touch ${TMPDIR}/deletion_range.bed
 if [ "${integrationsite}" != "null" ]; then
     # In the next line we rely on HA1 being the 5p side HA.
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
+    echo
     echo "Looking up HA coordinates for ${integrationsite}:"
     HA_file="/vol/cegs/sequences/${bam1genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
     
@@ -296,9 +297,9 @@ if [ "${integrationsite}" != "null" ]; then
             # Get the HA coordinates
             grep "${integrationSiteName}_${HA1}$" ${HA_file} > ${INTERMEDIATEDIR}/HA1_coords.bed
             grep "${integrationSiteName}_${HA2}$" ${HA_file} > ${INTERMEDIATEDIR}/HA2_coords.bed
-            sort-bed ${INTERMEDIATEDIR}/HA1_coords.bed ${INTERMEDIATEDIR}/HA2_coords.bed > ${INTERMEDIATEDIR}/HA_coords.bed
+            sort-bed ${INTERMEDIATEDIR}/HA1_coords.bed ${INTERMEDIATEDIR}/HA2_coords.bed > ${sampleOutdir}/log/HA_coords.${bam1genome}_vs_${bam2genome}.bed
             
-            cat ${INTERMEDIATEDIR}/HA_coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${TMPDIR}/deletion_range.bed
+            cat ${sampleOutdir}/log/HA_coords.${bam1genome}_vs_${bam2genome}.bed | awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {HA1_3p=$3} NR==2 {print $1, HA1_3p, $2}' > ${TMPDIR}/deletion_range.bed
             deletion_size=`awk -F "\t" 'BEGIN {OFS="\t"} {print $3-$2}' ${TMPDIR}/deletion_range.bed`
             echo "Found coordinates for deletion spanning (bp): ${deletion_size}"
             if [[ "${deletion_size}" -le 0 ]]; then
@@ -319,44 +320,100 @@ echo
 
 
 echo "Building uninformative regions and counts table mask"
-#Reads overlapping uninformative regions are dropped from the bam in which they overlap
-#Results for which 1 or more read overlaps counts table mask are dropped from counts tables
+#1) uninformative regions files are generally for elements present in genomic locations (e.g. endogenous genomic elements used ectopically). This mask is additionally applied within the same reference before running bamintersect across references (in sort_bamintersect.sh), so that both mates will be removed if one overlaps the mask by a single bp
+#2) counts table mask is additionally applied to bamintersect results (not HA or assemblyBackbone)
+#3) HA mask is used specifically for HA tables
+HAmaskFiles=""
+countsTableMaskFiles=""
 if echo "${bam2genome}" | egrep -q "^pSpCas9"; then
     #These files mask just mm10/hg38 right now, so ok to use the same for all the pSpCas9 derivative constructs
     uninformativeRegionFiles="${src}/LP_uninformative_regions/pSpCas9_vs_${bam1genome}.bed"
-    countsTableMaskFiles=""
+    #Include LP mask because some components are in common (e.g. Puro)
+    uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
 elif echo "${bam2genome}" | egrep -q "^LP[0-9]+$"; then
-    #For LP integrations, exclude HAs
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed ${INTERMEDIATEDIR}/HA_coords.bed"
-    countsTableMaskFiles=""
-#For payload (not LP) integrations, filter out reads in deletion (since we map to the custom PL assembly)
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
+    #For LP integrations, put HAs in countsTableMaskFiles rather than uninformativeRegionFiles, so the latter can be used for HA analyses.
+    countsTableMaskFiles="${countsTableMaskFiles} ${sampleOutdir}/log/HA_coords.${bam1genome}_vs_${bam2genome}.bed"
+elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2)"; then
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed"
+    #Include LP mask for failed clones and also because some components are in common
+    uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
+    
+    bam2cegsvectorsFile="/vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed"
+    if [ ! -f "${bam2cegsvectorsFile}" ]; then
+        echo "WARNING could not find bed file to mask lox sites in ${bam2genome} genome"
+    else
+        awk -F "\t" '$4~/^lox/' ${bam2cegsvectorsFile} > $TMPDIR/loxSites.bed
+        nLoxSites=`cat $TMPDIR/loxSites.bed | wc -l`
+        echo "Masking ${nLoxSites} lox sites in payload"
+        countsTableMaskFiles="${countsTableMaskFiles} $TMPDIR/loxSites.bed"
+    fi
+    
+    cegsGenomeProjectID=`echo ${bam2genome} | cut -d "_" -f1`
+    bam1cegsvectorsAssemblyFile="/vol/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed"
+    if [ ! -f "${bam1cegsvectorsAssemblyFile}" ]; then
+        echo "WARNING could not find assembly file for ${bam2genome} genome"
+    else
+        awk -v cegsGenomeAssemblyName=`echo ${bam2genome} | cut -d "_" -f1-3` -F "\t" '$4==cegsGenomeAssemblyName' ${bam1cegsvectorsAssemblyFile} > $TMPDIR/assembly.${bam1genome}.bed
+        assemblyLen=`awk -F "\t" 'BEGIN {sum=0} {sum+=$3-$2} END {print sum}' $TMPDIR/assembly.${bam1genome}.bed`
+        echo "Masking ${assemblyLen} bp in ${bam1genome} matching ${bam2genome} payload assembly"
+        #Filter out genomic region represented by the custom PL assembly
+        countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/assembly.${bam1genome}.bed"
+    fi
+    
+    #For HA, mask the deletion region since these junctions will be captured by the payload mapping
+    HAmaskFiles="${TMPDIR}/deletion_range.bed"
 elif [[ "${bam2genome}" == "rtTA" ]]; then
+    #TODO confirm this is working properly
     #Include Rosa26 deleted sequence
     uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
-    countsTableMaskFiles="${TMPDIR}/deletion_range.bed"
+    countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
+    HAmaskFiles="${TMPDIR}/deletion_range.bed"
 #NB masks hardcoded by payload name for now
 elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed"
-    countsTableMaskFiles="${TMPDIR}/deletion_range.bed"
-    if [[ "${bam1genome}" == "LPICE" ]]; then
-        #Need also to mask the SV40pA on the assembly
-        if [ ! -f "/vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed" ]; then
-            echo "WARNING could not find bed file to mask SV40 poly(A) signal in ${bam2genome} genome"
-        else
-            awk -F "\t" '$4=="SV40 poly(A) signal"' /vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed > $TMPDIR/ICE_SV40pA.bed
+    countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
+    
+    bam2cegsvectorsFile="/vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed"
+    if [ ! -f "${bam2cegsvectorsFile}" ]; then
+        echo "WARNING could not find bed file to mask lox sites and SV40 poly(A) signal in ${bam2genome} genome"
+    else
+        if [[ "${bam1genome}" == "LPICE" ]]; then
+            #Need also to mask the SV40pA on the assembly
+            awk -F "\t" '$4=="SV40 poly(A) signal"' ${bam2cegsvectorsFile} > $TMPDIR/ICE_SV40pA.bed
             countsTableMaskFiles="${countsTableMaskFiles} $TMPDIR/ICE_SV40pA.bed"
         fi
+        
+        awk -F "\t" '$4~/^lox/' ${bam2cegsvectorsFile} > $TMPDIR/loxSites.bed
+        nLoxSites=`cat $TMPDIR/loxSites.bed | wc -l`
+        echo "Masking ${nLoxSites} lox sites in payload"
+        countsTableMaskFiles="${countsTableMaskFiles} $TMPDIR/loxSites.bed"
     fi
-elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2)"; then
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed"
-    countsTableMaskFiles="${TMPDIR}/deletion_range.bed"
+
+
+    cegsGenomeProjectID=`echo ${bam2genome} | cut -d "_" -f1`
+    bam1cegsvectorsAssemblyFile="/vol/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed"
+    if [ ! -f "${bam1cegsvectorsAssemblyFile}" ]; then
+        echo "WARNING could not find assembly file for ${bam2genome} genome"
+    else
+        #TODO hardcode to maximal size for now since we don't have specific coords
+        cat ${bam1cegsvectorsAssemblyFile} > $TMPDIR/assembly.${bam1genome}.bed
+        assemblyLen=`awk -F "\t" 'BEGIN {sum=0} {sum+=$3-$2} END {print sum}' $TMPDIR/assembly.${bam1genome}.bed`
+        echo "Masking ${assemblyLen} bp in ${bam1genome} matching ${bam2genome} payload assembly"
+        #Filter out genomic region represented by the custom PL assembly
+        countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/assembly.${bam1genome}.bed"
+    fi
+    
+    #For HA, mask the deletion region since these junctions will be captured by the payload mapping
+    HAmaskFiles="${TMPDIR}/deletion_range.bed"
+
+
 else
     uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
-    if [ ! -f "${curfile}" ]; then
-        echo "WARNING Can't find uninformative regions file $(basename ${curfile}) [${curfile}]"
+    if [ ! -f "${uninformativeRegionFiles}" ]; then
+        echo "WARNING Can't find uninformative regions file ${uninformativeRegionFiles}"
         uninformativeRegionFiles=""
     fi
-    countsTableMaskFiles=""
 fi
 
 #Genomic repeat annotation
@@ -371,15 +428,17 @@ fi
 for curfile in ${uninformativeRegionFiles} ${countsTableMaskFiles}; do
     if [ ! -f "${curfile}" ]; then
         echo "ERROR: Can't find uninformative regions or counts table mask file ${curfile}"
-        exit 1
+        exit 5
     else
-        echo "Found uninformative regions or counts table mask file: $(basename ${curfile}) [${curfile}]"
+        echo "Found $(basename ${curfile}) [${curfile}]"
     fi
 done
 
 #Sort exclusion files and strip comments just in case
-cat ${uninformativeRegionFiles} | awk '$0 !~ /^#/' | sort-bed - > ${INTERMEDIATEDIR}/uninformativeRegionFile.bed
-cat ${uninformativeRegionFiles} ${countsTableMaskFiles} | awk '$0 !~ /^#/' | sort-bed - > ${INTERMEDIATEDIR}/countsTableMaskFile.bed
+cat ${uninformativeRegionFiles} | awk '$0 !~ /^#/' | sort-bed - > ${sampleOutdir}/log/uninformativeRegionFile.${bam1genome}_vs_${bam2genome}.bed
+#uninformativeRegionFiles needs to be repeated below since they operate off raw bam1/bam2
+cat ${uninformativeRegionFiles} ${countsTableMaskFiles} | awk '$0 !~ /^#/' | sort-bed - > ${sampleOutdir}/log/countsTableMaskFile.${bam1genome}_vs_${bam2genome}.bed
+cat ${uninformativeRegionFiles} ${HAmaskFiles} | awk '$0 !~ /^#/' | sort-bed - > ${sampleOutdir}/log/HAmaskFile.${bam1genome}_vs_${bam2genome}.bed
 
 
 ################################################
@@ -417,19 +476,25 @@ make_chrom_inputfile ${bam2} "bam2_" > ${INTERMEDIATEDIR}/inputs.sort.bam2.txt
 
 if [ ! -s "${INTERMEDIATEDIR}/inputs.sort.bam1.txt" ]; then
     echo "No reads left in bam1; quitting successfully"
+    #TODO does not create output files
+    rm -r ${INTERMEDIATEDIR}
+    echo "Done!!!"
     exit 0
 fi
 if [ ! -s "${INTERMEDIATEDIR}/inputs.sort.bam2.txt" ]; then
     echo "No reads left in bam2; quitting successfully"
+    #TODO does not create output files
+    rm -r ${INTERMEDIATEDIR}
+    echo "Done!!!"
     exit 0
 fi
 
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam1.txt)
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${bam1} ${INTERMEDIATEDIR}/inputs.sort.bam1.txt ${bam1_keep_flags} ${bam1_exclude_flags} ${INTERMEDIATEDIR}/uninformativeRegionFile.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${bam1} ${INTERMEDIATEDIR}/inputs.sort.bam1.txt ${bam1_keep_flags} ${bam1_exclude_flags} ${sampleOutdir}/log/uninformativeRegionFile.${bam1genome}_vs_${bam2genome}.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam2.txt)
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${bam2} ${INTERMEDIATEDIR}/inputs.sort.bam2.txt ${bam2_keep_flags} ${bam2_exclude_flags} ${INTERMEDIATEDIR}/uninformativeRegionFile.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${bam2} ${INTERMEDIATEDIR}/inputs.sort.bam2.txt ${bam2_keep_flags} ${bam2_exclude_flags} ${sampleOutdir}/log/uninformativeRegionFile.${bam1genome}_vs_${bam2genome}.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
 ################################################

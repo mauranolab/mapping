@@ -1,10 +1,8 @@
 LM1110_LEU2_backbone	10423	11602	pEF1a
-PL1	0	34	LoxM
 PL1	34	1213	pEF1a
-PL1	2653	2687	LoxP
-Sox2_Sox2_143kb_marker	0	34	loxM
 Sox2_Sox2_143kb_marker	1474	2653	EF1a_promoter
-Sox2_Sox2_143kb_marker	145317	145351	loxP
-Sox2_Sox2_46kb_dDistalLCR_marker	0	34	loxM
 Sox2_Sox2_46kb_dDistalLCR_marker	1474	2653	EF1a_promoter
-Sox2_Sox2_46kb_dDistalLCR_marker	48664	48698	loxP
+#TODO missing EF1a:
+#Sox2_Sox2_143kb_markerFrt
+#Sox2_Sox2_46kb_dDistalLCR_markerFrt
+#Sox2_Sox2_46kb_dDistalLCR_marker_Puro

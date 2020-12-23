@@ -45,7 +45,7 @@ samtools view  -L ${regionsOfInterestFile} ${TMPDIR}/subsetBAM_output_sorted.bam
 samtools view ${TMPDIR}/subsetBAM_output_sorted.bam | grep -v -F -f ${TMPDIR}/zone1reads_noHdr.sam | cat ${TMPDIR}/header.sam - | samtools view -h -b | samtools sort -n > ${TMPDIR}/bamfile_Zone2reads.bam
 
 # Now call bamintersect.py to build the bed12 file.
-${src}/bamintersect.py --ReqFullyAligned ${TMPDIR}/bamfile_zone1reads.bam ${TMPDIR}/bamfile_Zone2reads.bam --src ${src} --bedout ${TMPDIR}/bamintersect_out.bed12
+${src}/bamintersect.py --ReqFullyAligned ${TMPDIR}/bamfile_Zone2reads.bam ${TMPDIR}/bamfile_zone1reads.bam --src ${src} --bedout ${TMPDIR}/bamintersect_out.bed12
 
 cat ${TMPDIR}/bamintersect_out.bed12 |
 #In the case that we return reads on the same chromosome regularize output so that leftmost starting coord appears as bam1
