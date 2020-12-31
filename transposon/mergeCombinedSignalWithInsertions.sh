@@ -10,6 +10,7 @@ outbases=$@
 
 echo
 echo "Merging AllBCs"
+#Just used for "Overlap between libraries by read depth" plots
 bcfiles=""
 for f in ${outbases}; do
     bcfiles="${bcfiles} ${f}.AllBCs.txt"
@@ -20,7 +21,7 @@ mlr --tsv cat ${bcfiles} > ${OUTBASE}.AllBCs.txt
 
 
 echo
-echo "Merging txt"
+echo "Merging mapped.txt"
 mappedfiles=""
 for f in ${outbases}; do
     mappedfiles="${mappedfiles} ${f}.mapped.txt"
@@ -30,8 +31,6 @@ echo ${mappedfiles}
 
 tail -q -n +2 ${mappedfiles} | sort-bed - >> ${OUTBASE}.mapped.txt
 
-
-#BUGBUG Scaling RNA/DNA to total reads ought to be per transfection?
 
 ${src}/analyzeCombinedSignalWithInsertions.sh ${OUTBASE}
 

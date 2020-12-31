@@ -15,7 +15,8 @@ outbase <- argv[2]
 
 
 #Basic filtering
-filterSampleData <- function(data, useDNA=TRUE) {
+#BUGBUG Scaling RNA/DNA to total reads ought to be per transfection? stored in Name column
+filterSampleData <- function(data, prefix="merged", useDNA=TRUE) {
 	#iPCR filters
 	cat("Thresholding iPCR counts\n")
 	#The 2-read cutoff is redundant as barcodes.coords.bed was already thresholded
@@ -26,11 +27,11 @@ filterSampleData <- function(data, useDNA=TRUE) {
 		cat("Thresholding and normalizing DNA counts\n")
 		#For normalizing to counts per 1M reads
 		numDNAreads <- sum(data[,"DNA"], na.rm=T)
-	
+		
 		#DNA/RNA counts are not already thresholded
 		cat("Removing", length(which(data$DNA < 10 | is.na(data$DNA))), "sites\n")
 		data  <- subset(data, DNA >= 10 & !is.na(DNA))
-	
+		
 		data[,"DNA"] <- data[,"DNA"] / numDNAreads * 10^6
 	}
 	
@@ -41,31 +42,45 @@ filterSampleData <- function(data, useDNA=TRUE) {
 	data[,"RNA"] <- data[,"RNA"] / numRNAreads * 10^6
 	
 	
-	#throwing away sites at same position, opposite strand for now (but don't see much of this): data[,"strand"]
-	#TODO properly merge these
-	cat("Removing", length(which(duplicaterows(paste(data[,"chrom"], data[,"chromStart"])))), "duplicate sites\n")
-	data <- data[!duplicaterows(paste(data[,"chrom"], data[,"chromStart"])),]
+	#Merge sites that are repeated
+	data$mergeIDs <- paste(data[,"chrom"], data[,"chromStart"])
+	data.merged <- data[!duplicated(data$mergeIDs),]
+	cat("Summarizing", nrow(data)-nrow(data.merged), "duplicate rows\n")
+	numericCols <- c("DNA", "RNA", "iPCR") #columns to be averaged rather than copied from first row
+	for(i in 1:nrow(data.merged)) {
+		curID <- data.merged[i, "mergeIDs"]
+		rowsToMerge <- data[,"mergeIDs"]==curID
+		if(length(which(rowsToMerge))>1) {
+#			cat("Summarizing ", curID, " (", length(which(rowsToMerge)) , " samples)\n", sep="")
+			if(length(unique(data[rowsToMerge,"strand"]))!=1) {
+				#TODO are averaging some sites at same position but with opposite strand for now (but don't see much of this): data[,"strand"]
+				cat("WARNING merging BCs at", curID, "with opposite strand\n")
+			}
+			data.merged[i,numericCols] <- apply(data[rowsToMerge,numericCols], MARGIN=2, FUN=function(x) { mean(x, na.rm=T) })
+		}
+	}
+	data.merged$Name <- prefix
 	
 	
 	if(useDNA) {
 		#Don't think zeroing NAs is so good for 10x data, at least at current coverage
-		cat("Zeroing NAs at", length(which(is.na(data[,"RNA"]))), "sites with no RNA reads\n")
-		data[is.na(data[,"RNA"]), "RNA"] <- 0
+		cat("Zeroing NAs at", length(which(is.na(data.merged[,"RNA"]))), "sites with no RNA reads\n")
+		data.merged[is.na(data.merged[,"RNA"]), "RNA"] <- 0
 	} else {
-		cat("Removing", length(which(is.na(data$RNA))), "sites\n")
-		data  <- subset(data, !is.na(RNA))
+		cat("Removing", length(which(is.na(data.merged$RNA))), "sites\n")
+		data.merged  <- subset(data.merged, !is.na(RNA))
 	}
 	
 	
 	if(useDNA) {
-		data$expression <- (data[,"RNA"])/data[,"DNA"]
+		data.merged$expression <- (data.merged[,"RNA"])/data.merged[,"DNA"]
 	} else {
-		data$expression <- data[,"RNA"]
+		data.merged$expression <- data.merged[,"RNA"]
 	}
 	#Add pseudocount. The as.numeric strips attr that messes up further analysis
-	data$zscore <- as.numeric(scale(log(data[,"expression"]+1, base=2)))
+	data.merged$zscore <- as.numeric(scale(log(data.merged[,"expression"]+1, base=2)))
 	
-	return(data)
+	return(data.merged)
 }
 
 
@@ -85,7 +100,7 @@ if(all(is.na(sampleData$DNA))) {
 }
 
 
-sampleData <- filterSampleData(sampleData, useDNA)
+sampleData <- filterSampleData(sampleData, prefix, useDNA)
 cat("Finished filtering.\n")
 cat(prefix, "\tTotal sites remaining:\t", nrow(sampleData), "\n")
 
@@ -234,7 +249,7 @@ write.table(results.NumDHS100kb, file=paste0(outbase, '.NumDHS100kb.txt'), quote
 
 
 cat("\n\nOverlap between libraries by read depth\n")
-#Note based on the AllBCs file
+#NB based on the AllBCs file
 data <- read(paste0(outbase, ".AllBCs.txt"), header=T, nrows=5000)
 
 if(useDNA) {
