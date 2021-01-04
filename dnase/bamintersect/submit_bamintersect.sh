@@ -518,12 +518,10 @@ rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/s
 ################################################
 # Merge output from the array jobs.
 echo
-num_bam1_reads=$(samtools view -c -F 512 ${normbam})
-echo "normbam: ${normbam}"
-echo "num_bam1_reads: ${num_bam1_reads}"
-echo
-
 echo "merge_bamintersect"
+echo "Computing read depth for normalization from normbam: ${normbam}"
+num_bam1_reads=$(samtools view -c -F 512 ${normbam})
+echo "num_bam1_reads: ${num_bam1_reads}"
 
 qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${bam1} ${bam1genome} ${bam2} ${bam2genome} ${num_bam1_reads} ${sampleOutdir} ${sample_name} ${verbose} ${INTERMEDIATEDIR} ${src}" > /dev/null
 rm -f ${sampleOutdir}/sgeid.bamintersect.${sample_name}
