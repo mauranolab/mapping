@@ -11,7 +11,7 @@ bam1=${1}
 bam1genome=${2}
 bam2=${3}
 bam2genome=${4}
-normbam=${5}
+num_bam1_reads=${5}
 sampleOutdir=${6}
 sample_name=${7}
 verbose=${8}
@@ -80,9 +80,7 @@ applyUninformativeMaskFile()
     awk -F "\t" 'BEGIN {OFS="\t"}; {print $7, $8, $9, $10, $11, $12, $1, $2, $3, $4, $5, $6}' | sort-bed -
 }
 
-echo "Normalizing to 10M reads using read depth from ${normbam}"
-#TODO replace with flagstat for performance
-num_bam1_reads=$(samtools view -c -F 512 ${normbam})
+echo "Normalizing to 10M reads using read depth of ${num_bam1_reads} reads."
 
 #TODO is it really necessary to repeat the mask here?
 cat ${TMPDIR}/${sample_name}.bed | applyUninformativeMaskFile ${sampleOutdir}/log/countsTableMaskFile.${bam1genome}_vs_${bam2genome}.bed > ${sampleOutdir}/${sample_name}.bed
