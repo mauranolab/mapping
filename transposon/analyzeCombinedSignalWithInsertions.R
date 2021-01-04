@@ -22,24 +22,27 @@ filterSampleData <- function(data, prefix="merged", useDNA=TRUE) {
 	#The 2-read cutoff is redundant as barcodes.coords.bed was already thresholded
 	data  <- subset(data, iPCR >= 2 & !is.na(iPCR))
 	
-	#DNA filters
-	if(useDNA) {
-		cat("Thresholding and normalizing DNA counts\n")
-		#For normalizing to counts per 1M reads
-		numDNAreads <- sum(data[,"DNA"], na.rm=T)
+	for(curName in unique(data$Name)) {
+		cat("Normalizing", curName, "\n")
+		#DNA filters
+		if(useDNA) {
+			cat("Thresholding and normalizing DNA counts\n")
+			#For normalizing to counts per 1M reads
+			numDNAreads <- sum(data[data$Name==curName, "DNA"], na.rm=T)
+			
+			#DNA/RNA counts are not already thresholded
+			cat("Removing", length(which(with(data[data$Name==curName,], DNA < 10 | is.na(DNA)))), "sites\n")
+			data  <- subset(data, Name!=curName | (DNA >= 10 & !is.na(DNA)))
 		
-		#DNA/RNA counts are not already thresholded
-		cat("Removing", length(which(data$DNA < 10 | is.na(data$DNA))), "sites\n")
-		data  <- subset(data, DNA >= 10 & !is.na(DNA))
+			data[data$Name==curName, "DNA"] <- data[data$Name==curName, "DNA"] / numDNAreads * 10^6
+		}
 		
-		data[,"DNA"] <- data[,"DNA"] / numDNAreads * 10^6
+		
+		#RNA filters
+		cat("Normalizing RNA counts\n")
+		numRNAreads <- sum(data[data$Name==curName, "RNA"], na.rm=T)
+		data[data$Name==curName, "RNA"] <- data[data$Name==curName, "RNA"] / numRNAreads * 10^6
 	}
-	
-	
-	#RNA filters
-	cat("Normalizing RNA counts\n")
-	numRNAreads <- sum(data[,"RNA"], na.rm=T)
-	data[,"RNA"] <- data[,"RNA"] / numRNAreads * 10^6
 	
 	
 	#Merge sites that are repeated
@@ -78,6 +81,7 @@ filterSampleData <- function(data, prefix="merged", useDNA=TRUE) {
 		data.merged$expression <- data.merged[,"RNA"]
 	}
 	#Add pseudocount. The as.numeric strips attr that messes up further analysis
+	#Not really a z-score
 	data.merged$zscore <- as.numeric(scale(log(data.merged[,"expression"]+1, base=2)))
 	
 	return(data.merged)
