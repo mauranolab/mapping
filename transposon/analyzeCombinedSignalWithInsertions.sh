@@ -46,7 +46,7 @@ cut -f1-3,5 ${OUTBASE}.zscore.bed > $TMPDIR/${PREFIX}.zscore.bedGraph
 
 bedGraphToBigWig $TMPDIR/${PREFIX}.zscore.bedGraph ${chromsizes} ${OUTBASE}.zscore.bw
 UCSCbaseURL="https://cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
-echo "track name=${PREFIX}-activity description=\"${PREFIX} activity (zscore of log(RNA/DNA) scaled onto [0,1]), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:1 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.zscore.bw"
+echo "track name=${PREFIX}-activity description=\"${PREFIX} activity (log(RNA/DNA)), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:2 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.zscore.bw"
 
 
 cut -f1-3,5 ${OUTBASE}.residual.bed > $TMPDIR/${PREFIX}.residual.bedGraph
@@ -65,12 +65,10 @@ awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="chrEBV"' |
 awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - | cut -f1,3 | awk -v step=10000 -v binwidth=10000 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
 #--faster is ok since we are dealing with bins and read starts
 bedmap --faster --delim "\t" --bp-ovr 1 --echo --mean - ${OUTBASE}.zscore.bed | 
-#Leave NAN for wigToBigWig for now
-#perl -pe 's/NAN$/NA/g;' |
+perl -pe 's/NAN$/0/g;' |
 #resize intervals down from full bin width to step size
 #Intervals then conform to Richard's convention that the counts are reported in 20bp windows including reads +/-75 from the center of that window
 awk -v step=10000 -v binwidth=10000 -F "\t" 'BEGIN {OFS="\t"} {offset=(binwidth-step)/2 ; $2+=offset; $3-=offset; print}' |
-
 tee $TMPDIR/${PREFIX}.zscore.density.bed |
 #Remember wig is 1-indexed
 #NB assumes span == step
@@ -83,7 +81,7 @@ awk -F "\t" 'BEGIN {OFS="\t"} $5!=0' $TMPDIR/${PREFIX}.zscore.density.bed | star
 #Kent tools can't use STDIN
 wigToBigWig $TMPDIR/${PREFIX}.zscore.density.wig ${chromsizes} ${OUTBASE}.zscore.density.bw
 
-echo "track name=${PREFIX}-activitydens description=\"${PREFIX} activity density (smoothed zscore of log(RNA/DNA) scaled onto [0,1]), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:1 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.zscore.density.bw"
+echo "track name=${PREFIX}-activitydens description=\"${PREFIX} activity density (smoothed log(RNA/DNA)), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:2 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.zscore.density.bw"
 
 
 echo
