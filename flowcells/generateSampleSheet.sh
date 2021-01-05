@@ -136,6 +136,7 @@ echo
 
 Rscript --quiet --no-save - ${printPairs} << 'EOF'
 suppressPackageStartupMessages(library(reshape))
+suppressPackageStartupMessages(library(stringr))
 
 printPairs <- commandArgs(TRUE)[1]
 
