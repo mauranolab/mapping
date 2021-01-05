@@ -34,7 +34,7 @@ sample_name=${6}
 
 echo "[counts_table] Making counts_table from ${bamintersectBED12}; will output to ${OUTBASE}.counts.txt"
 
-AnalyisField="${bam1genome}_vs_${bam2genome}"
+AnalysisField="${bam1genome}_vs_${bam2genome}"
 
 echo -e -n "Number of total reads:\t"
 cat ${bamintersectBED12} | wc -l
