@@ -10,6 +10,9 @@ fi
 
 src="/vol/mauranolab/mapped/src"
 
+TMPDIR=`mktemp -d`
+
+
 echo "Paste in a full flowcell entry (including #header lines, followed by a newline and CTRL-D"
 
 #Boilerplate header
@@ -24,7 +27,8 @@ awk -F "\t" 'BEGIN {OFS="\t"; parse=0} {print} $0=="" && parse==0 {parse=1; prin
 perl -pe 's/^(#.+[^\t])\t+$/\1/g;' |
 #Also creates info.txt
 tee info.txt |
-#NB our sample sheet records RC for BC2/i5, which according to https://support.illumina.com/content/dam/illumina-support/documents/documentation/system_documentation/miseq/indexed-sequencing-overview-guide-15057455-04.pdf is valid for iSeq 100, MiniSeq, NextSeq, HiSeq X, HiSeq 4000, or HiSeq 3000. Therefore for runs on NovaSeqTM 6000, MiSeq, HiSeq 2500, and HiSeq 2000, BC2 must be RC back to the original sequence.
+#NB our sample sheet records RC for BC2/i5, which according to https://support.illumina.com/content/dam/illumina-support/documents/documentation/system_documentation/miseq/indexed-sequencing-overview-guide-15057455-04.pdf is valid for iSeq 100, MiniSeq, NextSeq, HiSeq X, HiSeq 4000, or HiSeq 3000. Therefore for runs on NovaSeq 6000, MiSeq, HiSeq 2500, and HiSeq 2000, BC2 must be RC back to the original sequence.
+#BUGBUG fails to demux when index read set to 0,0, you need to jury rig it as 8,0 to leave some BC stub on even if bcl2fastq ignores the sequence
 awk -f ${src}/flowcells/revcomp.awk -F "\t" --source  'BEGIN {OFS=","; split("8,8", bclens, ",")} \
     $1=="#Instrument" { if($2~/NovaSeq/ || $2~/MiSeq/) {doRevComp=1} else {doRevComp=0} } \
     $1=="#Indices" && $2!="" {split($2, bclens, ",")} \
@@ -147,8 +151,8 @@ data[is.na(data[,"index2"]),"index2"] <- ""
 
 #I can't find a builtin hamming distance implementation for R
 strdist <- function(x,y) {
-	if(length(x) != length(y)) {
-		stop("ERROR: diff lengths unsupported!")
+	if(nchar(x) != nchar(y)) {
+		stop("ERROR: comparing ", x, " to ", y, ". Different lengths unsupported!")
 	}
 	xlist <- unlist(strsplit(x, ""))
 	ylist <- unlist(strsplit(y, ""))
@@ -161,6 +165,11 @@ maxBC1len <- max(sapply(data[,"index"], FUN=function(x) {nchar(x)}))
 #BUGBUG fails for runs without BC2
 maxBC2len <- max(sapply(data[,"index2"], FUN=function(x) {nchar(x)}))
 minBClen <- 4
+
+#Conservatively pad short BCs with N since we don't know what sequence will be read out (if any)
+data$index <- str_pad(data$index, width=maxBC1len, side="right", pad="N")
+data$index2 <- str_pad(data$index2, width=maxBC2len, side="right", pad="N")
+
 
 countBCcollisions <- function(data, bc1len=8, bc2len=8) {
     data[,"index"] <- substr(data[,"index"], start=1, stop=bc1len)
