@@ -345,8 +345,8 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
                 echo "Extracting unpaired reads"
                 unpairedReadsSam="$TMPDIR/${curfile}.${curGenome}.unpaired.sam"
                 unpairedExtractcmd="bwa samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${curfile}.unpaired.${curGenome}.sai $TMPDIR/${curfile}.unpaired.fastq.gz"
-                echo -e "unpairedExtractcmd=bwa $unpairedExtractcmd | (...)"
-                bwa $unpairedExtractcmd | grep -v "^@" > ${unpairedReadsSam}
+                echo -e "unpairedExtractcmd=${unpairedExtractcmd} | (...)"
+                ${unpairedExtractcmd} | grep -v "^@" > ${unpairedReadsSam}
                 
                 extractcmd="${extractcmd} | cat - ${unpairedReadsSam}"
             fi
