@@ -45,9 +45,9 @@ if [ ! -s ${TMPDIR}/${sample_name}.bed ]; then
     touch ${sampleOutdir}/${sample_name}.HA.bed
     touch ${sampleOutdir}/${sample_name}.assemblyBackbone.bed
     
-    echo -e "#chrom_bam1\tchromStart_bam1\tchromEnd_bam1\tWidth_bam1\tNearestGene_bam1\tStrand_bam1\tReadsPer10M\tchrom_bam2\tchromStart_bam2\tchromEnd_bam2\tWidth_bam2\tNearestGene_bam2\tStrand_bam2\tSample" > ${sampleOutdir}/${sample_name}.informative.counts.txt
+    echo -e "#chrom_bam1\tchromStart_bam1\tchromEnd_bam1\tWidth_bam1\tNearestGene_bam1\tStrand_bam1\tReadsPer10M\tchrom_bam2\tchromStart_bam2\tchromEnd_bam2\tWidth_bam2\tNearestGene_bam2\tStrand_bam2\tSample\tGenomes" > ${sampleOutdir}/${sample_name}.informative.counts.txt
     #TODO ideally wouldn't have bam1genome vs bam2genome suffix for consistency
-    echo -e "#NA\tNA\tNA\t0\t-\t\t0\tNA\tNA\tNA\t0\t-\t\t${sample_name}" >> ${sampleOutdir}/${sample_name}.informative.counts.txt
+    echo -e "#NA\tNA\tNA\t0\t-\t\t0\tNA\tNA\tNA\t0\t-\t\t${sample_name}\t${bam1genome}_vs_${bam2genome}" >> ${sampleOutdir}/${sample_name}.informative.counts.txt
     cp ${sampleOutdir}/${sample_name}.informative.counts.txt ${sampleOutdir}/${sample_name}.HA.counts.txt
     cp ${sampleOutdir}/${sample_name}.informative.counts.txt ${sampleOutdir}/${sample_name}.assemblyBackbone.counts.txt
     
