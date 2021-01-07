@@ -35,15 +35,22 @@ sample_name=${6}
 echo "[counts_table] Making counts_table from ${bamintersectBED12}; will output to ${OUTBASE}.counts.txt"
 
 
-echo -e -n "Number of total reads:\t"
-cat ${bamintersectBED12} | wc -l
-
-
 if [ ! -s ${bamintersectBED12} ]; then
     echo "[counts_table] There are no reads to analyze, quitting successfully."
     touch ${OUTBASE}.counts.txt
     exit 0
 fi
+
+
+if [ ! "${num_bam1_reads}" -gt 0 ]; then
+    echo "[counts_table] ERROR invalid num_bam1_reads=${num_bam1_reads}"
+    exit 1
+fi
+
+
+echo -e -n "Number of total reads:\t"
+cat ${bamintersectBED12} | wc -l
+
 
 #Annotate a file by adding a column with the nearest gene name. Inputfile can be stdin (as -); outputs to stdout
 annotateNearestGeneName() {
