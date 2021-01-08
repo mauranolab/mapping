@@ -12,6 +12,7 @@ export OPENBLAS_NUM_THREADS=1
 module load picard/2.22.1
 module load FastQC/0.11.4
 module load bedtools/2.29.2
+#bedops/2.4.39 does not work due to library incompatibility on cluster
 module load bedops/2.4.37
 module load bwa/0.7.17
 module load minimap2/2.17

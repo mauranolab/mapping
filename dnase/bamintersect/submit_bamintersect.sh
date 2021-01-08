@@ -33,6 +33,7 @@ fi
 #####################################################################################
 
 module load samtools/1.10
+#bedops/2.4.39 does not work due to library incompatibility on cluster
 module load bedops/2.4.37
 module load python/3.8.1
 module load miller/5.4.0
@@ -389,8 +390,8 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
         echo "Masking ${nLoxSites} lox sites in payload"
         countsTableMaskFiles="${countsTableMaskFiles} $TMPDIR/loxSites.bed"
     fi
-
-
+    
+    
     cegsGenomeProjectID=`echo ${bam2genome} | cut -d "_" -f1`
     bam1cegsvectorsAssemblyFile="/vol/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed"
     if [ ! -f "${bam1cegsvectorsAssemblyFile}" ]; then
