@@ -91,10 +91,10 @@ set -eu -o pipefail
 
 if [[ ${bclen} -gt 0 ]]; then
     ${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
+fi
 
-    if [[ ${sampleType} == "iPCR" ]]; then
-        ${src}/analyzeIntegrations.sh ${sample}
-    fi
+if [[ ${sampleType} == "iPCR" ]]; then
+    ${src}/analyzeIntegrations.sh ${sample}
 fi
 EOF
 rm -f sgeid.merge.${sample}
