@@ -26,6 +26,12 @@ minReadCutoff=2
 
 OUTDIR=${sample}
 
+
+if [ ! -s "$OUTDIR/${sample}.barcodes.txt.gz" ]; then
+    echo "analyzeIntegrations.sh ERROR: barcode input file $OUTDIR/${sample}.barcodes.txt does not exist!"
+    exit 1
+fi
+
 if [ ! -s "$OUTDIR/${sample}.bam" ]; then
     echo "analyzeIntegrations.sh ERROR: mapped reads input file $OUTDIR/${sample}.bam does not exist!"
     exit 2
@@ -38,7 +44,9 @@ hg38_noalt)
     hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch;
     chromsizes=/vol/isg/annotation/fasta/hg38_noalt/hg38_noalt.chrom.sizes;;
 mm10)
-    chromsizes=/vol/isg/annotation/fasta/mm10/mm10.chrom.sizesl;;
+    # FIX hard-coded references to humam genome reference
+    hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch;
+    chromsizes=/vol/isg/annotation/fasta/mm10/mm10.chrom.sizes;;
 *)
     echo "Don't recognize genome ${curGenome}";
     exit 3;;
@@ -116,17 +124,13 @@ cat $TMPDIR/${sample}.coords.bed | wc -l
 echo -n -e "${sample}\tNumber of pairedreads mapped passing all filters\t"
 samtools view -c ${samflags} -f 1 $OUTDIR/${sample}.bam
 
-if [ -s "$OUTDIR/${sample}.barcodes.txt.gz" ]; then
-    zcat -f $OUTDIR/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | sort -k2,2 > $TMPDIR/${sample}.barcodes.txt
-    cat $TMPDIR/${sample}.coords.bed | sort -k4,4 | join -1 4 -2 2 - $TMPDIR/${sample}.barcodes.txt | awk 'BEGIN {OFS="\t"} {print $2, $3, $4, $1, $6, $7, $8}' | sort-bed - > $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed
-    #columns: chrom, start, end, readID, strand, BC seq, UMI
-    #NB strand in $5
-    echo -e -n "${sample}\tNumber of reads passing all filters and having barcodes assigned\t"
-    cat $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed | wc -l
-else
-    cat $TMPDIR/${sample}.coords.bed | awk 'BEGIN {OFS="\t"} {print $1, $2, $3, $4, $6, "NA", "NA"}' > $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed
-    #columns: chrom, start, end, readID, strand, BC seq, UMI
-fi
+zcat -f $OUTDIR/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | sort -k2,2 > $TMPDIR/${sample}.barcodes.txt
+cat $TMPDIR/${sample}.coords.bed | sort -k4,4 | join -1 4 -2 2 - $TMPDIR/${sample}.barcodes.txt | awk 'BEGIN {OFS="\t"} {print $2, $3, $4, $1, $6, $7, $8}' | sort-bed - > $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed
+#columns: chrom, start, end, readID, strand, BC seq, UMI
+#NB strand in $5
+echo -e -n "${sample}\tNumber of reads passing all filters and having barcodes assigned\t"
+cat $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed | wc -l
+
 
 echo
 echo "Histogram of barcode reads before coordinate-based deduping"
@@ -266,7 +270,7 @@ cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OF
 #Identify insertion sites with more than one BC
 cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq -c | awk 'BEGIN {OFS="\t"} $1==1 {print $2, $3, $4, $5, $6, $7}' | sort-bed - > $TMPDIR/${sample}.singleBC.bed
 
-if [ -s "$OUTDIR/${sample}.barcodes.txt.gz" ]; then
+if [ $(wc -l $TMPDIR/${sample}.singleIns.txt) -gt 0 ]; then
     cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed |
     #Remove BCs with more than one location
     awk -F "\t" 'BEGIN {OFS="\t"} NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${sample}.singleIns.txt - |

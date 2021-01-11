@@ -19,13 +19,6 @@ bclen=$3
 chunksize=$4
 plasmidSeq=$5
 
-if [[ $bclen -le 0 ]]; then
-    echo "Skipping extractBCcounts.sh, since `bclen` is 0"
-    echo
-    echo "Done!!!"
-    date
-    exit 0
-fi
 
 #Just take the rest to simplify passing multiple arguments for extractBarcode.py
 shift 5

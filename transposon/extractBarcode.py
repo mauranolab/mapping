@@ -131,9 +131,14 @@ minBaseQ = args.minBaseQ
 
 bcRefSeq = args.bcRefSeq.upper()
 bc_pos_match = re.search('B+', bcRefSeq)
-bcRefSeq_bc_start = bc_pos_match.start()
-bcRefSeq_bc_end = bc_pos_match.end()
-bcRefSeq_bc_len = bcRefSeq_bc_end - bcRefSeq_bc_start
+if bc_pos_match is not None:
+    bcRefSeq_bc_start = bc_pos_match.start()
+    bcRefSeq_bc_end = bc_pos_match.end()
+    bcRefSeq_bc_len = bcRefSeq_bc_end - bcRefSeq_bc_start
+else:
+    bcRefSeq_bc_start = 0
+    bcRefSeq_bc_end = 0
+    bcRefSeq_bc_len = 0
 bcRefSeqLength = len(bcRefSeq)
 
 #These will stay 0 unless we are in --align mode
@@ -307,6 +312,8 @@ try:
         
         
         if readBCreadEditDistPassed and readBCMinBaseQpassed and readBClengthPassed and readNoNsInBCPassed and (not enforcePlasmidRead or readPlasmidReadEditDistPassed) and (not args.align or readAlignmentPassed):
+            if bc_seq == "":
+                bc_seq = "NoBC"
             #Read is good
             print(bc_seq, readname[0], UMI_seq, cell_seq, sep="\t")
         else:

@@ -261,11 +261,9 @@ if [ ${runMerge} -eq 1 ]; then
     cat <<EOF | qsub -S /bin/bash -j y -b y -N merge.${sample} -o ${OUTDIR} -terse ${mergeHold} | perl -pe 's/[^\d].+$//g;' > sgeid.merge.${sample}
     set -eu -o pipefail
     echo "Merging barcodes"
-    if [[ ${bclen} -gt 0 ]]; then
-        zcat -f ${bcfiles} | pigz -p ${NSLOTS} -c -9 > $OUTDIR/${sample}.barcodes.preFilter.txt.gz
-        rm -f ${bcfiles}
-    fi
-    
+
+    zcat -f ${bcfiles} | pigz -p ${NSLOTS} -c -9 > $OUTDIR/${sample}.barcodes.preFilter.txt.gz
+    rm -f ${bcfiles}
     if [[ ${sampleType} == "iPCR" ]]; then
         echo "Merging bam files"
         if [[ `echo ${bamfiles} | wc | awk '{print $2}'` -gt 1 ]]; then 
@@ -301,16 +299,12 @@ fi
 cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -terse ${analysisHold} # | perl -pe 's/[^\d].+$//g;' > sgeid.analysis
 set -eu -o pipefail
 
-if [[ ${bclen} -gt 0 ]]; then
-    ${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
-fi
-
+${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
 if [[ ${sampleType} == "iPCR" ]]; then
     ${src}/analyzeIntegrations.sh ${sample}
 fi
 EOF
 rm -f sgeid.merge.${sample}
-
 
 echo "Done!!!"
 date
