@@ -382,7 +382,7 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
         if [[ "${bam1genome}" == "LPICE" ]]; then
             #Need also to mask the SV40pA on the assembly
             awk -F "\t" '$4=="SV40 poly(A) signal"' ${bam2cegsvectorsFile} > $TMPDIR/ICE_SV40pA.bed
-            countsTableMaskFiles="${countsTableMaskFiles} $TMPDIR/ICE_SV40pA.bed"
+            uninformativeRegionFiles="${uninformativeRegionFiles} $TMPDIR/ICE_SV40pA.bed"
         fi
         
         awk -F "\t" '$4~/^lox/' ${bam2cegsvectorsFile} > $TMPDIR/loxSites.bed
@@ -440,6 +440,12 @@ cat ${uninformativeRegionFiles} | awk '$0 !~ /^#/' | sort-bed - > ${sampleOutdir
 #uninformativeRegionFiles needs to be repeated below since they operate off raw bam1/bam2
 cat ${uninformativeRegionFiles} ${countsTableMaskFiles} | awk '$0 !~ /^#/' | sort-bed - > ${sampleOutdir}/log/countsTableMaskFile.${bam1genome}_vs_${bam2genome}.bed
 cat ${uninformativeRegionFiles} ${HAmaskFiles} | awk '$0 !~ /^#/' | sort-bed - > ${sampleOutdir}/log/HAmaskFile.${bam1genome}_vs_${bam2genome}.bed
+
+
+echo
+echo "Computing read depth for normalization from normbam: ${normbam}"
+num_bam1_reads=$(samtools view -c -F 512 ${normbam})
+echo "num_bam1_reads: ${num_bam1_reads}"
 
 
 ################################################
@@ -520,10 +526,6 @@ rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/s
 # Merge output from the array jobs.
 echo
 echo "merge_bamintersect"
-echo "Computing read depth for normalization from normbam: ${normbam}"
-num_bam1_reads=$(samtools view -c -F 512 ${normbam})
-echo "num_bam1_reads: ${num_bam1_reads}"
-
 qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${bam1} ${bam1genome} ${bam2} ${bam2genome} ${num_bam1_reads} ${sampleOutdir} ${sample_name} ${verbose} ${INTERMEDIATEDIR} ${src}" > /dev/null
 rm -f ${sampleOutdir}/sgeid.bamintersect.${sample_name}
 
