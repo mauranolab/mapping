@@ -6,5 +6,5 @@ chrX	52962425	52963047
 chrX	106186732	106187231	Pgk1_promoter
 #Specific to HPRT1 assemblon (part of HPRT1 at hg38 chrX:134458634-134460417 was engineered in to parental line so causes false positives)
 HPRT1	30685	32469
-#SV40pA present at left end of LPICE and at 3' end of assemblon, can't filter out the assemblon copy since the chromosome name is different in every assembly. Picked these coordinates to try to balance reducing FP while still permitting us to detect junction with assemblon further down.
-LPICE	0	500
+#Mask second inverted repeat to avoid reporting two clusters for successful integrations (likely reduces sensitivity)
+LPICE	4593	4708
