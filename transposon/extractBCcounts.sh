@@ -19,6 +19,7 @@ bclen=$3
 chunksize=$4
 plasmidSeq=$5
 
+
 #Just take the rest to simplify passing multiple arguments for extractBarcode.py
 shift 5
 extractBCargs=$@

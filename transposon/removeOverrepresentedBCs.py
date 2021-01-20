@@ -15,12 +15,12 @@ def process_lines(input_data, wr):
     #Don't include failed BCs in further counts
     del myCounts['']
     totalBCs = sum(myCounts.values())
-     
+    
     if args.verbose:
         print("\nNumber of unique barcodes:", totalBCs, file=sys.stderr)
         print("The 10 most common BCs before removal:", myCounts.most_common(10), file=sys.stderr)
     
-    failedBCs = [x for x in myCounts.keys() if myCounts[x] / totalBCs > freq]
+    failedBCs = [x for x in myCounts.keys() if myCounts[x] / totalBCs > freq and x != "NoBC"]
     
     print("[removeOverrepresentedBCs] Number of barcodes removed:", len(failedBCs), file=sys.stderr)
     

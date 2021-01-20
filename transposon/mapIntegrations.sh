@@ -74,9 +74,10 @@ esac
 ###Now set up for the iPCR-specific parts
 #Trim primer before mapping to genome
 #R1 will get trimmed if PE mapping is selected
-#BUGBUG hardcoded primer lengths
-R1primerlen=45
-R2primerlen=18
+#BUGBUG hardcoded primer lengths. FIXED BY using sequence template as base length
+R1primerlen=$(expr $(echo -n ${BCreadSeq} | wc -c) - 4)
+R2primerlen=$(echo -n ${plasmidSeq} | wc -c)
+minR1Len=$(expr ${R1primerlen} + 24)
 # R1 read adapters
 #BUGBUG move this so it isn't hard coded
 altDpnSeq="GATCTTTGTCCAAACTCATCGAGCTCGG"
@@ -87,8 +88,8 @@ altDpnRevSeq=$(echo ${altDpnSeq} | tr "[ATGC]" "[TACG]" | rev)
 
 echo
 date
-## Require BC read have 49 + 20 bp length to run paired mapping
-if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END { print 4 * sum/NR }')" -le 69 ]; then
+## Require BC read have R1primerlen + 20 bp length to run paired mapping
+if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END { print 4 * sum/NR }')" -le $minR1Len ]; then
 
     echo "Trimming $R2primerlen bp primer from R2"
     zcat -f $f2 | 

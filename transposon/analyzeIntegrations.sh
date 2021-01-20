@@ -26,9 +26,6 @@ minReadCutoff=2
 
 OUTDIR=${sample}
 
-hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch
-chromsizes=/vol/isg/annotation/fasta/hg38_noalt/hg38_noalt.chrom.sizes
-
 
 if [ ! -s "$OUTDIR/${sample}.barcodes.txt.gz" ]; then
     echo "analyzeIntegrations.sh ERROR: barcode input file $OUTDIR/${sample}.barcodes.txt does not exist!"
@@ -39,6 +36,21 @@ if [ ! -s "$OUTDIR/${sample}.bam" ]; then
     echo "analyzeIntegrations.sh ERROR: mapped reads input file $OUTDIR/${sample}.bam does not exist!"
     exit 2
 fi
+
+# BUG: hardcoded and dependent of genome
+curGenome="mm10"
+case "${curGenome}" in
+hg38_noalt)
+    hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch;
+    chromsizes=/vol/isg/annotation/fasta/hg38_noalt/hg38_noalt.chrom.sizes;;
+mm10)
+    # FIX hard-coded references to humam genome reference
+    hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch;
+    chromsizes=/vol/isg/annotation/fasta/mm10/mm10.chrom.sizes;;
+*)
+    echo "Don't recognize genome ${curGenome}";
+    exit 3;;
+esac
 
 ## Ignore R1 in paired without excluding single-end reads
 samflags="-F 64 -F 512"
@@ -89,9 +101,8 @@ samtools view ${samflags} $OUTDIR/${sample}.bam | cut -f10 | awk -F "\t" 'BEGIN 
 weblogo --datatype fasta --color-scheme 'classic' --size large --sequence-type dna --units probability --title "${sample} genomic" --stacks-per-line 100 > $TMPDIR/${sample}.genomic.eps
 convert $TMPDIR/${sample}.genomic.eps ${OUTDIR}/${sample}.genomic.png
 
-
 echo
-echo "Merge mapping and barcodes"
+echo "Extracting read coordinates"
 date
 #Subtract additional 1 bp from reads on + strand so that the coordinates represent 1 nt to the left of the insertion site (i.e. for A^T, the coordinates point to T)
 samtools view ${samflags} $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
@@ -113,14 +124,10 @@ cat $TMPDIR/${sample}.coords.bed | wc -l
 echo -n -e "${sample}\tNumber of pairedreads mapped passing all filters\t"
 samtools view -c ${samflags} -f 1 $OUTDIR/${sample}.bam
 
-
-zcat -f $OUTDIR/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' |
-sort -k2,2 > $TMPDIR/${sample}.barcodes.txt
+zcat -f $OUTDIR/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | sort -k2,2 > $TMPDIR/${sample}.barcodes.txt
 cat $TMPDIR/${sample}.coords.bed | sort -k4,4 | join -1 4 -2 2 - $TMPDIR/${sample}.barcodes.txt | awk 'BEGIN {OFS="\t"} {print $2, $3, $4, $1, $6, $7, $8}' | sort-bed - > $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed
 #columns: chrom, start, end, readID, strand, BC seq, UMI
 #NB strand in $5
-
-
 echo -e -n "${sample}\tNumber of reads passing all filters and having barcodes assigned\t"
 cat $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed | wc -l
 
@@ -263,12 +270,15 @@ cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OF
 #Identify insertion sites with more than one BC
 cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq -c | awk 'BEGIN {OFS="\t"} $1==1 {print $2, $3, $4, $5, $6, $7}' | sort-bed - > $TMPDIR/${sample}.singleBC.bed
 
-cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed |
-#Remove BCs with more than one location
-awk -F "\t" 'BEGIN {OFS="\t"} NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${sample}.singleIns.txt - |
-#Remove insertion sites with more than one BC
-bedmap --delim "|" --multidelim "|" --bp-ovr 1 --skip-unmapped --echo --echo-map - $TMPDIR/${sample}.singleBC.bed | awk -F "|" 'BEGIN {OFS="\t"} {split($0, main, "\t"); for(i=2; i<=NF; i++) {split($0, singleBC, "\t"); if(main[6]==singleBC[6]) {print $1; next}}}' > $OUTDIR/${sample}.barcodes.coords.bed
-
+if [ $(wc -l $TMPDIR/${sample}.singleIns.txt) -gt 0 ]; then
+    cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed |
+    #Remove BCs with more than one location
+    awk -F "\t" 'BEGIN {OFS="\t"} NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${sample}.singleIns.txt - |
+    #Remove insertion sites with more than one BC
+    bedmap --delim "|" --multidelim "|" --bp-ovr 1 --skip-unmapped --echo --echo-map - $TMPDIR/${sample}.singleBC.bed | awk -F "|" 'BEGIN {OFS="\t"} {split($0, main, "\t"); for(i=2; i<=NF; i++) {split($0, singleBC, "\t"); if(main[6]==singleBC[6]) {print $1; next}}}' > $OUTDIR/${sample}.barcodes.coords.bed
+else
+    cp $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed $OUTDIR/${sample}.barcodes.coords.bed
+fi
 
 #NB retains strand so a few sites are represented twice
 cat $OUTDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq | sort-bed - > $OUTDIR/${sample}.uniqcoords.bed
