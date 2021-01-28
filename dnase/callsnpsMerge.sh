@@ -187,7 +187,7 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
     fi
     #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt
     cat $TMPDIR/variants.${sampleid}.txt | awk -F "\t" 'BEGIN {OFS="\t"} $4=="." {split($8, gt, "/"); gtout=gt[1]; if(length(gt)>2) {gtout=gtout "/" gt[2]}; chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 "_" gtout } {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch
-
+	
     #NB UCSC link from analysis.sh will be wrong for multisample calling
     #Start from .txt file to simplify logic even though we have to sort again
     #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt; for database IDs, append alt allele
@@ -196,29 +196,18 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
     paste - <(awk 'BEGIN {OFS="\t"; FS="\t"} {chromStart=$2; chromEnd=$3; ref=$6; betterGT=$8; numAlleles=split(betterGT,alleles,"/")}
     # Assign colors to the genotypes.bb lines.
     {
-        if (numAlleles == 1)
+        if (numAlleles>1 && alleles[1]!=alleles[2])
         {
-            # haploid - always homozygous
-            if (alleles[1] == ref)
-                colors="105,105,105";
-            else
-                colors="253,199,0";
+            colors="19,165,220";        # het - blue
         } else
         {
-            # diploid
-            if (alleles[1] == alleles[2])
-            {
-                # homozygous
-                if (alleles[1] == ref)
-                    colors="105,105,105";
-                else
-                    colors="253,199,0";
-            } else
-                # heterozygous
-                colors="19,165,220";
+            if (alleles[1] == ref)
+                colors="105,105,105";   # hz_ref - grey
+            else
+                colors="253,199,0";     # hz_nonref - yellow
         }
-     }
-     {print "+" OFS chromStart OFS chromEnd OFS colors}' <(unstarch "${sampleOutdir_jc}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch") ) > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
+    }
+    {print "+" , chromStart , chromEnd , colors}' <(unstarch "${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch") ) > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
 
     bedToBigBed -type=bed9 $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.bb
 
