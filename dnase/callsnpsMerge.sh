@@ -188,44 +188,38 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
     #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt
     cat $TMPDIR/variants.${sampleid}.txt | awk -F "\t" 'BEGIN {OFS="\t"} $4=="." {split($8, gt, "/"); gtout=gt[1]; if(length(gt)>2) {gtout=gtout "/" gt[2]}; chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 "_" gtout } {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch
 
-    # Assign colors to the genotypes.bb lines.
-    rm -f "${TMPDIR}/${name}${vcfsamplename}.${mappedgenome}.newBedColumns.bed"   # Cleaning up from previous run, since using ">>" in line 221 below.
-    while read -r line_in; do
-        read -r chrom chromStart chromEnd readID qual ref alt betterGT phredGenoLikelihoods numTotalReads numRefReads numAltReads <<< "${line_in}"
-
-        IFS='/' read -ra alleles <<< "${betterGT}"
-        numAlleles=${#alleles[@]}
-
-        if [ ${numAlleles} -eq 1 ]; then
-            # haploid - always homozygous
-            if [ "${alleles[0]}" = "${ref}" ]; then
-                colors="105,105,105"  # hz_ref - grey
-            else
-                colors="253,199,0"    # hz_nonref - yellow
-            fi
-        else
-            # diploid
-            if [ "${alleles[0]}" = "${alleles[1]}" ]; then
-                # homozygous
-                if [ "${alleles[0]}" = "${ref}" ]; then
-                    colors="105,105,105"  # hz_ref - grey
-                else
-                    colors="253,199,0"    # hz_nonref - yellow
-                fi
-            else
-                # heterozygous
-                colors="19,165,220"   # het - blue
-            fi
-        fi
-
-        echo -e "+\t${chromStart}\t${chromEnd}\t${colors}" >> "${TMPDIR}/${name}${vcfsamplename}.${mappedgenome}.newBedColumns.bed"
-    done < <(unstarch "${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch")
-
     #NB UCSC link from analysis.sh will be wrong for multisample calling
     #Start from .txt file to simplify logic even though we have to sort again
     #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt; for database IDs, append alt allele
     #truncgt() is a fancy wrapper around substr for syntactic sugar and to add a "..."
-    cat $TMPDIR/variants.${sampleid}.txt | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } $4=="." {chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 } {split($8, gt, "/"); gtout=truncgt(gt[1]); if(length(gt)>2) {gtout=gtout "/" truncgt(gt[2])}; $4=$4 "_" gtout } {print}' | sort-bed - | cut -f1-5 | paste - "${TMPDIR}/${name}${vcfsamplename}.${mappedgenome}.newBedColumns.bed" > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
+    cat $TMPDIR/variants.${sampleid}.txt | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } $4=="." {chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 } {split($8, gt, "/"); gtout=truncgt(gt[1]); if(length(gt)>2) {gtout=gtout "/" truncgt(gt[2])}; $4=$4 "_" gtout } {print}' | sort-bed - | cut -f1-5 | \
+    paste - <(awk 'BEGIN {OFS="\t"; FS="\t"} {chromStart=$2; chromEnd=$3; ref=$6; betterGT=$8; numAlleles=split(betterGT,alleles,"/")}
+    # Assign colors to the genotypes.bb lines.
+    {
+        if (numAlleles == 1)
+        {
+            # haploid - always homozygous
+            if (alleles[1] == ref)
+                colors="105,105,105";
+            else
+                colors="253,199,0";
+        } else
+        {
+            # diploid
+            if (alleles[1] == alleles[2])
+            {
+                # homozygous
+                if (alleles[1] == ref)
+                    colors="105,105,105";
+                else
+                    colors="253,199,0";
+            } else
+                # heterozygous
+                colors="19,165,220";
+        }
+     }
+     {print "+" OFS chromStart OFS chromEnd OFS colors}' <(unstarch "${sampleOutdir_jc}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch") ) > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
+
     bedToBigBed -type=bed9 $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.bb
 
     #Personal Genome SNP format displays two alleles in vertical fashion and provides amino acid changes, but doesn't permit IDs
@@ -237,4 +231,3 @@ done
 echo
 echo -e "\nDone!"
 date
-
