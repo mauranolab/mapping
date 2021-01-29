@@ -192,9 +192,26 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
     #Start from .txt file to simplify logic even though we have to sort again
     #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt; for database IDs, append alt allele
     #truncgt() is a fancy wrapper around substr for syntactic sugar and to add a "..."
-    cat $TMPDIR/variants.${sampleid}.txt | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } $4=="." {chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 } {split($8, gt, "/"); gtout=truncgt(gt[1]); if(length(gt)>2) {gtout=gtout "/" truncgt(gt[2])}; $4=$4 "_" gtout } {print}' | sort-bed - | cut -f1-5 > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
-    bedToBigBed -type=bed5 $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.bb
-    
+    cat $TMPDIR/variants.${sampleid}.txt | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } $4=="." {chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 } {split($8, gt, "/"); gtout=truncgt(gt[1]); if(length(gt)>2) {gtout=gtout "/" truncgt(gt[2])}; $4=$4 "_" gtout } {print}' |
+    awk -F "\t" 'BEGIN {OFS="\t"} {
+        ref=$6;
+        numAlleles=split($8, gt, "/");
+        # Assign colors to the genotypes.bb lines.
+        if (numAlleles>1 && gt[1]!=gt[2]) {
+            color="19,165,220";        # het - blue
+        } else {
+            if (gt[1] == ref) {
+                color="105,105,105";   # hz_ref - grey
+            } else {
+                color="253,199,0";     # hz_nonref - yellow
+            }
+        }
+        print $1, $2, $3, $4, $5, ".", $2, $3, color;
+    }' |
+    sort-bed - > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
+
+    bedToBigBed -type=bed9 $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.bb
+
     #Personal Genome SNP format displays two alleles in vertical fashion and provides amino acid changes, but doesn't permit IDs
     #awk -F "\t" 'BEGIN {OFS="\t"} {split($8, gt, "/"); print $1, $2, $3, $8, length(gt), "0,0", "0,0"}'
     #https://genome.ucsc.edu/FAQ/FAQformat.html#format10

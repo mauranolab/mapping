@@ -584,8 +584,9 @@ for assay_type in assays:
                         long_label=assay_type + ' Genotypes ' + sampleDescription,
                         url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.genotypes.bb',
                         subgroups=sampleSubgroups,
-                        tracktype='bigBed 5',
+                        tracktype='bigBed 5 +',
                         color=curSample['Color'],
+                        itemRgb="on",
                         parentonoff="off"
                     )
                     Genotypes_view.add_tracks(track)
