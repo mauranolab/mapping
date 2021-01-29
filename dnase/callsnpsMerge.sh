@@ -187,27 +187,28 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
     fi
     #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt
     cat $TMPDIR/variants.${sampleid}.txt | awk -F "\t" 'BEGIN {OFS="\t"} $4=="." {split($8, gt, "/"); gtout=gt[1]; if(length(gt)>2) {gtout=gtout "/" gt[2]}; chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 "_" gtout } {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch
-	
+    
     #NB UCSC link from analysis.sh will be wrong for multisample calling
     #Start from .txt file to simplify logic even though we have to sort again
     #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt; for database IDs, append alt allele
     #truncgt() is a fancy wrapper around substr for syntactic sugar and to add a "..."
-    cat $TMPDIR/variants.${sampleid}.txt | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } $4=="." {chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 } {split($8, gt, "/"); gtout=truncgt(gt[1]); if(length(gt)>2) {gtout=gtout "/" truncgt(gt[2])}; $4=$4 "_" gtout } {print}' | sort-bed - | cut -f1-5 | \
-    paste - <(awk 'BEGIN {OFS="\t"; FS="\t"} {chromStart=$2; chromEnd=$3; ref=$6; betterGT=$8; numAlleles=split(betterGT,alleles,"/")}
-    # Assign colors to the genotypes.bb lines.
-    {
-        if (numAlleles>1 && alleles[1]!=alleles[2])
-        {
-            colors="19,165,220";        # het - blue
-        } else
-        {
-            if (alleles[1] == ref)
-                colors="105,105,105";   # hz_ref - grey
-            else
-                colors="253,199,0";     # hz_nonref - yellow
+    cat $TMPDIR/variants.${sampleid}.txt | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } $4=="." {chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 } {split($8, gt, "/"); gtout=truncgt(gt[1]); if(length(gt)>2) {gtout=gtout "/" truncgt(gt[2])}; $4=$4 "_" gtout } {print}' |
+    awk -F "\t" 'BEGIN {OFS="\t"} {
+        ref=$6;
+        numAlleles=split($8, gt, "/");
+        # Assign colors to the genotypes.bb lines.
+        if (numAlleles>1 && gt[1]!=gt[2]) {
+            color="19,165,220";        # het - blue
+        } else {
+            if (gt[1] == ref) {
+                color="105,105,105";   # hz_ref - grey
+            } else {
+                color="253,199,0";     # hz_nonref - yellow
+            }
         }
-    }
-    {print "+" , chromStart , chromEnd , colors}' <(unstarch "${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.starch") ) > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
+        print $1, $2, $3, $4, $5, ".", $2, $3, color;
+    }' |
+    sort-bed - > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
 
     bedToBigBed -type=bed9 $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.bb
 
