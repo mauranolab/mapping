@@ -253,7 +253,7 @@ EOF
 
 #For plotting pairwise edit distances
 #suppressPackageStartupMessages(library(ggplot2))
-#old <- theme_set(theme_classic(base_size=7)) #pdf
+#old <- theme_set(theme_classic(base_size=8)) #pdf
 #old <- theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
 #
 #

@@ -5,7 +5,7 @@ print(date())
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(directlabels))
 
-old <- theme_set(theme_classic(base_size=7)) #pdf
+old <- theme_set(theme_classic(base_size=8)) #pdf
 old <- theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
 old <- theme_update(panel.border = element_blank(), strip.background = element_blank()) #remove facet panel border
 
