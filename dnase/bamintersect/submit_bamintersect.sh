@@ -312,7 +312,7 @@ if [ "${integrationsite}" != "null" ]; then
             echo "WARNING could not find homology arm coordinates for ${integrationSiteName}_${HA1} or ${integrationSiteName}_${HA2} in ${HA_file}"
         fi
     else
-        echo "WARNING No HA file exists for integrationsite: ${integrationsite} so there is no deletion_range"
+        echo "WARNING HA file ${HA_file} does not exist so there is no deletion_range"
     fi
 else
     echo "No integration site was provided, and so there is no deletion_range."
@@ -337,8 +337,10 @@ elif echo "${bam2genome}" | egrep -q "^LP[0-9]+$"; then
     countsTableMaskFiles="${countsTableMaskFiles} ${sampleOutdir}/log/HA_coords.${bam1genome}_vs_${bam2genome}.bed"
 elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed"
-    #Include LP mask for failed clones and also because some components are in common
-    uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
+    if [[ ! "${bam1genome}" =~ ^LP ]]; then
+        #Include LP mask for failed clones and also because some components are in common
+        uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
+    fi
     
     bam2cegsvectorsFile="/vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed"
     if [ ! -f "${bam2cegsvectorsFile}" ]; then

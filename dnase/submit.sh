@@ -150,19 +150,19 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
     sampleAnnotationGeneticModification=`echo "${sampleAnnotation}" | awk -v key="Genetic_Modification" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
     #TODO should this also include Custom Reference? That is missing an integration site
     
-    #Put LPICE into both so we get LPICE vs. payload.
+    #Put LPICE and LP305 into both so we get LP vs. payload.
     #Manually skip rn6 since we haven't integrated anything there
-    mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0!~/^cegsvectors_/ && $1!="rn6" || $0=="cegsvectors_LPICE"'`
+    mammalianGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0!~/^cegsvectors_/ && $1!="rn6" || $0~/cegsvectors_(LPICE|LP305)/'`
     cegsGenomes=`echo "${genomesToMap}" | perl -pe 's/,/\n/g;' | awk '$0~/^cegsvectors_/'`
     for mammalianGenome in ${mammalianGenomes}; do
         #Same as genomeinfo.sh
-        mammalianAnnotationGenome=`echo ${mammalianGenome} | perl -pe's/^cegsvectors_LPICE$/LPICE/g;' -e 's/_.+$//g;' -e 's/all$//g;'`
+        mammalianAnnotationGenome=`echo ${mammalianGenome} | perl -pe's/^cegsvectors_(LPICE|LP305)$/\1/g;' -e 's/_.+$//g;' -e 's/all$//g;'`
         for cegsGenome in ${cegsGenomes}; do
             cegsGenomeShort="${cegsGenome/cegsvectors_/}"
             #Limit this to references listed as genetic modifications
             #If we are doing ICE, make sure we don't do LPICE vs LPICE
-            #Need to do LPICE vs. assemblon but manually skip LPICE vs. pSpCas9 or rtTA
-            if [[ "${sampleAnnotationGeneticModification}" =~ ${cegsGenomeShort} ]] && [[ "${mammalianGenome}" != "${cegsGenome}" ]] && ( [[ "${mammalianGenome}" != "cegsvectors_LPICE" ]] || ([[ ! "${cegsGenome}" =~ "cegsvectors_pSpCas9" ]] && [[ "${cegsGenome}" != "cegsvectors_rtTA" ]]) ); then
+            #Need to do LPICE vs. assemblon but manually skip LPICE vs. pSpCas9 or rtTA NB: can't make regex work: [[ ! "${cegsGenome}" =~ cegsvectors_(pSpCas9|rtTA) ]]
+            if [[ "${sampleAnnotationGeneticModification}" =~ ${cegsGenomeShort} ]] && [[ "${mammalianGenome}" != "${cegsGenome}" ]] && ( [[ ! "${mammalianGenome}" =~ cegsvectors_(LP305|LPICE) ]] || ([[ ! "${cegsGenome}" =~ "cegsvectors_pSpCas9" ]] && [[ "${cegsGenome}" != "cegsvectors_rtTA" ]])); then
                 integrationsite=`getIntegrationSite ${sampleAnnotationGeneticModification} ${cegsGenomeShort}`
                 #For assemblons this yields the LP name rather looking up the LP integrationsite, so look up the site for the LP itself
                 if [[ "${integrationsite}" =~ ^LP ]]; then
@@ -181,7 +181,7 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
                 fi
                 
                 #Hardcode the bamfile used to determine read counts for normalization
-                if [[ "${mammalianGenome}" == "cegsvectors_LPICE" ]]; then
+                if [[ "${mammalianGenome}" == "cegsvectors_LPICE" ]] || [[ "${mammalianGenome}" == "cegsvectors_LP305" ]]; then
                     normbam="--normbam ${sampleOutdir}/${name}.mm10.bam"
                 else
                     normbam=""
