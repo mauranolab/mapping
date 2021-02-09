@@ -574,7 +574,7 @@ for assay_type in assays:
                             visibility="hide",
                             parentonoff="off",
                             tracktype="bigBed",
-                            maxItems=250,
+                            maxItems=100000,
                             short_label="Genotypes",
                             long_label="Genotypes")
                         composite.add_view(Genotypes_view)
@@ -584,7 +584,7 @@ for assay_type in assays:
                         long_label=assay_type + ' Genotypes ' + sampleDescription,
                         url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.genotypes.bb',
                         subgroups=sampleSubgroups,
-                        tracktype='bigBed 5 +',
+                        tracktype='bigBed 9 .',
                         color=curSample['Color'],
                         itemRgb="on",
                         parentonoff="off"
