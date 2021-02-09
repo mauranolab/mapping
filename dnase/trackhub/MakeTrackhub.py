@@ -574,7 +574,7 @@ for assay_type in assays:
                             visibility="hide",
                             parentonoff="off",
                             tracktype="bigBed",
-                            maxItems=2500,
+                            maxItems=100000,
                             short_label="Genotypes",
                             long_label="Genotypes")
                         composite.add_view(Genotypes_view)
