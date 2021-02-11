@@ -163,6 +163,8 @@ if args.supertrack is not None:
         supertrackonoff="show")
     if args.genome == "cegsvectors":
         supertrack.add_params(group="cegsvectors")
+    if args.genome == "t2t":
+        supertrack.add_params(group="t2t")
     if args.supertrackPriority is not None:
         #NB: trackhub requires that priority be a float or it will silently drop the line
         supertrack.add_params(priority=args.supertrackPriority)

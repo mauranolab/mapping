@@ -9,3 +9,13 @@ defaultPos LP087:1-6634
 htmlPath description.html
 blat genome.isg.med.nyu.edu 17779
  
+genome t2t
+trackDb t2t/trackDb_001.txt
+description T2T
+groups t2t/t2t_groups.txt
+twoBitPath t2t/data/t2t.2bit
+organism Human CHM13hTERT
+scientificName .
+defaultPos chr12:1-1000
+blat genome.isg.med.nyu.edu 17779
+
