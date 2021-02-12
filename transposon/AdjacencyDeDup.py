@@ -22,23 +22,6 @@ from umi_tools._dedup_umi import edit_distance
 ###
 def breadth_first_search(node, adj_list):
     searched = set()
-    found = set()
-    queue = set()
-    queue.update((node,))
-    found.update((node,))
-    
-    while len(queue)>0:
-        node=(list(queue))[0]
-        found.update(adj_list[node])
-        queue.update(adj_list[node])
-        searched.update((node,))
-        queue.difference_update(searched)
-    
-    return found
-
-
-def breadth_first_search2(node, adj_list):
-    searched = set()
     queue = set([node])
     
     while len(queue) > 0:
@@ -48,70 +31,6 @@ def breadth_first_search2(node, adj_list):
         queue.update(neighbors)
         queue.difference_update(searched)
     return searched
-
-
-def dedup_dir_adj(Counter):
-        def get_adj_list_directional_adjacency(umis, counts):
-            UmisEncoded = [(umi, umi.encode(), counts[umi],(counts[umi]*2)-1) for umi in umis] #Get all barcode information here 
-            Umi_adj_Dict = {} #Create directory 
-            for i in range(0,len(umis)): #TODO changed 1 to 0, otherwise it skips the first entry
-                umi = UmisEncoded[i][0]#get keys from dict_keys
-                umiEncoded = UmisEncoded[i][1]
-                umiCounts = UmisEncoded[i][2]
-                nearbyUmis =[umi2[0] for umi2 in UmisEncoded if umiCounts >= umi2[3] and edit_distance(umiEncoded, umi2[1]) == 1] #
-                Umi_adj_Dict[umi] = nearbyUmis
-                #print(Umi_adj_Dict)
-            return Umi_adj_Dict
-
-
-#
-        def get_connected_components_adjacency(graph, Counter):
-            found = list()
-            components = list()
-            for node in sorted(graph, key=lambda x: Counter[x], reverse=True):
-                if node not in found:
-                    component = breadth_first_search(node, graph)
-                    found.extend(component)
-                    components.append(component)
-            return components
-        
-        def remove_umis(adj_list, cluster, nodes):
-            '''removes the specified nodes from the cluster and returns
-            the remaining nodes '''
-            # list incomprehension: for x in nodes: for node in adj_list[x]: yield node
-            nodes_to_remove = set([node
-                                    for x in nodes
-                                    for node in adj_list[x]] + nodes)
-            return cluster - nodes_to_remove
-        
-        adj_list = get_adj_list_directional_adjacency(Counter.keys(), Counter)
-        clusters = get_connected_components_adjacency(adj_list, Counter)
-        return clusters
-
-def dedup_dir_adj2(count):
-    ## _get_adj_list_directional
-    ## TODO: implement UMI-tools build_substr_idx optimization?
-    umis = sorted(count.keys(), key = lambda x: count[x], reverse = True)
-    umis_encoded = [umi.encode() for umi in umis]
-    adj_list = { umi: [] for umi in umis }
-    for i in range(len(umis)):
-        for j in range(i + 1, len(umis)):
-            if edit_distance(umis_encoded[i], umis_encoded[j]) > 1:
-                continue
-            if count[umis[i]] >= (2 * count[umis[j]] - 1):
-                adj_list[umis[i]].append(umis[j])
-            if count[umis[j]] >= (2 * count[umis[i]] - 1):
-                adj_list[umis[j]].append(umis[i])
-    ## _get_connected_components
-    found = set()
-    components = list()
-    for umi in umis:
-        if umi in found:
-            continue
-        component = breadth_first_search2(umi, adj_list)
-        found.update(component)
-        components.append(component)
-    return components
 
 
 def iter_indexed(umis, umi_length):
@@ -141,7 +60,7 @@ def iter_pairwise(umis):
             yield i, j
 
 
-def dedup_dir_adj3(count):
+def dedup_dir_adj(count):
     ## _get_adj_list_directional
     umis = sorted(count.keys(), key = lambda x: count[x], reverse = True)
     umis_encoded = [umi.encode() for umi in umis]
@@ -163,7 +82,7 @@ def dedup_dir_adj3(count):
     for umi in umis:
         if umi in found:
             continue
-        component = breadth_first_search2(umi, adj_list)
+        component = breadth_first_search(umi, adj_list)
         found.update(component)
         components.append(component)
     return components
