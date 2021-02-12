@@ -36,6 +36,20 @@ def breadth_first_search(node, adj_list):
     
     return found
 
+
+def breadth_first_search2(node, adj_list):
+    searched = set()
+    queue = set([node])
+    
+    while len(queue) > 0:
+        node = queue.pop()
+        neighbors = adj_list.get(node, [])
+        searched.add(node)
+        queue.update(neighbors)
+        queue.difference_update(searched)
+    return searched
+
+
 def dedup_dir_adj(Counter):
         def get_adj_list_directional_adjacency(umis, counts):
             UmisEncoded = [(umi, umi.encode(), counts[umi],(counts[umi]*2)-1) for umi in umis] #Get all barcode information here 
@@ -52,12 +66,12 @@ def dedup_dir_adj(Counter):
 
 #
         def get_connected_components_adjacency(graph, Counter):
-            found = set()
+            found = list()
             components = list()
             for node in sorted(graph, key=lambda x: Counter[x], reverse=True):
                 if node not in found:
                     component = breadth_first_search(node, graph)
-                    found.update(component)
+                    found.extend(component)
                     components.append(component)
             return components
         
@@ -74,6 +88,85 @@ def dedup_dir_adj(Counter):
         clusters = get_connected_components_adjacency(adj_list, Counter)
         return clusters
 
+def dedup_dir_adj2(count):
+    ## _get_adj_list_directional
+    ## TODO: implement UMI-tools build_substr_idx optimization?
+    umis = sorted(count.keys(), key = lambda x: count[x], reverse = True)
+    umis_encoded = [umi.encode() for umi in umis]
+    adj_list = { umi: [] for umi in umis }
+    for i in range(len(umis)):
+        for j in range(i + 1, len(umis)):
+            if edit_distance(umis_encoded[i], umis_encoded[j]) > 1:
+                continue
+            if count[umis[i]] >= (2 * count[umis[j]] - 1):
+                adj_list[umis[i]].append(umis[j])
+            if count[umis[j]] >= (2 * count[umis[i]] - 1):
+                adj_list[umis[j]].append(umis[i])
+    ## _get_connected_components
+    found = set()
+    components = list()
+    for umi in umis:
+        if umi in found:
+            continue
+        component = breadth_first_search2(umi, adj_list)
+        found.update(component)
+        components.append(component)
+    return components
+
+
+def iter_indexed(umis, umi_length):
+    ## define slices
+    cs, r = divmod(umi_length, 2)
+    slices = [(0, cs + r), (cs + r, umi_length)]
+    ## build index
+    substr_idx = collections.defaultdict(lambda: collections.defaultdict(set))
+    for idx in slices:
+        for i, u in enumerate(umis):
+            u_sub = u[slice(*idx)]
+            substr_idx[idx][u_sub].add(i)
+    ## iterate over index
+    for i, u in enumerate(umis):
+        neighbors = set()
+        for idx, sub_map in substr_idx.items():
+            u_sub = u[slice(*idx)]
+            neighbors = neighbors.union(substr_idx[idx][u_sub])
+        neighbors.difference_update(list(range(i + 1)))
+        for nbr in neighbors:
+            yield i, nbr
+
+
+def iter_pairwise(umis):
+    for i in range(len(umis)):
+        for j in range(i+1, len(umis)):
+            yield i, j
+
+
+def dedup_dir_adj3(count):
+    ## _get_adj_list_directional
+    umis = sorted(count.keys(), key = lambda x: count[x], reverse = True)
+    umis_encoded = [umi.encode() for umi in umis]
+    adj_list = { umi: [] for umi in umis }
+    if len(umis) > 25:
+        it = iter_indexed(umis, len(umis[0]))
+    else:
+        it = iter_pairwise(umis)
+    for i, j in it:
+        if edit_distance(umis_encoded[i], umis_encoded[j]) > 1:
+            continue
+        if count[umis[i]] >= (2 * count[umis[j]] - 1):
+            adj_list[umis[i]].append(umis[j])
+        if count[umis[j]] >= (2 * count[umis[i]] - 1):
+            adj_list[umis[j]].append(umis[i])
+    ## _get_connected_components
+    found = set()
+    components = list()
+    for umi in umis:
+        if umi in found:
+            continue
+        component = breadth_first_search2(umi, adj_list)
+        found.update(component)
+        components.append(component)
+    return components
 
 ###
 def replace_dedup(data, bcColNum, myUMIcounts, deduped_UMI, wr):
@@ -200,8 +293,6 @@ if __name__ == "__main__":
     if args.inputfilename=="-":
         inputfile = sys.stdin
     else:
-        inputfile = open(args.inputfilename, 'r') 
-    inputfile = open(args.inputfilename, 'r') 
         inputfile = open(args.inputfilename, 'r') 
 
     input_data = inputfile.readlines()
