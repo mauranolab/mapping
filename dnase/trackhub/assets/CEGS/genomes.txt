@@ -5,7 +5,7 @@ groups cegsvectors/cegsvectors_groups.txt
 twoBitPath cegsvectors/data/cegsvectors.2bit
 organism CEGS
 scientificName .
-defaultPos LP087:1-6634
+defaultPos LP305:1-4340
 htmlPath description.html
 blat genome.isg.med.nyu.edu 17779
  
@@ -16,6 +16,6 @@ groups t2t/t2t_groups.txt
 twoBitPath t2t/data/t2t.2bit
 organism Human CHM13hTERT
 scientificName .
-defaultPos chr12:1-1000
+defaultPos chr12:2063452-2445451
 blat genome.isg.med.nyu.edu 17779
 
