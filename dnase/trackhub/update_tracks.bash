@@ -211,11 +211,15 @@ cd ${src}
 
 cp -R assets/${hub_type}/. ${hub_target}
 
-for i in "${genome_array[@]}"; do
-    [ "${i}" = "${customGenomeAssembly}" ] && continue
-    [ "${i}" = "t2t" ] && continue
-    echo "genome ${i}" >> "${hub_target}/genomes.txt"
-    echo "trackDb ${i}/trackDb_001.txt" >> "${hub_target}/genomes.txt"
+# The values held in genome_array are the genome names, like hg38, mm10, rn6, etc.
+for cur_genome in "${genome_array[@]}"; do
+    # The genomes native to the UCSC browser have simple, standard, two line stanzas in the genomes.txt file.
+    # They are written to genomes.txt in this loop. The custom assemblies have more complicated, non-standard stanzas.
+    # Those stanza lines are stored in the stub genomes.txt file in the assets/CEGS subdirectory, so we skip building them in this loop.
+    [ "${cur_genome}" = "${customGenomeAssembly}" ] || [ "${cur_genome}" = "t2t" ] && continue
+
+    echo "genome ${cur_genome}" >> "${hub_target}/genomes.txt"
+    echo "trackDb ${cur_genome}/trackDb_001.txt" >> "${hub_target}/genomes.txt"
     echo " " >> "${hub_target}/genomes.txt"
 done
 
