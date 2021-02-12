@@ -228,9 +228,7 @@ if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAsse
 fi
 
 if [[ "${hub_type}" == "CEGS" ]]; then
-    if [ ! -d "${hub_target}/t2t/data" ]; then
-        mkdir "${hub_target}/t2t/data"
-    fi
+    mkdir "${hub_target}/t2t/data"
     cp -p /vol/isg/annotation/fasta/t2t/t2t.2bit ${hub_target}/t2t/data/t2t.2bit
 fi
 #########################################################
