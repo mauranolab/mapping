@@ -211,15 +211,23 @@ cd ${src}
 
 cp -R assets/${hub_type}/. ${hub_target}
 
-for i in "${genome_array[@]}"; do
-    [ "${i}" = "${customGenomeAssembly}" ] && continue
-    echo "genome ${i}" >> "${hub_target}/genomes.txt"
-    echo "trackDb ${i}/trackDb_001.txt" >> "${hub_target}/genomes.txt"
+#Write out two line stanzas for genomes native to the UCSC browser
+for cur_genome in "${genome_array[@]}"; do
+    # The custom assemblies have more complicated, non-standard stanzas stored in the stub genomes.txt file in the assets/CEGS subdirectory, so skip building them in this loop.
+    [ "${cur_genome}" = "${customGenomeAssembly}" ] || [ "${cur_genome}" = "t2t" ] && continue
+    
+    echo "genome ${cur_genome}" >> "${hub_target}/genomes.txt"
+    echo "trackDb ${cur_genome}/trackDb_001.txt" >> "${hub_target}/genomes.txt"
     echo " " >> "${hub_target}/genomes.txt"
 done
 
 if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit" ]; then
     cp ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit ${hub_target}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit
+fi
+
+if [[ "${hub_type}" == "CEGS" ]]; then
+    mkdir "${hub_target}/t2t/data"
+    cp -p /vol/isg/annotation/fasta/t2t/t2t.2bit ${hub_target}/t2t/data/t2t.2bit
 fi
 #########################################################
 
@@ -294,12 +302,19 @@ else
     blatport=0
 fi
 
-if [ ${blatport} -ne 0 ]; then
+if [ "${blatport}" != "0" ]; then
     echo "Copying ${customGenomeAssembly}.2bit to cadlej01_shared..."
     cp -p ${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit /vol/isg/cadlej01_shared
-    
+    twoBitFiles="${customGenomeAssembly}.2bit"
+
+    if [[ "${hub_type}" == "CEGS" ]]; then
+        echo "Copying t2t.2bit to cadlej01_shared..."
+        cp -p /vol/isg/annotation/fasta/t2t/t2t.2bit /vol/isg/cadlej01_shared
+        twoBitFiles="${twoBitFiles} t2t.2bit"
+    fi
+
     echo "Restarting gfServer..."
-    ssh isglcdcpvm001.nyumc.org "/usr/local/bin/blat/gfServer stop localhost ${blatport} -log=/vol/isg/cadlej01_shared/stop_gfServer_VM_${hub_type}.log; cd /vol/isg/cadlej01_shared; /usr/local/bin/blat/gfServer start localhost ${blatport} ${customGenomeAssembly}.2bit -canStop -log=/vol/isg/cadlej01_shared/start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
+    ssh isglcdcpvm001.nyumc.org "/usr/local/bin/blat/gfServer stop localhost ${blatport} -log=/vol/isg/cadlej01_shared/stop_gfServer_VM_${hub_type}.log; cd /vol/isg/cadlej01_shared; /usr/local/bin/blat/gfServer start localhost ${blatport} ${twoBitFiles} -canStop -log=/vol/isg/cadlej01_shared/start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
     echo "Finished restart of gfServer."
 fi
 
