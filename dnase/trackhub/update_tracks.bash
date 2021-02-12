@@ -311,7 +311,7 @@ if [ "${blatport}" != "0" ]; then
     cp -p ${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit /vol/isg/cadlej01_shared
     twoBitFiles="${customGenomeAssembly}.2bit"
 
-    if [ "${blatport}" = "17779" ]; then
+    if [[ "${hub_type}" == "CEGS" ]]; then
         echo "Copying t2t.2bit to cadlej01_shared..."
         cp -p /vol/isg/annotation/fasta/t2t/t2t.2bit /vol/isg/cadlej01_shared
         twoBitFiles="${twoBitFiles} t2t.2bit"
