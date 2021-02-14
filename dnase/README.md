@@ -11,6 +11,8 @@ submit.sh genomesToMap analysisType samplePrefix BS
 
 requires inputs.txt in current directory to contain a list of fastq file locations
 
+submit.sh also serves as the main invocation for bamintersect
+
 ## Dependencies:
 1. Major module dependencies listed in submit.sh
 2. SGE-based grid submission system (we use with SLURM using [sge2slurm](https://github.com/mauranolab/sge2slurm))
