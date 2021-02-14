@@ -130,7 +130,7 @@ def process_lines(input_data, wr):
     
     #Checks which barcodes are the most common before deduplication
     bcColNum = col
-    myUMIcounts = collections.Counter([line[bcColNum] for line in input_data])
+    myUMIcounts = collections.Counter([line[bcColNum] for line in input_data if line[bcColNum] != ""])
     #if args.verbose:
         #print(myUMIcounts, file=sys.stderr)
     numUniqueBCs += len(myUMIcounts)
