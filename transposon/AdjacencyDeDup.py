@@ -22,58 +22,70 @@ from umi_tools._dedup_umi import edit_distance
 ###
 def breadth_first_search(node, adj_list):
     searched = set()
-    found = set()
-    queue = set()
-    queue.update((node,))
-    found.update((node,))
+    queue = set([node])
     
-    while len(queue)>0:
-        node=(list(queue))[0]
-        found.update(adj_list[node])
-        queue.update(adj_list[node])
-        searched.update((node,))
+    while len(queue) > 0:
+        node = queue.pop()
+        neighbors = adj_list.get(node, [])
+        searched.add(node)
+        queue.update(neighbors)
         queue.difference_update(searched)
-    
-    return found
-
-def dedup_dir_adj(Counter):
-        def get_adj_list_directional_adjacency(umis, counts):
-            UmisEncoded = [(umi, umi.encode(), counts[umi],(counts[umi]*2)-1) for umi in umis] #Get all barcode information here 
-            Umi_adj_Dict = {} #Create directory 
-            for i in range(0,len(umis)): #TODO changed 1 to 0, otherwise it skips the first entry
-                umi = UmisEncoded[i][0]#get keys from dict_keys
-                umiEncoded = UmisEncoded[i][1]
-                umiCounts = UmisEncoded[i][2]
-                nearbyUmis =[umi2[0] for umi2 in UmisEncoded if umiCounts >= umi2[3] and edit_distance(umiEncoded, umi2[1]) == 1] #
-                Umi_adj_Dict[umi] = nearbyUmis
-                #print(Umi_adj_Dict)
-            return Umi_adj_Dict
+    return searched
 
 
-#
-        def get_connected_components_adjacency(graph, Counter):
-            found = list()
-            components = list()
-            for node in sorted(graph, key=lambda x: Counter[x], reverse=True):
-                if node not in found:
-                    component = breadth_first_search(node, graph)
-                    found.extend(component)
-                    components.append(component)
-            return components
-        
-        def remove_umis(adj_list, cluster, nodes):
-            '''removes the specified nodes from the cluster and returns
-            the remaining nodes '''
-            # list incomprehension: for x in nodes: for node in adj_list[x]: yield node
-            nodes_to_remove = set([node
-                                    for x in nodes
-                                    for node in adj_list[x]] + nodes)
-            return cluster - nodes_to_remove
-        
-        adj_list = get_adj_list_directional_adjacency(Counter.keys(), Counter)
-        clusters = get_connected_components_adjacency(adj_list, Counter)
-        return clusters
+def iter_indexed(umis, umi_length):
+    ## define slices
+    cs, r = divmod(umi_length, 2)
+    slices = [(0, cs + r), (cs + r, umi_length)]
+    ## build index
+    substr_idx = collections.defaultdict(lambda: collections.defaultdict(set))
+    for idx in slices:
+        for i, u in enumerate(umis):
+            u_sub = u[slice(*idx)]
+            substr_idx[idx][u_sub].add(i)
+    ## iterate over index
+    for i, u in enumerate(umis):
+        neighbors = set()
+        for idx, sub_map in substr_idx.items():
+            u_sub = u[slice(*idx)]
+            neighbors = neighbors.union(substr_idx[idx][u_sub])
+        neighbors.difference_update(list(range(i + 1)))
+        for nbr in neighbors:
+            yield i, nbr
 
+
+def iter_pairwise(umis):
+    for i in range(len(umis)):
+        for j in range(i+1, len(umis)):
+            yield i, j
+
+
+def dedup_dir_adj(count):
+    ## _get_adj_list_directional
+    umis = sorted(count.keys(), key = lambda x: count[x], reverse = True)
+    umis_encoded = [umi.encode() for umi in umis]
+    adj_list = { umi: [] for umi in umis }
+    if len(umis) > 25:
+        it = iter_indexed(umis, len(umis[0]))
+    else:
+        it = iter_pairwise(umis)
+    for i, j in it:
+        if edit_distance(umis_encoded[i], umis_encoded[j]) > 1:
+            continue
+        if count[umis[i]] >= (2 * count[umis[j]] - 1):
+            adj_list[umis[i]].append(umis[j])
+        if count[umis[j]] >= (2 * count[umis[i]] - 1):
+            adj_list[umis[j]].append(umis[i])
+    ## _get_connected_components
+    found = set()
+    components = list()
+    for umi in umis:
+        if umi in found:
+            continue
+        component = breadth_first_search(umi, adj_list)
+        found.update(component)
+        components.append(component)
+    return components
 
 ###
 def replace_dedup(data, bcColNum, myUMIcounts, deduped_UMI, wr):
@@ -118,7 +130,7 @@ def process_lines(input_data, wr):
     
     #Checks which barcodes are the most common before deduplication
     bcColNum = col
-    myUMIcounts = collections.Counter([line[bcColNum] for line in input_data])
+    myUMIcounts = collections.Counter([line[bcColNum] for line in input_data if line[bcColNum] != ""])
     #if args.verbose:
         #print(myUMIcounts, file=sys.stderr)
     numUniqueBCs += len(myUMIcounts)
@@ -167,87 +179,88 @@ def process_lines_byGroup(group, startRow, index, wr):
 ###Argument parsing
 version="1.1"
 
-parser = argparse.ArgumentParser(prog = "DeDup_adjacencyOutput", description = "Deduplicate and correct barcodes", allow_abbrev=False)
-parser.add_argument('inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences (other columns are passed through)')
-parser.add_argument("--col", action='store', type=int, default=1, help = "Column with barcodes in it [%(default)s]")
-parser.add_argument("--groupcols", action='store', type=str, help = "Comma-separated list of column numbers. BCs will only be collapsed for sequences having the same values in these columns. NB: must be sorted on these columns, with priority given to lower-numbered columns. [%(default)s]")
-parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
-parser.add_argument('--version', action='version', version='%(prog)s ' + version)
-parser.add_argument('-o', '--output', action='store', dest='output',help='Deduplicated barcode file')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog = "DeDup_adjacencyOutput", description = "Deduplicate and correct barcodes", allow_abbrev=False)
+    parser.add_argument('inputfilename', action='store', help='input filename. Format: tab-delimited with barcode sequences (other columns are passed through)')
+    parser.add_argument("--col", action='store', type=int, default=1, help = "Column with barcodes in it [%(default)s]")
+    parser.add_argument("--groupcols", action='store', type=str, help = "Comma-separated list of column numbers. BCs will only be collapsed for sequences having the same values in these columns. NB: must be sorted on these columns, with priority given to lower-numbered columns. [%(default)s]")
+    parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
+    parser.add_argument('--version', action='version', version='%(prog)s ' + version)
+    parser.add_argument('-o', '--output', action='store', dest='output',help='Deduplicated barcode file')
 
 
-try:
-    args = parser.parse_args()
-except argparse.ArgumentError as exc:
-    print(exc.message, '\n', exc.argument, file=sys.stderr)
-    sys.exit(2)
+    try:
+        args = parser.parse_args()
+    except argparse.ArgumentError as exc:
+        print(exc.message, '\n', exc.argument, file=sys.stderr)
+        sys.exit(2)
 
-col = args.col-1
-if args.groupcols is None:
-    groupcols = None
-else:
-    groupcols = [int(i)-1 for i in args.groupcols.split(",")]
-    groupcols.sort()
-
-
-###Main
-print("[AdjacencyDeDup] Deduplicating and correcting barcodes.", file=sys.stderr)
-print("[AdjacencyDeDup] " + str(args), file=sys.stderr)
+    col = args.col-1
+    if args.groupcols is None:
+        groupcols = None
+    else:
+        groupcols = [int(i)-1 for i in args.groupcols.split(",")]
+        groupcols.sort()
 
 
-## open file handles
-if args.inputfilename=="-":
-    inputfile = sys.stdin
-else:
-    inputfile = open(args.inputfilename, 'r') 
-
-input_data = inputfile.readlines()
-input_data = [line.rstrip("\n").split('\t') for line in input_data]
-
-if args.output=="-":
-    outfile = sys.stdout
-else:
-    outfile = open(args.output, 'w')
-wr = csv.writer(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True)
+    ###Main
+    print("[AdjacencyDeDup] Deduplicating and correcting barcodes.", file=sys.stderr)
+    print("[AdjacencyDeDup] " + str(args), file=sys.stderr)
 
 
-numLinesProcessed = 0
-numNonEmptyBClinesProcessed = 0
-numAmbiguousLines = 0
-numGroupsRead = 0
-numUniqueBCs = 0
-numUniqueBCsAfterDedup = 0
+    ## open file handles
+    if args.inputfilename=="-":
+        inputfile = sys.stdin
+    else:
+        inputfile = open(args.inputfilename, 'r') 
 
-if groupcols is None:
-    process_lines(input_data, wr)
-else:
-    startRow = 0
-    lastGroup = None
-    minCols = max(groupcols)
-    for index in range(len(input_data)):
-        line = input_data[index]
-        if len(line) < minCols: continue # Skip entries too short
-        #Make key by concatenating contents from all groupcols specified
-        curGroup = "+".join([ str(line[groupcol]) for groupcol in groupcols ])
-        #index points to the first record in input_data of the next group (not the one we are processing)
-        if curGroup != lastGroup:
-            if index > 0:
-                numGroupsRead += 1
-                process_lines_byGroup(lastGroup, startRow, index, wr)
-            lastGroup = curGroup
-            startRow = index
-    if lastGroup is not None:
-        #Do last BC (index+1 because this would be done one past the last iteration)
-        process_lines_byGroup(lastGroup, startRow, index+1, wr)
+    input_data = inputfile.readlines()
+    input_data = [line.rstrip("\n").split('\t') for line in input_data]
 
-print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + " lines processed, " + str(numNonEmptyBClinesProcessed) + " with non-empty BCs)", file=sys.stderr)
-print("[AdjacencyDeDup] Number of unique BCs pre-deduplication:", numUniqueBCs, file=sys.stderr)
-print("[AdjacencyDeDup] Number of unique BCs post-deduplication:", numUniqueBCsAfterDedup, file=sys.stderr)
-if groupcols is not None:
-    print("[AdjacencyDeDup] " + str(numGroupsRead) + " unique groups were found", file=sys.stderr)
-print("[AdjacencyDeDup] " + str(numAmbiguousLines) + " reads with ambiguous BCs were masked out", file=sys.stderr)
-#TODO report number unique BCs before/after
+    if args.output=="-":
+        outfile = sys.stdout
+    else:
+        outfile = open(args.output, 'w')
+    wr = csv.writer(outfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True)
 
 
-inputfile.close()
-outfile.close()
+    numLinesProcessed = 0
+    numNonEmptyBClinesProcessed = 0
+    numAmbiguousLines = 0
+    numGroupsRead = 0
+    numUniqueBCs = 0
+    numUniqueBCsAfterDedup = 0
+
+    if groupcols is None:
+        process_lines(input_data, wr)
+    else:
+        startRow = 0
+        lastGroup = None
+        minCols = max(groupcols)
+        for index in range(len(input_data)):
+            line = input_data[index]
+            if len(line) < minCols: continue # Skip entries too short
+            #Make key by concatenating contents from all groupcols specified
+            curGroup = "+".join([ str(line[groupcol]) for groupcol in groupcols ])
+            #index points to the first record in input_data of the next group (not the one we are processing)
+            if curGroup != lastGroup:
+                if index > 0:
+                    numGroupsRead += 1
+                    process_lines_byGroup(lastGroup, startRow, index, wr)
+                lastGroup = curGroup
+                startRow = index
+        if lastGroup is not None:
+            #Do last BC (index+1 because this would be done one past the last iteration)
+            process_lines_byGroup(lastGroup, startRow, index+1, wr)
+
+    print("[AdjacencyDeDup] All barcodes have been deduplicated (" + str(numLinesProcessed) + " lines processed, " + str(numNonEmptyBClinesProcessed) + " with non-empty BCs)", file=sys.stderr)
+    print("[AdjacencyDeDup] Number of unique BCs pre-deduplication:", numUniqueBCs, file=sys.stderr)
+    print("[AdjacencyDeDup] Number of unique BCs post-deduplication:", numUniqueBCsAfterDedup, file=sys.stderr)
+    if groupcols is not None:
+        print("[AdjacencyDeDup] " + str(numGroupsRead) + " unique groups were found", file=sys.stderr)
+    print("[AdjacencyDeDup] " + str(numAmbiguousLines) + " reads with ambiguous BCs were masked out", file=sys.stderr)
+    #TODO report number unique BCs before/after
+
+
+    inputfile.close()
+    outfile.close()
