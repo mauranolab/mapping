@@ -270,6 +270,7 @@ def getBwaReference(species):
             "Mole+yeast": "talOcc4_sacCer3",
             "Fugu+yeast": "sacCer3", #Do not have Fugu assembly at the moment
             "Plasmid": None,
+            "T2T": "t2t",
         }
     elif sampleType in ["Nano-DNase", "ChIP-seq", "DNase-seq"]:
         speciesToGenomeReference = {
