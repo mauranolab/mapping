@@ -200,8 +200,8 @@ def chromConfCapture(line):
 
 
 #BWA pipeline for DNA / DNase / ChIP-seq
-bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ChIP-seq": "chipseq", "DNA": "dna", "DNA Capture": "capture", "Amplicon": "amplicon" }
-bwaPipelineFragmentLengthsMap = { "DNase-seq": 300, "Nano-DNase": 300, "ChIP-seq": 500, "DNA": 750 , "DNA Capture": 750, "Amplicon": 500 }
+bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ChIP-seq": "chipseq", "CUT&RUN": "chipseq", "DNA": "dna", "DNA Capture": "capture", "Amplicon": "amplicon" }
+bwaPipelineFragmentLengthsMap = { "DNase-seq": 300, "Nano-DNase": 300, "ChIP-seq": 500, "CUT&RUN": 500, "DNA": 750 , "DNA Capture": 750, "Amplicon": 500 }
 
 
 def getBwaPipelineOutdir(sampleType):
@@ -272,7 +272,7 @@ def getBwaReference(species):
             "Plasmid": None,
             "T2T": "t2t",
         }
-    elif sampleType in ["Nano-DNase", "ChIP-seq", "DNase-seq"]:
+    elif sampleType in ["Nano-DNase", "ChIP-seq", "CUT&RUN", "DNase-seq"]:
         speciesToGenomeReference = {
             "Human": "hg38_noalt",
             "Mouse": "mm10",
@@ -310,7 +310,7 @@ def bwaPipeline(line):
     else:
         if sampleType in ["DNA", "DNA Capture", "Amplicon"]:
             processingCommand="mapBwaMem"
-        elif sampleType in ["Nano-DNase", "ChIP-seq", "DNase-seq"]:
+        elif sampleType in ["Nano-DNase", "ChIP-seq", "CUT&RUN", "DNase-seq"]:
             processingCommand="mapBwaAln"
         else:
             raise Exception("Can't parse " + sampleType)
@@ -359,7 +359,7 @@ for flowcellID in flowcellIDs:
 print("#", " ".join([ quoteStringsWithSpaces(arg) for arg in sys.argv ]), sep="")
 print()
 
-#Subset to samples we"re interested in
+#Subset to samples we"re interested in based on command line arguments
 flowcellFile = flowcellFile[flowcellFile["Sample Type" ] != "Pool"]
 if sampletypes is not None:
     flowcellFile = flowcellFile[flowcellFile["Sample Type"].isin(sampletypes)]
