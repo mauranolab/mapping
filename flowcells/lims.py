@@ -65,21 +65,23 @@ def getLIMSsheet(sheet):
 
 #Verify consistency in common entries between Sample Sheet and LIMS sheets
 #Projects argument suppresses less important inconsistencies unless project is on that comma-separated list
+#TODO enforce illegal characters in sample name?
 #TODO: ensure Trim empty except for Amplicon, Bait except for capture
 def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maurano,CEGS"):
     projectList = projects.split(",")
     
-    #TODO sort order
     print("#Check sequencing sheet for consistency with LIMS. Projects=", projects, sep="")
     print("Level", "Description", "Sample Name", "Sample #", "Key", "LIMS_value", "SampleSheet_value", sep=",")
     commonCols = set(lims.columns.values).intersection(set(seq.columns.values))
     numMissingSamples = 0
     numMultipleSamples = 0
     #Iterate through the sequencing sheet one row at a time, pulling any matching rows from LIMS
+    #This validation only applies to samples that also appear on the sequencing sheet
     for seqRow in seq.index.values[seqMask]:
         curSeq = seq.iloc[seqRow]
         bs = curSeq['Sample #']
         SampleName = curSeq['Sample Name']
+        
         curLims = lims[limsMask & lims['Sample #'].isin([bs])]
         numEntriesInLIMS = curLims.shape[0]
         if numEntriesInLIMS == 0:
@@ -98,23 +100,77 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maura
                             print("WARNING", "missing info", SampleName, bs, col, curLims[col].values.item(), curSeq[col], sep=",")
                         else:
                             print("ERROR", "inconsistent info", SampleName, bs, col, curLims[col].values.item(), curSeq[col], sep=",")
+                
                 for col in set(seq.columns.values):
                     if isinstance(curSeq[col], str) and curSeq[col] != curSeq[col].strip():
                         print("WARNING", "leading/trailing whitespace in sequencing sheet", SampleName, bs, col, "", curSeq[col], sep=",")
-                for col in set(lims.columns.values):
-                    if str(curLims[col].values.item()) != str(curLims[col].values.item()).strip():
-                        print("WARNING", "leading/trailing whitespace in LIMS", SampleName, bs, col, curLims[col].values.item(), "", sep=",")
-                for col in ['Genetic Modification', 'Bait set', 'Custom Reference']:
-                    if contains_whitespace(str(curLims[col].values.item())):
-                        print("WARNING", "whitespace", SampleName, bs, col, curLims[col].values.item(), "", sep=",")
-                for bscol in ["Parent Library", "Pool ID"]:
-                    if curLims[bscol].values.item() != "":
-                        #Require exactly 1 match in LIMS
-                        if lims[limsMask & lims['Sample #'].isin([curLims[bscol].values.item()])].shape[0] != 1:
-                            print("ERROR", "invalid " + bscol, SampleName, bs, bscol, curLims[bscol].values.item(), "", sep=",")
     
+    numDuplicateSamples = 0
+    for index, curLims in lims[lims.duplicated(subset="Sample #")].iterrows():
+        bs = curLims['Sample #']
+        SampleName = curLims['Sample Name']
+        print("ERROR", "duplicate BS number", SampleName, bs, "", "", "", sep=",")
+        numDuplicateSamples += 1
+    
+    #Iterate through LIMS
+    #This validation applies to all samples in LIMS
+    lastBS = None
+    for limsRow in lims.index.values[limsMask]:
+        curLims = lims.iloc[limsRow]
+        bs = curLims['Sample #']
+        SampleName = curLims['Sample Name']
+        
+        if lastBS is not None and bs <= lastBS:
+            print("ERROR", "sample out of order", SampleName, bs, "Sample #", "", "", sep=",")
+        lastBS=bs
+        
+        #Only check additional metadata for specified projects to avoid excess verbiage
+        if projects=='' or curLims['Lab'] in projectList:
+            for col in set(lims.columns.values):
+                if str(curLims[col]) != str(curLims[col]).strip():
+                    print("WARNING", "leading/trailing whitespace in LIMS", SampleName, bs, col, curLims[col], "", sep=",")
+            
+            for col in ['Genetic Modification', 'Bait set', 'Custom Reference']:
+                if contains_whitespace(str(curLims[col])):
+                    print("WARNING", "whitespace", SampleName, bs, col, curLims[col], "", sep=",")
+            
+            for col in ["Parent Library", "Pool ID"]:
+                if curLims[col] != "":
+                    #Require exactly 1 match in LIMS
+                    if lims[limsMask & lims['Sample #'].isin([curLims[col]])].shape[0] != 1:
+                        print("ERROR", "invalid " + col, SampleName, bs, col, curLims[col], "", sep=",")
+            
+            if curLims["Genetic Modification"] != "" and curLims["Custom Reference"] != "":
+                geneticModifications = set([ re.sub(r"\[.+\]$", "", cur) for cur in curLims["Genetic Modification"].split(",") ])
+                customReferences = set(curLims["Custom Reference"].split(","))
+                if geneticModifications & customReferences:
+                    print("ERROR", "duplicate custom reference", SampleName, bs, "Genetic Modification/Custom Reference", geneticModifications & customReferences, "", sep=",")
+            
+            requiredColsBySampleType = { "DNA Capture": ["Parent Library", "Bait set", "Pool ID"] }
+            for sampleType in requiredColsBySampleType:
+                for col in requiredColsBySampleType[sampleType]:
+                    if curLims["Sample Type"] in [sampleType]:
+                        if curLims[col] == "":
+                            print("WARNING", col + " column is required for sample type " + sampleType, SampleName, bs, col, curLims[col], "", sep=",")
+    
+    
+    print()
+    print("Clone info")
+    #Leave out "Species" right now since it is mainly for mappings
+    clones = lims[["Clone ID", "Genetic background / Individual", "Sex", "Genetic Modification"]].drop_duplicates()
+    clones = clones[clones["Clone ID"] != ""]
+    for index, curClones in clones[clones.duplicated(subset="Clone ID")].iterrows():
+        cloneid = curClones['Clone ID']
+        print()
+        print("ERROR", "Clone with inconsistent information", cloneid, sep=",")
+        print(clones[clones["Clone ID"] == cloneid])
+    
+    
+    #Print summary at end so it isn't missed
+    print()
     print(str(numMissingSamples) + " total samples missing from LIMS sheet")
     print(str(numMultipleSamples) + " total samples matching multiple entries in LIMS sheet")
+    print(str(numDuplicateSamples) + " total samples with duplicate BS numbers")
 
 
 #Pass in a data frame containing updates to make 
