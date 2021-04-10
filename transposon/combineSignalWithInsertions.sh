@@ -134,6 +134,18 @@ awk -F'|' 'BEGIN {OFS="\t"} {print $2}' | paste $OUTPUT - > $OUTPUT.new
 mv $OUTPUT.new $OUTPUT
 
 
+echo 'doing number of DHSs within +/-5 kbp'
+header="$header\tNumDHS5kb"
+bedmap --delim '\t' --range 5000 --echo --count $OUTPUT /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
+echo 'doing number of DHSs within +/-10 kbp'
+header="$header\tNumDHS10kb"
+bedmap --delim '\t' --range 10000 --echo --count $OUTPUT /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
 echo 'doing number of DHSs within +/-100 kbp'
 header="$header\tNumDHS100kb"
 bedmap --delim '\t' --range 100000 --echo --count $OUTPUT /vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch > $OUTPUT.new

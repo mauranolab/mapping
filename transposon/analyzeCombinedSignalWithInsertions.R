@@ -3,8 +3,9 @@
 print(date())
 
 
-old <- theme_set(theme_classic(base_size=7)) #pdf
+old <- theme_set(theme_classic(base_size=8)) #pdf
 old <- theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+old <- theme_update(axis.text.x=element_text(size=8), axis.text.y=element_text(size=8))
 
 #Try to work around "unable to start device PNG" on ISG cluster
 options(bitmapType="cairo") 
@@ -15,7 +16,6 @@ outbase <- argv[2]
 
 
 #Basic filtering
-#BUGBUG Scaling RNA/DNA to total reads ought to be per transfection? stored in Name column
 filterSampleData <- function(data, prefix="merged", useDNA=TRUE) {
 	#iPCR filters
 	cat("Thresholding iPCR counts\n")
@@ -76,13 +76,14 @@ filterSampleData <- function(data, prefix="merged", useDNA=TRUE) {
 	
 	
 	if(useDNA) {
-		data.merged$expression <- (data.merged[,"RNA"])/data.merged[,"DNA"]
+		data.merged$expression <- data.merged[,"RNA"]/data.merged[,"DNA"]
 	} else {
 		data.merged$expression <- data.merged[,"RNA"]
 	}
 	#Add pseudocount. The as.numeric strips attr that messes up further analysis
 	#Not really a z-score
-	data.merged$zscore <- as.numeric(scale(log(data.merged[,"expression"]+1, base=2)))
+	data.merged$activity <- as.numeric(log(data.merged[,"expression"]+1, base=2))
+#	data.merged$activity <- as.numeric(scale(log(data.merged[,"expression"]+1, base=2)))
 	
 	return(data.merged)
 }
@@ -96,6 +97,7 @@ cat("Loaded", nrow(sampleData), "sites\n")
 
 
 if(all(is.na(sampleData$DNA))) {
+	#For 10x data
 	cat("No DNA counts provided\n")
 	useDNA <- FALSE
 } else {
@@ -110,18 +112,17 @@ cat(prefix, "\tTotal sites remaining:\t", nrow(sampleData), "\n")
 
 
 cat("\n\nCompare adjacent insertions\n")
-ins.proximity <- data.frame(subset(sampleData, select=c(chrom, chromStart, zscore))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, zscore))[-1,], check.names=T)
+ins.proximity <- data.frame(subset(sampleData, select=c(chrom, chromStart, activity))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, activity))[-1,], check.names=T)
 ins.proximity <- subset(ins.proximity, chrom==chrom.1)
 ins.proximity$dist <- ins.proximity$chromStart.1 - ins.proximity$chromStart
-ins.proximity$dist.bin <- cut.pretty(ins.proximity$dist, breaks=c(1, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left") #labels=c("1 bp", "1 kbp", "10 kbp", "20 kbp", "30 kbp", "40 kbp", "50 kbp", "60 kbp", "70 kbp", "80 kbp", "90 kbp", "100 kbp")
-#ins.proximity$dist.bin <- cut(ins.proximity$dist, breaks=c(0, 2e4, 4e4, 6e4, 8e4, 10^5, Inf), right=F, include.lowest=T) #labels=c("50 bp", "100 bp", "250 bp", "500 bp", "1 kb", "10 kb", "100 kb", "1 Mb")
+ins.proximity$dist.bin <- cut(ins.proximity$dist, breaks=c(1, 500, 5000, 1e5, 5e5, Inf), labels=c("0 bp", "500 bp", "5 kb", "10 kb", "50 kb"), right=F, include.lowest=T, pretty.labels="left")
 
 
 results.proxcor <- NULL
 for(curDist in levels(ins.proximity$dist.bin)) {
 	curdata <- subset(ins.proximity, dist.bin==curDist)
 	if(nrow(curdata)>2) {
-		curcor <- with(curdata, cor(zscore, zscore.1, use="na.or.complete", method="spearman"))
+		curcor <- with(curdata, cor(activity, activity.1, use="na.or.complete", method="spearman"))
 		#cat(curRsquared, ":", curcor, "\n")
 		results.proxcor <- rbind(results.proxcor, data.frame(sample=prefix, dist.bin=curDist, meandist=mean.na(curdata$dist), cor=curcor, n=nrow(curdata)))
 	}
@@ -130,32 +131,32 @@ print.data.frame(results.proxcor, row.names=F, right=F)
 write.table(results.proxcor, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.txt"), append=F, sep="\t")
 
 
-#By NumDHS100kb.decile
-sampleData$NumDHS100kb.decile <- factor(cut(sampleData$NumDHS100kb, breaks=unique(quantile(sampleData$NumDHS100kb, probs=seq.int(from=0, to=1, length.out=6), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,5,1))
+cat("\nBy NumDHS100kb.quintile\n")
+sampleData$NumDHS100kb.quintile <- factor(cut(sampleData$NumDHS100kb, breaks=unique(quantile(sampleData$NumDHS100kb, probs=seq.int(from=0, to=1, length.out=6), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,5,1))
 
-ins.proximity.numDHS <- data.frame(subset(sampleData, select=c(chrom, chromStart, zscore, NumDHS100kb.decile))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, zscore, NumDHS100kb.decile))[-1,], check.names=T)
+ins.proximity.numDHS <- data.frame(subset(sampleData, select=c(chrom, chromStart, activity, NumDHS100kb.quintile))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, activity, NumDHS100kb.quintile))[-1,], check.names=T)
 ins.proximity.numDHS <- subset(ins.proximity.numDHS, chrom==chrom.1)
 ins.proximity.numDHS$dist <- ins.proximity.numDHS$chromStart.1 - ins.proximity.numDHS$chromStart
 ins.proximity.numDHS$dist.bin <- cut.pretty(ins.proximity.numDHS$dist, breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left") #labels=c("1 bp", "1 kbp", "10 kbp", "20 kbp", "30 kbp", "40 kbp", "50 kbp", "60 kbp", "70 kbp", "80 kbp", "90 kbp", "100 kbp")
-ins.proximity.numDHS$compartments <- apply(ins.proximity.numDHS[,c("NumDHS100kb.decile", "NumDHS100kb.decile.1")], MARGIN=1, FUN=max)
+ins.proximity.numDHS$compartments <- apply(ins.proximity.numDHS[,c("NumDHS100kb.quintile", "NumDHS100kb.quintile.1")], MARGIN=1, FUN=max)
 
 results.proxcor.numDHS <- NULL
 for(curDist in levels(ins.proximity.numDHS$dist.bin)) {
 	for(curNumDHS in sort(unique(ins.proximity.numDHS$compartments))) {
 		curdata <- subset(ins.proximity.numDHS, dist.bin==curDist & compartments==curNumDHS)
 		if(nrow(curdata)>2) {
-			curcor <- with(curdata, cor(zscore, zscore.1, use="na.or.complete", method="pearson"))
+			curcor <- with(curdata, cor(activity, activity.1, use="na.or.complete", method="pearson"))
 			#cat(curRsquared, ":", curcor, "\n")
-			results.proxcor.numDHS <- rbind(results.proxcor.numDHS, data.frame(sample=prefix, dist.bin=curDist, numDHS.decile=curNumDHS, meandist=mean.na(curdata$dist), cor=curcor, n=nrow(curdata)))
+			results.proxcor.numDHS <- rbind(results.proxcor.numDHS, data.frame(sample=prefix, dist.bin=curDist, numDHS.quintile=curNumDHS, meandist=mean.na(curdata$dist), cor=curcor, n=nrow(curdata)))
 		}
 	}
 }
 print.data.frame(results.proxcor.numDHS, row.names=F, right=F)
-write.table(results.proxcor.numDHS, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.numDHS.txt"), append=F, sep="\t")
+write.table(results.proxcor.numDHS, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.numDHS100kb.txt"), append=F, sep="\t")
 
 
-#Whether in same TAD
-ins.proximity.TAD <- data.frame(subset(sampleData, select=c(chrom, chromStart, zscore, TADid))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, zscore, TADid))[-1,], check.names=T)
+cat("\nWhether in same TAD\n")
+ins.proximity.TAD <- data.frame(subset(sampleData, select=c(chrom, chromStart, activity, TADid))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, activity, TADid))[-1,], check.names=T)
 ins.proximity.TAD <- subset(ins.proximity.TAD, chrom==chrom.1)
 ins.proximity.TAD$dist <- ins.proximity.TAD$chromStart.1 - ins.proximity.TAD$chromStart
 ins.proximity.TAD$dist.bin <- cut.pretty(ins.proximity.TAD$dist, breaks=c(1, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left") #labels=c("1 bp", "1 kbp", "10 kbp", "20 kbp", "30 kbp", "40 kbp", "50 kbp", "60 kbp", "70 kbp", "80 kbp", "90 kbp", "100 kbp")
@@ -167,7 +168,7 @@ for(curDist in levels(ins.proximity.TAD$dist.bin)) {
 	for(curSameTAD in sort(unique(ins.proximity.TAD$sameTAD))) {
 		curdata <- subset(ins.proximity.TAD, dist.bin==curDist & sameTAD==curSameTAD)
 		if(nrow(curdata)>2) {
-			curcor <- with(curdata, cor(zscore, zscore.1, use="na.or.complete", method="pearson"))
+			curcor <- with(curdata, cor(activity, activity.1, use="na.or.complete", method="pearson"))
 			#cat(curRsquared, ":", curcor, "\n")
 			results.proxcor.TAD <- rbind(results.proxcor.TAD, data.frame(sample=prefix, dist.bin=curDist, sameTAD=curSameTAD, meandist=mean.na(curdata$dist), cor=curcor, n=nrow(curdata)))
 		}
@@ -178,78 +179,73 @@ write.table(results.proxcor.TAD, row.names=F, col.names=T, quote=F, file=paste0(
 
 
 cat("\nlm\n")
-#log(abs(DistToTSS)+1)+log(abs(DistToNearestDHSnoCTCF)+1)+log(abs(DistToNearestCTCF)+1)+
-fit <- lm(zscore~NumDHS100kb, data=sampleData)
+fit <- lm(activity~NumDHS5kb+NumDHS100kb+log(abs(DistToNearestDHS)+1, base=10), data=sampleData)
 print(summary(fit))
 
 sampleData$fit <- predict(fit, sampleData, type="response")
-sampleData$residual <- with(sampleData, zscore-fit)
+sampleData$residual <- with(sampleData, activity-fit)
 cat("Clipping", length(which(sampleData[,"residual"] < -2)), "sites z < -2\n")
 sampleData[sampleData[,"residual"] < -2, "residual"] <- -2
 sampleData[,"residual"] <- (sampleData[,"residual"] + 2) / 4
 
 write.table(subset(sampleData, select=c(chrom, chromStart, chromEnd, BC, residual)), file=paste0(outbase, '.residual.bed'), quote=F, sep='\t', col.names=F, row.names=F) 
-#bedops --range 25000 -m T0190_pMH034_BC4_pTR_C1fw_GGlo_PuroP2AGFP_A1rv_HS2.zscore.fithigh.bed > /tmp/fithigh.bed
-#awk -F "\t" 'BEGIN {OFS="\t"} {$5= $5-$6; print}' T0190_pMH034_BC4_pTR_C1fw_GGlo_PuroP2AGFP_A1rv_HS2.zscore.fithigh.bed | cut -f1-5 | bedmap --delim "\t" --echo --count --mean /tmp/fithigh.bed - | awk -F "\t" 'BEGIN {OFS="\t"} $4>1' | widen 250000
+#bedops --range 25000 -m T0190_pMH034_BC4_pTR_C1fw_GGlo_PuroP2AGFP_A1rv_HS2.activity.fithigh.bed > /tmp/fithigh.bed
+#awk -F "\t" 'BEGIN {OFS="\t"} {$5= $5-$6; print}' T0190_pMH034_BC4_pTR_C1fw_GGlo_PuroP2AGFP_A1rv_HS2.activity.fithigh.bed | cut -f1-5 | bedmap --delim "\t" --echo --count --mean /tmp/fithigh.bed - | awk -F "\t" 'BEGIN {OFS="\t"} $4>1' | widen 250000
 
 #bwplot(log(DistToNearestCTCF, base=10)~factor(residual>2), data=sampleData)
-#smoothScatter(sampleData$zscore, sampleData$fit)
-#xyplot(zscore~fit, data=sampleData)
+#smoothScatter(sampleData$activity, sampleData$fit)
+#xyplot(activity~fit, data=sampleData)
 #with(subset(sampleData, ), smoothScatter(log(abs(DistToNearestCTCF)),residual))
 
 
 cat("\nOutput for ucsc\n")
-#cat("Clipping", length(which(sampleData[,"zscore"] > 3)), "sites z > 3\n")
-#sampleData[sampleData[,"zscore"] > 3,"zscore"] <- 3
-cat("Clipping", length(which(sampleData[,"zscore"] < -2)), "sites z < -2\n")
-sampleData[sampleData[,"zscore"] < -3,"zscore"] <- -2
-sampleData[,"zscore"] <- (sampleData[,"zscore"] + 2) / 5
+#cat("Clipping", length(which(sampleData[,"activity"] > 3)), "sites z > 3\n")
+#sampleData[sampleData[,"activity"] > 3,"activity"] <- 3
+#cat("Clipping", length(which(sampleData[,"activity"] < -2)), "sites z < -2\n")
+#sampleData[sampleData[,"activity"] < -2,"activity"] <- -2
+#sampleData[,"activity"] <- (sampleData[,"activity"] + 2) / 5
 
-write.table(subset(sampleData, select=c("chrom", "chromStart", "chromEnd", "BC", "zscore")), file=paste0(outbase, '.zscore.bed'), quote=F, sep='\t', col.names=F, row.names=F) 
+write.table(subset(sampleData, select=c("chrom", "chromStart", "chromEnd", "BC", "activity")), file=paste0(outbase, '.activity.bed'), quote=F, sep='\t', col.names=F, row.names=F) 
 
 
 cat("\n\nActivity related to nearest TSS\n")
-sampleData$DistToTSS.bin <- cut.pretty(abs(sampleData$DistToTSS), breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left")
+sampleData$DistToTSS.bin <- cut(abs(sampleData$DistToTSS), breaks=c(0, 500, 5000, 1e4, 5e4, 5e5, Inf), labels=c("0 bp", "500 bp", "5 kb", "10 kb", "50 kb", "500 kb"), right=F, include.lowest=T, pretty.labels="left")
 sampleData$DistToTSS.decile <- factor(cut(abs(sampleData$DistToTSS), breaks=unique(quantile(abs(sampleData$DistToTSS), probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,10,1))
-results.DistToTSS <- cbind(sample=prefix, summaryBy(zscore~DistToTSS.bin, data=sampleData, FUN=list(mean, median, length)))
+results.DistToTSS <- cbind(sample=prefix, summaryBy(activity~DistToTSS.bin, data=sampleData, FUN=list(mean, median, length)))
 print.data.frame(results.DistToTSS, row.names=F, right=F)
 write.table(results.DistToTSS, file=paste0(outbase, '.DistToTSS.txt'), quote=F, sep='\t', col.names=T, row.names=F) 
 
 
 cat("\n\nActivity related to nearest DHS\n")
-sampleData$DistToNearestDHS.bin <- cut.pretty(abs(sampleData$DistToNearestDHS), breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left")
+sampleData$DistToNearestDHS.bin <- cut(abs(sampleData$DistToNearestDHS), breaks=c(0, 500, 5000, 1e4, 5e4, 5e5, Inf), labels=c("0 bp", "500 bp", "5 kb", "10 kb", "50 kb", "500 kb"), right=F, include.lowest=T, pretty.labels="left")
 #sampleData$DistToNearestDHS.decile <- factor(cut(abs(sampleData$DistToNearestDHS), breaks=unique(quantile(abs(sampleData$DistToNearestDHS), probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,10,1))
-results.DistToNearestDHS <- cbind(sample=prefix, summaryBy(zscore~DistToNearestDHS.bin, data=sampleData, FUN=list(mean, median, length)))
+results.DistToNearestDHS <- cbind(sample=prefix, summaryBy(activity~DistToNearestDHS.bin, data=sampleData, FUN=list(mean, median, length)))
 print.data.frame(results.DistToNearestDHS, row.names=F, right=F)
 write.table(results.DistToNearestDHS, file=paste0(outbase, '.DistToNearestDHS.txt'), quote=F, sep='\t', col.names=T, row.names=F) 
-#summaryBy(DistToNearestDHS~DistToNearestDHS.decile, FUN=function(x) {mean(abs(x))}, data=sampleData)
 
 
 cat("\n\nActivity related to nearest DHS (no CTCF)\n")
-sampleData$DistToNearestDHSnoCTCF.bin <- cut(abs(sampleData$DistToNearestDHSnoCTCF), breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), labels=c("0 bp", "1 kb", "10 kb", "100 kb", "500 kb"), right=F, include.lowest=T)
-#sampleData$DistToNearestDHSnoCTCF.bin <- cut.pretty(abs(sampleData$DistToNearestDHSnoCTCF), breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left")
+sampleData$DistToNearestDHSnoCTCF.bin <- cut(abs(sampleData$DistToNearestDHSnoCTCF), breaks=c(0, 500, 5000, 1e4, 5e4, 5e5, Inf), labels=c("0 bp", "500 bp", "5 kb", "10 kb", "50 kb", "500 kb"), right=F, include.lowest=T)
 #sampleData$DistToNearestDHSnoCTCF.decile <- factor(cut(abs(sampleData$DistToNearestDHSnoCTCF), breaks=unique(quantile(abs(sampleData$DistToNearestDHSnoCTCF), probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,10,1))
-results.DistToNearestDHSnoCTCF <- cbind(sample=prefix, summaryBy(zscore~DistToNearestDHSnoCTCF.bin, data=sampleData, FUN=list(mean, median, length)))
+results.DistToNearestDHSnoCTCF <- cbind(sample=prefix, summaryBy(activity~DistToNearestDHSnoCTCF.bin, data=sampleData, FUN=list(mean, median, length)))
 print.data.frame(results.DistToNearestDHSnoCTCF, row.names=F, right=F)
 write.table(results.DistToNearestDHSnoCTCF, file=paste0(outbase, '.DistToNearestDHSnoCTCF.txt'), quote=F, sep='\t', col.names=T, row.names=F) 
 
 
 cat("\n\nActivity related to nearest CTCF site\n")
-sampleData$DistToNearestCTCF.bin <- cut(abs(sampleData$DistToNearestCTCF), breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), labels=c("0 bp", "1 kb", "10 kb", "100 kb", "500 kb"), right=F, include.lowest=T)
-#sampleData$DistToNearestCTCF.bin <- cut.pretty(abs(sampleData$DistToNearestCTCF), breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left")
-#sampleData$DistToNearestCTCF.bin <- cut(abs(sampleData$DistToNearestCTCF), breaks=c(0, 1e3, 5e3, 1e4,  1e5, Inf), right=F, include.lowest=T)
+sampleData$DistToNearestCTCF.bin <- cut(abs(sampleData$DistToNearestCTCF), breaks=c(0, 500, 5000, 1e4, 5e4, 5e5, Inf), labels=c("0 bp", "500 bp", "5 kb", "10 kb", "50 kb", "500 kb"), right=F, include.lowest=T)
 #sampleData$DistToNearestCTCF.decile <- factor(cut(abs(sampleData$DistToNearestCTCF), breaks=unique(quantile(abs(sampleData$DistToNearestCTCF), probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,10,1))
-results.DistToNearestCTCF <- cbind(sample=prefix, summaryBy(zscore~DistToNearestCTCF.bin, data=sampleData, FUN=list(mean, median, length)))
+results.DistToNearestCTCF <- cbind(sample=prefix, summaryBy(activity~DistToNearestCTCF.bin, data=sampleData, FUN=list(mean, median, length)))
 print.data.frame(results.DistToNearestCTCF, row.names=F, right=F)
 write.table(results.DistToNearestCTCF, file=paste0(outbase, '.DistToNearestCTCF.txt'), quote=F, sep='\t', col.names=T, row.names=F) 
 
 
 cat("\n\nActivity related to DHS density\n")
-sampleData$NumDHS100kb.decile <- factor(cut(sampleData$NumDHS100kb, breaks=unique(quantile(sampleData$NumDHS100kb, probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,10,1))
-results.NumDHS100kb <- cbind(sample=prefix, summaryBy(zscore~NumDHS100kb.decile, data=sampleData, FUN=list(mean, median, length)))
-print.data.frame(results.NumDHS100kb, row.names=F, right=F)
-write.table(results.NumDHS100kb, file=paste0(outbase, '.NumDHS100kb.txt'), quote=F, sep='\t', col.names=T, row.names=F) 
-
+#sampleData$NumDHS5kb.decile <- factor(cut(sampleData$NumDHS5kb, breaks=unique(quantile(sampleData$NumDHS5kb, probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,10,1))
+sampleData$NumDHS5kb.bin <- cut.pretty(sampleData$NumDHS5kb, breaks=c(0,1,2,3,4,5,6,Inf), right=F, include.lowest=T, pretty.labels="left")
+results.NumDHS5kb <- cbind(sample=prefix, summaryBy(activity+NumDHS5kb~NumDHS5kb.bin, data=sampleData, FUN=list(mean, median, length)))
+print.data.frame(results.NumDHS5kb, row.names=F, right=F)
+write.table(results.NumDHS5kb, file=paste0(outbase, '.NumDHS5kb.txt'), quote=F, sep='\t', col.names=T, row.names=F) 
 
 
 cat("\n\nOverlap between libraries by read depth\n")
@@ -306,7 +302,7 @@ write.table(iPCR.overlaps.byReadDecile.long, row.names=F, col.names=T, quote=F, 
 
 
 cat("iPCR insertion density vs. activity\n")
-print.data.frame(cbind(prefix, summaryBy(zscore~InsDens,data=sampleData, FUN=list(mean, length))), row.names=F, right=F)
+print.data.frame(cbind(prefix, summaryBy(activity~InsDens,data=sampleData, FUN=list(mean, length))), row.names=F, right=F)
 
 cat("\nDone!!!\n")
 print(date())

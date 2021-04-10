@@ -11,7 +11,7 @@ getcolor () {
     
     trackcolor="51,128,195" #blue
     if [[ "$1" =~ A1fw ]] || [[ "$1" =~ C1fw ]] || [[ "$1" =~ A1rv ]] || [[ "$1" =~ C1rv ]] || [[ "$1" =~ DoubleIns ]]; then
-        trackcolor="120,88,165" #purple
+        trackcolor="255,153,0" #orange
     elif [[ "$1" =~ HS2 ]]; then
         trackcolor="238,54,36" #red
     fi
@@ -35,53 +35,53 @@ ${src}/analyzeCombinedSignalWithInsertions.R ${PREFIX} ${OUTBASE}
 
 
 echo
-echo "Generating UCSC track"
+echo "Generating UCSC tracks"
 trackcolor=$(getcolor $PREFIX)
-
-
-numUCSCsites=`cat ${OUTBASE}.zscore.bed | wc -l`
+numUCSCsites=`cat ${OUTBASE}.activity.bed | wc -l`
 echo "Num of sites in browser track: ${numUCSCsites}"
-
-cut -f1-3,5 ${OUTBASE}.zscore.bed > $TMPDIR/${PREFIX}.zscore.bedGraph
-
-bedGraphToBigWig $TMPDIR/${PREFIX}.zscore.bedGraph ${chromsizes} ${OUTBASE}.zscore.bw
-UCSCbaseURL="https://cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
-echo "track name=${PREFIX}-activity description=\"${PREFIX} activity (log(RNA/DNA)), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:2 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.zscore.bw"
-
-
-cut -f1-3,5 ${OUTBASE}.residual.bed > $TMPDIR/${PREFIX}.residual.bedGraph
-
-bedGraphToBigWig $TMPDIR/${PREFIX}.residual.bedGraph ${chromsizes} ${OUTBASE}.residual.bw
-UCSCbaseURL="https://cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
-echo "track name=${PREFIX}-residual description=\"${PREFIX} residual (of RNA/DNA zscore), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:1 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.residual.bw"
 
 
 echo
-echo "Generating smoothed activity UCSC track"
-
+echo "Generating insertion density UCSC track"
+#NB only considers insertions passing all filters, including minimum DNA count
 
 cat ${chromsizes} | 
 awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="chrEBV"' |
 awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - | cut -f1,3 | awk -v step=10000 -v binwidth=10000 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
 #--faster is ok since we are dealing with bins and read starts
-bedmap --faster --delim "\t" --bp-ovr 1 --echo --mean - ${OUTBASE}.zscore.bed | 
+bedmap --faster --delim "\t" --bp-ovr 1 --echo --count - ${OUTBASE}.activity.bed | 
 perl -pe 's/NAN$/0/g;' |
 #resize intervals down from full bin width to step size
 #Intervals then conform to Richard's convention that the counts are reported in 20bp windows including reads +/-75 from the center of that window
 awk -v step=10000 -v binwidth=10000 -F "\t" 'BEGIN {OFS="\t"} {offset=(binwidth-step)/2 ; $2+=offset; $3-=offset; print}' |
-tee $TMPDIR/${PREFIX}.zscore.density.bed |
+tee $TMPDIR/${PREFIX}.insertion.density.bed |
 #Remember wig is 1-indexed
 #NB assumes span == step
 #bedgraph would be simpler but produces 5x larger file. Would variablestep result in smaller .bw file?
-awk -F "\t" 'lastChrom!=$1 || $2 != lastChromEnd || $3-$2 != curspan {curstep=$3-$2; curspan=curstep; print "fixedStep chrom=" $1 " start=" $2+1 " step=" curstep " span=" curspan} {lastChrom=$1; lastChromStart=$2; lastChromEnd=$3; print $5}' > $TMPDIR/${PREFIX}.zscore.density.wig
+awk -F "\t" 'lastChrom!=$1 || $2 != lastChromEnd || $3-$2 != curspan {curstep=$3-$2; curspan=curstep; print "fixedStep chrom=" $1 " start=" $2+1 " step=" curstep " span=" curspan} {lastChrom=$1; lastChromStart=$2; lastChromEnd=$3; print $5}' > $TMPDIR/${PREFIX}.insertion.density.wig
 
-awk -F "\t" 'BEGIN {OFS="\t"} $5!=0' $TMPDIR/${PREFIX}.zscore.density.bed | starch - > ${OUTBASE}.zscore.density.starch
-
+cat $TMPDIR/${PREFIX}.insertion.density.bed | starch - > ${OUTBASE}.insertion.density.starch
 
 #Kent tools can't use STDIN
-wigToBigWig $TMPDIR/${PREFIX}.zscore.density.wig ${chromsizes} ${OUTBASE}.zscore.density.bw
+wigToBigWig $TMPDIR/${PREFIX}.insertion.density.wig ${chromsizes} ${OUTBASE}.insertion.density.bw
 
-echo "track name=${PREFIX}-activitydens description=\"${PREFIX} activity density (smoothed log(RNA/DNA)), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:2 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.zscore.density.bw"
+echo "track name=${PREFIX}-activitydens description=\"${PREFIX} activity density (20 kb windows), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:2 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.insertion.density.bw"
+
+
+echo
+echo "Generating activity UCSC track"
+cut -f1-3,5 ${OUTBASE}.activity.bed > $TMPDIR/${PREFIX}.activity.bedGraph
+bedGraphToBigWig $TMPDIR/${PREFIX}.activity.bedGraph ${chromsizes} ${OUTBASE}.activity.bw
+UCSCbaseURL="https://cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
+echo "track name=${PREFIX}-activity description=\"${PREFIX} activity (log(RNA/DNA)), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:4 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.activity.bw"
+sort-bed ${OUTBASE}.activity.bed | starch - > ${OUTBASE}.activity.starch
+rm -f ${OUTBASE}.activity.bed
+
+
+#cut -f1-3,5 ${OUTBASE}.residual.bed > $TMPDIR/${PREFIX}.residual.bedGraph
+#bedGraphToBigWig $TMPDIR/${PREFIX}.residual.bedGraph ${chromsizes} ${OUTBASE}.residual.bw
+#UCSCbaseURL="https://cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
+#echo "track name=${PREFIX}-residual description=\"${PREFIX} residual (of RNA/DNA activity), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:1 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.residual.bw"
 
 
 echo
