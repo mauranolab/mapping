@@ -227,7 +227,7 @@ fi
 
 if [[ "${hub_type}" == "CEGS" ]]; then
     mkdir "${hub_target}/t2t/data"
-    cp -p /vol/isg/annotation/fasta/t2t/t2t.2bit ${hub_target}/t2t/data/t2t.2bit
+    cp /vol/isg/annotation/fasta/t2t/t2t.2bit ${hub_target}/t2t/data/t2t.2bit
 fi
 #########################################################
 
@@ -256,16 +256,47 @@ Rscript makeChroms_per_cegsvectorHtml.R "${TMPDIR}/chroms_per_cegsvector.txt" "$
 
 cat "${TMPDIR}/chroms_per_cegsvector.html" >> "${hub_target}/description.html"
 
+
 ######################################################################################
 # Check for hub errors.
-# Make sure some version of the ucsckentutils module has already been loaded.
-
 echo
 echo "Running hubCheck"
 hubCheck -noTracks -udcDir=${TMPDIR} "${hub_target}/hub.txt"
 echo
 
-# Clean out old hub:
+
+######################################################################################
+# Enable BLAT for custom assemblies.
+
+if [[ "${hub_type}" == "CEGS" ]]; then
+    blatport=17779
+elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
+    blatport=17778
+else
+    blatport=0
+fi
+
+if [ "${blatport}" != "0" ]; then
+    echo "Copying ${customGenomeAssembly}.2bit to cadlej01_shared..."
+    cp ${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit /vol/isg/blat_data
+    twoBitFiles="${customGenomeAssembly}.2bit"
+    
+    if [[ "${hub_type}" == "CEGS" ]]; then
+        echo "Copying t2t.2bit to shared directory for blat..."
+        cp ${hub_target}/t2t/data/t2t.2bit /vol/isg/blat_data
+        twoBitFiles="${twoBitFiles} t2t.2bit"
+    fi
+    
+    #NB requires password-less access via ssh
+    echo "Restarting gfServer..."
+    ssh isglcdcpvm001.nyumc.org "/usr/local/bin/blat/gfServer stop localhost ${blatport} -log=/vol/isg/blat_data/stop_gfServer_VM_${hub_type}.log; cd /vol/isg/blat_data; /usr/local/bin/blat/gfServer start localhost ${blatport} ${twoBitFiles} -canStop -log=/vol/isg/blat_data/start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
+    echo "Finished restart of gfServer."
+fi
+
+
+######################################################################################
+# Clean out old hub and deploy
+
 for i in "${genome_array[@]}"; do
     rm -rf "${hub_target_final}/${i}"
 done
@@ -291,30 +322,4 @@ cp -rpd ${hub_target}/* ${hub_target_final}
 echo "Removing TMPDIR directory."
 rm -rf ${TMPDIR}
 echo "Done!"
-######################################################################################
-
-# Enable BLAT for custom assemblies...
-if [[ "${hub_type}" == "CEGS" ]]; then
-    blatport=17779
-elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
-    blatport=17778
-else
-    blatport=0
-fi
-
-if [ "${blatport}" != "0" ]; then
-    echo "Copying ${customGenomeAssembly}.2bit to cadlej01_shared..."
-    cp -p ${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit /vol/isg/cadlej01_shared
-    twoBitFiles="${customGenomeAssembly}.2bit"
-
-    if [[ "${hub_type}" == "CEGS" ]]; then
-        echo "Copying t2t.2bit to cadlej01_shared..."
-        cp -p /vol/isg/annotation/fasta/t2t/t2t.2bit /vol/isg/cadlej01_shared
-        twoBitFiles="${twoBitFiles} t2t.2bit"
-    fi
-
-    echo "Restarting gfServer..."
-    ssh isglcdcpvm001.nyumc.org "/usr/local/bin/blat/gfServer stop localhost ${blatport} -log=/vol/isg/cadlej01_shared/stop_gfServer_VM_${hub_type}.log; cd /vol/isg/cadlej01_shared; /usr/local/bin/blat/gfServer start localhost ${blatport} ${twoBitFiles} -canStop -log=/vol/isg/cadlej01_shared/start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
-    echo "Finished restart of gfServer."
-fi
 
