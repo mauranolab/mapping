@@ -4,7 +4,7 @@ set -eu -o pipefail
 
 #NSLOTS=1
 
-src=/vol/mauranolab/mapped/src/transposon
+src=$( dirname "${BASH_SOURCE[0]}" )
 
 
 ###Parse command line args
@@ -18,7 +18,6 @@ BCreadSeq=$2
 bclen=$3
 chunksize=$4
 plasmidSeq=$5
-
 
 #Just take the rest to simplify passing multiple arguments for extractBarcode.py
 shift 5

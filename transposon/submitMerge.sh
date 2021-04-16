@@ -17,7 +17,7 @@ module load miller
 module load pigz
 module load samtools/1.9
 
-src=/vol/mauranolab/mapped/src/transposon
+src=$( dirname "${BASH_SOURCE[0]}" )
 
 #Hardcoded right now rather than as parameters like dnase pipeline
 runMerge=1

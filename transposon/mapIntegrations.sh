@@ -3,7 +3,7 @@ set -eu -o pipefail
 
 #NSLOTS=1
 
-src=/vol/mauranolab/mapped/src/transposon
+src=$( dirname "${BASH_SOURCE[0]}" )
 
 
 ###Parse command line args

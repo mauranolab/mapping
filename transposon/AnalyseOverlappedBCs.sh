@@ -2,6 +2,8 @@
 
 #set -e -o pipefail
 
+src=$( dirname "${BASH_SOURCE[0]}" )
+
 module load bedops
 
 echo "Starting analysis" 
@@ -1564,7 +1566,7 @@ date
 
 
 echo 'Plotting data in R'
-/vol/mauranolab/mapped/src/transposon/AnalyseOverlappedBCs_plotting.R --SampleName ${SampleName} --OUTDIR ${OUTDIR}
+${src}/AnalyseOverlappedBCs_plotting.R --SampleName ${SampleName} --OUTDIR ${OUTDIR}
 echo 'Finished plotting in R'
 
 

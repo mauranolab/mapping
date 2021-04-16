@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e -o pipefail
 
-src=/vol/mauranolab/mapped/src/transposon
+src=$( dirname "${BASH_SOURCE[0]}" )
 
 module load bedops
 

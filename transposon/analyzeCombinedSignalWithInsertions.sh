@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e -o pipefail
 
-src=/vol/mauranolab/mapped/src/transposon/
+src=$( dirname "${BASH_SOURCE[0]}" )
 
 chromsizes=/vol/isg/annotation/fasta/hg38/hg38.chrom.sizes
 
@@ -65,7 +65,7 @@ cat $TMPDIR/${PREFIX}.insertion.density.bed | starch - > ${OUTBASE}.insertion.de
 #Kent tools can't use STDIN
 wigToBigWig $TMPDIR/${PREFIX}.insertion.density.wig ${chromsizes} ${OUTBASE}.insertion.density.bw
 
-echo "track name=${PREFIX}-activitydens description=\"${PREFIX} activity density (20 kb windows), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:2 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.insertion.density.bw"
+echo "track name=${PREFIX}-insertiondens description=\"${PREFIX} insertion density (20 kb windows), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:2 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.insertion.density.bw"
 
 
 echo

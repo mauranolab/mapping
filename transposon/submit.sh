@@ -30,7 +30,7 @@ floor()
     set -u
 };
 
-src=/vol/mauranolab/mapped/src/transposon
+src=$( dirname "${BASH_SOURCE[0]}" )
 
 #Hardcoded right now rather than as parameters like dnase pipeline
 runPreprocess=1
@@ -261,9 +261,9 @@ if [ ${runMerge} -eq 1 ]; then
     cat <<EOF | qsub -S /bin/bash -j y -b y -N merge.${sample} -o ${OUTDIR} -terse ${mergeHold} | perl -pe 's/[^\d].+$//g;' > sgeid.merge.${sample}
     set -eu -o pipefail
     echo "Merging barcodes"
-
     zcat -f ${bcfiles} | pigz -p ${NSLOTS} -c -9 > $OUTDIR/${sample}.barcodes.preFilter.txt.gz
     rm -f ${bcfiles}
+    
     if [[ ${sampleType} == "iPCR" ]]; then
         echo "Merging bam files"
         if [[ `echo ${bamfiles} | wc | awk '{print $2}'` -gt 1 ]]; then 
@@ -298,13 +298,14 @@ fi
 #-o ${OUTDIR} breaks Jesper's Flowcell_Info.sh
 cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -terse ${analysisHold} # | perl -pe 's/[^\d].+$//g;' > sgeid.analysis
 set -eu -o pipefail
-
 ${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
+
 if [[ ${sampleType} == "iPCR" ]]; then
     ${src}/analyzeIntegrations.sh ${sample}
 fi
 EOF
 rm -f sgeid.merge.${sample}
+
 
 echo "Done!!!"
 date
