@@ -261,39 +261,43 @@ try:
         BCeditDist, readBCreadEditDistPassed = checkReadAgainstRefSequence(BCread[1][BCreadOffset:], bcRefSeq[bcRefSeqOffset:], BCeditDistTotals, BCmismatchByPos, maxEditDistRate)
         if enforcePlasmidRead:
             plasmidEditDist, readPlasmidReadEditDistPassed = checkReadAgainstRefSequence(PLread[1], plasmidRefSeq, PlasmidEditDistTotals, PlasmidMismatchByPos, maxEditDistRate)
-        
-        
+
         #Extract BC and check length
         bc_seq = BCread[1][(bcRefSeq_bc_start-bcRefSeqOffset) : (bcRefSeq_bc_end-bcRefSeqOffset)]
         #print("DEBUG found BC:", bc_seq, file=sys.stderr, sep="")
-        if len(bc_seq) == args.bclen:
+        if bc_seq == "":
             readBClengthPassed = True
-        else:
-            readBClengthPassed = False
-        
-        if(args.BCrevcomp):
-            bc_seq = revcomp(bc_seq)
-        
-        if re.search('[^ACGT]', bc_seq) is not None:
-            readNoNsInBCPassed = False
-        else:
             readNoNsInBCPassed = True
-        
-        #Check the baseQ of the barcode
-        bc_baseQ = BCread[3][(bcRefSeq_bc_start-bcRefSeqOffset) : (bcRefSeq_bc_end-bcRefSeqOffset)]
-        bc_baseQ = [ord(i)-33 for i in bc_baseQ]
-        for i in range(len(bc_baseQ)):
-            BCqualByPos[i] += bc_baseQ[i]
-            BCbasesByQual[min(bc_baseQ[i], 40)] += 1
-        
-        #NB Permits 2 bases to be below threshold
-        if sum([i >= minBaseQ for i in bc_baseQ]) >= args.bclen-2:
             readBCMinBaseQpassed = True
         else:
-            readBCMinBaseQpassed = False
-        
-        #TODO 10x check cell BC baseq
-        
+            if bcRefSeq_bc_len == 0 or len(bc_seq) == args.bclen:
+                readBClengthPassed = True
+            else:
+                readBClengthPassed = False
+            
+            if(args.BCrevcomp):
+                bc_seq = revcomp(bc_seq)
+            
+            if re.search('[^ACGT]', bc_seq) is not None:
+                readNoNsInBCPassed = False
+            else:
+                readNoNsInBCPassed = True
+            
+            #Check the baseQ of the barcode
+            bc_baseQ = BCread[3][(bcRefSeq_bc_start-bcRefSeqOffset) : (bcRefSeq_bc_end-bcRefSeqOffset)]
+            bc_baseQ = [ord(i)-33 for i in bc_baseQ]
+            for i in range(len(bc_baseQ)):
+                BCqualByPos[i] += bc_baseQ[i]
+                BCbasesByQual[min(bc_baseQ[i], 40)] += 1
+            
+            #NB Permits 2 bases to be below threshold
+            if sum([i >= minBaseQ for i in bc_baseQ]) >= args.bclen-2:
+                readBCMinBaseQpassed = True
+            else:
+                readBCMinBaseQpassed = False
+            
+            #TODO 10x check cell BC baseq
+            
         ###Extract UMI and cell BC if present
         #Read name format: [@...]_[cell_seq]?_[UMI_seq] [Illumina multiplexing BCs]
         readname = BCread[0].split(' ')[0][1:].split('_')
