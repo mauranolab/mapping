@@ -38,13 +38,16 @@ if [ ! -s "$OUTDIR/${sample}.bam" ]; then
 fi
 
 # BUG: hardcoded and dependent of genome
-curGenome="mm10"
+curGenome="hg38_noalt"
+#curGenome="mm10"
 case "${curGenome}" in
 hg38_noalt)
+    annotationgenome=hg38;
     hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch;
     chromsizes=/vol/isg/annotation/fasta/hg38_noalt/hg38_noalt.chrom.sizes;;
 mm10)
     # FIX hard-coded references to humam genome reference
+    annotationgenome=mm10;
     hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch;
     chromsizes=/vol/isg/annotation/fasta/mm10/mm10.chrom.sizes;;
 *)
@@ -288,7 +291,7 @@ echo
 echo "Generating UCSC track"
 projectdir=`pwd | perl -pe 's/^\/vol\/mauranolab\/transposon\///g;'`
 UCSCbaseURL="https://cascade.isg.med.nyu.edu/~mauram01/transposon/${projectdir}/${OUTDIR}"
-echo "track name=${sample} description=${sample}-integrations db=hg38 color=$trackcolor"
+echo "track name=${sample} description=${sample}-integrations db=${annotationgenome} color=$trackcolor"
 echo "${UCSCbaseURL}/${sample}.barcodes.coords.bed"
 
 
@@ -382,7 +385,7 @@ awk -F "\t" 'BEGIN {OFS="\t"} $5!=0' $TMPDIR/${sample}.insertions.density.bed | 
 #Kent tools can't use STDIN
 wigToBigWig $TMPDIR/${sample}.insertions.density.wig ${chromsizes} ${OUTDIR}/${sample}.insertions.density.bw
 
-echo "track name=${sample}-dens description=\"${sample}-density\" maxHeightPixels=30 color=$trackcolor viewLimits=0:100 autoScale=on visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}/${sample}.insertions.density.bw"
+echo "track name=${sample}-dens description=\"${sample}-density\" maxHeightPixels=30 color=$trackcolor viewLimits=0:100 autoScale=on visibility=full db=${annotationgenome} type=bigWig bigDataUrl=${UCSCbaseURL}/${sample}.insertions.density.bw"
 
 
 echo
