@@ -85,9 +85,9 @@ minLengthForPEmapping=24
 if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END { print 4 * sum/NR }')" -le $(expr $(echo -n ${BCreadSeq} | wc -c) + ${minLengthForPEmapping}) ]; then
     echo "Single-end mapping using bwa aln"
     echo "Trimming $R2primerlen bp primer from R2"
-    zcat -f $f2 | 
+    zcat -f $f2 |
     awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-    cutadapt -j $NSLOTS -o - -u $R2primerlen - |
+    cutadapt -j $NSLOTS -o - -u ${R2primerlen} - |
     #hardcoded fix for LP305-derived libraries
     #cutadapt -j $NSLOTS -o - -g XTTATG - |
     gzip -1 -c > $TMPDIR/${sample}.genome.fastq.gz
@@ -103,23 +103,20 @@ if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END
 else
     echo "Paired-end mapping using bwa mem"
     echo "Adaptive trimming of R1"
-    
-    # R1 read adapters
-    #BUGBUG move this so it isn't hard coded
+    #BUGBUG hard coded
     altDpnSeq="GATCTTTGTCCAAACTCATCGAGCTCGG"
     R2PrimerSeq=$(echo $plasmidSeq | tr "[ATGC]" "[TACG]" | rev)
     # R2 read adapters
     firstDpnRevSeq=$(echo ${BCreadSeq} | awk '{ print substr($0, 0, length($0)-4) }' | tr "[ATGCB]" "[TACGN]" | rev)
     altDpnRevSeq=$(echo ${altDpnSeq} | tr "[ATGC]" "[TACG]" | rev)
-    
     zcat -f $f1 |
     awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
     cutadapt -Z -j $NSLOTS -o $TMPDIR/${sample}.R1.fastq.gz -u ${R1primerlen} -a ${R2PrimerSeq} -g X${altDpnSeq} -
     
     echo "Trimming $R2primerlen bp primer from R2"
-    zcat -f $f2 | 
+    zcat -f $f2 |
     awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-    cutadapt -j $NSLOTS -u 18  -o - - |
+    cutadapt -j $NSLOTS -o - -u ${R2primerlen} - |
     #alternative fixed sequence when DpnII digests a secondary cut-side nearby on the transposon iPCR; this doesn't appear to be removing much
     cutadapt -j $NSLOTS -o - -a ${firstDpnRevSeq} -a ${altDpnRevSeq} - |
     #hardcoded fix for LP305-derived libraries
