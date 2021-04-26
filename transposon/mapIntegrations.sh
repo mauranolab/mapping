@@ -78,55 +78,55 @@ esac
 R1primerlen=$(expr $(echo -n ${BCreadSeq} | wc -c) - 4)
 R2primerlen=$(echo -n ${plasmidSeq} | wc -c)
 
+
 echo
 date
+
+echo "Trimming $R2primerlen bp primer from R2"
+zcat -f $f2 |
+awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
+cutadapt -j $NSLOTS -u ${R2primerlen} - -o - |
+#hardcoded fix for LP305-derived libraries
+#cutadapt -j $NSLOTS -o - -g XTTATG - |
+gzip -1 -c > $TMPDIR/${sample}.genome.fastq.gz
+
 ## Require BC read have 24 bp left after primer for PE mapping
 minLengthForPEmapping=24
 if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END { print 4 * sum/NR }')" -le $(expr $(echo -n ${BCreadSeq} | wc -c) + ${minLengthForPEmapping}) ]; then
     echo "Single-end mapping using bwa aln"
-    echo "Trimming $R2primerlen bp primer from R2"
-    zcat -f $f2 |
-    awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-    cutadapt -j $NSLOTS -o - -u ${R2primerlen} - |
-    #hardcoded fix for LP305-derived libraries
-    #cutadapt -j $NSLOTS -o - -g XTTATG - |
-    gzip -1 -c > $TMPDIR/${sample}.genome.fastq.gz
     
     bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t ${NSLOTS} -Y"
-    
     echo "bwa aln ${bwaAlnOpts} ${bwaIndex} ..."
     bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample}.genome.fastq.gz > $TMPDIR/${sample}.genome.sai
     
-    echo
     bwaAlnExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
     extractcmd="samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${sample}.genome.sai $TMPDIR/${sample}.genome.fastq.gz"
 else
     echo "Paired-end mapping using bwa mem"
+    
     echo "Adaptive trimming of R1"
-    #BUGBUG hard coded
+    #Trim readthrough to the other read primer for long reads / short sites
+    R2PrimerSeq=$(echo $plasmidSeq | tr "[ATGC]" "[TACG]" | rev)
+    zcat -f $f1 |
+    awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
+    cutadapt -j $NSLOTS  -u ${R1primerlen} -a ${R2PrimerSeq} -g X${altDpnSeq} - -o - |
+    gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz
+    
+    #BUGBUG hard coded secondary trimming
+    echo "Trimming alternate Dpn site"
     altDpnSeq="GATCTTTGTCCAAACTCATCGAGCTCGG"
     R2PrimerSeq=$(echo $plasmidSeq | tr "[ATGC]" "[TACG]" | rev)
     # R2 read adapters
     firstDpnRevSeq=$(echo ${BCreadSeq} | awk '{ print substr($0, 0, length($0)-4) }' | tr "[ATGCB]" "[TACGN]" | rev)
     altDpnRevSeq=$(echo ${altDpnSeq} | tr "[ATGC]" "[TACG]" | rev)
-    zcat -f $f1 |
-    awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-    cutadapt -Z -j $NSLOTS -o $TMPDIR/${sample}.R1.fastq.gz -u ${R1primerlen} -a ${R2PrimerSeq} -g X${altDpnSeq} -
-    
-    echo "Trimming $R2primerlen bp primer from R2"
-    zcat -f $f2 |
-    awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-    cutadapt -j $NSLOTS -o - -u ${R2primerlen} - |
-    #alternative fixed sequence when DpnII digests a secondary cut-side nearby on the transposon iPCR; this doesn't appear to be removing much
-    cutadapt -j $NSLOTS -o - -a ${firstDpnRevSeq} -a ${altDpnRevSeq} - |
-    #hardcoded fix for LP305-derived libraries
-    #cutadapt -j $NSLOTS -o - -g XTTATG - |
-    gzip -1 -c > $TMPDIR/${sample}.genome.fastq.gz
+    cutadapt -j $NSLOTS -g X${altDpnSeq} $TMPDIR/${sample}.R1.fastq.gz -o - |
+    gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz.new && mv $TMPDIR/${sample}.R1.fastq.gz.new $TMPDIR/${sample}.R1.fastq.gz
     
     bwaMemOptions="-Y -K 100000000"
     extractcmd="mem ${bwaMemOptions} -t ${NSLOTS} -R @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix} ${bwaIndex} $TMPDIR/${sample}.R1.fastq.gz $TMPDIR/${sample}.genome.fastq.gz"
 fi
 
+echo
 echo "Extracting"
 echo -e "extractcmd=bwa ${extractcmd} | (...)"
 bwa ${extractcmd} |
