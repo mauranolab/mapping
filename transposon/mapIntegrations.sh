@@ -104,23 +104,22 @@ if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END
 else
     echo "Paired-end mapping using bwa mem"
     
+    #BUGBUG hard coded secondary trimming
+    altDpnSeq="GATCTTTGTCCAAACTCATCGAGCTCGG"
+    firstDpnRevSeq=$(echo ${BCreadSeq} | awk '{ print substr($0, 0, length($0)-4) }' | tr "[ATGCB]" "[TACGN]" | rev)
+    altDpnRevSeq=$(echo ${altDpnSeq} | tr "[ATGC]" "[TACG]" | rev)
+    
     echo "Adaptive trimming of R1"
     #Trim readthrough to the other read primer for long reads / short sites
     R2PrimerSeq=$(echo $plasmidSeq | tr "[ATGC]" "[TACG]" | rev)
     zcat -f $f1 |
     awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-    cutadapt -j $NSLOTS  -u ${R1primerlen} -a ${R2PrimerSeq} -g X${altDpnSeq} - -o - |
-    gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz
+    cutadapt -j $NSLOTS  -u ${R1primerlen} -a ${R2PrimerSeq} -g X${altDpnSeq} - -Z -o $TMPDIR/${sample}.R1.fastq.gz
     
-    #BUGBUG hard coded secondary trimming
-    echo "Trimming alternate Dpn site"
-    altDpnSeq="GATCTTTGTCCAAACTCATCGAGCTCGG"
-    R2PrimerSeq=$(echo $plasmidSeq | tr "[ATGC]" "[TACG]" | rev)
+    
+    echo "Trimming alternate Dpn site on R2"
     # R2 read adapters
-    firstDpnRevSeq=$(echo ${BCreadSeq} | awk '{ print substr($0, 0, length($0)-4) }' | tr "[ATGCB]" "[TACGN]" | rev)
-    altDpnRevSeq=$(echo ${altDpnSeq} | tr "[ATGC]" "[TACG]" | rev)
-    cutadapt -j $NSLOTS -g X${altDpnSeq} $TMPDIR/${sample}.R1.fastq.gz -o - |
-    gzip -1 -c > $TMPDIR/${sample}.R1.fastq.gz.new && mv $TMPDIR/${sample}.R1.fastq.gz.new $TMPDIR/${sample}.R1.fastq.gz
+    cutadapt -j $NSLOTS -a ${firstDpnRevSeq} -a ${altDpnRevSeq} $TMPDIR/${sample}.genome.fastq.gz -Z -o $TMPDIR/${sample}.genome.fastq.gz.new && mv $TMPDIR/${sample}.genome.fastq.gz.new $TMPDIR/${sample}.genome.fastq.gz
     
     bwaMemOptions="-Y -K 100000000"
     extractcmd="mem ${bwaMemOptions} -t ${NSLOTS} -R @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix} ${bwaIndex} $TMPDIR/${sample}.R1.fastq.gz $TMPDIR/${sample}.genome.fastq.gz"
