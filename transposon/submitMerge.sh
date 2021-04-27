@@ -57,10 +57,7 @@ if [ ${runMerge} -eq 1 ]; then
     echo "Merging barcodes from files: ${bcfiles}"
     date
     
-    if [[ ${bclen} -gt 0 ]]; then
-        zcat -f ${bcfiles} | pigz -p ${NSLOTS} -c -9 > ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz
-    fi
-    
+    zcat -f ${bcfiles} | pigz -p ${NSLOTS} -c -9 > ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz
     if [[ ${sampleType} == "iPCR" ]]; then
         echo "Merging bam files"
         date
@@ -89,10 +86,7 @@ fi
 cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -terse ${analysisHold} | perl -pe 's/[^\d].+$//g;'  #> sgeid.analysis
 set -eu -o pipefail
 
-if [[ ${bclen} -gt 0 ]]; then
-    ${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
-fi
-
+${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
 if [[ ${sampleType} == "iPCR" ]]; then
     ${src}/analyzeIntegrations.sh ${sample}
 fi

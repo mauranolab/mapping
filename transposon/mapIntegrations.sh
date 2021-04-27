@@ -54,6 +54,7 @@ echo "Aligning reads"
 userAlnOptions=""
 permittedMismatches="0.1"
 curGenome="hg38_noalt"
+#curGenome="mm10"
 DS_nosuffix=`echo $DS | perl -pe 's/[A-Z]$//g;'`
 minMAPQ=10
 
@@ -74,53 +75,58 @@ esac
 ###Now set up for the iPCR-specific parts
 #Trim primer before mapping to genome
 #R1 will get trimmed if PE mapping is selected
-#BUGBUG hardcoded primer lengths. FIXED BY using sequence template as base length
 R1primerlen=$(expr $(echo -n ${BCreadSeq} | wc -c) - 4)
 R2primerlen=$(echo -n ${plasmidSeq} | wc -c)
-minR1Len=$(expr ${R1primerlen} + 24)
-# R1 read adapters
-#BUGBUG move this so it isn't hard coded
-altDpnSeq="GATCTTTGTCCAAACTCATCGAGCTCGG"
-R2PrimerSeq=$(echo $plasmidSeq | tr "[ATGC]" "[TACG]" | rev)
-# R2 read adapters
-firstDpnRevSeq=$(echo ${BCreadSeq} | awk '{ print substr($0, 0, length($0)-4) }' | tr "[ATGCB]" "[TACGN]" | rev)
-altDpnRevSeq=$(echo ${altDpnSeq} | tr "[ATGC]" "[TACG]" | rev)
+
 
 echo
 date
-## Require BC read have R1primerlen + 20 bp length to run paired mapping
-if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END { print 4 * sum/NR }')" -le $minR1Len ]; then
 
-    echo "Trimming $R2primerlen bp primer from R2"
-    zcat -f $f2 | 
-    awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-    cutadapt -j $NSLOTS -Z -o $TMPDIR/${sample}.genome.fastq.gz -u $R2primerlen -
+echo "Trimming $R2primerlen bp primer from R2"
+zcat -f $f2 |
+awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
+cutadapt -j $NSLOTS -u ${R2primerlen} - -o - |
+#hardcoded fix for LP305-derived libraries
+#cutadapt -j $NSLOTS -o - -g XTTATG - |
+gzip -1 -c > $TMPDIR/${sample}.genome.fastq.gz
 
-    # Single-end mapping using bwa aln
-    bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t ${NSLOTS} -Y"
+## Require BC read have 24 bp left after primer for PE mapping
+minLengthForPEmapping=24
+if [ "$(zcat -f $f1 | head -n 4000 | awk 'NR % 4 == 2 { sum += length($0) }; END { print 4 * sum/NR }')" -le $(expr $(echo -n ${BCreadSeq} | wc -c) + ${minLengthForPEmapping}) ]; then
+    echo "Single-end mapping using bwa aln"
     
+    bwaAlnOpts="-n ${permittedMismatches} -l 32 ${userAlnOptions} -t ${NSLOTS} -Y"
     echo "bwa aln ${bwaAlnOpts} ${bwaIndex} ..."
     bwa aln ${bwaAlnOpts} ${bwaIndex} $TMPDIR/${sample}.genome.fastq.gz > $TMPDIR/${sample}.genome.sai
     
-    echo
     bwaAlnExtractOpts="-n 3 -r @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix}"
     extractcmd="samse ${bwaAlnExtractOpts} ${bwaIndex} $TMPDIR/${sample}.genome.sai $TMPDIR/${sample}.genome.fastq.gz"
 else
-    # Paired-end mapping using bwa mem
+    echo "Paired-end mapping using bwa mem"
+    
+    #BUGBUG hard coded secondary trimming
+    altDpnSeq="GATCTTTGTCCAAACTCATCGAGCTCGG"
+    firstDpnRevSeq=$(echo ${BCreadSeq} | awk '{ print substr($0, 0, length($0)-4) }' | tr "[ATGCB]" "[TACGN]" | rev)
+    altDpnRevSeq=$(echo ${altDpnSeq} | tr "[ATGC]" "[TACG]" | rev)
+    
     echo "Adaptive trimming of R1"
+    #Trim readthrough to the other read primer for long reads / short sites
+    R2PrimerSeq=$(echo $plasmidSeq | tr "[ATGC]" "[TACG]" | rev)
     zcat -f $f1 |
     awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-    cutadapt -Z -j $NSLOTS -o $TMPDIR/${sample}.R1.fastq.gz -u ${R1primerlen} -a ${R2PrimerSeq} -g X${altDpnSeq} -
+    cutadapt -j $NSLOTS  -u ${R1primerlen} -a ${R2PrimerSeq} -g X${altDpnSeq} - -Z -o $TMPDIR/${sample}.R1.fastq.gz
     
-    echo "Trimming $R2primerlen bp primer from R2"
-    zcat -f $f2 | 
-    awk -v firstline=$firstline -v lastline=$lastline 'NR>=firstline && NR<=lastline' |
-    cutadapt -Z -j $NSLOTS -u 18 -a ${firstDpnRevSeq} -a ${altDpnRevSeq} -o $TMPDIR/${sample}.genome.fastq.gz -
+    
+    echo
+    echo "Trimming alternate Dpn site on R2"
+    # R2 read adapters
+    cutadapt -j $NSLOTS -a ${firstDpnRevSeq} -a ${altDpnRevSeq} $TMPDIR/${sample}.genome.fastq.gz -Z -o $TMPDIR/${sample}.genome.fastq.gz.new && mv $TMPDIR/${sample}.genome.fastq.gz.new $TMPDIR/${sample}.genome.fastq.gz
     
     bwaMemOptions="-Y -K 100000000"
     extractcmd="mem ${bwaMemOptions} -t ${NSLOTS} -R @RG\\tID:${sample}\\tLB:$DS\\tSM:${DS_nosuffix} ${bwaIndex} $TMPDIR/${sample}.R1.fastq.gz $TMPDIR/${sample}.genome.fastq.gz"
 fi
 
+echo
 echo "Extracting"
 echo -e "extractcmd=bwa ${extractcmd} | (...)"
 bwa ${extractcmd} |
