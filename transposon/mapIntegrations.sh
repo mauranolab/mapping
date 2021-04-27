@@ -117,6 +117,7 @@ else
     cutadapt -j $NSLOTS  -u ${R1primerlen} -a ${R2PrimerSeq} -g X${altDpnSeq} - -Z -o $TMPDIR/${sample}.R1.fastq.gz
     
     
+    echo
     echo "Trimming alternate Dpn site on R2"
     # R2 read adapters
     cutadapt -j $NSLOTS -a ${firstDpnRevSeq} -a ${altDpnRevSeq} $TMPDIR/${sample}.genome.fastq.gz -Z -o $TMPDIR/${sample}.genome.fastq.gz.new && mv $TMPDIR/${sample}.genome.fastq.gz.new $TMPDIR/${sample}.genome.fastq.gz
