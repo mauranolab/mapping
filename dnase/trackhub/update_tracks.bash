@@ -277,7 +277,7 @@ else
 fi
 
 if [ "${blatport}" != "0" ]; then
-    echo "Copying ${customGenomeAssembly}.2bit to cadlej01_shared..."
+    echo "Copying ${customGenomeAssembly}.2bit to shared directory for blat..."
     cp ${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit /vol/isg/blat_data
     twoBitFiles="${customGenomeAssembly}.2bit"
     
