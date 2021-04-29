@@ -209,9 +209,9 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
         print $1, $2, $3, $4, $5, ".", $2, $3, color;
     }' |
     sort-bed - > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
-
+    
     bedToBigBed -type=bed9 $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.genotypes.bb
-
+    
     #Personal Genome SNP format displays two alleles in vertical fashion and provides amino acid changes, but doesn't permit IDs
     #awk -F "\t" 'BEGIN {OFS="\t"} {split($8, gt, "/"); print $1, $2, $3, $8, length(gt), "0,0", "0,0"}'
     #https://genome.ucsc.edu/FAQ/FAQformat.html#format10
