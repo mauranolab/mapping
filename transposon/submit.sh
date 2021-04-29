@@ -11,7 +11,7 @@ module load weblogo/3.5.0
 module load python/3.8.1
 module load ImageMagick
 module load FastQC/0.11.4
-module load samtools/1.9
+module load samtools/1.12
 module load bwa/0.7.17
 #bedops/2.4.39 does not work due to library incompatibility on cluster
 module load bedops/2.4.37
@@ -74,7 +74,7 @@ mkdir -p $OUTDIR
 
 
 echo "Processing ${sampleType} sample ${sample}"
-echo "Running on $HOSTNAME. Output to $OUTDIR"
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 date
 
 

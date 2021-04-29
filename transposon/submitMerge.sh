@@ -15,7 +15,7 @@ module load bedtools
 module load ucsckentutils/379
 module load miller
 module load pigz
-module load samtools/1.9
+module load samtools/1.12
 
 src=$( dirname "${BASH_SOURCE[0]}" )
 
@@ -26,6 +26,11 @@ runMerge=1
 sample=$1
 shift
 indivsamples=$@
+
+
+echo "Processing sample ${sample}"
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
+date
 
 
 OUTDIR=${sample}
