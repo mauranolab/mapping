@@ -16,9 +16,9 @@ module load bedtools/2.29.2
 module load bedops/2.4.37
 module load bwa/0.7.17
 module load minimap2/2.17
-module load htslib/1.10.2
-module load samtools/1.10
-module load bcftools/1.10.2
+module load htslib/1.12
+module load samtools/1.12
+module load bcftools/1.12
 module load trimmomatic/0.39
 module load python/3.8.1
 module load samblaster/0.1.24

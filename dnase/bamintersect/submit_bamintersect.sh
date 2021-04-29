@@ -32,7 +32,7 @@ if [ ${TMPDIR} = "/tmp" ]; then
 fi
 #####################################################################################
 
-module load samtools/1.10
+module load samtools/1.12
 #bedops/2.4.39 does not work due to library incompatibility on cluster
 module load bedops/2.4.37
 module load python/3.8.1
