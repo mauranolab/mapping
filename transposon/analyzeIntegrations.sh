@@ -273,7 +273,7 @@ cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OF
 #Identify insertion sites with more than one BC
 cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq -c | awk 'BEGIN {OFS="\t"} $1==1 {print $2, $3, $4, $5, $6, $7}' | sort-bed - > $TMPDIR/${sample}.singleBC.bed
 
-if [ $(wc -l $TMPDIR/${sample}.singleIns.txt) -gt 0 ]; then
+if [ "$(cat $TMPDIR/${sample}.singleIns.txt | wc -l)" -gt 0 ]; then
     cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed |
     #Remove BCs with more than one location
     awk -F "\t" 'BEGIN {OFS="\t"} NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${sample}.singleIns.txt - |
