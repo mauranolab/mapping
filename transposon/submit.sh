@@ -295,6 +295,7 @@ else
     minReadCutoff=10
 fi
 
+#BUGBUG appears that this nested qsub has trouble setting TMPDIR based on HOSTNAME, resulting in error message (though job continues successfully using /tmp)
 #-o ${OUTDIR} breaks Jesper's Flowcell_Info.sh
 cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -terse ${analysisHold} # | perl -pe 's/[^\d].+$//g;' > sgeid.analysis
 set -eu -o pipefail
