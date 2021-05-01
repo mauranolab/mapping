@@ -92,6 +92,7 @@ def summarizeGraph(G):
     
     totalUMIs = sum([G.edges[e]['weight'] for e in G.edges])
     
+    #BUGBUG fails with divide by 0 error if graph is empty
     print("[genotypeClones] summarizeGraph - ", len(G.nodes), " nodes (", len(cells), " cells, ", len(bcs), " BCs), ", len(G.edges), " edges with ", totalUMIs, " UMIs (avg. ", round(totalUMIs/len(bcs), 1), " per BC, and ", round(totalUMIs/len(G.edges), 1), " per edge).", sep="", file=sys.stderr)
 
 
