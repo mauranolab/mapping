@@ -68,17 +68,14 @@ for (i in 1:length(analysisFiles)) {
 	}
 	#NB there are some exit routes that print Done!!! but don't print data below
 	if(tail(Sample, 2)[1]=="Done!!!") {
-		data[i, "Total read pairs"] <- as.numeric(splitLines('Number of total reads', '\t')$X3)
-		data[i, "Total barcodes"] <- as.numeric(splitLines('Number of total read barcodes', '\t')$X3)
-		#Note tail() takes "Number of unique barcodes passing minimum read cutoff" when present; "Number of unique barcodes" if not
-		#Note we grep for "Number of unique barcodes" but actually use tail to get "Number of unique barcodes passing minimum read cutoff" for recent versions of pipeline -- TODO just get the latter directly
-		data[i, "Unique BC"] <- as.numeric(tail(splitLines('Number of unique barcodes passing', '\t'),1)$X3)
-#BUGBUG I think Jesper was accounting for merged i from samples with multiple BC lengths here, but the first clause looks broken either way
-#		if(getLength('Barcode lengths')$X1!=data[i, "Unique BC"]) {
-#			data[i, "BC length"] <- strsplit(Sample[grep(as.character(data[i, "Unique BC"]-1), Sample, fixed=T)], "\\s+")[[1]][2]
-#		} else {
+		if(!any(grepl('WARNING: no barcodes left, so exiting', Sample))) {
+			data[i, "Total read pairs"] <- as.numeric(splitLines('Number of total reads', '\t')$X3)
+			data[i, "Total barcodes"] <- as.numeric(splitLines('Number of total read barcodes', '\t')$X3)
+			#Note tail() takes "Number of unique barcodes passing minimum read cutoff" when present; "Number of unique barcodes" if not
+			#Note we grep for "Number of unique barcodes" but actually use tail to get "Number of unique barcodes passing minimum read cutoff" for recent versions of pipeline -- TODO just get the latter directly
+			data[i, "Unique BC"] <- as.numeric(tail(splitLines('Number of unique barcodes passing', '\t'),1)$X3)
 			data[i, "BC length"] <- getLength('Barcode lengths')$X2
-#		}
+		}
 		if(!any(grepl('No UMIs found', Sample))) {
 			data[i, "BC+UMI"] <- as.numeric(splitLines('Number of unique barcodes+UMI', '\t')$X3)
 			if(!is.na(getLength('UMI lengths')$X2)) {
