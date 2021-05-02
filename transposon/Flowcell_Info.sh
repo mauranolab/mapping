@@ -3,7 +3,7 @@ set -eu  -o pipefail
 
 src=$( dirname "${BASH_SOURCE[0]}" )
 
-module load samtools/1.9
+module load samtools/1.12
 
 
 fc=$(basename `pwd`)
