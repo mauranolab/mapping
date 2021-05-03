@@ -414,7 +414,7 @@ def identifyClones(G):
 #    longwr, specified by --outputlong
 
 #TODO make each output file optional
-def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphOutput=None):
+def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphOutput=None, transfectionKey=None):
     try:
         #Prepare file IO
         longoutfile = open(outputlong, 'w')
@@ -430,7 +430,7 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
         outwr.writeheader()
         
         wideoutfile = open(outputwide, 'w')
-        widewr = csv.DictWriter(wideoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'count', 'nedges', 'nBCs', 'ncells'])
+        widewr = csv.DictWriter(wideoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'transfection', 'count', 'nedges', 'nBCs', 'ncells'])
         widewr.writeheader()
 
         if cloneobj is not None:
@@ -441,11 +441,15 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
             umi_count = clone['umi_count']
             bcs = clone['bcs']
             cells = clone['cells']
+            transfection = set("None")
+            if transfectionKey is not None:
+                skip = set(["conflicting", "uninformative", "None"])
+                transfection = set(G.nodes[bc][transfectionKey] for bc in bcs if G.nodes[bc][transfectionKey] not in skip)
             
             if graphOutput:
                 printGraph(subG, filename=graphOutput + '/' + clonename, edge_color='weight', **printGraph_kwds)
             
-            widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': clonename, 'count': umi_count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells) })
+            widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': clonename, 'count': umi_count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells), 'transfection': ",".join(transfection) })
             
             for bc in bcs:
                 longwr.writerow({ 'BC': bc, 'clone': clonename, 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])]), 'nCells': len(subG.edges([bc]))})
@@ -587,4 +591,4 @@ if __name__ == "__main__":
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
     
     clones = identifyClones(G)
-    writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
+    writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph, transfectionKey=args.transfectionKey)
