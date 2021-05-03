@@ -418,7 +418,7 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
     try:
         #Prepare file IO
         longoutfile = open(outputlong, 'w')
-        longwr = csv.DictWriter(longoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'clone', 'count', 'nCells'])
+        longwr = csv.DictWriter(longoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'BCTransfection', 'clone', 'transfection', 'count', 'nCells'])
         longwr.writeheader()
             
         outputfilename = output
@@ -452,7 +452,7 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
             widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': clonename, 'count': umi_count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells), 'transfection': ",".join(transfection) })
             
             for bc in bcs:
-                longwr.writerow({ 'BC': bc, 'clone': clonename, 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])]), 'nCells': len(subG.edges([bc]))})
+                longwr.writerow({ 'BC': bc, 'BCTransfection': G.nodes[bc][transfectionKey], 'clone': clonename, 'transfection': ",".join(transfection), 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])]), 'nCells': len(subG.edges([bc]))})
                 
                 #Get all neighbors for this BC (which must be cellBCs)
                 for cellBC in subG[bc]:
