@@ -441,10 +441,12 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
             umi_count = clone['umi_count']
             bcs = clone['bcs']
             cells = clone['cells']
-            transfection = set("None")
+            transfection = set()
             if transfectionKey is not None:
                 skip = set(["conflicting", "uninformative", "None"])
                 transfection = set(G.nodes[bc][transfectionKey] for bc in bcs if G.nodes[bc][transfectionKey] not in skip)
+            if len(transfection) == 0:
+                transfection.add("None")
             
             if graphOutput:
                 printGraph(subG, filename=graphOutput + '/' + clonename, edge_color='weight', **printGraph_kwds)
@@ -452,7 +454,10 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
             widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': clonename, 'count': umi_count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells), 'transfection': ",".join(transfection) })
             
             for bc in bcs:
-                longwr.writerow({ 'BC': bc, 'BCTransfection': G.nodes[bc][transfectionKey], 'clone': clonename, 'transfection': ",".join(transfection), 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])]), 'nCells': len(subG.edges([bc]))})
+                bc_transfection = "None"
+                if transfectionKey is not None:
+                    bc_transfection = G.nodes[bc][transfectionKey]
+                longwr.writerow({ 'BC': bc, 'BCTransfection': bc_transfection, 'clone': clonename, 'transfection': ",".join(transfection), 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])]), 'nCells': len(subG.edges([bc]))})
                 
                 #Get all neighbors for this BC (which must be cellBCs)
                 for cellBC in subG[bc]:
