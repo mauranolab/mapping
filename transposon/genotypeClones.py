@@ -414,11 +414,11 @@ def identifyClones(G):
 #    longwr, specified by --outputlong
 
 #TODO make each output file optional
-def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphOutput=None):
+def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphOutput=None, transfectionKey=None):
     try:
         #Prepare file IO
         longoutfile = open(outputlong, 'w')
-        longwr = csv.DictWriter(longoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'clone', 'count', 'nCells'])
+        longwr = csv.DictWriter(longoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'BC_transfection', 'clone', 'transfection', 'count', 'nCells'])
         longwr.writeheader()
             
         outputfilename = output
@@ -430,7 +430,7 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
         outwr.writeheader()
         
         wideoutfile = open(outputwide, 'w')
-        widewr = csv.DictWriter(wideoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'count', 'nedges', 'nBCs', 'ncells'])
+        widewr = csv.DictWriter(wideoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'transfection', 'count', 'nedges', 'nBCs', 'ncells'])
         widewr.writeheader()
 
         if cloneobj is not None:
@@ -441,14 +441,27 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
             umi_count = clone['umi_count']
             bcs = clone['bcs']
             cells = clone['cells']
+            # Gather BC's transfection assignment set when transfectionKey is defined, otherwise defaults to None.
+            # If --removeConflictingCells and --removeConflictingBCs are specified, then there will be a single transfection per clone
+            transfection = set()
+            if transfectionKey is not None:
+                #Only record unique transfections, not any other labels
+                skip = set(["conflicting", "uninformative", "None"])
+                transfection = set(G.nodes[bc][transfectionKey] for bc in bcs if G.nodes[bc][transfectionKey] not in skip)
+            if len(transfection) == 0:
+                transfection.add("None")
             
             if graphOutput:
                 printGraph(subG, filename=graphOutput + '/' + clonename, edge_color='weight', **printGraph_kwds)
             
-            widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': clonename, 'count': umi_count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells) })
+            widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': clonename, 'count': umi_count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells), 'transfection': ",".join(transfection) })
             
             for bc in bcs:
-                longwr.writerow({ 'BC': bc, 'clone': clonename, 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])]), 'nCells': len(subG.edges([bc]))})
+                # Default BC_Transfection to None when transfectionKey is not defined
+                bc_transfection = "None"
+                if transfectionKey is not None:
+                    bc_transfection = G.nodes[bc][transfectionKey]
+                longwr.writerow({ 'BC': bc, 'BC_transfection': bc_transfection, 'clone': clonename, 'transfection': ",".join(transfection), 'count': sum([subG.edges[x]['weight'] for x in subG.edges([bc])]), 'nCells': len(subG.edges([bc]))})
                 
                 #Get all neighbors for this BC (which must be cellBCs)
                 for cellBC in subG[bc]:
@@ -587,4 +600,4 @@ if __name__ == "__main__":
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
     
     clones = identifyClones(G)
-    writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph)
+    writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph, transfectionKey=args.transfectionKey)
