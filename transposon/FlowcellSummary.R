@@ -101,8 +101,8 @@ for (i in 1:length(analysisFiles)) {
 			data[i, "Read lengths"] <- gsub(" ", "", gsub(" \\([0-9]+\\)", "", splitLines('Read lengths', '\t')$X3))
 			data[i, "Read lengths"] <- paste(min(unlist(strsplit(data[i, "Read lengths"], ","))), max(unlist(strsplit(data[i, "Read lengths"], ","))), sep="-")
 			data[i, "Raw unique sites"] <- as.numeric(splitLines('Number of unique insertion sites before collapsing nearby ones', '\t')$X3[1])
-			#Note we use tail to get "Number of unique insertion sites" rather than the "before collapsing nearby ones" one
-			data[i, "Unique sites"] <- as.numeric(tail(splitLines('Number of unique insertion sites', '\t'), 1)$X3[1])
+			#Note we use tail to get "Number of unique insertion sites" rather than the "before collapsing nearby ones" one (1st row) or within 5 bp, ignoring strand (3rd row)
+			data[i, "Unique sites"] <- as.numeric(tail(splitLines('Number of unique insertion sites', '\t'), 2)$X3[1])
 			#BUGBUG value in numerator depends on #BCs at site, e.g. 3 BCs is more than 2
 			data[i, "Prop Sites 2+ BCs"] <- signif(1 - data[i, "Unique sites"] / as.numeric(splitLines('Number of BC+insertions after minimum read cutoff', '\t')$X3[1]), 2)
 			data[i, "#BC 1 site"] <- as.numeric(getInsert(Sample)[1])
