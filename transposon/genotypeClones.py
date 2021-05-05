@@ -442,9 +442,10 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
             bcs = clone['bcs']
             cells = clone['cells']
             # Gather BC's transfection assignment set when transfectionKey is defined, otherwise defaults to None.
-            # This approach to gather BCs' transfection makes the procedure compatible with clone composed of BCs from a single or multiple transfections.
+            # If --removeConflictingCells and --removeConflictingBCs are specified, then there will be a single transfection per clone
             transfection = set()
             if transfectionKey is not None:
+                #Only record unique transfections, not any other labels
                 skip = set(["conflicting", "uninformative", "None"])
                 transfection = set(G.nodes[bc][transfectionKey] for bc in bcs if G.nodes[bc][transfectionKey] not in skip)
             if len(transfection) == 0:
