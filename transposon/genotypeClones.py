@@ -441,6 +441,8 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
             umi_count = clone['umi_count']
             bcs = clone['bcs']
             cells = clone['cells']
+            # Gather BC's transfection assignment set when transfectionKey is defined, otherwise defaults to None.
+            # This approach to gather BCs' transfection makes the procedure compatible with clone composed of BCs from a single or multiple transfections.
             transfection = set()
             if transfectionKey is not None:
                 skip = set(["conflicting", "uninformative", "None"])
@@ -454,6 +456,7 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
             widewr.writerow({ 'BCs': ",".join(bcs), 'cellBCs': ",".join(cells), 'clone': clonename, 'count': umi_count, 'nedges': len(subG.edges), 'nBCs': len(bcs), 'ncells': len(cells), 'transfection': ",".join(transfection) })
             
             for bc in bcs:
+                # Default BC_Transfection to None when transfectionKey is not defined
                 bc_transfection = "None"
                 if transfectionKey is not None:
                     bc_transfection = G.nodes[bc][transfectionKey]
