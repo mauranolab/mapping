@@ -172,7 +172,6 @@ if [ ${runPreprocess} -eq 1 ]; then
     
     echo "umi_tools extract --bc-pattern \"${bc1pattern}\" --bc-pattern2 \"${bc2pattern}\""
     #TODO this is pretty slow for big 10xRNA samples
-    #TODO --quality-filter-threshold for UMI filtering?
     #umi_tools extract --help
     umi_tools extract --quality-encoding=phred33 --quality-filter-threshold=30 --compresslevel=9 -v 0 --log2stderr --extract-method regex --bc-pattern "${bc1pattern}" --bc-pattern2 "${bc2pattern}" -I $TMPDIR/${sample}.filtered.R1.fastq.gz -S $OUTDIR/${sample}.${R1file}.fastq.gz --read2-in=$TMPDIR/${sample}.filtered.R2.fastq.gz --read2-out=$OUTDIR/${sample}.${R2file}.fastq.gz
     
@@ -202,7 +201,6 @@ if [ ${runPreprocess} -eq 1 ]; then
     fi
     
     
-    ###Weblogo of processed reads
     echo "Weblogo of processed reads"
     date
     zcat -f $OUTDIR/${sample}.BC.fastq.gz | awk -F "\t" 'BEGIN {OFS="\t"} NR % 4 == 2' | shuf -n 1000000 | awk '{print ">id-" NR; print}' |
