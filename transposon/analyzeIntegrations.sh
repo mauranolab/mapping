@@ -55,35 +55,38 @@ mm10)
     exit 3;;
 esac
 
-## Ignore R1 in paired without excluding single-end reads
-samflags="-F 64 -F 512"
 
 echo "Analyzing data for ${sample}"
 echo "Analyzing read mapping (minReadCutoff=${minReadCutoff})"
 date
 
+# Ignore R1 (the BC read) for paired-end mappings without excluding single-end reads
+#flag 64 will be set for first mate of paired-end mappings
+samflags="-F 64 -F 512"
+
 
 echo
 echo "SAMtools statistics for sample ${sample}"
-samtools flagstat $OUTDIR/${sample}.bam | tee $TMPDIR/${sample}.flagstat.txt
+#NB the following sections refer to reads for historical reasons but are actually read pairs
 
-#Reproduce some of the statistics that filter_reads.py prints, but do it here for the full dataset. Note we use the 512 flag to hopefully speed these up before. I suppose we could just run filter_reads.py here without much performance penalty
 echo -n -e "${sample}\tTotal PF reads\t"
-cat $TMPDIR/${sample}.flagstat.txt | grep "in total" | awk '{print $1}'
+samtools view -c ${samflags} $OUTDIR/${sample}.bam
 
+#Reproduce some of the statistics that filter_reads.py prints, but do it here for the full dataset. Note we use the -f 512  to restrict to failed reads for a slight speedup
 echo -n -e "${sample}\tTotal reads mapping to pSB or pTR\t"
-samtools view -c -f 512 $OUTDIR/${sample}.bam pTR pSB
+samtools view -c -F 64 -f 512 $OUTDIR/${sample}.bam pTR pSB
 
 echo -n -e "${sample}\tTotal mapped reads MAPQ<10\t"
-samtools view -F 4 -f 512 $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $5<10' | wc -l
+samtools view -F 64 -f 512 -F 4 $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $5<10' | wc -l
 
 echo -n -e "${sample}\tTotal unmapped reads\t"
-samtools view -f 516 -c $OUTDIR/${sample}.bam
+samtools view -F 64 -f 512 -f 4 -c $OUTDIR/${sample}.bam
 
 echo -n -e "${sample}\tTotal reads mapped to unscaffolded contigs\t"
-samtools view -f 512 $OUTDIR/${sample}.bam | cut -f3 | awk '$0 ~ /hap|random|^chrUn_|_alt$|scaffold|^C\d+/' | wc -l
+samtools view -F 64 -f 512 $OUTDIR/${sample}.bam | cut -f3 | awk '$0 ~ /hap|random|^chrUn_|_alt$|scaffold|^C\d+/' | wc -l
 
 echo
+#NB this only applies to R2
 readlengths=`samtools view ${samflags} $OUTDIR/${sample}.bam | cut -f10 | awk 'BEGIN {ORS=", "} {lengths[length($0)]++} END {for (l in lengths) {print l " (" lengths[l] ")" }}' | perl -pe 's/, $//g;'`
 echo -e "${sample}\tRead lengths (number of reads)\t${readlengths}"
 minReadLength=`echo "${readlengths}" | perl -pe 's/ \([0-9]+\)//g;' -e 's/, /\n/g;' | sort -n | awk 'NR==1'`
@@ -123,9 +126,6 @@ samtools view ${samflags} $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} 
 
 echo -e -n "${sample}\tNumber of reads passing all filters\t"
 cat $TMPDIR/${sample}.coords.bed | wc -l
-
-echo -n -e "${sample}\tNumber of pairedreads mapped passing all filters\t"
-samtools view -c ${samflags} -f 1 $OUTDIR/${sample}.bam
 
 zcat -f $OUTDIR/${sample}.barcodes.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!=""' | sort -k2,2 > $TMPDIR/${sample}.barcodes.txt
 cat $TMPDIR/${sample}.coords.bed | sort -k4,4 | join -1 4 -2 2 - $TMPDIR/${sample}.barcodes.txt | awk 'BEGIN {OFS="\t"} {print $2, $3, $4, $1, $6, $7, $8}' | sort-bed - > $TMPDIR/${sample}.barcodes.readnames.coords.raw.bed
