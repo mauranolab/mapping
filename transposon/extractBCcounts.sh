@@ -1,11 +1,7 @@
 #!/bin/bash
 set -eu -o pipefail
 
-
-#NSLOTS=1
-
 src=$( dirname "${BASH_SOURCE[0]}" )
-
 
 ###Parse command line args
 if [ "$#" -lt 6 ]; then
@@ -22,7 +18,6 @@ plasmidSeq=$5
 #Just take the rest to simplify passing multiple arguments for extractBarcode.py
 shift 5
 extractBCargs=$@
-#TODO extractBarcode.py has the $TMPDIR/${sample}.plasmid.fastq.gz as input
 
 
 #Save the name before we append jobid to ${sample} for simplicity
@@ -92,7 +87,6 @@ echo
 minUMILength=`zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz | awk -F "\t" 'BEGIN {OFS="\t"} $1!="" {print length($3)}' | uniq | sort -n | awk 'NR==1'`
 if [[ "${minUMILength}" -gt "4" ]]; then
     echo "Deduping UMIs per barcode"
-    #BUGBUG seems to take extremely long time in some cases -- e.g. BS01470A
     date
     zcat -f $TMPDIR/${sample}.barcodes.deduped.txt.gz |
     ##Here we stop being in order of original fastq
