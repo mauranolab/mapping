@@ -164,14 +164,9 @@ if [ "${minCellBCLength}" -gt 0 ]; then
         #Aug 2019 Pilot
         scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/merged_T0190"
         genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/T0190/blacklist_multisite.txt"
-    elif [[ "${sample}" =~ T021[3-7] ]]; then
-        #Dec 2019 scaled
-        scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/FCH7Y3NBGXC"
-        genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_shared.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_conflicting_cells.txt,/vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/blacklist_T0213A.txt --annotateclones /vol/mauranolab/ribeia01/transposon_10x/bc_blacklist/bc_transfection-occurrence.txt.gz"
     elif [[ "${sample}" =~ T02[12][9012] ]]; then
         #June 2020 scaled
         scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/merged_T0219toT0222"
-        #/vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_conflicting_cells.txt
         genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_shared.txt --annotateclones /vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/bc_transfection-occurrence.txt.gz --transfectionKey transfection --removeMinorityBCsFromConflictingCells 0.20 --removeConflictingCells --removeConflictingBCs"
     else
         echo "ERROR can't find the right scRNAseqbase"
