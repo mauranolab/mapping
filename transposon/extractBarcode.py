@@ -54,11 +54,11 @@ parser = argparse.ArgumentParser(prog = "extractBarcode.py", description = "Filt
 
 bc_parser = parser.add_argument_group()
 bc_parser.add_argument('--BCread', action='store', required=True, help='Read with barcode (fastq.gz file or - for stdin)')
-bc_parser.add_argument('--bcRefSeq', action='store', required=True, help='Reference sequence for BC read including barcode (as B+ at BC position)')
+bc_parser.add_argument('--bcRefSeq', action='store', required=True, help='Reference sequence for BC read including barcode ([ACGTB]+ where B+ signifies barcode, e.g. ACGTACGTBBBACGT)')
 
 plasmid_parser = parser.add_argument_group()
 plasmid_parser.add_argument('--plasmidRead', action='store', default=None, help='Read containing the fixed plasmid (fastq.gz file)')
-plasmid_parser.add_argument('--plasmidRefSeq', action='store', default=None, help='Reference sequence plasmid read')
+plasmid_parser.add_argument('--plasmidRefSeq', action='store', default=None, help='Reference sequence plasmid read ([ACGT]+)')
 
 parser.add_argument("--minBaseQ", action='store', type=int, default=30, help = "The minimum baseQ required over the BC region [%(default)s]. Assumes Phred 33. NB 2 bases are allowed to be below threshold")
 parser.add_argument('--bclen', action='store', type=int, required=True, help='length of barcode (barcodes longer than this will be dropped) [%(default)s]')
@@ -126,9 +126,6 @@ minBaseQ = args.minBaseQ
 
 
 #Reference sequence with Barcode
-#bcRefSeq = 'CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBCTAGTTGTGGGATCTTTGTCCAAACTCATCGAGCTCGGGA'
-#plasmidRefSeq='AGCTGCACAGCAACACCGAGCTGGGCATCGTGGAGTACCAGCACGCCTTCAAGACCCCCATCGCCTTCGCCAGATC'
-
 bcRefSeq = args.bcRefSeq.upper()
 bc_pos_match = re.search('B+', bcRefSeq)
 if bc_pos_match is not None:
