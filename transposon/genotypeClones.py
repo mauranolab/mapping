@@ -258,8 +258,6 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
         nodesToPrune = set()
         if len(bcs) > 0 and len(cells) > 0:
             precloneid += 1
-            mkdir -p $outdir
-
             #Identify bridges and sort nodes to ensure consistency
             bridges = [tuple(sorted(e)) for e in nx.bridges(subG)]
             #Start with edges with lowest UMIs
