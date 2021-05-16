@@ -602,8 +602,12 @@ if __name__ == "__main__":
         pruneOrphanNodes(G)
     
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=None)
+    #run summarizeGraph since we don't need pruneOrphanNodes
+    summarizeGraph(G)
     #Do twice to break up some of the bigger graphs since we don't iterate internally, 3x doesn't do anything else
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=args.printGraph)
+    #run summarizeGraph since we don't need pruneOrphanNodes
+    summarizeGraph(G)
     
     clones = identifyClones(G)
     writeOutputFiles(G, clones, args.output, args.outputlong, args.outputwide, args.cloneobj, args.printGraph, transfectionKey=args.transfectionKey)
