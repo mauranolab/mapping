@@ -167,7 +167,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     elif [[ "${sample}" =~ T02[12][9012] ]]; then
         #June 2020 scaled
         scRNAseqbase="/vol/mauranolab/transposon/scrnaseq/merged_T0219toT0222"
-        genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/blacklist_shared.txt --annotateclones /vol/mauranolab/ribeia01/transposon_10x/T0219toT0221/bc_transfection-occurrence.txt.gz --transfectionKey transfection --removeMinorityBCsFromConflictingCells 0.20 --removeConflictingCells --removeConflictingBCs"
+        genotypeClonesArgs="--blacklist /vol/mauranolab/ribeia01/transposon_10x/T0219toT0222/blacklist_multisite.txt,/vol/mauranolab/ribeia01/transposon_10x/T0219toT0222/blacklist_shared.txt --annotateclones /vol/mauranolab/ribeia01/transposon_10x/T0219toT0222/bc_transfection-occurrence.txt.gz --transfectionKey transfection --removeMinorityBCsFromConflictingCells 0.20 --removeConflictingCells --removeConflictingBCs"
     else
         echo "ERROR can't find the right scRNAseqbase"
         exit 1
@@ -265,7 +265,7 @@ if [ "${minCellBCLength}" -gt 0 ]; then
     echo
     echo "running genotypeClones"
     date
-    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputwide ${OUTDIR}/${sample}.clones.txt --outputlong ${OUTDIR}/${sample}.clones.counts.filtered.txt --output - ${genotypeClonesArgs} --printGraph ${OUTDIR}/${sample}.clones --cloneobj ${OUTDIR}/${sample}.clones.pickle --minPropOfBCReads 0.10 --minPropOfCellReads 0.02 | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
+    ${src}/genotypeClones.py --inputfilename ${OUTDIR}/${sample}.barcode.counts.byCell.txt --outputwide ${OUTDIR}/${sample}.clones.txt --outputlong ${OUTDIR}/${sample}.clones.counts.filtered.txt --output - ${genotypeClonesArgs} --printGraph ${OUTDIR}/${sample}.clones --cloneobj ${OUTDIR}/${sample}.clones.pickle --minPropOfBCReads 0.05 --minPropOfCellReads 0.02 | mlr --tsv sort -f clone,BC -nr count > ${OUTDIR}/${sample}.barcode.counts.byCell.filtered.txt
     date
     echo
     
