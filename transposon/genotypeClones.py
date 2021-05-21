@@ -573,12 +573,13 @@ if __name__ == "__main__":
             for line in inputfile_reader:
                 bcToTransfection[line['bc']] = line['transfection']
             
-            assignToNodes(G, 'transfection', bcToTransfection, default="None")
+            assignToNodes(G, args.transfectionKey, bcToTransfection, default="None")
+            ## Loops over all cells and assign their `transfectionKey` field to "cellBC" that facilitate coloring them in printGraph
             for n in G.nodes:
                 if G.nodes[n]['type'] == 'cell':
-                    G.nodes[n]['transfection'] = 'cellBC'
-        
-        printGraph_kwds = { 'node_color': 'transfection', 'node_color_dict': {'cellBC': 'black', 'conflicting': 'yellow', 'T0215A': 'orange', 'T0216B': 'purple', 'T0217B': 'green', 'T0219A': 'orange', 'T0220B': 'purple', 'T0221B': 'green', 'T0222B': 'red'} }
+                    G.nodes[n][args.transfectionKey] = 'cellBC'
+        ## TODO hard-coded colorscheme for T0215toT0218 and T0219toT0222
+        printGraph_kwds = { 'node_color': args.transfectionKey, 'node_color_dict': {'cellBC': 'black', 'conflicting': 'yellow', 'T0215A': 'orange', 'T0216B': 'purple', 'T0217B': 'green', 'T0219A': 'orange', 'T0220B': 'purple', 'T0221B': 'green', 'T0222B': 'red'} }
     else:
         printGraph_kwds = {}
     
