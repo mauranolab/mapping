@@ -255,7 +255,7 @@ cat $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed | cut -f5 | awk -v 
 
 
 #Enforce minimum read cutoff
-cat $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>minReadCutoff' > $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed
+cat $TMPDIR/${sample}.barcodes.coords.minPropReadsAtSite.bed | awk -v minReadCutoff=${minReadCutoff} -F "\t" 'BEGIN {OFS="\t"} $5>=minReadCutoff' > $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed
 
 
 echo
