@@ -158,7 +158,15 @@ for genome in "${genome_array[@]}"; do
     
     for curSection in Flowcells Aggregations Public_Data By_Locus; do
         if [ -f "${hub_target}/${genome}/trackDb.${curSection}.txt" ]; then
-           echo -e "include trackDb.${curSection}.txt\n" >> ${hub_target}/${genome}/trackDb.txt
+            #split into chunks to avoid "maxSize to udcFileReadAll is 16777216" error on hubCheck
+            #like split -l 175000 -a 3 -d but takes care not to split stanzas which causes an error
+            awk -v max=175000 -v outbase="${hub_target}/${genome}/trackDb.${curSection}." 'BEGIN {wantToSplit=0; curChunk=1} {print > outbase "_" curChunk ".txt"} NR==max {wantToSplit=1} wantToSplit && $0~/^\s*$/ {curChunk+=1; wantToSplit=0}' ${hub_target}/${genome}/trackDb.${curSection}.txt
+            
+            rm -f ${hub_target}/${genome}/trackDb.${curSection}.txt
+            for chunk in ${hub_target}/${genome}/trackDb.${curSection}.*.txt; do
+                chunkFilename=`basename ${chunk}`
+                echo -e "include ${chunkFilename}\n" >> ${hub_target}/${genome}/trackDb.txt
+            done
         fi
     done
 done
