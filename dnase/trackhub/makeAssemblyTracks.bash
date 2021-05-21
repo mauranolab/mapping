@@ -228,22 +228,22 @@ old_genome=""
 while read -r line_in ; do
     # Get path to bb file and the bed_type of the file
     read -r line_in2 bed_type <<< "${line_in}"
-
+    
     # Strip out the base path, which could be anything.
     line=${line_in2/${hub_target}\//}
-
+    
     # Divide "line" into standard components. These will always have the same structure.
     # array: <genome>/data/<assmbly>/<track>.bb
     #           0      1       2        3        
     IFS='/' read -r -a array <<< "$line"
     genome="${array[0]}"
     assmbly="${array[2]}"
-
+    
     if [ "${genome}" != "${old_genome}" ]; then
         # We found a new genome. Create a new file for it, and initialize it with supertrack lines.
         out_file="trackDb_assemblies_"${genome}".txt"
         old_genome=${genome}
-
+        
         if [[ "${genome}" == "${customGenomeAssembly}" ]]; then
             # Add the cytoband track:
             echo "track cytoBandIdeo" >> ${out_file}
@@ -253,25 +253,25 @@ while read -r line_in ; do
             echo "bigDataUrl data/cytoBandIdeo.bigBed" >> ${out_file}
             echo " " >> ${out_file}
         fi
-
+        
         echo "track ${genome}_Assemblies" >> ${out_file}
         echo "shortLabel Assemblies" >> ${out_file}
         echo "longLabel Assemblies" >> ${out_file}
-
+        
         # We need this to avoid having the ${customGenomeAssembly} Assemblies being shown in the "Other" control group.
         if [[ "${genome}" == "${customGenomeAssembly}" ]]; then
             echo "group ${customGenomeAssembly}" >> ${out_file}
         fi
         echo superTrack on show >> ${out_file}
-
+        
         echo "priority 10" >> ${out_file}
         echo " " >> ${out_file}
-
+        
         # Since we have a new genome, we also need to give it new composite tracks.
         # The line below forces execution of the next if block, which makes composite tracks.
         old_assmbly=""
     fi
-
+    
     if [ "${assmbly}" != "${old_assmbly}" ]; then
         # A new assmbly was found. So give it new composite tracks.
         old_assmbly=${assmbly}
@@ -282,7 +282,7 @@ while read -r line_in ; do
         echo "    html descriptions/${genome}_assembly_${assmbly}.html" >> ${out_file}
         echo "    shortLabel ${assmbly}" >> ${out_file}
         echo "    longLabel ${assmbly}" >> ${out_file}
-
+        
         # Display assembly tracks by default if genome=${customGenomeAssembly}. Otherwise not.
         if [[ "${genome}" == "${customGenomeAssembly}" ]]; then
             # This does not work with the supertrack:  echo "    parent ${genome}_Assemblies on" >> ${out_file}
@@ -290,31 +290,31 @@ while read -r line_in ; do
         else
             echo "    parent ${genome}_Assemblies off" >> ${out_file}
         fi
-
+        
         # This keeps the assmbly composite on top of the other tracks in the browser (except for GC Content).
         echo "    priority 25" >> ${out_file}
         echo " " >> ${out_file}
     fi
-
+    
     # Now we can print the required track information.
     URL=${array[1]}"/"${array[2]}"/"${array[3]}
     BASE_bb=${array[3]}
     BASE=${BASE_bb/.bb/}         # Chop off trailing ".bb"
-
+    
     tr_name=${BASE//./_}         # Replace periods with underscores, for track names.
                                  # Should no longer be needed, but doing it just in case.
-
+    
     lbl_name=${tr_name//_/ }     # Replace underscores with spaces, for track labels.
-
+    
     tr_name="${genome}_sequences_${tr_name}_bed"
-
+    
     echo "        track ${tr_name}" >> ${out_file}
     echo "        parent ${genome}_${assmbly} on" >> ${out_file}
     echo "        visibility pack" >> ${out_file}
     echo "        longLabel ${lbl_name}" >> ${out_file}
     echo "        shortLabel ${lbl_name}" >> ${out_file}
     echo "        bigDataUrl ${URL}" >> ${out_file}
-
+    
     # bed_type is in the form "bedN".
     # This cuts the text "bed" out of the bed_type variable.
     # So it leaves just the numeric part of bedN.

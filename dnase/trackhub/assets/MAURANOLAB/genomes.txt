@@ -1,5 +1,5 @@
 genome mauranolab
-trackDb mauranolab/trackDb_001.txt
+trackDb mauranolab/trackDb.txt
 description Maurano Lab annotation and sequencing data
 groups mauranolab/mauranolab_groups.txt
 twoBitPath mauranolab/data/mauranolab.2bit

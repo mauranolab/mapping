@@ -59,7 +59,6 @@ make_html () {
 
 find_readcounts () {
     local dir_base=$1
-    local suffix=$2
     
     if [ ! -d "${dir_base}" ] ; then
         return 0
@@ -104,7 +103,7 @@ find_readcounts () {
                 partialHtmlName="/${yyyymmdd}_${flowcell%/}"
             fi
         fi
-
+        
         numElements="${#target_vec[@]}"
         if [ "${numElements}" = "0" ]; then
             echo "[makeDescFiles.bash] WARNING No subdirectories with a readcounts file in ${dir_base}${flowcell}"
@@ -125,10 +124,10 @@ find_readcounts () {
             continue
         fi
         
-
+        
         for target in ${target_vec[@]}; do
             htmlName=${partialHtmlName}
-
+            
             if [[ "${dir_base}" = */mapped/ ]]; then
                 # The name of the flowcell subdirectory that the readcounts.summary.txt file lives in is also the name of the relevant assay type.
                 # Use that assay type to help make a unique html name.
@@ -172,15 +171,9 @@ find_readcounts () {
 }
 ##############################################################################
 # Make the html files.
-
-# flowcells
-find_readcounts ${assemblyBaseDir}/mapped/ NA
-
-# aggregations
-find_readcounts ${assemblyBaseDir}/aggregations/ readcounts.summary.txt
-
-# publicdata
-find_readcounts ${assemblyBaseDir}/publicdata/ readcounts.summary.txt
+find_readcounts ${assemblyBaseDir}/mapped/
+find_readcounts ${assemblyBaseDir}/aggregations/
+find_readcounts ${assemblyBaseDir}/publicdata/
 
 
 ###########################################################################
@@ -188,37 +181,19 @@ find_readcounts ${assemblyBaseDir}/publicdata/ readcounts.summary.txt
 # Ultimate file names are in the form:  <date>_<flowcell>.html
 # Files reside in:  .../trackhub_dev/<genome>_descriptions/
 
-# This function does the moving and renaming.  It is called once for each genome.
-move_html () {
-    local genome=$1
-    local suffix="*_"${genome}".html"
-    local fnames=($(ls *${suffix}))
-    
-    # mkdir /vol/cegs/public_html/trackhub_dev/${genome}/descriptions
-    mkdir ${hub_target}/${genome}/descriptions
-    
-    local i
-    for i in "${fnames[@]}"; do
-        # Put a line break at the top of the HTML file, so the table does not 
-        # overlap the horizontal line placed by the browser.
-        echo "<br>" > ${i}".tmp"
-        
-        # Add the HTML file
-        cat ${i} >> ${i}".tmp"
-        
-        local j=${i%${suffix}}
-        mv ${i}".tmp" ${hub_target}/${genome}/descriptions/${j}.html
-    done
-}
-###########################################################################
-
-# Move to where the description tables have been stored.
-cd ${TMPDIR}
-
-# Now move the files into the hub.
 for genome in "${genome_array[@]}"; do
-    move_html ${genome}
+    suffix="*_${genome}.html"
+    fnames=($(ls ${TMPDIR}/*${suffix}))
+    
+    mkdir ${hub_target}/${genome}/descriptions
+    for f in "${fnames[@]}"; do
+        outfile=`basename ${f}`
+        outfile="${outfile%${suffix}}.html"
+        # Put a line break at the top of the HTML file, so the table does not overlap the horizontal line placed by the browser
+        echo "<br>" > ${hub_target}/${genome}/descriptions/${outfile}
+        cat ${f} >> ${hub_target}/${genome}/descriptions/${outfile}
+    done
 done
 
 ###########################################################################
-echo "Done processing Description files."
+echo "[makeDescFiles] Done"

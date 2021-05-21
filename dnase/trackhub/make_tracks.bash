@@ -25,22 +25,17 @@ genome_array=("$@")
 
 # Here we define the output file for samplesforTrackhub.R
 # "outfile_base" is used later to construct file names for extracts of "outfile".
-outfile_base=${TMP_OUT}"/samplesforTrackhub"
-outfile=${outfile_base}"_all.tsv"
+outfile_base="${TMP_OUT}/samplesforTrackhub"
+outfile="${outfile_base}_all.tsv"
 
 
 echo
-Rscript --vanilla ${src}/samplesforTrackhub.R \
-        --out ${outfile} \
-        --workingDir ${assemblyBaseDir}/mapped \
-        --descend \
-        --project byFC \
-        --quiet
+Rscript --vanilla ${src}/samplesforTrackhub.R --out ${outfile} --workingDir ${assemblyBaseDir}/mapped --descend --project byFC --quiet
 
 # Split up the samplesforTrackhub.R output into separate files for each genome.
-# It is important that the cegsvectors assemblies do not unintentionally include standard genome names in their own names.  For example, if a Mapped_genome is cegsvectors_Myspecialmm10gene, then the track will appear in both the cegsvectors genome files and in the mm10 files.
-for i in "${genome_array[@]}"; do
-    mlr --tsv filter -S "'\$Mapped_Genome =~ \".*${i}.*\"'" ${outfile} > ${outfile_base}_${i}_consolidated.tsv
+# BUGBUG It is important that the cegsvectors assemblies do not unintentionally include standard genome names in their own names.  For example, if a Mapped_genome is cegsvectors_Myspecialmm10gene, then the track will appear in both the cegsvectors genome files and in the mm10 files.
+for genome in "${genome_array[@]}"; do
+    mlr --tsv filter -S "'\$Mapped_Genome =~ \".*${genome}.*\"'" ${outfile} > ${outfile_base}_${genome}_consolidated.tsv
 done
 
 # Lastly, a "header" is needed below for various aggregation output files.
@@ -48,27 +43,22 @@ done
 head -n 1 ${outfile} > "${TMP_OUT}/header"
 
 # This is the end of the samplesforTrackhub.R section for "flowcell" samples.
-#
+
 ###########################################################################
 # CEGS_byLocus section:
 
 if [ ${hub_type} = "CEGS" ]; then
     echo
-    Rscript --vanilla ${src}/samplesforTrackhub.R \
-            --out ${outfile} \
-            --workingDir ${assemblyBaseDir}/mapped \
-            --descend \
-            --project CEGS_byLocus \
-            --quiet
+    Rscript --vanilla ${src}/samplesforTrackhub.R --out ${outfile} --workingDir ${assemblyBaseDir}/mapped --descend --project CEGS_byLocus --quiet
     
     # Split up the samplesforTrackhub.R output into separate files for each genome.
-    for i in "${genome_array[@]}"; do
-        mlr --tsv filter -S "'\$Mapped_Genome =~ \".*${i}.*\"'" ${outfile} > ${outfile_base}_${i}_consolidated_locus.tsv
+    for genome in "${genome_array[@]}"; do
+        mlr --tsv filter -S "'\$Mapped_Genome =~ \".*${genome}.*\"'" ${outfile} > ${outfile_base}_${genome}_consolidated_locus.tsv
     done
 fi
 
 # This is the end of the samplesforTrackhub.R section for making the CEGS_byLocus files.
-#
+
 ###########################################################################
 ###########################################################################
 # This begins the samplesforTrackhub.R section for aggregation & publicdata
@@ -90,8 +80,6 @@ BEGIN{FS="\t"}
 }
 AWK_HEREDOC_01
 ) < ${TMP_OUT}"/header")
-
-echo
 echo "filebase_col is ${filebase_col}"
 
 
@@ -106,9 +94,7 @@ BEGIN{FS="\t"}
 }
 AWK_HEREDOC_02
 ) < ${TMP_OUT}"/header")
-
 echo "Group_col is ${Group_col}"
-echo
 
 ###########################################################################
 # Before moving on, below we define a few functions. There will be a comment
@@ -131,16 +117,12 @@ agg_pub_loop () {
         inputfile="--inputfile ${workingDir}/sampleannotation.txt"
     fi
     
-    Rscript --vanilla ${src}/samplesforTrackhub.R \
-            --out ${outfile} \
-            --workingDir ${workingDir} \
-            ${inputfile} \
-            --quiet
-
-###
-# Make some adjustments to the "outfile" columns, as the aggregations are
-# structured somewhat differently than the flowcells, and the CEGS version 
-# of samplesforTrackhub.R was written with the flowcells in mind.
+    Rscript --vanilla ${src}/samplesforTrackhub.R --out ${outfile} --workingDir ${workingDir} ${inputfile} --quiet
+    
+    ###
+    # Make some adjustments to the "outfile" columns, as the aggregations are
+    # structured somewhat differently than the flowcells, and the CEGS version 
+    # of samplesforTrackhub.R was written with the flowcells in mind.
 awk -v f_col=${filebase_col} \
     -v G_col=${Group_col} \
     -v dir_name=${dir_loop_name} \
@@ -148,33 +130,33 @@ awk -v f_col=${filebase_col} \
 BEGIN{FS="\t"; OFS="\t"; dir_name2=sprintf("%s%s", dir_name, "/")}
 {
     if(NR == 1) next;
-
+    
     sub(/^/, dir_name2, $f_col)
     sub(/NA/, dir_name, $G_col)
     print
 }
 AWK_HEREDOC_03
 ) < ${outfile} > "${TMP_OUT}/tmp"
-
+    
     cat "${TMP_OUT}/header" "${TMP_OUT}/tmp" > ${outfile}
     rm "${TMP_OUT}/tmp"
-# Adjustment of outfile columns complete.
-###
-
+    # Adjustment of outfile columns complete.
+    ###
+    
     # Split up the samplesforTrackhub.R output into separate files for each genome.
-    for i in "${genome_array[@]}"; do
+    for genome in "${genome_array[@]}"; do
         # Note that prior to entering this function, "outfile" was set to be: "${outfile_base}_all_agg.tsv".
         # This never changes, so each call to this function over-writes the previous "outfile".
         # However, the output from the below call to mlr is APPENDED to previous output from calls
         # to this function. So the genome specific output files get bigger as we do more aggregation directories,
         # and call this function for each one of them.
-
+        
         if [ "${loop_type}" = "aggregations" ]; then
             # aggregations
-            mlr --tsv --headerless-csv-output filter -S "'\$Mapped_Genome =~ \".*${i}.*\"'" ${outfile} >> ${outfile_base}_${i}_consolidated_agg.tsv
+            mlr --tsv --headerless-csv-output filter -S "'\$Mapped_Genome =~ \".*${genome}.*\"'" ${outfile} >> ${outfile_base}_${genome}_consolidated_agg.tsv
         else
             # publicdata
-            mlr --tsv --headerless-csv-output filter -S "'\$Mapped_Genome =~ \".*${i}.*\"'" ${outfile} >> ${outfile_base}_${i}_consolidated_pub.tsv
+            mlr --tsv --headerless-csv-output filter -S "'\$Mapped_Genome =~ \".*${genome}.*\"'" ${outfile} >> ${outfile_base}_${genome}_consolidated_pub.tsv
         fi
     done
     echo
@@ -187,8 +169,8 @@ AWK_HEREDOC_03
 # aggregations:
 
 # Initialize aggregation output files
-for i in "${genome_array[@]}"; do
-    cat "${TMP_OUT}/header" > "${outfile_base}_${i}_consolidated_agg.tsv"
+for genome in "${genome_array[@]}"; do
+    cat "${TMP_OUT}/header" > "${outfile_base}_${genome}_consolidated_agg.tsv"
 done
 outfile="${outfile_base}_all_agg.tsv"
 
@@ -215,8 +197,8 @@ done
 # publicdata:
 if [ "${hub_type}" != "SARS" ]; then
     # Initialize publicdata output files
-    for i in "${genome_array[@]}"; do
-        cat "${TMP_OUT}/header" > "${outfile_base}_${i}_consolidated_pub.tsv"
+    for genome in "${genome_array[@]}"; do
+        cat "${TMP_OUT}/header" > "${outfile_base}_${genome}_consolidated_pub.tsv"
     done
     outfile="${outfile_base}_all_pub.tsv"
     
@@ -248,96 +230,66 @@ fi
 # This function will be called once for each genome.
 make_tracks () {
     local mappedgenome=$1
-    local consol_suffix=$2
-    local URLbase=$3
-    local supertrack=$4
+    local consolidated_suffix=$2
+    local supertrack=$3
     
-    local mappedgenome_consol=${mappedgenome}${consol_suffix}
-    local infile=${TMP_OUT}"/samplesforTrackhub_"${mappedgenome_consol}".tsv"
-
+    local infile="${TMP_OUT}/samplesforTrackhub_${mappedgenome}${consolidated_suffix}.tsv"
+    
     num_line=`(wc -l < ${infile})`
     if [ ${num_line} -le 1 ]; then
         # There are no tracks of this type
         return 0
     fi
     
-    local includeSampleIDinSampleCol=""
-    if [ ${supertrack} != "Aggregations" ] && [ ${supertrack} != "Public_Data" ] && [ ${supertrack} != "By_Locus" ]; then
-        includeSampleIDinSampleCol="--includeSampleIDinSampleCol"
-    fi
-    
     local tracknameprefix=""
     local generateHTMLdescription="--generateHTMLdescription"
+    local includeSampleIDinSampleCol=""
+    subgroupprefix="--subgroupnames Replicate"
     if [ ${supertrack} = "By_Locus" ]; then
         tracknameprefix="--tracknameprefix byLocus"
         subgroupprefix="--subgroupnames Project,Assembly,Type"
         generateHTMLdescription=""
-    else
-        subgroupprefix="--subgroupnames Replicate"
-    fi
-    
-    trackfile="trackDb.${supertrack}.txt"
-
-    if [ ${supertrack} = "By_Locus" ]; then
         supertrackPriority=20
+        URLbase="../mapped/"
     elif [ ${supertrack} = "Aggregations" ]; then
         supertrackPriority=30
+        URLbase="../aggregations/"
     elif [ ${supertrack} = "Public_Data" ]; then
         supertrackPriority=40
+        URLbase="../publicdata/"
     elif [ ${supertrack} = "Flowcells" ]; then
         supertrackPriority=50
+        URLbase="../mapped/"
+        includeSampleIDinSampleCol="--includeSampleIDinSampleCol"
     else
-        trackfile="trackDb.noSupertrack.txt"
-        supertrackPriority=99
+        echo "ERROR impossible"
+        exit 1
     fi
     
-    python ${src}/MakeTrackhub.py ${infile} \
-           ${generateHTMLdescription} \
-           ${includeSampleIDinSampleCol} \
-           ${tracknameprefix} \
-           ${subgroupprefix} \
-           --supertrack ${supertrack} \
-           --supertrackPriority ${supertrackPriority} \
-           --genome ${mappedgenome} \
-           --checksamples \
-           --URLbase ${URLbase} > "${hub_target}/${mappedgenome}/${trackfile}"
+    python ${src}/MakeTrackhub.py ${infile} ${generateHTMLdescription} ${includeSampleIDinSampleCol} ${tracknameprefix} ${subgroupprefix} --supertrack ${supertrack} --supertrackPriority ${supertrackPriority} --genome ${mappedgenome} --checksamples --URLbase ${URLbase} > ${hub_target}/${mappedgenome}/trackDb.${supertrack}.txt
 }
-###############################
-consol_suffix_in="_consolidated"
-supertrack_in="Flowcells"
 
-for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ../mapped/ ${supertrack_in}
+for genome in "${genome_array[@]}"; do
+    make_tracks ${genome} "_consolidated" "Flowcells"
 done
 
-###############################
-consol_suffix_in="_consolidated_agg"
-supertrack_in="Aggregations"
-
-for i in "${genome_array[@]}"; do
-    make_tracks ${i} ${consol_suffix_in} ../aggregations/ ${supertrack_in}
+for genome in "${genome_array[@]}"; do
+    make_tracks ${genome} "_consolidated_agg" "Aggregations"
 done
 
-###############################
 if [ "${hub_type}" != "SARS" ]; then
-    consol_suffix_in="_consolidated_pub"
-    supertrack_in="Public_Data"
-    
-    for i in "${genome_array[@]}"; do
-        make_tracks ${i} ${consol_suffix_in} ../publicdata/ ${supertrack_in}
+    for genome in "${genome_array[@]}"; do
+        make_tracks ${genome} "_consolidated_pub" "Public_Data"
     done
 fi
 
-###############################
 if [ ${hub_type} = "CEGS" ]; then
-    consol_suffix_in="_consolidated_locus"
-    supertrack_in="By_Locus"
-    
-    for i in "${genome_array[@]}"; do
-        make_tracks ${i} ${consol_suffix_in} ../mapped/ ${supertrack_in}
+    for genome in "${genome_array[@]}"; do
+        make_tracks ${genome} "_consolidated_locus" "By_Locus"
     done
 fi
-###############################
+
+
 echo
-echo "Done with Daler python code."
+echo "[make_tracks] Done"
 

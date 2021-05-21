@@ -104,8 +104,7 @@ echo TMPDIR is: ${TMPDIR}
 # echo TMPDIR is: ${TMPDIR}
 
 ############################################################################
-
-hub_target="/${TMPDIR}/trackhub"
+hub_target="${TMPDIR}/trackhub"
 mkdir ${hub_target}
 
 # Make soft links in hub directory, so we can have multiple hubs with their own data sources in public_html.
@@ -116,11 +115,9 @@ for subdir in mapped aggregations publicdata; do
 done
 
 ############################################################################
-
 # Where is this file located? We use this info to find other required resources.
 # The path will have no trailing slash.
 src=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-cd ${src}
 
 # What genomes will we be working with?
 # These are defined in the CEGS_genomes, MAURANOLAB_genomes, and SARS_genomes files.
@@ -137,46 +134,33 @@ echo " "
 
 # We also need to make tracks for the various assemblies. Do it here:
 echo "Starting makeAssemblyTracks.bash"
-./makeAssemblyTracks.bash ${src} ${hub_target} ${TMPDIR} ${hub_type} ${customGenomeAssembly} ${assemblyBaseDir} "${genome_array[@]}"
+${src}/makeAssemblyTracks.bash ${src} ${hub_target} ${TMPDIR} ${hub_type} ${customGenomeAssembly} ${assemblyBaseDir} "${genome_array[@]}"
 
 # Now construct the "flowcell" and "aggregation" tracks in TMPDIR.
 hub_dir=`basename ${hub_target}`
 echo "Starting make_tracks.bash"
-./make_tracks.bash ${TMPDIR} ${hub_type} ${src} ${assemblyBaseDir} ${hub_target} "${genome_array[@]}"
+#
+#make_tracks.bash is called only here
+${src}/make_tracks.bash ${TMPDIR} ${hub_type} ${src} ${assemblyBaseDir} ${hub_target} "${genome_array[@]}"
 
 ######################################################################################
 # Now copy the track information to the hub location.
 echo
 echo "Updating track files"
-
-make_track_include () {
-    local tracks=$1
-    if [ -f ${tracks} ]; then
-       echo -e "include ${tracks}\n" >> trackDb_001.txt
+for genome in "${genome_array[@]}"; do
+    if [[ "${genome}" == "${customGenomeAssembly}" ]]; then
+        cp "${TMPDIR}/assembly_tracks/cytoBandIdeo.bigBed" ${hub_target}/${genome}/data
     fi
-}
-
-update_genome () {
-    genome=$1
-    cd "${hub_target}/${genome}"
     
     if [ -f "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" ]; then
-        cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" trackDb_001.txt
+        cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" ${hub_target}/${genome}/trackDb.txt
     fi
     
-    if [[ "${genome}" == "${customGenomeAssembly}" ]]; then
-        cp "${TMPDIR}/assembly_tracks/cytoBandIdeo.bigBed" data
-    fi
-    
-    make_track_include trackDb.Flowcells.txt
-    make_track_include trackDb.Aggregations.txt
-    make_track_include trackDb.Public_Data.txt
-    make_track_include trackDb.By_Locus.txt
-    make_track_include trackDb.noSupertrack.txt
-}
-
-for i in "${genome_array[@]}"; do
-    update_genome $i 
+    for curSection in Flowcells Aggregations Public_Data By_Locus; do
+        if [ -f "${hub_target}/${genome}/trackDb.${curSection}.txt" ]; then
+           echo -e "include trackDb.${curSection}.txt\n" >> ${hub_target}/${genome}/trackDb.txt
+        fi
+    done
 done
 
 # Move the GC percentage file:
@@ -185,19 +169,17 @@ if [ -f "${TMPDIR}/assembly_tracks/${customGenomeAssembly}.gc.bw" ]; then
 fi
 
 ######################################################################################
-
 echo
 echo "Making description files"
-cd ${src}
-./makeDescFiles.bash ${src} ${assemblyBaseDir} ${hub_type} ${hub_target} ${TMPDIR} "${genome_array[@]}"
+#TODO this seems to be pretty slow, looks like the R code is the bottleneck
+#makeDescFiles.bash is called only here
+${src}/makeDescFiles.bash ${src} ${assemblyBaseDir} ${hub_type} ${hub_target} ${TMPDIR} "${genome_array[@]}"
 ######################################################################################
 # Make the hub.txt and genomes.txt files, and populate the structure with other fixed, hand made assets.
-
-
 echo
 echo "Finalizing trackhub"
-hub_id=${short_label// /_}
-echo "hub hub_id_${hub_id}" > "${hub_target}/hub.txt"
+
+echo "hub hub_id_${short_label// /_}" > "${hub_target}/hub.txt"
 echo "shortLabel ${short_label}" >> "${hub_target}/hub.txt"
 echo "longLabel ${long_label}" >> "${hub_target}/hub.txt"
 echo "genomesFile genomes.txt" >> "${hub_target}/hub.txt"
@@ -206,10 +188,7 @@ echo "descriptionUrl description.html" >> "${hub_target}/hub.txt"
 
 
 echo
-echo "Deploying trackhub"
-cd ${src}
-
-cp -R assets/${hub_type}/. ${hub_target}
+cp -R --preserve=timestamps ${src}/assets/${hub_type}/. ${hub_target}
 
 #Write out two line stanzas for genomes native to the UCSC browser
 for cur_genome in "${genome_array[@]}"; do
@@ -217,20 +196,19 @@ for cur_genome in "${genome_array[@]}"; do
     [ "${cur_genome}" = "${customGenomeAssembly}" ] || [ "${cur_genome}" = "t2t" ] && continue
     
     echo "genome ${cur_genome}" >> "${hub_target}/genomes.txt"
-    echo "trackDb ${cur_genome}/trackDb_001.txt" >> "${hub_target}/genomes.txt"
-    echo " " >> "${hub_target}/genomes.txt"
+    echo "trackDb ${cur_genome}/trackDb.txt" >> "${hub_target}/genomes.txt"
+    echo >> "${hub_target}/genomes.txt"
 done
 
 if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit" ]; then
-    cp ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit ${hub_target}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit
+    cp --preserve=timestamps ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit ${hub_target}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit
 fi
 
 if [[ "${hub_type}" == "CEGS" ]]; then
     mkdir "${hub_target}/t2t/data"
-    cp /vol/isg/annotation/fasta/t2t/t2t.2bit ${hub_target}/t2t/data/t2t.2bit
+    cp --preserve=timestamps /vol/isg/annotation/fasta/t2t/t2t.2bit ${hub_target}/t2t/data/t2t.2bit
 fi
 #########################################################
-
 time_stamp=$(date +"%m-%d-%y %T")
 echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> "${hub_target}/description.html"
 
@@ -252,9 +230,9 @@ for chrom_sizes_file in ${chrom_sizes_file_list}; do
     echo "${outputLine}"
 done | sort -k1,1 > "${TMPDIR}/chroms_per_cegsvector.txt"
 
-Rscript makeChroms_per_cegsvectorHtml.R "${TMPDIR}/chroms_per_cegsvector.txt" "${TMPDIR}/chroms_per_cegsvector.html"
+Rscript ${src}/makeChroms_per_cegsvectorHtml.R ${TMPDIR}/chroms_per_cegsvector.txt ${TMPDIR}/chroms_per_cegsvector.html
 
-cat "${TMPDIR}/chroms_per_cegsvector.html" >> "${hub_target}/description.html"
+cat ${TMPDIR}/chroms_per_cegsvector.html >> ${hub_target}/description.html
 
 
 ######################################################################################
@@ -278,12 +256,12 @@ fi
 
 if [ "${blatport}" != "0" ]; then
     echo "Copying ${customGenomeAssembly}.2bit to shared directory for blat..."
-    cp ${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit /vol/isg/blat_data
+    cp --preserve=timestamps ${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit /vol/isg/blat_data
     twoBitFiles="${customGenomeAssembly}.2bit"
     
     if [[ "${hub_type}" == "CEGS" ]]; then
         echo "Copying t2t.2bit to shared directory for blat..."
-        cp ${hub_target}/t2t/data/t2t.2bit /vol/isg/blat_data
+        cp --preserve=timestamps ${hub_target}/t2t/data/t2t.2bit /vol/isg/blat_data
         twoBitFiles="${twoBitFiles} t2t.2bit"
     fi
     
@@ -316,7 +294,7 @@ if [ "$(ls -A ${hub_target_final})" ]; then
 fi
 
 # Replace old hub with new hub:
-echo "Copying the hub."
+echo "Deploying trackhub."
 cp -rpd ${hub_target}/* ${hub_target_final}
 
 echo "Removing TMPDIR directory."
