@@ -290,9 +290,6 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
                         nCommunities += 1
                         countsremoved += subG.edges[edge]['weight']
                         edgesToDrop.append(edge)
-#replace by remove_edges
-#                        subG.nodes[edge[0]]['weight'] -= subG.edges[edge]['weight']
-#                        subG.nodes[edge[1]]['weight'] -= subG.edges[edge]['weight']
                         subG.edges[edge]['color'] = 'darkred'
                         nodesToPrune.add(edge[0])
                         nodesToPrune.add(edge[1])
