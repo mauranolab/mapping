@@ -40,6 +40,8 @@ version="1.1"
 #    weight - number of UMIs supporting this link
 #    color - used to distinguish trimmed edges in plots
 def initializeGraphFromInput(inputfilename, minCount):
+    print("[genotypeClones] Initializing graph", sep="", file=sys.stderr)
+    
     if inputfilename=="-":
         inputfile = sys.stdin
     else:
@@ -65,14 +67,14 @@ def initializeGraphFromInput(inputfilename, minCount):
                 #Node weight is sum of edge weights
                 if bc in G:
                     if G.nodes[bc]['type'] != "BC":
-                        print("WARNING collision between BC and cellBC")
+                        print("[genotypeClones] WARNING collision between BC and cellBC", sep="", file=sys.stderr)
                     G.nodes[bc]['weight'] += count
                 else:
                     G.add_node(bc, type="BC", weight=count)
                 
                 if cellbc in G:
                     if G.nodes[cellbc]['type'] != "cell":
-                        print("WARNING collision between cellBC and BC")
+                        print("[genotypeClones] WARNING collision between cellBC and BC", sep="", file=sys.stderr)
                     G.nodes[cellbc]['weight'] += count
                 else:
                     G.add_node(cellbc, type="cell", weight=count)
@@ -118,6 +120,7 @@ def filterNodesFromFile(G, filename, keep=True):
         ncells = len([x for x in nodesToRemove if G.nodes[x]['type'] == 'cell'])
         nbcs = len([x for x in nodesToRemove if G.nodes[x]['type'] == 'BC'])
         
+        print("[genotypeClones] ", sep="", file=sys.stderr)
         print("[genotypeClones] filterNodesFromFile - ", "whitelist " if keep else "blacklist ", filename, " with ", len(mask_data), " entries, matching ", nodesPresentInGraph, " nodes. Removing ", len(nodesToRemove), " nodes (", nbcs, " BCs and ", ncells, " cells).", sep="", file=sys.stderr)
         
         remove_edges(G, G.edges(nodesToRemove))
@@ -171,6 +174,8 @@ def identifyEdgesLowPropOfReads(G, minPropOfReads, type='BC'):
 
 
 def pruneEdgesLowPropOfReads(G, minPropOfBCReads, minPropOfCellReads):
+    print("[genotypeClones] ", sep="", file=sys.stderr)
+    
     #Make a first pass to identify edges for removal so each edge is assessed against the incoming counts
     edgesToRemove = set()
     edgesToRemove.update(identifyEdgesLowPropOfReads(G, minPropOfReads=minPropOfBCReads, type="BC"))
@@ -201,6 +206,9 @@ def pruneConflictingEdges(G, transfectionKey, maxConflict):
     edges_to_remove = set()
     ## TODO: remove hard-coding of labels to skip
     skip = set(["conflicting", "uninformative", "None"])
+    
+    print("[genotypeClones] ", sep="", file=sys.stderr)
+    
     for cell in [x for x in G.nodes if G.nodes[x]['type'] == "cell"]:
         bcs = [x for (_, x) in G.edges(cell) if G.nodes[x][transfectionKey] not in skip]
         transfection_rate = computeKeyRate(G, cell, bcs, transfectionKey)
@@ -210,6 +218,7 @@ def pruneConflictingEdges(G, transfectionKey, maxConflict):
             if (1 - transfection_rate[transfection_majority]) > maxConflict:
                 continue
             keep = set([transfection_majority]) | skip
+            #Remove all edges connecting to BCs not in the majority
             edges_to_remove.update([(cell, x) for x in bcs if G.nodes[x][transfectionKey] not in keep])
     remove_edges(G, edges_to_remove)
     print("[genotypeClones] pruneConflictingEdges - Removed ", len(edges_to_remove), " total edges", sep="", file=sys.stderr)
@@ -220,21 +229,26 @@ def pruneConflictingNodes(G, transfectionKey, type = "BC"):
     nodes_to_remove = set()
     ## TODO: remove hard-coding of labels to skip
     skip = set(["conflicting", "uninformative", "None"])
+    
+    print("[genotypeClones] ", sep="", file=sys.stderr)
+    
     for node in [x for x in G.nodes if G.nodes[x]["type"] == type]:
-        neighborhood = set()
+        neighboring_bcs = set()
         if type == "BC":
+            #If we are starting from BCs, then we consider BCs connected to neighbor cells
             for cell in G.neighbors(node):
-                neighborhood.update(G.neighbors(cell))
+                neighboring_bcs.update(G.neighbors(cell))
         else:
-            neighborhood.update(G.neighbors(node))
-        neighborhood_transfection = set([G.nodes[x][transfectionKey] for x in neighborhood]) - skip
-        if len(neighborhood_transfection) > 1:
+            #If we are starting from cells, then we consider directly connected BCs
+            neighboring_bcs.update(G.neighbors(node))
+        neighboring_bcs_transfection = set([G.nodes[x][transfectionKey] for x in neighboring_bcs])
+        neighboring_bcs_transfection = neighboring_bcs_transfection - skip
+        if len(neighboring_bcs_transfection) > 1:
             nodes_to_remove.add(node)
     edges_to_remove = list(G.edges(nodes_to_remove))
     remove_edges(G, edges_to_remove)
     G.remove_nodes_from(nodes_to_remove)
-    print("[genotypeClones] pruneConflictingNodes - Removed ", len(edges_to_remove), " edges", sep="", file=sys.stderr)
-    print("[genotypeClones] pruneConflictingNodes - Removed ", len(nodes_to_remove), " nodes", sep="", file=sys.stderr)
+    print("[genotypeClones] pruneConflictingNodes - Removed ", len(edges_to_remove), " edges and ", len(nodes_to_remove), " nodes of type ", type, ".", sep="", file=sys.stderr)
     pruneOrphanNodes(G)
 
 
@@ -250,6 +264,9 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
     edgesToDrop = []
     countsremoved = 0
     nCommunities = 0
+    
+    print("[genotypeClones] ", sep="", file=sys.stderr)
+    
     #Downside of doing filtering in a separate pass is that it is harder to debug why some clusters aren't broken up
     for subG in [G.subgraph(c) for c in sorted(nx.connected_components(G), key=len, reverse=True)]:
         bcs = [x for x in subG.nodes if subG.nodes[x]['type'] == 'BC']
@@ -342,7 +359,7 @@ def printGraph(G, filename=None, fig=None, node_color='type', node_color_dict={'
         kwds['edge_color'] = edge_weights
         kwds['edge_cmap'] = edge_colormap
     else:
-        print("ERROR", edge_color)
+        print("[genotypeClones] ERROR", edge_color, sep="", file=sys.stderr)
     
     if fig is None:
         fig = plt.figure()
@@ -384,6 +401,7 @@ def identifyClones(G):
     totalBCs = 0
     totalBCsSkipped = 0
     totalUMIs = 0
+    maxCloneSize = 0
     
     clones = collections.OrderedDict()
     
@@ -403,10 +421,13 @@ def identifyClones(G):
         totalUMIs += umi_count
         totalCells += len(cells)
         totalBCs += len(bcs)
+        if len(cells) > maxCloneSize:
+            maxCloneSize = len(cells)
         
         clones[clonename] = { 'clone': subG, 'umi_count': umi_count , 'bcs': bcs, 'cells': cells }
-        
-    print("[genotypeClones] Identified ", str(cloneid), " unique clones. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalUMIs/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
+    
+    print("[genotypeClones] ", sep="", file=sys.stderr)
+    print("[genotypeClones] Identified ", str(cloneid), " unique clones, max clone had ", maxCloneSize, " cells. Average of ", round(totalCells/cloneid, 2), " cells, ", round(totalBCs/cloneid, 2), " BCs, ", round(totalUMIs/cloneid, 2), " UMIs per clone", sep="", file=sys.stderr)
     
     return clones
 
@@ -423,7 +444,7 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
         longoutfile = open(outputlong, 'w')
         longwr = csv.DictWriter(longoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BC', 'BC_transfection', 'clone', 'transfection', 'count', 'nCells'])
         longwr.writeheader()
-            
+        
         outputfilename = output
         if outputfilename=="-":
             outfile = sys.stdout
@@ -435,7 +456,7 @@ def writeOutputFiles(G, clones, output, outputlong, outputwide, cloneobj, graphO
         wideoutfile = open(outputwide, 'w')
         widewr = csv.DictWriter(wideoutfile, delimiter='\t', lineterminator=os.linesep, skipinitialspace=True, fieldnames=['BCs', 'cellBCs', 'clone', 'transfection', 'count', 'nedges', 'nBCs', 'ncells'])
         widewr.writeheader()
-
+        
         if cloneobj is not None:
             pickle.dump(dict(graph = G, clones = clones), open(cloneobj, "wb"))
         
@@ -516,7 +537,7 @@ def toJaccard(G):
 ###Command line operation
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog = "genotypeClones.py", description = "Graph approach to generate unified list of which BCs are present in which cells", allow_abbrev=False)
-    parser.add_argument('--inputfilename', action='store', required=True, help='input filename. Format: tab-delimited with barcode sequences. First line must be header (unused)')
+    parser.add_argument('--inputfilename', action='store', required=True, help='input filename. Format: tab-delimited with barcode sequences. First line must be header (unused). Columns must be BC, cellBC, count.')
     parser.add_argument('--outputlong', action='store', required=True, help='output filename for tab-delimited list of BC counts totalled per clone')
     parser.add_argument('--outputwide', action='store', required=True, help='output filename for tab-delimited list of clones and the cells/BCs they include')
     parser.add_argument('--output', action='store', required=True, help='output filename for tab-delimited list of clone, cell, BC links - filtered version of barcode.counts.byCell file. Can be - for stdout.')
@@ -535,7 +556,7 @@ if __name__ == "__main__":
     parser.add_argument("--removeMinorityBCsFromConflictingCells", action="store", type=float, default=None, help="For cells with BCs from more than one transfection, removes BCs from minority transfections that together represent at most this proportion of UMIs for that cell. Requires `transfectionKey`")
     parser.add_argument("--removeConflictingCells", action='store_true', default=False, help="Removes cells linked to BCs from 2+ transfections. It requires `transfectionKey`")
     parser.add_argument("--removeConflictingBCs", action='store_true', default=False, help="Removes BCs linked to cells from 2+ transfections. It requires `transfectionKey`")
-
+    
     parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
     
     parser.add_argument("--verbose", action='store_true', default=False, help = "Verbose mode")
@@ -548,7 +569,7 @@ if __name__ == "__main__":
         if args.transfectionKey is not None and args.removeConflictingCells and args.transfectionKey is None:
             raise ArgumentError(key_arg, "`--transfectionKey` is required to use `--removeConflictingCells`")
     except argparse.ArgumentError as exc:
-        print(exc.message, '\n', exc.argument, file=sys.stderr)
+        print("[genotypeClones] ", exc.message, '\n', exc.argument, sep="", file=sys.stderr)
         sys.exit(1)
     
     print("[genotypeClones] " + str(args), file=sys.stderr)
@@ -596,7 +617,6 @@ if __name__ == "__main__":
     if args.transfectionKey is not None and args.removeConflictingBCs:
         pruneConflictingNodes(G, args.transfectionKey, type = "BC")
     
-    #This filter seems more stringent on the individual libraries than the aggregate one
     pruneEdgesLowPropOfReads(G, minPropOfBCReads=args.minPropOfBCReads, minPropOfCellReads=args.minPropOfCellReads)
     
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=None)
