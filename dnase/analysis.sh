@@ -227,7 +227,9 @@ for chrom in `samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | cu
     #Use index to avoid problems with long chromosome names
     starch - > $TMPDIR/${name}.${mappedgenome}.reads.${i}.starch
 done
-starchcat $TMPDIR/${name}.${mappedgenome}.reads.*.starch > ${sampleOutdir}/${name}.${mappedgenome}.reads.starch
+#use ending value of i to specify output files explicitly and avoid shell glob
+readfiles=`seq 1 ${i} | xargs -I {} echo $TMPDIR/${name}.${mappedgenome}.reads.{}.starch`
+starchcat ${readfiles} > ${sampleOutdir}/${name}.${mappedgenome}.reads.starch
 
 
 echo
@@ -687,7 +689,7 @@ if [[ "${callHotspots1}" == 1 ]]; then
     
     
     if [ -s "${spotout}" ]; then
-        spot=`cat ${spotout} | awk 'BEGIN {OFS="\t"} NR==2 {print $3}'`
+        spot=`cat ${spotout} | awk 'BEGIN {OFS="\t"; spot="NA"} NR==2 {spot=$3} END {print spot}'`
     else
         spot="NA"
     fi
