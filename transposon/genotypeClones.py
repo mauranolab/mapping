@@ -601,15 +601,6 @@ if __name__ == "__main__":
     else:
         printGraph_kwds = {}
     
-    if args.whitelist is not None:
-        for f in args.whitelist.split(","):
-            filterNodesFromFile(G, filename=f, keep=True)
-    if args.blacklist is not None:
-        for f in args.blacklist.split(","):
-            filterNodesFromFile(G, filename=f, keep=False)
-    if args.whitelist is not None or args.blacklist is not None:
-        pruneOrphanNodes(G)
-    
     if args.removeMinorityBCsFromConflictingCells is not None:
         pruneConflictingEdges(G, args.transfectionKey, args.removeMinorityBCsFromConflictingCells)
     if args.transfectionKey is not None and args.removeConflictingCells:
@@ -618,6 +609,15 @@ if __name__ == "__main__":
         pruneConflictingNodes(G, args.transfectionKey, type = "BC")
     
     pruneEdgesLowPropOfReads(G, minPropOfBCReads=args.minPropOfBCReads, minPropOfCellReads=args.minPropOfCellReads)
+    
+    if args.whitelist is not None:
+        for f in args.whitelist.split(","):
+            filterNodesFromFile(G, filename=f, keep=True)
+    if args.blacklist is not None:
+        for f in args.blacklist.split(","):
+            filterNodesFromFile(G, filename=f, keep=False)
+    if args.whitelist is not None or args.blacklist is not None:
+        pruneOrphanNodes(G)
     
     breakUpWeaklyConnectedCommunities(G, minCentrality=args.minCentrality, maxPropReads=args.maxpropreads, verbose=args.verbose, graphOutput=None)
     #run summarizeGraph since we don't need pruneOrphanNodes
