@@ -148,10 +148,6 @@ ${src}/make_tracks.bash ${TMPDIR} ${hub_type} ${src} ${assemblyBaseDir} ${hub_ta
 echo
 echo "Updating track files"
 for genome in "${genome_array[@]}"; do
-    if [[ "${genome}" == "${customGenomeAssembly}" ]]; then
-        cp "${TMPDIR}/assembly_tracks/cytoBandIdeo.bigBed" ${hub_target}/${genome}/data
-    fi
-    
     if [ -f "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" ]; then
         cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" ${hub_target}/${genome}/trackDb.txt
     fi
@@ -171,10 +167,6 @@ for genome in "${genome_array[@]}"; do
     done
 done
 
-# Move the GC percentage file:
-if [ -f "${TMPDIR}/assembly_tracks/${customGenomeAssembly}.gc.bw" ]; then
-    cp ${TMPDIR}/assembly_tracks/${customGenomeAssembly}.gc.bw ${hub_target}/${customGenomeAssembly}/data
-fi
 
 ######################################################################################
 echo
