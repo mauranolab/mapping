@@ -278,9 +278,9 @@ def breakUpWeaklyConnectedCommunities(G, minCentrality, maxPropReads, doGraph=Fa
             #Identify bridges and sort nodes to ensure consistency
             bridges = [tuple(sorted(e)) for e in nx.bridges(subG)]
             #Start with edges with lowest UMIs
-            #Include edge vertices to sort key, to ensure consistent order
+            #Include edge vertices in sort key, to ensure consistent order
             for edge in sorted(bridges, key=lambda e: (subG.edges[e]['weight'], e[0], e[1]), reverse=False):
-                #Skip border bridges where either nodes are connected to none other
+                #Skip border bridges where either node has no other neighbor
                 if subG.degree[edge[0]] == 1 or subG.degree[edge[1]] == 1:
                     continue
                 #Produce a view of subG, hiding the bridge edge
