@@ -140,7 +140,7 @@ for strand_bam1 in "+" "-"; do
         bedmap --bp-ovr 1 --delim "|" --multidelim "|" --echo --echo-map ${TMPDIR}/${sample_name}.regions.bam1.bed ${TMPDIR}/${sample_name}.bed12_byStrand.bed |
         #Output format: bam2 chrom chromStart, chromEnd, bam1region
         awk -v outdir=$TMPDIR/bam2readsByBam1region_${strand_bam1}_${strand_bam2} -F "|" 'BEGIN {OFS="\t"} {split($1, bam1region, "\t"); for(i=2; i<=NF; i++) {split($i, bam2read, "\t"); print bam2read[7], bam2read[8], bam2read[9], bam1region[4] > outdir "/" NR ".unsorted.bam2.bed"}}'
-        for curfile in $TMPDIR/bam2readsByBam1region_${strand_bam1}_${strand_bam2}/*.unsorted.bam2.bed; do
+        for curfile in `find $TMPDIR/bam2readsByBam1region_${strand_bam1}_${strand_bam2} -name "*.unsorted.bam2.bed"`; do
             cur=`basename ${curfile} .unsorted.bam2.bed`
             #Generate bam2 regions for the set of reads from each bam1 region
             sort-bed ${curfile} > $TMPDIR/bam2readsByBam1region_${strand_bam1}_${strand_bam2}/${cur}.sorted.bam2.bed
