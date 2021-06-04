@@ -215,13 +215,6 @@ if [ $? -eq 0 ]; then
   bgzip -f "${sampleOutdir}/${name}.${mappedgenome}.${jobname}.delly.filtered.vcf"
 
   #TODO: The customtrack creation happened in 'run_delly.bash' but should be added to callsnpsMerge
-  # # Save the custom track code.
-  # if [ ! "${genome}" = "mm10" ]; then
-  #     # deal with rn6 and t2t later
-  #     genome=hg38
-  # fi
-  # echo -e "track type=vcfTabix name=\"${BSID}_${flowCell}_vcf\" description=\"${name}_vcf\" bigDataUrl=https://mauranolab:chromatin@cascade.isg.med.nyu.edu/~grivam01/analysis_tracks/delly_batch_browser_files/${bam_input_sampleName}.vcf.gz visibility=pack maxWindowToDraw=50000000 db=${genome}" > "${outdir}/${bam_input_sampleName}.customTrackCode.txt"
-  #======
 else
   echo "ERROR: Delly Failed"
 fi
