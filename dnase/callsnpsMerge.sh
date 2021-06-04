@@ -163,6 +163,42 @@ bcftools index ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
 tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
 rm -f ${fltvcffiles}
 
+echo
+echo "Merge Delly SNPs"
+date
+# Get all the jobnumbers for the specific genome and output a list of those file names
+fullbcffiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.delly.bcf"`
+fullbcffiles=$(getFilesToMerge ${fullbcffiles})
+numfullbcffiles=`echo "${fullbcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
+case "${numfullbcffiles}" in
+0)
+    ;;
+1)
+    #bcftools concat fails when there is only one file
+    cp ${fullbcffiles} ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf;;
+*)
+    bcftools concat --threads $NSLOTS --output-type b ${fullbcffiles} > ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf;;
+esac
+bcftools index ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf
+rm -f ${fullbcffiles}
+
+
+fltvcffiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.delly.filtered.vcf.gz"`
+fltvcffiles=$(getFilesToMerge ${fltvcffiles})
+numfltvcffiles=`echo "${fltvcffiles}" | perl -pe 's/ /\n/g;' | wc -l`
+case "${numfltvcffiles}" in
+0)
+    ;;
+1)
+    #bcftools concat fails when there is only one file
+    cp ${fltvcffiles} ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz;;
+*)
+    bcftools concat --output-type v ${fltvcffiles} | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz;;
+esac
+
+bcftools index ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz
+tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz
+rm -f ${fltvcffiles}
 
 echo
 echo "Parsing VCF track"

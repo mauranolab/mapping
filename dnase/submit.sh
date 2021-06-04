@@ -27,6 +27,7 @@ module load hotspot/4.1
 module load hotspot2/2.1.1
 module load pigz
 module load primerclip/0.3.8
+module load delly/0.8.7
 
 
 ###Hardcoded configuration options
