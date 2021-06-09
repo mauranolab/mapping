@@ -539,9 +539,9 @@ def toJaccard(G):
 ## Unlink cells with low similarity (Jaccard-index)
 def pruneLowJaccard(G, min_jaccard):
     J = toJaccard(G)
-    low_jaccard = [e for e in J.edges if J.edges[e]["weight"] < min_jaccard]
+    low_jaccard_edges = [e for e in J.edges if J.edges[e]["weight"] < min_jaccard]
     edges_to_remove = set()
-    for edge in low_jaccard:
+    for edge in low_jaccard_edges:
         u, v = edge
         bcs = set(G[u]) & set(G[v])
         edges_to_remove.update([(v, bc) if (G.edges[(u, bc)]["weight"] > G.edges[(v, bc)]["weight"]) else (u, bc) for bc in bcs])
