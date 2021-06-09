@@ -523,15 +523,31 @@ def assignToNodes(G, key, annotationdict, default=None):
     print("[genotypeClones] added annotation to " + str(hadAnnotation) + " nodes; " + str(missingAnnotation) + " missing were assigned \"" + str(default) + "\".", file=sys.stderr)
 
 
-## Convert bipartite graph into a Jaccard index graph of the cells
+## Convert bipartite graph into a weighted Jaccard index graph of the cells
 def toJaccard(G):
     def jaccard(G, u, v):
-        unbrs = set(G[u])
-        vnbrs = set(G[v])
-        return float(len(unbrs & vnbrs)) / len(unbrs | vnbrs)
-    
+        u_bcs = set(G[u])
+        v_bcs = set(G[v])
+        common_bcs = u_bcs & v_bcs
+        common_u_weight = sum([G.edges[(u, bc)]["weight"] for bc in common_bcs])
+        common_v_weight = sum([G.edges[(v, bc)]["weight"] for bc in common_bcs])
+        return float((common_u_weight + common_v_weight) / (G.nodes[u]["weight"] + G.nodes[v]["weight"]))
     cells = [n for n in G.nodes if G.nodes[n]['type'] == 'cell']
     return nx.bipartite.generic_weighted_projected_graph(G, cells, weight_function=jaccard)
+
+
+## Unlink cells with low similarity (Jaccard-index)
+def pruneLowJaccard(G, min_jaccard):
+    J = toJaccard(G)
+    low_jaccard = [e for e in J.edges if J.edges[e]["weight"] < min_jaccard]
+    edges_to_remove = set()
+    for edge in low_jaccard:
+        u, v = edge
+        bcs = set(G[u]) & set(G[v])
+        edges_to_remove.update([(v, bc) if (G.edges[(u, bc)]["weight"] > G.edges[(v, bc)]["weight"]) else (u, bc) for bc in bcs])
+    remove_edges(G, edges_to_remove)
+    print("[genotypeClones] pruneLowJaccard - Removed ", len(edges_to_remove), " edges.", sep="", file=sys.stderr)
+    pruneOrphanNodes(G)
 
 
 ###Command line operation
@@ -556,6 +572,8 @@ if __name__ == "__main__":
     parser.add_argument("--removeMinorityBCsFromConflictingCells", action="store", type=float, default=None, help="For cells with BCs from more than one transfection, removes BCs from minority transfections that together represent at most this proportion of UMIs for that cell. Requires `transfectionKey`")
     parser.add_argument("--removeConflictingCells", action='store_true', default=False, help="Removes cells linked to BCs from 2+ transfections. It requires `transfectionKey`")
     parser.add_argument("--removeConflictingBCs", action='store_true', default=False, help="Removes BCs linked to cells from 2+ transfections. It requires `transfectionKey`")
+    
+    parser.add_argument("--minjaccard", action="store", type=float, default=0)
     
     parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
     
@@ -600,6 +618,10 @@ if __name__ == "__main__":
         printGraph_kwds = { 'node_color': args.transfectionKey, 'node_color_dict': {'cellBC': 'black', 'conflicting': 'yellow', 'T0215A': 'orange', 'T0216B': 'purple', 'T0217B': 'green', 'T0219A': 'orange', 'T0220B': 'purple', 'T0221B': 'green', 'T0222B': 'red'} }
     else:
         printGraph_kwds = {}
+    
+    ## Unlink cells with low similarity
+    if (args.minjaccard > 0):
+        pruneLowJaccard(G, args.minjaccard)
     
     if args.removeMinorityBCsFromConflictingCells is not None:
         pruneConflictingEdges(G, args.transfectionKey, args.removeMinorityBCsFromConflictingCells)
