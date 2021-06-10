@@ -541,8 +541,8 @@ def pruneLowJaccard(G, min_jaccard):
     J = toJaccard(G)
     low_jaccard_edges = [e for e in J.edges if J.edges[e]["weight"] < min_jaccard]
     edges_to_remove = set()
-    for edge in low_jaccard_edges:
-        u, v = edge
+    ## iterates over cell-pairs with low Jaccard, identifies their shared BCs and for each bc select the edge to u or v with lowest weight to remove
+    for (u, v) in low_jaccard_edges:
         bcs = set(G[u]) & set(G[v])
         edges_to_remove.update([(v, bc) if (G.edges[(u, bc)]["weight"] > G.edges[(v, bc)]["weight"]) else (u, bc) for bc in bcs])
     remove_edges(G, edges_to_remove)
