@@ -573,7 +573,7 @@ if __name__ == "__main__":
     parser.add_argument("--removeConflictingCells", action='store_true', default=False, help="Removes cells linked to BCs from 2+ transfections. It requires `transfectionKey`")
     parser.add_argument("--removeConflictingBCs", action='store_true', default=False, help="Removes BCs linked to cells from 2+ transfections. It requires `transfectionKey`")
     
-    parser.add_argument("--minjaccard", action="store", type=float, default=0, help="Unlink cells with Jaccard-index below this threshold")
+    parser.add_argument("--minjaccard", action="store", type=float, default=0, help="Remove edges connecting cells whose BC overlap is below this Jaccard-index threshold")
     
     parser.add_argument('--printGraph', action='store', type=str, help='Plot a graph for each clone into this directory')
     
