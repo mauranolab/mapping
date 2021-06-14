@@ -62,7 +62,7 @@ while (<IN>) {
                 $numNonRef = $nonrefFwd+$nonrefRev;
             # Delly uses INFO:END for the end coordinate
             } elsif ("END" eq $key) {
-              $max1 = int($value);
+              $max1 = int($value) - 1;
             }
         }
         #unless (defined($totalDP)) {
