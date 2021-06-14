@@ -188,42 +188,6 @@ else
     bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 fi
 
-echo "Run Delly"
-
-## Make a place for the temp bam files with qcfail turned off.
-bam_output_qcOK="${TMPDIR}/${name}.${mappedgenome}.QC_OK_bamfile.bam"
-
-## Turn off all qcfail flags.
-python ${src}/changeFlags.py ${sampleOutdir}/${name}.${mappedgenome}.bam ${bam_output_qcOK}
-
-samtools index ${bam_output_qcOK}
-
-set +e
-## Look for variants (DEL INS DUP INV TRA).
-delly call -t ALL \
-    -o "${sampleOutdir}/${name}.${mappedgenome}.${jobname}.delly.bcf" \
-    -g "${referencefasta}" \
-    ${bam_output_qcOK}
-
-# If delly exited with a 0 code then create the vcf
-if [ $? -eq 0 ]; then
-  bcftools index ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.delly.bcf
-  ## Create a vcf file, and set it up for viewing in vcfTabix format.
-  ## Only accept variants that pass the FILTER test.
-  bcftools filter -i 'FILTER="PASS" & PE>10' "${sampleOutdir}/${name}.${mappedgenome}.${jobname}.delly.bcf" > "${sampleOutdir}/${name}.${mappedgenome}.${jobname}.delly.filtered.vcf"
-
-  bgzip -f "${sampleOutdir}/${name}.${mappedgenome}.${jobname}.delly.filtered.vcf"
-
-  #TODO: The customtrack creation happened in 'run_delly.bash' but should be added to callsnpsMerge
-else
-  echo "ERROR: Delly Failed"
-fi
-
-set -e
-
-# Remove the temporary bam file and index that were created for delly
-rm "${bam_output_qcOK}" "${bam_output_qcOK}.bai"
-
 echo
 echo -e "\nDone!"
 date
