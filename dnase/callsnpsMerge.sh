@@ -165,6 +165,8 @@ tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
 rm -f ${fltvcffiles}
 
 echo
+# Delly does not have a --regions flag to allow for specific regions to be matched.
+# this makes it difficult to parralelize by chromosome like the bcftools call command
 echo "Run Delly"
 date
 
@@ -176,29 +178,31 @@ python ${src}/changeFlags.py ${sampleOutdir}/${name}.${mappedgenome}.bam ${bam_o
 
 samtools index ${bam_output_qcOK}
 
+# If there are not enough valid reads to run delly it returns a non-zero exit code 
 set +e
 ## Look for variants (DEL INS DUP INV TRA).
-delly call -t ALL \
-    -o ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf \
-    -g ${referencefasta} \
-    ${bam_output_qcOK}
+delly call -t ALL -o ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf -g ${referencefasta} ${bam_output_qcOK}
+# Store the exit code to see if Delly exited correctly
+dellyCode=$?
+set -e
 
 # If delly exited with a 0 code then create the vcf
-if [ $? -eq 0 ]; then
-  bcftools index ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf
-  ## Create a vcf file, and set it up for viewing in vcfTabix format.
+if [ $dellyCode -eq 0 ]; then
+  #bcftools index ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf
   ## Only accept variants that pass the FILTER test.
-  bcftools filter -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf > ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf
-
-  bgzip -f ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf
-
+  bcftools filter -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz
   bcftools index ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz
-  tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz
-else
-  echo "ERROR: Delly Failed"
-fi
 
-set -e
+  echo "Merging Delly VCF"
+  # Output a new VCF with the combined bcftools and Delly calls
+  # FIXME: Should the separate vcfs be temporary files or not?
+  bcftools concat -a -O z -o ${sampleOutdir}/${name}.${mappedgenome}.filtered.combined.vcf.gz ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+  bcftools index ${sampleOutdir}/${name}.${mappedgenome}.filtered.combined.vcf.gz
+  tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.combined.vcf.gz
+
+else
+  echo "WARNING: Delly Failed"
+fi
 
 echo
 echo "Parsing VCF track"
@@ -210,11 +214,11 @@ minSNPQ=0
 minTotalDP=0
 minAlleleDP=0
 
-${src}/parseSamtoolsGenotypesToBedFiles.pl ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz $TMPDIR/variants ${minSNPQ} ${minTotalDP} ${minAlleleDP}
+${src}/parseSamtoolsGenotypesToBedFiles.pl ${sampleOutdir}/${name}.${mappedgenome}.filtered.combined.vcf.gz $TMPDIR/variants ${minSNPQ} ${minTotalDP} ${minAlleleDP}
 
-nvcfsamples=`bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz | wc -l`
+nvcfsamples=`bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.combined.vcf.gz | wc -l`
 #rsids
-for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz`; do
+for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.combined.vcf.gz`; do
     if [[ "${nvcfsamples}" = 1 ]]; then
         vcfsamplename=""
     else
@@ -242,7 +246,13 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
                 color="253,199,0";     # hz_nonref - yellow
             }
         }
-        print $1, $2, $3, $4, $5, ".", $2, $3, color;
+        # Delly has scores set to 10_000, this is outside of the 0->1_000 range
+        # and these values need to be clamped
+        score=$5;
+        if (score>1000) {
+          score=1000;
+        }
+        print $1, $2, $3, $4, score, ".", $2, $3, color;
     }' |
     sort-bed - > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
     
@@ -252,66 +262,6 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
     #awk -F "\t" 'BEGIN {OFS="\t"} {split($8, gt, "/"); print $1, $2, $3, $8, length(gt), "0,0", "0,0"}'
     #https://genome.ucsc.edu/FAQ/FAQformat.html#format10
 done
-
-echo
-echo "Parsing Delly VCF track"
-date
-#No additional filtering, just extract genotypes to starch
-#NB repeated from perChrom analysis
-minSNPQ=0
-#
-minTotalDP=0
-minAlleleDP=0
-
-${src}/parseSamtoolsGenotypesToBedFiles.pl ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz $TMPDIR/delly_variants ${minSNPQ} ${minTotalDP} ${minAlleleDP}
-
-nvcfsamples=`bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz | wc -l`
-#rsids
-for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz`; do
-    if [[ "${nvcfsamples}" = 1 ]]; then
-        vcfsamplename=""
-    else
-        #for multisample calling, include the sample name in the variants file name
-        vcfsamplename=".${sampleid}"
-    fi
-    #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt
-    cat $TMPDIR/delly_variants.${sampleid}.txt | awk -F "\t" 'BEGIN {OFS="\t"} $4=="." {split($8, gt, "/"); gtout=gt[1]; if(length(gt)>2) {gtout=gtout "/" gt[2]}; chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 "_" gtout } {print}' | sort-bed - | starch - > ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.delly.genotypes.starch
-    
-    #NB UCSC link from analysis.sh will be wrong for multisample calling
-    #Start from .txt file to simplify logic even though we have to sort again
-    #If there is no database ID (e.g. rsid), set up bed ID as chrom : pos _ alt; for database IDs, append alt allele
-    #truncgt() is a fancy wrapper around substr for syntactic sugar and to add a "..."
-    cat $TMPDIR/delly_variants.${sampleid}.txt | awk -v maxlen=115 -F "\t" 'BEGIN {OFS="\t"} function truncgt(x) {if(length(x)>maxlen) {return substr(x, 1, maxlen) "..." } else {return x} } $4=="." {chromnum=$1; gsub(/^chr/, "", chromnum); $4=chromnum ":" $2+1 } {split($8, gt, "/"); gtout=truncgt(gt[1]); if(length(gt)>2) {gtout=gtout "/" truncgt(gt[2])}; $4=$4 "_" gtout } {print}' |
-    awk -F "\t" 'BEGIN {OFS="\t"} {
-        ref=$6;
-        numAlleles=split($8, gt, "/");
-        # Assign colors to the genotypes.bb lines.
-        if (numAlleles>1 && gt[1]!=gt[2]) {
-            color="19,165,220";        # het - blue
-        } else {
-            if (gt[1] == ref) {
-                color="105,105,105";   # hz_ref - grey
-            } else {
-                color="253,199,0";     # hz_nonref - yellow
-            }
-        }
-        # Delly has scores set to 10_000, this is outside of the 0->1_000 range
-        # and these values need to be clamped
-        score=$5;
-        if (score>1000) {
-          score=1000;
-        }
-        print $1, $2, $3, $4, score, ".", $2, $3, color;
-    }' |
-    sort-bed - > $TMPDIR/${name}${vcfsamplename}.delly.genotypes.ucsc.bed
-    
-    bedToBigBed -type=bed9 $TMPDIR/${name}${vcfsamplename}.delly.genotypes.ucsc.bed ${chromsizes} ${sampleOutdir}/${name}${vcfsamplename}.${mappedgenome}.delly.genotypes.bb
-    
-    #Personal Genome SNP format displays two alleles in vertical fashion and provides amino acid changes, but doesn't permit IDs
-    #awk -F "\t" 'BEGIN {OFS="\t"} {split($8, gt, "/"); print $1, $2, $3, $8, length(gt), "0,0", "0,0"}'
-    #https://genome.ucsc.edu/FAQ/FAQformat.html#format10
-done
-
 
 echo
 echo -e "\nDone!"

@@ -81,6 +81,7 @@ while (<IN>) {
         unless (defined($max1)) {
           $max1 = $pos - 1 + length($ref) ;
         }
+
         my $bed3 = "$chrom\t$min0\t$max1";
         for (my $i = 0; $i < $NUM_SAMPLES; ++$i) {
             my $sampleName = $sampleNames[$i];
