@@ -83,17 +83,8 @@ while (<IN>) {
         for (my $i = 0; $i < $NUM_SAMPLES; ++$i) {
             my $sampleName = $sampleNames[$i];
             my ($betterGT, $GQ, $DP, $PL) = parseGenotype( $format, $genotypes[$i], \%code2base );
-            # For Delly use PE as the DP metric
-            # DP is undef for delly as PE is used instead
-            if (! defined($DP) && defined($PE)) {
-                $DP = $PE;
-            }
-            # By this point DP should be defined for both delly and bcftools
-            unless (defined($DP)) {
-                die "Failed to parse DP from ($format), PE=$PE\n";
-            }
             next if ("N/N" eq $betterGT); # parsed from "./."
-            next if ($DP < $min_total_depth_threshold); # Require minimum per-sample depth of 8
+            next if ($DP ne "NA" and $DP < $min_total_depth_threshold); # Require minimum per-sample depth of 8
             my $outFH = $outs{$sampleName}; 
             print $outFH "$bed3\t$id\t$GQ\t$ref\t$alt\t$betterGT\t$PL\t$DP\t$numRef\t$numNonRef\n";
         }
@@ -184,10 +175,10 @@ sub parseGenotype {
     } elsif ($format eq "GT:GL:GQ:FT:RCL:RC:RCR:RDCN:DR:DV:RR:RV") {
         #Format for DELLY
         my ($GT1,$GL,$GQ,$FT,$RCL,$RC,$RCR,$RDCN,$DR,$DV,$RR,$RV) = split /\:/, $genotype;
-        $readDepth = undef;
+        $readDepth = "NA";
         $qualityScore = $GQ;
         $GT = $GT1;
-        $PL = 'NA';
+        $PL = "NA";
     } else {
         die "Unsupported genotype format ($format)\n";
     }
