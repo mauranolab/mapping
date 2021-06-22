@@ -21,7 +21,7 @@ module load samtools/1.12
 module load bcftools/1.12
 module load trimmomatic/0.39
 module load python/3.8.1
-module load R/3.6.3
+module load R/3.5.2
 module load samblaster/0.1.24
 module load ucsckentutils/379
 module load hotspot/4.1
