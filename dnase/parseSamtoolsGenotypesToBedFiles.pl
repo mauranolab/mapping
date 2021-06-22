@@ -50,6 +50,7 @@ while (<IN>) {
         my $numNonRef = "NA";
         # If the vcf is created by delly the end coordinate needs to be extracted
         my $max1 = undef;
+        my $PE = undef;
         foreach my $infoItem (split /\;/, $info) {
             my ($key,$value) = split /\=/, $infoItem;
             if ("DP" eq $key) {
@@ -63,6 +64,8 @@ while (<IN>) {
             # Delly uses INFO:END for the end coordinate
             } elsif ("END" eq $key) {
               $max1 = int($value) - 1;
+            } elsif ("PE" eq $key) {
+              $PE = int($value);  
             }
         }
         #unless (defined($totalDP)) {
@@ -86,6 +89,15 @@ while (<IN>) {
         for (my $i = 0; $i < $NUM_SAMPLES; ++$i) {
             my $sampleName = $sampleNames[$i];
             my ($betterGT, $GQ, $DP, $PL) = parseGenotype( $format, $genotypes[$i], \%code2base );
+            # For Delly use PE as the DP metric
+            # DP is undef for delly as PE is used instead
+            if (! defined($DP) && defined($PE)) {
+              $DP = $PE;
+            }
+            # By this point DP should be defined for both delly and bcftools
+            unless (defined($DP)) {
+              die "DP was not set ($format), PE=$PE\n";
+            }
             next if ("N/N" eq $betterGT); # parsed from "./."
             next if ($DP < $min_total_depth_threshold); # Require minimum per-sample depth of 8
             my $outFH = $outs{$sampleName}; 
@@ -177,18 +189,10 @@ sub parseGenotype {
         }
     } elsif ($format eq "GT:GL:GQ:FT:RCL:RC:RCR:RDCN:DR:DV:RR:RV") {
         my ($GT1,$GL1,$GQ1,$FT1,$RCL1,$RC1,$RCR1,$RDCN1,$DR1,$DV1,$RR1,$RV1) = split /\:/, $genotype;
-        ## bcftools => FORMAT=<ID=DP,Number=1,Type=Integer,Description="Number of high-quality bases">
-        #$readDepth = $DP;
-        ## delly => FORMAT=<ID=RC,Number=1,Type=Integer,Description="Raw high-quality read counts or base counts for the SV"
-        # FIXME: Make sure this is correct, there are other paramaters related to depth
-        $readDepth = $RC1;
+        $readDepth = undef;
         $qualityScore = $GQ1;
         $GT = $GT1;
-        ## bcftools => FORMAT=<ID=PL,Number=G,Type=Integer,Description="List of Phred-scaled genotype likelihoods">
-        # $PL = $PL1;
-        ## delly => FORMAT=<ID=GL,Number=G,Type=Float,Description="Log10-scaled genotype likelihoods for RR,RA,AA genotypes">
-        # FIXME: Make sure this is correct, I dont like using PL to store GL
-        $PL = $GL1
+        $PL = 'NA';
     } else {
         die "Unsupported genotype format ($format)\n";
     }

@@ -146,6 +146,7 @@ esac
 bcftools index ${sampleOutdir}/${name}.${mappedgenome}.bcf
 rm -f ${fullbcffiles}
 
+BCFTOOLS_VCF_PATH=${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
 
 fltvcffiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.filtered.vcf.gz"`
 fltvcffiles=$(getFilesToMerge ${fltvcffiles})
@@ -155,13 +156,13 @@ case "${numfltvcffiles}" in
     ;;
 1)
     #bcftools concat fails when there is only one file
-    cp ${fltvcffiles} ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz;;
+    cp ${fltvcffiles} ${BCFTOOLS_VCF_PATH};;
 *)
-    bcftools concat --output-type v ${fltvcffiles} | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz;;
+    bcftools concat --output-type v ${fltvcffiles} | bgzip -c -@ $NSLOTS > ${BCFTOOLS_VCF_PATH};;
 esac
 
-bcftools index ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
-tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+bcftools index ${BCFTOOLS_VCF_PATH}
+tabix -p vcf ${BCFTOOLS_VCF_PATH}
 rm -f ${fltvcffiles}
 
 echo
@@ -186,19 +187,21 @@ delly call -t ALL -o ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf -g ${refe
 dellyCode=$?
 set -e
 
+DELLY_VCF_PATH=${TMPDIR}/${name}.${mappedgenome}.delly.filtered.vcf.gz
+COMBINED_VCF_PATH=${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+
 # If delly exited with a 0 code then create the vcf
 if [ $dellyCode -eq 0 ]; then
   #bcftools index ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf
   ## Only accept variants that pass the FILTER test.
-  bcftools filter -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz
-  bcftools index ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz
+  bcftools filter -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf | bgzip -c -@ $NSLOTS > ${DELLY_VCF_PATH}
+  bcftools index ${DELLY_VCF_PATH}
 
   echo "Merging Delly VCF"
   # Output a new VCF with the combined bcftools and Delly calls
-  # FIXME: Should the separate vcfs be temporary files or not?
-  bcftools concat -a -O z -o ${sampleOutdir}/${name}.${mappedgenome}.filtered.combined.vcf.gz ${sampleOutdir}/${name}.${mappedgenome}.delly.filtered.vcf.gz ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
-  bcftools index ${sampleOutdir}/${name}.${mappedgenome}.filtered.combined.vcf.gz
-  tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.combined.vcf.gz
+  bcftools concat -a -O z -o ${COMBINED_VCF_PATH} ${DELLY_VCF_PATH} ${BCFTOOLS_VCF_PATH}
+  bcftools index ${COMBINED_VCF_PATH}
+  tabix -p vcf ${COMBINED_VCF_PATH}
 
 else
   echo "WARNING: Delly Failed"
@@ -214,11 +217,11 @@ minSNPQ=0
 minTotalDP=0
 minAlleleDP=0
 
-${src}/parseSamtoolsGenotypesToBedFiles.pl ${sampleOutdir}/${name}.${mappedgenome}.filtered.combined.vcf.gz $TMPDIR/variants ${minSNPQ} ${minTotalDP} ${minAlleleDP}
+${src}/parseSamtoolsGenotypesToBedFiles.pl ${COMBINED_VCF_PATH} $TMPDIR/variants ${minSNPQ} ${minTotalDP} ${minAlleleDP}
 
-nvcfsamples=`bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.combined.vcf.gz | wc -l`
+nvcfsamples=`bcftools query -l ${COMBINED_VCF_PATH} | wc -l`
 #rsids
-for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.combined.vcf.gz`; do
+for sampleid in `bcftools query -l ${COMBINED_VCF_PATH}`; do
     if [[ "${nvcfsamples}" = 1 ]]; then
         vcfsamplename=""
     else

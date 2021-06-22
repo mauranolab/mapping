@@ -180,6 +180,7 @@ if [[ -f "${dbsnpvcf}" && "${dbsnpvcf}" != "/dev/null" ]]; then
     echo "Adding dbSNP IDs and compressing"
     date
     bcftools annotate -r `echo ${chroms} | perl -pe 's/ /,/g;'` --annotations ${dbsnpvcf} --columns ID --output-type v $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz |
+    # FIXME: these subset vcfs are deleted in the merge step, should be written to $TMPDIR?
     bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 else
     echo "No dbSNP IDs to add -- just compressing"
