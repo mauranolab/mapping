@@ -253,6 +253,7 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
     #https://genome.ucsc.edu/FAQ/FAQformat.html#format10
 done
 
+
 echo
 echo -e "\nDone!"
 date
