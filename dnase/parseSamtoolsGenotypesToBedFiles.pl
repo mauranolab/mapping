@@ -188,9 +188,10 @@ sub parseGenotype {
             die "Wrong parsing assumptions for VCF genotype ($genotype)\n";
         }
     } elsif ($format eq "GT:GL:GQ:FT:RCL:RC:RCR:RDCN:DR:DV:RR:RV") {
-        my ($GT1,$GL1,$GQ1,$FT1,$RCL1,$RC1,$RCR1,$RDCN1,$DR1,$DV1,$RR1,$RV1) = split /\:/, $genotype;
+        #Format for DELLY
+        my ($GT1,$GL,$GQ,$FT,$RCL,$RC,$RCR,$RDCN,$DR,$DV,$RR,$RV1) = split /\:/, $genotype;
         $readDepth = undef;
-        $qualityScore = $GQ1;
+        $qualityScore = $GQ;
         $GT = $GT1;
         $PL = 'NA';
     } else {
