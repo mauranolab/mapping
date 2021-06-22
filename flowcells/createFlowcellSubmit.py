@@ -246,7 +246,7 @@ def addCEGSgenomes(line):
         customReferences = getValueFromLIMS(lims, line["Original Sample #"], "Custom Reference").split(",")
         
         if args.verbose:
-            print("\nWill look for genetic modifications ", ",".join(geneticModifications), " and custom references ",  ",".join(customReferences), sep="", file=sys.stderr)
+            print("\nWill look for genetic modifications [ ", ",".join(geneticModifications), " ] and custom references [ ",  ",".join(customReferences), " ].", sep="", file=sys.stderr)
         
         additionalGenomesToMap = checkForCEGSreferences(geneticModifications, warn=False)
         additionalGenomesToMap = additionalGenomesToMap + checkForCEGSreferences(customReferences, warn=True)
@@ -255,6 +255,10 @@ def addCEGSgenomes(line):
 
 
 def getBwaReference(species):
+    if species == "":
+        print("WARNING Species was not provided", sep="", file=sys.stderr)
+        return None
+    
     if sampleType in ["DNA", "DNA Capture", "Amplicon"]:
         speciesToGenomeReference = {
             "Human": "hg38_full",
@@ -282,11 +286,8 @@ def getBwaReference(species):
     else:
         raise Exception("Can't parse " + sampleType)
     
-    if species == "":
-        print("WARNING Species was not provided", e, sep="", file=sys.stderr)
-    
     if species not in speciesToGenomeReference:
-        raise Exception("Can't find reference for species " + species)
+        raise Exception("Can't find reference for species " + species, ".")
     
     return(speciesToGenomeReference[species])
 
