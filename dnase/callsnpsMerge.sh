@@ -158,8 +158,7 @@ case "${numfltvcffiles}" in
 *)
     bcftools concat --output-type v ${fltvcffiles} | bgzip -c -@ $NSLOTS > ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz;;
 esac
-#bcftools index ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
-#tabix -p vcf ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
+bcftools index ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
 rm -f ${fltvcffiles}
 
 
@@ -183,7 +182,7 @@ set -e
 if [ "$dellyExitCode" -eq 0 ]; then
     ## Only accept variants that pass the FILTER test.
     bcftools filter -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf | bgzip -c -@ $NSLOTS > ${TMPDIR}/${name}.${mappedgenome}.delly.filtered.vcf.gz
-#    bcftools index ${TMPDIR}/${name}.${mappedgenome}.delly.filtered.vcf.gz
+    bcftools index ${TMPDIR}/${name}.${mappedgenome}.delly.filtered.vcf.gz
     
     echo "Merging Delly VCF"
     # Output a new VCF with the combined bcftools and Delly calls
