@@ -45,11 +45,13 @@ while (<IN>) {
         }
 #        warn "code2base $ref / $alt: $_ $code2base{$_}\n" for keys %code2base;
         
+        #set bed coords
+        my $min0 = $pos - 1;
+        my $max1 = $pos - 1 + length($ref);
+        
         my $totalDP = undef;
         my $numRef = "NA";
         my $numNonRef = "NA";
-        # If the vcf is created by delly the end coordinate needs to be extracted
-        my $max1 = undef;
         my $PE = undef;
         foreach my $infoItem (split /\;/, $info) {
             my ($key,$value) = split /\=/, $infoItem;
@@ -61,16 +63,13 @@ while (<IN>) {
                 my ($refFwd, $refRev, $nonrefFwd, $nonrefRev) = split /,/, $value;
                 $numRef = $refFwd+$refRev;
                 $numNonRef = $nonrefFwd+$nonrefRev;
-            # Delly uses INFO:END for the end coordinate
             } elsif ("END" eq $key) {
-              $max1 = int($value) - 1;
+                # structural variant coords (i.e. Delly) require overriding the prior coordinates using END
+                $max1 = int($value) - 1;
             } elsif ("PE" eq $key) {
-              $PE = int($value);  
+                $PE = int($value);
             }
         }
-        #unless (defined($totalDP)) {
-        #    die "Failed to parse DP from INFO ($info) in $_\n";
-        #}
         if ($min_total_depth_threshold > 0 and ($totalDP ne undef and $totalDP < $min_total_depth_threshold)) {
             #warn "Skipping $chrom $pos with total depth $totalDP < $min_total_depth_threshold\n";
             next;
@@ -79,12 +78,7 @@ while (<IN>) {
             #warn "Skipping $chrom $pos with ref/nonref depth $numRef/$numNonRef < $min_allele_depth_threshold\n";
             next;
         }
-        my $min0 = $pos - 1;
-        # $max1 will be defined when parsing delly vcfs
-        unless (defined($max1)) {
-          $max1 = $pos - 1 + length($ref) ;
-        }
-
+        
         my $bed3 = "$chrom\t$min0\t$max1";
         for (my $i = 0; $i < $NUM_SAMPLES; ++$i) {
             my $sampleName = $sampleNames[$i];
@@ -92,11 +86,11 @@ while (<IN>) {
             # For Delly use PE as the DP metric
             # DP is undef for delly as PE is used instead
             if (! defined($DP) && defined($PE)) {
-              $DP = $PE;
+                $DP = $PE;
             }
             # By this point DP should be defined for both delly and bcftools
             unless (defined($DP)) {
-              die "DP was not set ($format), PE=$PE\n";
+                die "Failed to parse DP from ($format), PE=$PE\n";
             }
             next if ("N/N" eq $betterGT); # parsed from "./."
             next if ($DP < $min_total_depth_threshold); # Require minimum per-sample depth of 8
@@ -189,7 +183,7 @@ sub parseGenotype {
         }
     } elsif ($format eq "GT:GL:GQ:FT:RCL:RC:RCR:RDCN:DR:DV:RR:RV") {
         #Format for DELLY
-        my ($GT1,$GL,$GQ,$FT,$RCL,$RC,$RCR,$RDCN,$DR,$DV,$RR,$RV1) = split /\:/, $genotype;
+        my ($GT1,$GL,$GQ,$FT,$RCL,$RC,$RCR,$RDCN,$DR,$DV,$RR,$RV) = split /\:/, $genotype;
         $readDepth = undef;
         $qualityScore = $GQ;
         $GT = $GT1;

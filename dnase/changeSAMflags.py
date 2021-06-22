@@ -12,7 +12,7 @@ def changeFlags(bam_input, bam_output):
     
     for read in bamfile_in:
         if read.is_qcfail:
-            read.flag = read.flag - args.clearflag   # Turn off qcfail flag.
+            read.flag = read.flag - args.clearflag   # clear flag.
         
         bamfile_out.write(read)
     
@@ -21,7 +21,7 @@ def changeFlags(bam_input, bam_output):
 
 
 if (__name__ == '__main__'):
-    parser = argparse.ArgumentParser(prog = "changeSAMflags.py", description = "Turns off specified flags for all reads in a bam file.", add_help = True)
+    parser = argparse.ArgumentParser(prog = "changeSAMflags.py", description = "Clears specified flags for all reads in a bam file.", add_help = True)
     parser.add_argument('bam_input', type=str, help='A full path bam file name')
     parser.add_argument('bam_output', type=str, help='A full path bam file name')
     parser.add_argument("--clearflag", action = "store", type = int, default = 0, help = "Flag to clear in decimal [%(default)s]")
