@@ -45,9 +45,14 @@ while (<IN>) {
         }
 #        warn "code2base $ref / $alt: $_ $code2base{$_}\n" for keys %code2base;
         
+        #set bed coords
+        my $min0 = $pos - 1;
+        my $max1 = $pos - 1 + length($ref);
+        
         my $totalDP = undef;
         my $numRef = "NA";
         my $numNonRef = "NA";
+        my $PE = undef;
         foreach my $infoItem (split /\;/, $info) {
             my ($key,$value) = split /\=/, $infoItem;
             if ("DP" eq $key) {
@@ -58,27 +63,28 @@ while (<IN>) {
                 my ($refFwd, $refRev, $nonrefFwd, $nonrefRev) = split /,/, $value;
                 $numRef = $refFwd+$refRev;
                 $numNonRef = $nonrefFwd+$nonrefRev;
+            } elsif ("END" eq $key) {
+                # structural variant coords (i.e. Delly) require overriding the prior coordinates using END
+                $max1 = int($value) - 1;
+            } elsif ("PE" eq $key) {
+                $PE = int($value);
             }
         }
-        unless (defined($totalDP)) {
-            die "Failed to parse DP from INFO ($info) in $_\n";
+        if ($min_total_depth_threshold > 0 and ($totalDP ne undef and $totalDP < $min_total_depth_threshold)) {
+            #warn "Skipping $chrom $pos with total depth $totalDP < $min_total_depth_threshold\n";
+            next;
         }
-        #if ($totalDP < $min_total_depth_threshold) {
-        #    #warn "Skipping $chrom $pos with total depth $totalDP < $min_total_depth_threshold\n";
-        #    next;
-        #}
         if ($min_allele_depth_threshold > 0 and (($numRef ne "NA" and $numRef < $min_allele_depth_threshold) or ($numNonRef ne "NA" and $numNonRef < $min_allele_depth_threshold))) {
             #warn "Skipping $chrom $pos with ref/nonref depth $numRef/$numNonRef < $min_allele_depth_threshold\n";
             next;
         }
-        my $min0 = $pos - 1;
-        my $max1 = $pos - 1 + length($ref) ;
+        
         my $bed3 = "$chrom\t$min0\t$max1";
         for (my $i = 0; $i < $NUM_SAMPLES; ++$i) {
             my $sampleName = $sampleNames[$i];
             my ($betterGT, $GQ, $DP, $PL) = parseGenotype( $format, $genotypes[$i], \%code2base );
             next if ("N/N" eq $betterGT); # parsed from "./."
-            next if ($DP < $min_total_depth_threshold); # Require minimum per-sample depth of 8
+            next if ($DP ne "NA" and $DP < $min_total_depth_threshold); # Require minimum per-sample depth of 8
             my $outFH = $outs{$sampleName}; 
             print $outFH "$bed3\t$id\t$GQ\t$ref\t$alt\t$betterGT\t$PL\t$DP\t$numRef\t$numNonRef\n";
         }
@@ -166,6 +172,13 @@ sub parseGenotype {
         if (($GT1 ne $GT2) or ($GQ1 != $GQ2)) {
             die "Wrong parsing assumptions for VCF genotype ($genotype)\n";
         }
+    } elsif ($format eq "GT:GL:GQ:FT:RCL:RC:RCR:RDCN:DR:DV:RR:RV") {
+        #Format for DELLY
+        my ($GT1,$GL,$GQ,$FT,$RCL,$RC,$RCR,$RDCN,$DR,$DV,$RR,$RV) = split /\:/, $genotype;
+        $readDepth = "NA";
+        $qualityScore = $GQ;
+        $GT = $GT1;
+        $PL = "NA";
     } else {
         die "Unsupported genotype format ($format)\n";
     }

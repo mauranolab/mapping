@@ -154,14 +154,47 @@ case "${numfltvcffiles}" in
     ;;
 1)
     #bcftools concat fails when there is only one file
-    cp ${fltvcffiles} ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz;;
+    cp ${fltvcffiles} ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz;;
 *)
-    bcftools concat --output-type v ${fltvcffiles} | bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz;;
+    bcftools concat --output-type v ${fltvcffiles} | bgzip -c -@ $NSLOTS > ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz;;
 esac
+bcftools index ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
+rm -f ${fltvcffiles}
 
+
+# DELLY does not have a --regions flag to allow for specific regions to be matched.
+# this makes it difficult to parralelize by chromosome like the bcftools call command
+echo
+echo "Running DELLY"
+date
+
+## DELLY is hardcoded to skip reads with qcfail flag set, so generate new bam file with 512 cleared
+${src}/changeSAMflags.py --clearflag 512 ${sampleOutdir}/${name}.${mappedgenome}.bam ${TMPDIR}/${name}.${mappedgenome}.QC_OK_bamfile.bam
+samtools index ${TMPDIR}/${name}.${mappedgenome}.QC_OK_bamfile.bam
+
+# If there are not enough valid reads, delly returns a non-zero exit code
+set +e
+delly call -t ALL -o ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf -g ${referencefasta} ${TMPDIR}/${name}.${mappedgenome}.QC_OK_bamfile.bam
+dellyExitCode=$?
+set -e
+
+# If DELLY exited with a 0 code then create the vcf
+if [ "$dellyExitCode" -eq 0 ]; then
+    echo "Merging DELLY variants in to .filtered.vcf file"
+    ## Only accept variants that pass the FILTER test.
+    bcftools filter -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf | bgzip -c -@ $NSLOTS > ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
+    bcftools index ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
+    
+    echo "Merging DELLY VCF"
+    # Output a new VCF with the combined bcftools and DELLY calls
+    bcftools concat -a -O z -o ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
+else
+    #Use bcftools vcf directly
+    mv ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+    echo "WARNING: DELLY Failed"
+fi
 bcftools index ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
 tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
-rm -f ${fltvcffiles}
 
 
 echo
@@ -206,7 +239,12 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
                 color="253,199,0";     # hz_nonref - yellow
             }
         }
-        print $1, $2, $3, $4, $5, ".", $2, $3, color;
+        # Enforce UCSC score max of 1000 (DELLY in particular has scores set to 10_000)
+        score=$5;
+        if (score>1000) {
+            score=1000;
+        }
+        print $1, $2, $3, $4, score, ".", $2, $3, color;
     }' |
     sort-bed - > $TMPDIR/${name}${vcfsamplename}.genotypes.ucsc.bed
     
