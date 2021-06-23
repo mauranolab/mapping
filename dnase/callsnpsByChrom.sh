@@ -171,7 +171,7 @@ bcftools norm --threads $NSLOTS --check-ref w -m - --fasta-ref ${referencefasta}
 bcftools filter -i "QUAL>=${minSNPQ} & GQ>=${minGQ} & FORMAT/DP>=${minDP}" --SnpGap 3 --IndelGap 10 --set-GTs . --output-type u |
 #Keep only SNPs with a nonref genotype. --trim-alt-alleles cleans up after --keep-alts above
 bcftools view -i 'GT="alt"' --trim-alt-alleles --output-type z - > $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
-bcftools index $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
+bcftools index --tbi $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 
 
 #Annotate vcf with rsIDs
@@ -179,13 +179,11 @@ bcftools index $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 if [[ -f "${dbsnpvcf}" && "${dbsnpvcf}" != "/dev/null" ]]; then
     echo "Adding dbSNP IDs and compressing"
     date
-    bcftools annotate -r `echo ${chroms} | perl -pe 's/ /,/g;'` --annotations ${dbsnpvcf} --columns ID --output-type v $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz |
-    bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
+    bcftools annotate -r `echo ${chroms} | perl -pe 's/ /,/g;'` --annotations ${dbsnpvcf} --columns ID --output-type z $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz -o ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 else
     echo "No dbSNP IDs to add -- just compressing"
     date
-    bcftools view --output-type v $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz | 
-    bgzip -c -@ $NSLOTS > ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
+    bcftools view --output-type z $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz -o ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 fi
 
 echo

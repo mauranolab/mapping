@@ -145,6 +145,10 @@ esac
 bcftools index ${sampleOutdir}/${name}.${mappedgenome}.bcf
 rm -f ${fullbcffiles}
 
+fullbcfcsifiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.bcf.csi"`
+fullbcfcsifiles=$(getFilesToMerge ${fullbcfcsifiles})
+rm -f ${fullbcfcsifiles}
+
 
 fltvcffiles=`cut -f1 ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | xargs -I {} echo "${sampleOutdir}/${name}.${mappedgenome}.{}.filtered.vcf.gz"`
 fltvcffiles=$(getFilesToMerge ${fltvcffiles})
@@ -156,9 +160,9 @@ case "${numfltvcffiles}" in
     #bcftools concat fails when there is only one file
     cp ${fltvcffiles} ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz;;
 *)
-    bcftools concat --output-type v ${fltvcffiles} | bgzip -c -@ $NSLOTS > ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz;;
+    bcftools concat --output-type z ${fltvcffiles} -o ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz;;
 esac
-bcftools index ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
+bcftools index --tbi ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
 rm -f ${fltvcffiles}
 
 
@@ -182,8 +186,8 @@ set -e
 if [ "$dellyExitCode" -eq 0 ]; then
     echo "Merging DELLY variants in to .filtered.vcf file"
     ## Only accept variants that pass the FILTER test.
-    bcftools filter -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf | bgzip -c -@ $NSLOTS > ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
-    bcftools index ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
+    bcftools filter --output-type z -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf -o ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
+    bcftools index --tbi ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
     
     echo "Merging DELLY VCF"
     # Output a new VCF with the combined bcftools and DELLY calls
@@ -193,8 +197,7 @@ else
     mv ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
     echo "WARNING: DELLY Failed"
 fi
-bcftools index ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
-tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+bcftools index --tbi ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
 
 
 echo
