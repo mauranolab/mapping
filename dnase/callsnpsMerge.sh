@@ -162,10 +162,10 @@ bcftools index ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
 rm -f ${fltvcffiles}
 
 
-# Delly does not have a --regions flag to allow for specific regions to be matched.
+# DELLY does not have a --regions flag to allow for specific regions to be matched.
 # this makes it difficult to parralelize by chromosome like the bcftools call command
 echo
-echo "Running Delly"
+echo "Running DELLY"
 date
 
 ## DELLY is hardcoded to skip reads with qcfail flag set, so generate new bam file with 512 cleared
@@ -178,20 +178,23 @@ delly call -t ALL -o ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf -g ${refe
 dellyExitCode=$?
 set -e
 
-# If delly exited with a 0 code then create the vcf
+# If DELLY exited with a 0 code then create the vcf
 if [ "$dellyExitCode" -eq 0 ]; then
+    echo "Merging DELLY variants in to .filtered.vcf file"
     ## Only accept variants that pass the FILTER test.
-    bcftools filter -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf | bgzip -c -@ $NSLOTS > ${TMPDIR}/${name}.${mappedgenome}.delly.filtered.vcf.gz
-    bcftools index ${TMPDIR}/${name}.${mappedgenome}.delly.filtered.vcf.gz
+    bcftools filter -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf | bgzip -c -@ $NSLOTS > ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
+    bcftools index ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
     
-    echo "Merging Delly VCF"
-    # Output a new VCF with the combined bcftools and Delly calls
-    bcftools concat -a -O z -o ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz ${TMPDIR}/${name}.${mappedgenome}.delly.filtered.vcf.gz ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
-    bcftools index ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
-    tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+    echo "Merging DELLY VCF"
+    # Output a new VCF with the combined bcftools and DELLY calls
+    bcftools concat -a -O z -o ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
 else
-    echo "WARNING: Delly Failed"
+    #Use bcftools vcf directly
+    mv ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+    echo "WARNING: DELLY Failed"
 fi
+bcftools index ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+tabix -p vcf ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
 
 
 echo
@@ -236,7 +239,7 @@ for sampleid in `bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filte
                 color="253,199,0";     # hz_nonref - yellow
             }
         }
-        # Enforce UCSC score max of 1000 (Delly in particular has scores set to 10_000)
+        # Enforce UCSC score max of 1000 (DELLY in particular has scores set to 10_000)
         score=$5;
         if (score>1000) {
             score=1000;
