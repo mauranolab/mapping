@@ -186,15 +186,15 @@ set -e
 if [ "$dellyExitCode" -eq 0 ]; then
     echo "Merging DELLY variants in to .filtered.vcf file"
     ## Only accept variants that pass the FILTER test.
-    bcftools filter --output-type z -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf -o ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
-    bcftools index --tbi ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
+    bcftools filter --output-type z -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf -o ${sampleOutdir}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
+    bcftools index --tbi ${sampleOutdir}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
     
     echo "Merging DELLY VCF"
-    # Output a new VCF with the combined bcftools and DELLY calls
-    bcftools concat -a -O z -o ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz ${TMPDIR}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
+    # Merge the DELLY calls in with the combined bcftools calls
+    bcftools concat -a -O z -o ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz ${sampleOutdir}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz
 else
     #Use bcftools vcf directly
-    mv ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+    cp --preserve=timestamps ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
     echo "WARNING: DELLY Failed"
 fi
 bcftools index --tbi ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
@@ -203,6 +203,7 @@ bcftools index --tbi ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
 echo
 echo "Parsing VCF track"
 date
+#NB does not include SVs from DELLY to ease visualization, especially for hybrid mouse samples
 #No additional filtering, just extract genotypes to starch
 #NB repeated from perChrom analysis
 minSNPQ=0
@@ -210,7 +211,7 @@ minSNPQ=0
 minTotalDP=0
 minAlleleDP=0
 
-${src}/parseSamtoolsGenotypesToBedFiles.pl ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz $TMPDIR/variants ${minSNPQ} ${minTotalDP} ${minAlleleDP}
+${src}/parseSamtoolsGenotypesToBedFiles.pl ${TMPDIR}/${name}.${mappedgenome}.filtered.vcf.gz  $TMPDIR/variants ${minSNPQ} ${minTotalDP} ${minAlleleDP}
 
 nvcfsamples=`bcftools query -l ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz | wc -l`
 #rsids

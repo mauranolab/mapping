@@ -287,6 +287,7 @@ for assay_type in assays:
         Peaks_view = None
         Cuts_view = None
         Variants_view = None
+        Delly_view = None
         Genotypes_view = None
         
         
@@ -590,6 +591,32 @@ for assay_type in assays:
                         parentonoff="off"
                     )
                     Genotypes_view.add_tracks(track)
+                
+                #Delly_view
+                if assay_type in ["DNA", "DNA Capture", "Amplicon"]:
+                    if Delly_view is None:
+                        Delly_view = ViewTrack(
+                            name="Delly_view_" + curGroup_trackname,
+                            view="DELLY",
+                            visibility="hide",
+                            parentonoff="off",
+                            tracktype='vcfTabix',
+                            maxItems=250,
+                            applyMinQual="true",
+                            minQual=0,
+                            short_label="DELLY",
+                            long_label="DELLY")
+                        composite.add_view(Delly_view)
+                    track = Track(
+                        name=sampleName_trackname + '_delly',
+                        short_label=sampleShortLabel,
+                        long_label=assay_type + ' DELLY ' + sampleDescription,
+                        url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.DELLY.filtered.vcf.gz',
+                        subgroups=sampleSubgroups,
+                        tracktype='vcfTabix',
+                        parentonoff="off"
+                    )
+                    Delly_view.add_tracks(track)
         
         for view in composite.views:
             view.add_params(configurable="on")
