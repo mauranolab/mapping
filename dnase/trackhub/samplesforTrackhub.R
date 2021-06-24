@@ -336,23 +336,29 @@ for(curdir in mappeddirs) {
 					SampleNameSplit <- unlist(strsplit(data$Name[i], "_"))
 					CEGSsampleType <- SampleNameSplit[length(SampleNameSplit)]
 				} else {
-					#Find samples based on Genetic_Modification. Look for an assemblon at a landing pad
+					#Find samples based on Genetic_Modification
+					#Samples with a Big-IN assemblon at a landing pad
 					Genetic_Modification <- strsplit(data$Genetic_Modification[i], ",")[[1]]
-					if(any(sapply(Genetic_Modification, grepl, pattern="\\[LP(ICE|[0-9]+)\\]$", perl=T))) {
-						payload <- Genetic_Modification[sapply(Genetic_Modification, grepl, pattern="\\[LP(ICE|[0-9]+)\\]$", perl=T)]
-						payload <- gsub("\\[LP(ICE|[0-9]+)\\]$", "", payload, perl=T)
+					LPregex <- "LP([0-9]+|ICE|RMGR[0-9]+)"
+					if(any(sapply(Genetic_Modification, grepl, pattern=paste0("\\[", LPregex, "\\]$"), perl=T))) {
+						#mSwap-IN may have multiple payloads, and they are delivered to HA coords rather than LPs
+						payload <- Genetic_Modification[sapply(Genetic_Modification, grepl, pattern=paste0("\\[", LPregex, "\\]$"), perl=T)]
+						payload <- gsub(paste0("\\[", LPregex, "\\]$"), "", payload, perl=T)
 						SampleNameSplit <- unlist(strsplit(payload, "_"))
 						CEGSsampleType <- "PayloadCells"
-					# Group any samples that have a LP but no assemblon
-					} else if(any(sapply(Genetic_Modification, grepl, pattern="LP(ICE|[0-9]+)\\[(.+)\\]$", perl=T))) {
-						LP <- Genetic_Modification[sapply(Genetic_Modification, grepl, pattern="LP(ICE|[0-9]+)\\[(.+)\\]$", perl=T)]
-						integrationsite <- gsub("LP(ICE|[0-9]+)\\[(.+)\\]$", "\\2", LP, perl=T)
+					# Samples that have a LP but no assemblon
+					# BUGBUG using "$" to find LP lines fails as a heuristic if there are further non-delivery modifications
+					} else if(any(sapply(Genetic_Modification, grepl, pattern="", paste0(LPregex, "\\[(.+)\\]$"), perl=T))) {
+						LP <- Genetic_Modification[sapply(Genetic_Modification, grepl, pattern=paste0(LPregex, "\\[(.+)\\]$"), perl=T)]
+						integrationsite <- gsub(paste0(LPregex, "\\[(.+)\\]$"), "\\2", LP, perl=T)
 						LP <- gsub("\\[.+\\]$", "", LP, perl=T)
 						#Use gene from integrationsite as Assembly ID
 						SampleNameSplit <- c("LandingPads", LP, unlist(strsplit(integrationsite, "_"))[1])
 						CEGSsampleType <- "LP_Cells"
 					} else {
 						#We failed parsing
+						#BUGBUG mSwap-IN samples where the payload is annotated at the integration site end up here
+						#BUGBUG RGMR samples with 2 comma-separated LPs end up here
 						SampleNameSplit <- NA
 						CEGSsampleType <- NA
 					}
