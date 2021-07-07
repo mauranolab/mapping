@@ -260,4 +260,4 @@ if __name__ == "__main__":
     limsWks, lims, limsMask = getLIMSsheet("LIMS")
     seqWks, seq, seqMask = getLIMSsheet("Sequencing Sheet")
     
-    validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maurano,CEGS,SARS")
+    validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maurano,CEGS")
