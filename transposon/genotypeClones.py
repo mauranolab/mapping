@@ -565,7 +565,7 @@ if __name__ == "__main__":
     parser.add_argument('--minreads', action='store', type=int, default=2, help='Min UMI filter for input file')
     parser.add_argument('--minPropOfBCReads', action='store', type=float, default=0.15, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
     parser.add_argument('--minPropOfCellReads', action='store', type=float, default=0.02, help='Each BC-cell edge must represent at least this proportion of UMIs for cell')
-    parser.add_argument('--minCentrality', action='store', type=float, default=0.2, help='Each BC-cell edge must represent at least this proportion of UMIs for BC')
+    parser.add_argument('--minCentrality', action='store', type=float, default=0.2, help='Edges joining communities must have higher centrality than this to be retained')
     parser.add_argument('--maxpropreads', action='store', type=float, default=0.1, help='Edges joining communities must have fewer than this number of UMIs as proportion of the smaller community they bridge')
     
     key_arg = parser.add_argument("--transfectionKey", action="store", type=str, default=None, help="Attribute key used to identify BCs transfections")
