@@ -115,7 +115,7 @@ cat("\n\nCompare adjacent insertions\n")
 ins.proximity <- data.frame(subset(sampleData, select=c(chrom, chromStart, activity))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, activity))[-1,], check.names=T)
 ins.proximity <- subset(ins.proximity, chrom==chrom.1)
 ins.proximity$dist <- ins.proximity$chromStart.1 - ins.proximity$chromStart
-ins.proximity$dist.bin <- cut(ins.proximity$dist, breaks=c(1, 500, 5000, 1e5, Inf), labels=c("0+ bp", "500+ bp", "5+ kb", "10+ kb"), right=F, include.lowest=T, pretty.labels="left")
+ins.proximity$dist.bin <- cut(ins.proximity$dist, breaks=c(1, 100, 1000, 1e4, 1e5, Inf), labels=c("0+ bp", "100+ bp", "1+ kb", "10+ kb", "100+ kb"), right=F, include.lowest=T, pretty.labels="left")
 
 
 results.proxcor <- NULL
@@ -159,7 +159,7 @@ cat("\nWhether in same TAD\n")
 ins.proximity.TAD <- data.frame(subset(sampleData, select=c(chrom, chromStart, activity, TADid))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, activity, TADid))[-1,], check.names=T)
 ins.proximity.TAD <- subset(ins.proximity.TAD, chrom==chrom.1)
 ins.proximity.TAD$dist <- ins.proximity.TAD$chromStart.1 - ins.proximity.TAD$chromStart
-ins.proximity.TAD$dist.bin <- cut.pretty(ins.proximity.TAD$dist, breaks=c(1, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left") #labels=c("1 bp", "1 kbp", "10 kbp", "20 kbp", "30 kbp", "40 kbp", "50 kbp", "60 kbp", "70 kbp", "80 kbp", "90 kbp", "100 kbp")
+ins.proximity.TAD$dist.bin <- cut.pretty(ins.proximity.TAD$dist, breaks=c(1, 1000, 1e4, 1e5, Inf), right=F, include.lowest=T, pretty.labels="left") #labels=c("1 bp", "1 kbp", "10 kbp", "20 kbp", "30 kbp", "40 kbp", "50 kbp", "60 kbp", "70 kbp", "80 kbp", "90 kbp", "100 kbp")
 ins.proximity.TAD$sameTAD <- ins.proximity.TAD$TADid==ins.proximity.TAD$TADid.1
 
 
@@ -188,23 +188,8 @@ cat("Clipping", length(which(sampleData[,"residual"] < -2)), "sites z < -2\n")
 sampleData[sampleData[,"residual"] < -2, "residual"] <- -2
 sampleData[,"residual"] <- (sampleData[,"residual"] + 2) / 4
 
-write.table(subset(sampleData, select=c(chrom, chromStart, chromEnd, BC, residual)), file=paste0(outbase, '.residual.bed'), quote=F, sep='\t', col.names=F, row.names=F) 
-#bedops --range 25000 -m T0190_pMH034_BC4_pTR_C1fw_GGlo_PuroP2AGFP_A1rv_HS2.activity.fithigh.bed > /tmp/fithigh.bed
-#awk -F "\t" 'BEGIN {OFS="\t"} {$5= $5-$6; print}' T0190_pMH034_BC4_pTR_C1fw_GGlo_PuroP2AGFP_A1rv_HS2.activity.fithigh.bed | cut -f1-5 | bedmap --delim "\t" --echo --count --mean /tmp/fithigh.bed - | awk -F "\t" 'BEGIN {OFS="\t"} $4>1' | widen 250000
-
-#bwplot(log(DistToNearestCTCF, base=10)~factor(residual>2), data=sampleData)
-#smoothScatter(sampleData$activity, sampleData$fit)
-#xyplot(activity~fit, data=sampleData)
-#with(subset(sampleData, ), smoothScatter(log(abs(DistToNearestCTCF)),residual))
-
 
 cat("\nOutput for ucsc\n")
-#cat("Clipping", length(which(sampleData[,"activity"] > 3)), "sites z > 3\n")
-#sampleData[sampleData[,"activity"] > 3,"activity"] <- 3
-#cat("Clipping", length(which(sampleData[,"activity"] < -2)), "sites z < -2\n")
-#sampleData[sampleData[,"activity"] < -2,"activity"] <- -2
-#sampleData[,"activity"] <- (sampleData[,"activity"] + 2) / 5
-
 write.table(subset(sampleData, select=c("chrom", "chromStart", "chromEnd", "BC", "activity")), file=paste0(outbase, '.activity.bed'), quote=F, sep='\t', col.names=F, row.names=F) 
 
 
@@ -241,6 +226,7 @@ write.table(results.DistToNearestCTCF, file=paste0(outbase, '.DistToNearestCTCF.
 
 
 cat("\n\nActivity related to DHS density\n")
+#using deciles means that bin endpoints are not the same across samples
 #sampleData$NumDHS5kb.decile <- factor(cut(sampleData$NumDHS5kb, breaks=unique(quantile(sampleData$NumDHS5kb, probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,10,1))
 sampleData$NumDHS5kb.bin <- cut.pretty(sampleData$NumDHS5kb, breaks=c(0,1,2,3,4,5,6,Inf), right=F, include.lowest=T, pretty.labels="left")
 results.NumDHS5kb <- cbind(sample=prefix, summaryBy(activity+NumDHS5kb~NumDHS5kb.bin, data=sampleData, FUN=list(mean, median, length)))
@@ -249,8 +235,9 @@ write.table(results.NumDHS5kb, file=paste0(outbase, '.NumDHS5kb.txt'), quote=F, 
 
 
 cat("\n\nActivity related to DHS density\n")
+#using deciles means that bin endpoints are not the same across samples
 #sampleData$NumDHS100kb.decile <- factor(cut(sampleData$NumDHS100kb, breaks=unique(quantile(sampleData$NumDHS100kb, probs=seq.int(from=0, to=1, length.out=11), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,10,1))
-sampleData$NumDHS100kb.bin <- cut.pretty(sampleData$NumDHS100kb, breaks=c(0,5,10,20,Inf), right=F, include.lowest=T, pretty.labels="left")
+sampleData$NumDHS100kb.bin <- cut.pretty(sampleData$NumDHS100kb, breaks=c(0,5,10,15,20,25,30,35,40,45,50,Inf), right=F, include.lowest=T, pretty.labels="left")
 results.NumDHS100kb <- cbind(sample=prefix, summaryBy(activity+NumDHS100kb~NumDHS100kb.bin, data=sampleData, FUN=list(mean, median, length)))
 print.data.frame(results.NumDHS100kb, row.names=F, right=F)
 write.table(results.NumDHS100kb, file=paste0(outbase, '.NumDHS100kb.txt'), quote=F, sep='\t', col.names=T, row.names=F)
