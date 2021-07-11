@@ -37,7 +37,7 @@ if [ ! -s "$OUTDIR/${sample}.bam" ]; then
     exit 2
 fi
 
-# BUG: hardcoded and dependent of genome
+# BUGBUG: hardcoded and dependent of genome
 curGenome="hg38_noalt"
 #curGenome="mm10"
 case "${curGenome}" in
@@ -46,8 +46,8 @@ hg38_noalt)
     hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch;
     chromsizes=/vol/isg/annotation/fasta/hg38_noalt/hg38_noalt.chrom.sizes;;
 mm10)
-    # FIX hard-coded references to humam genome reference
     annotationgenome=mm10;
+    # BUGBUG human DHS file
     hotspotfile=/vol/isg/encode/dnase/mapped/K562-DS9764/hotspots/K562-DS9764.hg38_noalt-final/K562-DS9764.hg38_noalt.fdr0.01.pks.starch;
     chromsizes=/vol/isg/annotation/fasta/mm10/mm10.chrom.sizes;;
 *)
@@ -160,7 +160,7 @@ ${src}/AdjacencyDeDup.py --col 6 --groupcols 8 -o - - |
 awk -F "\t" 'BEGIN {OFS="\t"} $6!=""' |
 #I think column 7 is the UMI, if any
 cut -f1-7 > $OUTDIR/${sample}.barcodes.readnames.coords.bed
-#NB Barcodes are now out of sync with those from analyzeBCcounts.sh
+#NB From here on barcodes are out of sync with those from analyzeBCcounts.sh
 
 
 echo
@@ -192,7 +192,7 @@ fi
 #columns: chrom, start, BC seq, UMI count, strand
 
 
-echo "Collapsing nearby insertions"
+echo "Consolidate nearby mappings of same BCs"
 cut -f1-3,5 $TMPDIR/${sample}.coords.collapsedUMI.bed |
 uniq -c |
 awk 'BEGIN {OFS="\t"} {print $2, $3, $3+1, $4, $1, $5}' > $TMPDIR/${sample}.barcodes.coords.bed
@@ -205,15 +205,13 @@ cat $TMPDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4=".
 
 
 #columns: chrom, start, end, BC seq, count, strand
-#Combine subsequent lines having the same barcode at slightly different sites
-if [ "$(cat $TMPDIR/${sample}.barcodes.coords.bed | wc -l)" -gt 0 ];
-then
+#Consolidate subsequent lines having the same barcode at slightly different sites
+if [ "$(cat $TMPDIR/${sample}.barcodes.coords.bed | wc -l)" -gt 0 ]; then
     cat $TMPDIR/${sample}.barcodes.coords.bed | sort -k4,4 -k1,1 -k2,2g |
     awk -v maxstep=5 -F "\t" 'BEGIN {OFS="\t"} \
     NR==1 {split($0, last)} \
     NR>1 { \
-        if(last[1] != $1 || $2 - last[2] > maxstep || $3 - last[3] > maxstep || last[4] != $4 || last[6] != $6) { 
-            #not the same site or BC, so print \
+        if(last[1] != $1 || $2 - last[2] > maxstep || $3 - last[3] > maxstep || last[4] != $4 || last[6] != $6) { #not the same site or BC, so print \
             print last[1], last[2], last[3], last[4], last[5], last[6]; \
             split($0, last); \
         } else { #the same BC \
@@ -232,6 +230,7 @@ fi
 
 echo -n -e "${sample}\tNumber of BC+insertions after collapsing nearby ones\t"
 cat $TMPDIR/${sample}.barcodes.coords.collapsed.bed | wc -l
+
 
 echo
 echo "Histogram of number of reads per barcode"
@@ -264,24 +263,25 @@ cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OF
 awk -v cutoff=2 '{if($0>=cutoff) {print cutoff "+"} else {print}}' | sort -g | uniq -c | sort -k2,2g
 
 
-#Identify iPCR insertions with more than one location
+#Identify BC list for  insertions with more than one location
 cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {print $4}' | sort | uniq -c | sort -nk1 | awk '$1==1 {print $2}' > $TMPDIR/${sample}.singleIns.txt
 
-# save BC list of insertions with more than one location
+# save BC list for insertions with more than one location
 cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {print $4}' | sort | uniq -c | sort -nk1 | awk '$1>1 {print $2}' > $OUTDIR/${sample}.multiIns.txt
 
-#Identify insertion sites with more than one BC
-cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq -c | awk 'BEGIN {OFS="\t"} $1==1 {print $2, $3, $4, $5, $6, $7}' | sort-bed - > $TMPDIR/${sample}.singleBC.bed
 
+#Remove BCs with more than one location
 if [ "$(cat $TMPDIR/${sample}.singleIns.txt | wc -l)" -gt 0 ]; then
     cat $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed |
-    #Remove BCs with more than one location
-    awk -F "\t" 'BEGIN {OFS="\t"} NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${sample}.singleIns.txt - |
-    #Remove insertion sites with more than one BC
-    bedmap --delim "|" --multidelim "|" --bp-ovr 1 --skip-unmapped --echo --echo-map - $TMPDIR/${sample}.singleBC.bed | awk -F "|" 'BEGIN {OFS="\t"} {split($0, main, "\t"); for(i=2; i<=NF; i++) {split($0, singleBC, "\t"); if(main[6]==singleBC[6]) {print $1; next}}}' > $OUTDIR/${sample}.barcodes.coords.bed
-else
-    cp $TMPDIR/${sample}.barcodes.coords.minReadCutoff.bed $OUTDIR/${sample}.barcodes.coords.bed
+    awk -F "\t" 'BEGIN {OFS="\t"} NR==FNR{a[$1];next} ($4) in a' $TMPDIR/${sample}.singleIns.txt - > $TMPDIR/${sample}.barcodes.coords.singleIns.bed
 fi
+echo -n -e "${sample}\tNumber of BC+insertions after excluding BCs with multiple insertions\t"
+cat $TMPDIR/${sample}.barcodes.coords.singleIns.bed | wc -l
+
+
+#Exclude insertions with other insertions within 5 bp as presumed artifacts or impossible to interpret
+cat $TMPDIR/${sample}.barcodes.coords.singleIns.bed | bedmap --delim '\t' --range 5 --echo --count - | awk -F "\t" 'BEGIN {OFS="\t"} $7==1' | cut -f1-6 > $OUTDIR/${sample}.barcodes.coords.bed
+
 
 #NB retains strand so a few sites are represented twice
 cat $OUTDIR/${sample}.barcodes.coords.bed | awk -F "\t" 'BEGIN {OFS="\t"} {$4="."; $5=0; print}' | uniq | sort-bed - > $OUTDIR/${sample}.uniqcoords.bed
@@ -309,6 +309,7 @@ echo
 echo -e -n "${sample}\tNumber of unique insertion sites\t"
 cat $OUTDIR/${sample}.uniqcoords.bed | wc -l
 
+#BUGBUG really within 10 bp since bedops --range in this case pads every element in the input file by 5bp before doing the overlap
 echo -e -n "${sample}\tNumber of unique insertion sites (within 5 bp, ignoring strand)\t"
 cat $OUTDIR/${sample}.uniqcoords.bed | bedops --range 5 -m - | uniq | wc -l
 
@@ -342,17 +343,7 @@ sort | uniq -c | sort -k2,2g
 
 echo
 echo "Density track"
-
-##Prep CNV track, set regions without data to baseline of 0 (which is really 2N)
-#cat ${chromsizes} | 
-#awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="chrEBV"' |
-#awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - |
-#bedops -d - /vol/mauranolab/publicdata/K562_copynumber/CCLE.CNV.hg38.bed |
-#awk -F "\t" '{OFS="\t"; print $1, $2, $3, "..", -1}' |
-#bedops -u - /vol/mauranolab/publicdata/K562_copynumber/CCLE.CNV.hg38.bed |
-#awk -F "\t" 'BEGIN {OFS="\t"} {$NF=2^($NF+1); print}' > $TMPDIR/K562.CCLE.CNV.hg38.bed
-
-#score is insertion count per Mb bin. Disabled code normalizes to N=2 by CCLE CNV map
+#score is insertion count per Mb bin
 #TODO normalize to count of unique insertions?
 cat ${chromsizes} | 
 awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="chrEBV"' |
@@ -362,17 +353,6 @@ bedmap --faster --delim "\t" --bp-ovr 1 --echo --count - $OUTDIR/${sample}.uniqc
 #resize intervals down from full bin width to step size
 awk -v step=100000 -v binwidth=1000000 -F "\t" 'BEGIN {OFS="\t"} {offset=(binwidth-step)/2 ; $2+=offset; $3-=offset; print}' |
 
-##Take a distance-weighted average of the copy number over the interval and normalize to N=2
-#bedmap --delim "|" --multidelim "|" --echo --echo-map - $TMPDIR/K562.CCLE.CNV.hg38.bed |
-#awk -F "|" 'BEGIN {OFS="\t"} { \
-#    split($1, dens, "\t"); avg=0; \
-#    for(i=2; i<=NF; i++) { \
-#        split($i, curCN, "\t");\
-#        if(curCN[2] < dens[2]) {curCN[2]=dens[2]} \
-#        if(curCN[3] > dens[3]) {curCN[3]=dens[3]} \
-#        avg += curCN[5]*(curCN[3]-curCN[2])/(dens[3]-dens[2]); \
-#    } \
-#    print dens[1], dens[2], dens[3], dens[4], dens[5] / avg * 2}' |
 
 tee $TMPDIR/${sample}.insertions.density.bed |
 #Remember wig is 1-indexed
