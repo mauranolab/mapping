@@ -92,14 +92,14 @@ echo -e "${sample}\tRead lengths (number of reads)\t${readlengths}"
 minReadLength=`echo "${readlengths}" | perl -pe 's/ \([0-9]+\)//g;' -e 's/, /\n/g;' | sort -n | awk 'NR==1'`
 echo -e "${sample}\tMinimum read length\t${minReadLength}"
 
-hasRead=$(samtools view -c ${samflags} $OUTDIR/${sample}.bam)
-if [ "$hasRead" -eq 0 ]; then
+if [ $(samtools view -c ${samflags} $OUTDIR/${sample}.bam) -eq 0 ]; then
     echo "No reads passing all filters. Exiting earlier"
     echo
     echo "Done!!!"
     date
     exit 0
 fi
+
 
 #Get the reads from the bam since we don't save the trimmed fastq
 #Need to trim in case not all the same length
@@ -110,6 +110,7 @@ convert $TMPDIR/${sample}.genomic.eps ${OUTDIR}/${sample}.genomic.png
 echo
 echo "Extracting read coordinates"
 date
+#Take 5' end of read
 #Subtract additional 1 bp from reads on + strand so that the coordinates represent 1 nt to the left of the insertion site (i.e. for A^T, the coordinates point to T)
 samtools view ${samflags} $OUTDIR/${sample}.bam | awk -F "\t" 'BEGIN {OFS="\t"} { \
     readlength = length($10); \
