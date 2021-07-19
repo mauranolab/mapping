@@ -446,7 +446,7 @@ cat ${uninformativeRegionFiles} ${HAmaskFiles} | awk '$0 !~ /^#/' | sort-bed - >
 
 echo
 echo "Computing read depth for normalization from normbam: ${normbam}"
-num_bam1_reads=$(samtools view -c -F 512 ${normbam})
+num_bam1_reads=$(samtools view -c -F 512 "${normbam}")
 echo "num_bam1_reads: ${num_bam1_reads}"
 
 
