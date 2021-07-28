@@ -5,6 +5,7 @@ set -eu -o pipefail
 src=$1
 hub_target=$2
 TMPDIR=$3
+#unused
 hub_type=$4
 customGenomeAssembly=$5
 assemblyBaseDir=$6
@@ -106,8 +107,9 @@ AWK_HEREDOC_01
 
 
 ###################################################################################
-# Initialize an output file to hold paths to new bigBED files. We'll need the full path below. Clean up, just in case.
+# Initialize an output file to hold paths to new bigBED files.
 OUTFILE="${TMPDIR}/assembly_tracks/output_full_paths"
+touch ${OUTFILE}
 
 # Initialize the error log file where bedToBigBed problems will show up.
 echo "[makeAssemblyTracks] Starting calls to bedToBigBed..."

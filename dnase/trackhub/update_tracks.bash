@@ -71,8 +71,11 @@ elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
 elif [[ "${hub_type}" == "SARS" ]]; then
     customGenomeAssembly="NA"
     assemblyBaseDir="/vol/sars"
+elif [[ "${hub_type}" == "HOLTLAB" ]]; then
+    customGenomeAssembly="NA"
+    assemblyBaseDir="/vol/mauranolab/flowcells/public_html/holtlab"
 else
-    echo "ERROR You need to enter a valid hub type. Either: CEGS or MAURANOLAB or SARS. Exiting..."
+    echo "ERROR You need to enter a valid hub type: CEGS, MAURANOLAB, HOLTLAB, SARS. Exiting..."
     exit 1
 fi
 
@@ -179,12 +182,12 @@ ${src}/makeDescFiles.bash ${src} ${assemblyBaseDir} ${hub_type} ${hub_target} ${
 echo
 echo "Finalizing trackhub"
 
-echo "hub hub_id_${short_label// /_}" > "${hub_target}/hub.txt"
-echo "shortLabel ${short_label}" >> "${hub_target}/hub.txt"
-echo "longLabel ${long_label}" >> "${hub_target}/hub.txt"
-echo "genomesFile genomes.txt" >> "${hub_target}/hub.txt"
-echo "email cadley.mauranolab@gmail.com" >> "${hub_target}/hub.txt"
-echo "descriptionUrl description.html" >> "${hub_target}/hub.txt"
+echo "hub hub_id_${short_label// /_}" > ${hub_target}/hub.txt
+echo "shortLabel ${short_label}" >> ${hub_target}/hub.txt
+echo "longLabel ${long_label}" >> ${hub_target}/hub.txt
+echo "genomesFile genomes.txt" >> ${hub_target}/hub.txt
+echo "email cadley.mauranolab@gmail.com" >> ${hub_target}/hub.txt
+echo "descriptionUrl description.html" >> ${hub_target}/hub.txt
 
 
 echo
@@ -195,9 +198,9 @@ for cur_genome in "${genome_array[@]}"; do
     # The custom assemblies have more complicated, non-standard stanzas stored in the stub genomes.txt file in the assets/CEGS subdirectory, so skip building them in this loop.
     [ "${cur_genome}" = "${customGenomeAssembly}" ] || [ "${cur_genome}" = "t2t" ] && continue
     
-    echo "genome ${cur_genome}" >> "${hub_target}/genomes.txt"
-    echo "trackDb ${cur_genome}/trackDb.txt" >> "${hub_target}/genomes.txt"
-    echo >> "${hub_target}/genomes.txt"
+    echo "genome ${cur_genome}" >> ${hub_target}/genomes.txt
+    echo "trackDb ${cur_genome}/trackDb.txt" >> ${hub_target}/genomes.txt
+    echo >> ${hub_target}/genomes.txt
 done
 
 if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit" ]; then
@@ -208,38 +211,39 @@ if [[ "${hub_type}" == "CEGS" ]]; then
     mkdir "${hub_target}/t2t/data"
     cp --preserve=timestamps /vol/isg/annotation/fasta/t2t/t2t.2bit ${hub_target}/t2t/data/t2t.2bit
 fi
-#########################################################
-time_stamp=$(date +"%m-%d-%y %T")
-echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> "${hub_target}/description.html"
+
 
 ######################################################################################
-# Make a reference vs chromosomes table for the cegsvectors description page.
+#Finalize description
 
-chrom_sizes_file_list=$(find /vol/cegs/sequences/cegsvectors_* -mindepth 1 -maxdepth 1 -type f -name "*.chrom.sizes")
+time_stamp=$(date +"%m-%d-%y %T")
+echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> ${hub_target}/description.html
 
-for chrom_sizes_file in ${chrom_sizes_file_list}; do
-    IFS=/ read -a get_assmbly <<< ${chrom_sizes_file}
-    outputLine="${get_assmbly[4]#cegsvectors_}|"
+
+if [[ "${customGenomeAssembly}" != "NA" ]]; then
+    echo "Adding chromosomes table for the description page"
+    for chrom_sizes_file in `find ${assemblyBaseDir}/sequences/${customGenomeAssembly}_* -mindepth 1 -maxdepth 1 -type f -name "*.chrom.sizes"`; do
+        IFS=/ read -a get_assmbly <<< ${chrom_sizes_file}
+        
+        outputLine="${get_assmbly[4]#${customGenomeAssembly}_}|"
+        while read chromSizes_line_in; do
+            read chrom all_other <<< ${chromSizes_line_in}
+        outputLine="${outputLine}<a href=hgTracks?genome=${customGenomeAssembly}&position=${chrom}>${chrom}</a><br>"
+        done < ${chrom_sizes_file}
+        
+        outputLine="${outputLine%<br>}"  # Delete the last instance of <br> from $outputLine
+        echo "${outputLine}"
+    done | sort -k1,1 > ${TMPDIR}/chroms_per_cegsvector.txt
     
-    while read chromSizes_line_in; do
-        read chrom all_other <<< ${chromSizes_line_in}
-    outputLine="${outputLine}<a href=hgTracks?genome=cegsvectors&position=${chrom}>${chrom}</a><br>"
-    done < ${chrom_sizes_file}
-    
-    outputLine="${outputLine%<br>}"  # Delete the last instance of <br> from $outputLine
-    echo "${outputLine}"
-done | sort -k1,1 > "${TMPDIR}/chroms_per_cegsvector.txt"
-
-Rscript ${src}/makeChroms_per_cegsvectorHtml.R ${TMPDIR}/chroms_per_cegsvector.txt ${TMPDIR}/chroms_per_cegsvector.html
-
-cat ${TMPDIR}/chroms_per_cegsvector.html >> ${hub_target}/description.html
-
+    Rscript ${src}/makeChroms_per_cegsvectorHtml.R ${TMPDIR}/chroms_per_cegsvector.txt ${TMPDIR}/chroms_per_cegsvector.html
+    cat ${TMPDIR}/chroms_per_cegsvector.html >> ${hub_target}/description.html
+fi
 
 ######################################################################################
 # Check for hub errors.
 echo
 echo "Running hubCheck"
-hubCheck -noTracks -udcDir=${TMPDIR} "${hub_target}/hub.txt"
+hubCheck -noTracks -udcDir=${TMPDIR} ${hub_target}/hub.txt
 echo
 
 

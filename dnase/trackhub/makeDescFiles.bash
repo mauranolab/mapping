@@ -60,6 +60,8 @@ make_html () {
 find_readcounts () {
     local dir_base=$1
     
+    echo "[makeDescFiles] Looking for readcounts.summary.txt files in $dir_base"
+    
     if [ ! -d "${dir_base}" ] ; then
         return 0
     fi
@@ -183,7 +185,7 @@ find_readcounts ${assemblyBaseDir}/publicdata/
 
 for genome in "${genome_array[@]}"; do
     suffix="*_${genome}.html"
-    fnames=($(ls ${TMPDIR}/*${suffix}))
+    fnames=($(ls ${TMPDIR}/${suffix}))
     
     mkdir ${hub_target}/${genome}/descriptions
     for f in "${fnames[@]}"; do
