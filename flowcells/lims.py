@@ -154,7 +154,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maura
                         if curLims[col] == "":
                             print("WARNING", col + " column is required for sample type " + sampleType, SampleName, bs, col, curLims[col], "", sep="\t")
             
-            colsSpecificToSampleType = { "R1 Trim (P5)": ["Amplicon", "Transposon DNA", "Transposon RNA", "Transposon iPCR", "Transposon 10xRNA"], "R2 Trim (P7)": ["Amplicon", "Transposon DNA", "Transposon RNA", "Transposon iPCR", "Transposon 10xRNA"], "Bait set" : ["DNA Capture", "Amplicon"] }
+            colsSpecificToSampleType = { "R1 Trim (P5)": ["Amplicon", "Transposon DNA", "Transposon RNA", "Transposon iPCR", "Transposon 10xRNA"], "R2 Trim (P7)": ["Amplicon", "Transposon DNA", "Transposon RNA", "Transposon iPCR", "Transposon 10xRNA"], "Bait set" : ["DNA Capture", "Amplicon", "Pool"] }
             for col in colsSpecificToSampleType:
                 if curLims[col] != "":
                     if curLims["Sample Type"] not in colsSpecificToSampleType[col]:
