@@ -17,14 +17,14 @@ version="1.5"
 
 parser = argparse.ArgumentParser(prog = "createFlowcellSubmit", description = "Outputs submit commands for all samples from the info.txt located in the flowcell data folder", allow_abbrev=False)
 
-parser.add_argument("--flowcellIDs", action="store", type = str, help="Flowcell IDs (will look for /vol/mauranolab/flowcells/FCxxx/info.txt, multiple FCs separated by comma)", required=True)
-parser.add_argument("--samplenames", action="store", type = str, help="Only process samples with matching names (multiple samples separated by comma, done as string matching)", required=False)
-parser.add_argument("--samples", action="store", type = str, help="Only process samples matching this BS number (multiple samples separated by comma, done as string matching)", required=False)
-parser.add_argument("--projects", action="store", type = str, help="Only process samples in these projects (multiple projects separated by comma)", required=False)
-parser.add_argument("--people", action="store", type = str, help="Only process samples made by these people (multiple names separated by comma)", required=False)
-parser.add_argument("--sampletypes", action="store", type = str, help="Only process samples of this type (multiple projects separated by comma)", required=False)
-parser.add_argument("--aggregate", action="store_true", default=False, help = "Aggregate samples with the same BS number")
-parser.add_argument("--aggregate-sublibraries", action="store_true", default=False, help = "Aggregate samples with the same BS number and sublibrary, and remark duplicates")
+parser.add_argument("--flowcellIDs", action="store", type = str, help="Flowcell IDs (will look for /vol/mauranolab/flowcells/FCxxx/info.txt, multiple FCs separated by comma) [%(default)s]", required=True)
+parser.add_argument("--samplenames", action="store", type = str, help="Only process samples with matching names (multiple samples separated by comma, done as string matching) [%(default)s]", required=False)
+parser.add_argument("--samples", action="store", type = str, help="Only process samples matching this BS number (multiple samples separated by comma, done as string matching) [%(default)s]", required=False)
+parser.add_argument("--projects", action="store", type = str, help="Only process samples in these projects (multiple projects separated by comma) [%(default)s]", required=False)
+parser.add_argument("--people", action="store", type = str, help="Only process samples made by these people (multiple names separated by comma) [%(default)s]", required=False)
+parser.add_argument("--sampletypes", action="store", type = str, help="Only process samples of this type (multiple projects separated by comma) [%(default)s]", required=False)
+parser.add_argument("--aggregate", action="store_true", default=False, help = "Aggregate samples with the same BS number [%(default)s]")
+parser.add_argument("--aggregate-sublibraries", action="store_true", default=False, help = "Aggregate samples with the same BS number and sublibrary, and remark duplicates [%(default)s]")
 parser.add_argument("--verbose", action="store_true", default=False, help = "Verbose mode")
 parser.add_argument("--version", action="version", version="%(prog)s " + version)
 
