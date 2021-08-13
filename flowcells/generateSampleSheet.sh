@@ -186,9 +186,9 @@ countBCcollisions <- function(data, bc1len=8, bc2len=8) {
     for(i in 1:length(bcs)) {
         bc1 <- bcs[i]
         for(j in 1:length(bcs)) {
-            if(i<j & bc1!="_") {
+            if(i<j & !grepl("^N*_N*$", bc1, perl=T)) {
                 bc2 <- bcs[j]
-                if(bc2!="_") {
+                if(!grepl("^N*_N*$", bc2, perl=T)) {
                     results[i,j] = strdist(bc1, bc2)
                     if(results[i,j] <= 2) {
                         if(printPairs) {
