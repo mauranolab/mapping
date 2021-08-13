@@ -23,7 +23,7 @@ cat ${src}/flowcells/SampleSheet.template.txt > $TMPDIR/SampleSheet.withlane.csv
 #Clean up single-line spacer between header and data table
 perl -pe 's/^\t+$//g;' |
 awk -F "\t" 'BEGIN {OFS="\t"; parse=0} {print} $0=="" && parse==0 {parse=1; print "#Sample Name", "Sample #", "Lab", "Made By", "Sample Type", "Barcode 1 (i7)", "Barcode 2 (i5)", "R1 Trim (P5)", "R2 Trim (P7)", "Sequencing primer R1", "Indexing primer BC1 (i7)", "Indexing primer BC2 (i5)", "Sequencing primer R2", "Library concentration (pM)", "Request Type", "Requested reads (M)", "Read format", "Scale factor", "Lane", "Relative representation", "Amount put on FC (uL)", "Sequenced reads", "Actual representation"}' |
-#Clean up trailing tabs on comment lines
+#Clean up trailing tabs on FC info lines
 perl -pe 's/^(#.+[^\t])\t+$/\1/g;' |
 #Also creates info.txt
 tee info.txt |
@@ -114,18 +114,6 @@ inheader==0 { \
     } \
     lastBSnum=curBSnum; \
 }'
-
-
-#TODO not sure how to get a single quote inside
-#BUGBUG false alarm for - in chipseq samples
-cat info.txt | awk -F "\t" 'BEGIN {OFS="\t"; inheader=1; lastBSnum=0} \
-$1=="#Sample Name" && inheader==1 { inheader=0; next } \
-inheader==0 && $1~/[\-%\(\)\"\/\. ]/ { print "WARNING: Sample name for " $1 "-" $2 " contains invalid characters"; }'
-
-
-cat info.txt | awk -F "\t" 'BEGIN {OFS="\t"; inheader=1; lastBSnum=0} \
-$1=="#Sample Name" && inheader==1 { inheader=0; next } \
-inheader==0 && $1!~/\-/ && $5=="ChIP-seq" { print "WARNING: Sample name for " $1 "-" $2 " missing ChIP-seq epitope"; }'
 
 
 echo "Finished validation"

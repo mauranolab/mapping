@@ -1,5 +1,13 @@
 #!/bin/env python
 
+#Functions for accessing Maurano Lab LIMS through pygsheets
+
+
+#NB Need to get
+#https://pygsheets.readthedocs.io/en/latest/authorization.html
+#create project, service account key, share sheet with service account manually from google drive UI
+
+
 import sys
 import re
 import argparse
@@ -8,13 +16,7 @@ import pygsheets
 import os
 import glob
 
-
-#Functions for accessing Maurano Lab LIMS through pygsheets
-
-
-#NB Need to get 
-#https://pygsheets.readthedocs.io/en/latest/authorization.html
-#create project, service account key, share sheet with service account manually from google drive UI
+version="1.1"
 
 
 #https://stackoverflow.com/questions/26987222/checking-whitespace-in-a-string-python/26987329
@@ -65,9 +67,24 @@ def getLIMSsheet(sheet):
 
 #Verify consistency in common entries between Sample Sheet and LIMS sheets
 #Projects argument suppresses less important inconsistencies unless project is on that comma-separated list
-#TODO enforce illegal characters in sample name?
-def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maurano,CEGS"):
-    projectList = projects.split(",")
+def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", runnames="", samples=""):
+    projectList = set(filter(None, projects.split(",")))
+    sampleList = set(filter(None, samples.split(",")))
+    #Implement runname filtering by making a pass through the sequencing sheet and adding BS numbers from the specified run to sampleList
+    if runnames != "":
+        runnameList = runnames.split(",")
+        
+        curRunname = None
+        #Mask space between FCs (any row that is only empty lines)
+        for seqRow in seq.index.values[(seq!="").any(1)]:
+            curSeq = seq.iloc[seqRow]
+            if curSeq['Sample Name']=="#Run name":
+                curRunname = curSeq['Sample #']
+            elif curRunname in runnameList:
+                #Skip remaining per-FC headers
+                if re.match("^#", curSeq['Sample Name']) is None:
+                    sampleList.add(curSeq['Sample #'])
+    
     
     print("Level", "Description", "Sample Name", "Sample #", "Key", "LIMS_value", "SampleSheet_value", sep="\t")
     
@@ -93,7 +110,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maura
         else:
             #Exactly one LIMS entry, but curLims still needs to be accessed using .values.item():
             #Only check additional metadata for specified projects to avoid excess verbiage
-            if projects=='' or curLims['Lab'].values.item() in projectList:
+            if (len(projectList)==0 or curLims['Lab'].values.item() in projectList) and (len(sampleList)==0 or bs in sampleList):
                 for col in commonCols:
                     if curSeq[col] != curLims[col].values.item():
                         if curSeq[col] == "" or curLims[col].values.item() == "":
@@ -126,7 +143,19 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maura
         lastBS=bs
         
         #Only check additional metadata for specified projects to avoid excess verbiage
-        if projects=='' or curLims['Lab'] in projectList:
+        if (len(projectList)==0 or curLims['Lab'] in projectList) and (len(sampleList)==0 or bs in sampleList):
+            for col in ["Sample Name"]:
+                if re.match("[%\(\)\"\'\/\. ]", str(curLims[col])) is not None:
+                    print("WARNING", "illegal characters in LIMS", SampleName, bs, col, curLims[col], "", sep="\t")
+                #Hyphens are only allowed for ChIP-seq samples, where 1 is required
+                samplename_hyphen_re = re.findall("\-", str(curLims[col]))
+                if str(curLims['Sample Type']) in ['ChIP-seq', 'CUT&RUN']:
+                    if len(samplename_hyphen_re) !=1:
+                        print("WARNING", "missing ChIP-seq epitope", SampleName, bs, col, curLims[col], "", sep="\t")
+                else:
+                    if len(samplename_hyphen_re) !=0:
+                        print("WARNING", "illegal characters in LIMS", SampleName, bs, col, curLims[col], "", sep="\t")
+            
             for col in set(lims.columns.values):
                 if str(curLims[col]) != str(curLims[col]).strip():
                     print("WARNING", "leading/trailing whitespace in LIMS", SampleName, bs, col, curLims[col], "", sep="\t")
@@ -257,7 +286,46 @@ def removeEmptyFCinfo(seqWks, seq, key, commit=True):
 
 ###Command line operation
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog = "lims", description = "Utilities for Maurano Lab LIMS implemented in google sheets. Validates or updates LIMS entries.", allow_abbrev=False)
+    
+    validate_parser = parser.add_argument_group()
+    validate_parser.add_argument("--validate", action = "store_true", default = False, help = "Run LIMS and Sample Sheet validation [%(default)s]")
+    validate_parser.add_argument("--runnames", action = "store", type = str, default="", help = "Only process samples contained in these run names (multiple run names separated by comma, done as string matching)  [%(default)s]")
+    validate_parser.add_argument("--samples", action = "store", type = str, default="", help = "Only process samples matching this BS number (multiple samples separated by comma, done as string matching) [%(default)s]")
+    validate_parser.add_argument("--projects", action = "store", type = str, default="Maurano,CEGS", help = "Only process samples in these projects (multiple projects separated by comma) [%(default)s]")
+    
+    update_parser = parser.add_argument_group()
+    update_parser.add_argument("--update", action = "store", default = None, type=str, help = "Update LIMS and Sample Sheet based on tab-delimited input file [%(default)s]")
+    update_parser.add_argument("--nocommit", action = "store_true", default = False, help = "Perform update but do not commit any differences [%(default)s]")
+    
+    parser.add_argument('--version', action='version', version='%(prog)s ' + version)
+    
+    #argparse does not set an exit code upon this error
+    #https://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
+    try:
+        args = parser.parse_args()
+    except argparse.ArgumentError as exc:
+        print(exc.message, '\n', exc.argument)
+        sys.exit(2)
+    
+    #Load google sheets
     limsWks, lims, limsMask = getLIMSsheet("LIMS")
     seqWks, seq, seqMask = getLIMSsheet("Sequencing Sheet")
     
-    validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="Maurano,CEGS")
+    #Perform work as directed on command line
+    if args.validate:
+        validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects=args.projects, runnames=args.runnames, samples=args.samples)
+    
+    if args.update is not None:
+        updates = pd.read_csv(args.update, na_filter=False, sep="\t")
+        print("Updating LIMS and Sequencing Sheet based on:")
+        print(updates)
+        
+        print()
+        print("Updating LIMS:")
+        updateSheetFromTable(limsWks, lims, updates, commit=not args.nocommit)
+        
+        print()
+        print("Updating Sequencing Sheet:")
+        updateSheetFromTable(seqWks, seq, updates, commit=not args.nocommit)
+
