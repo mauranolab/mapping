@@ -572,7 +572,7 @@ for assay_type in assays:
                         Genotypes_view = ViewTrack(
                             name="Genotypes_view_" + curGroup_trackname,
                             view="Genotypes",
-                            visibility="hide",
+                            visibility="dense",
                             parentonoff="off",
                             tracktype="bigBed",
                             maxItems=100000,
@@ -598,7 +598,7 @@ for assay_type in assays:
                         Delly_view = ViewTrack(
                             name="Delly_view_" + curGroup_trackname,
                             view="DELLY",
-                            visibility="hide",
+                            visibility="pack",
                             parentonoff="off",
                             tracktype='vcfTabix',
                             maxItems=250,
