@@ -6,3 +6,6 @@ Sox2_Sox2_46kb_dDistalLCR_marker	1474	2653	EF1a_promoter
 #Sox2_Sox2_143kb_markerFrt
 #Sox2_Sox2_46kb_dDistalLCR_markerFrt
 #Sox2_Sox2_46kb_dDistalLCR_marker_Puro
+#
+#From ran: retro-transposition event of the Mrpl23 gene, which sits right inside the H19 enhancer region. The chr2 region has 99.9% homology to chr7's Mrpl23's exons
+chr2	74590910	74592246
