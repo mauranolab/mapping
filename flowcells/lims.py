@@ -317,6 +317,9 @@ if __name__ == "__main__":
         validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects=args.projects, runnames=args.runnames, samples=args.samples)
     
     if args.update is not None:
+        if args.nocommit:
+            print("Trial update only -- no edits will be committed.\n")
+        
         updates = pd.read_csv(args.update, na_filter=False, sep="\t")
         print("Updating LIMS and Sequencing Sheet based on:")
         print(updates)
