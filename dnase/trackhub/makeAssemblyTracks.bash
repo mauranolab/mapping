@@ -60,49 +60,38 @@ make_bigBED () {
                                             # The function bed_N returns the N or NN from the myBEDfile name.
                                             # If myBEDfile is in the form <stuff>.bed, then bed_N returns 3.
     
+#    echo "[makeAssemblyTracks] ${myBEDfile} bed${expected_N}" > /dev/stderr
+    
     # This scans the lines of myBEDfile, and looks for non-comment, non-empty lines.
     # It then checks if the number of fields in each of these lines is equal to expected_N.
     # It returns the number of these lines for which the number of fields is not equal to expected_N.
-    local num_bad_lines=$(grep -v '^#' ${myBEDfile} | awk -F "\t" 'BEGIN {OFS="\t"} {print NF}' | uniq | sort | uniq | grep -v '^0$' | grep -v -c ${expected_N})
-    
+    local num_bad_lines=$(grep -v '^#' ${myBEDfile} | awk -F "\t" 'BEGIN {OFS="\t"} NF!=0 {print NF}' | grep -v -c ${expected_N} | sort | uniq)
     if [ ${num_bad_lines} -ne 0 ]; then
         # Issue a warning when a line in myBEDfile contains an unexpected number of fields.
         echo "[makeAssemblyTracks] WARNING Unexpected number of fields in ${myBEDfile}" > /dev/stderr
     fi
     
-    local base=`basename ${myBEDfile} .bed`
+    local base=`basename ${myBEDfile} | perl -pe 's/\.bed\d?$//g;'`
     
-    grep -v '^#' ${myBEDfile} | sort-bed - | cut -d $'\t' -f1-${expected_N} > $TMPDIR/${base}_sorted.bed
+    grep -v '^#' ${myBEDfile} | sort-bed - | cut -f1-${expected_N} > $TMPDIR/${base}_sorted.bed
     
     if [ "${expected_N}" -ge 5 ]; then
         # Round column 5 of the bed file to an integer.
         # It also needs to be less than or equal to 1000.
-    cat $TMPDIR/${base}_sorted.bed | awk -f <(cat << "AWK_HEREDOC_01"
-BEGIN{OFS="\t"}
-{
-   if(NF == 0) next;
-
-   field5 = int($5 + 0.5)
-   $5 = (field5 <= 1000) ? field5 : 1000
-   print $0
-}
-END{}
-AWK_HEREDOC_01
-) > $TMPDIR/${base}_sorted_awk.bed
-        
+        cat $TMPDIR/${base}_sorted.bed | awk -F "\t" 'BEGIN {OFS="\t"} \
+        NF != 0 { \
+           field5 = int($5 + 0.5);
+           $5 = (field5 <= 1000) ? field5 : 1000; \
+           print $0; \
+        }' > $TMPDIR/${base}_sorted_awk.bed
         mv $TMPDIR/${base}_sorted_awk.bed $TMPDIR/${base}_sorted.bed
     fi
     
-#    echo "[makeAssemblyTracks] ${myBEDfile} bed${expected_N}" > /dev/stderr
-    
-    # Make the bigBed file, and drop chatter from stderr ("pass1...", "pass2...")
+    # drop bigBed chatter from stderr ("pass1...", "pass2...")
     bedToBigBed -tab -type=bed${expected_N} $TMPDIR/${base}_sorted.bed ${chrom_sizes} ${output_file} 2>&1 | grep -v "^pass[12] \- " > /dev/stderr
     
-    # Clean up
-    rm $TMPDIR/${base}_sorted.bed
-    
     # Return the output filename. Acquired by calling routine via $()
-    echo ${output_file}
+    echo "${output_file}"
 }
 
 
@@ -257,7 +246,7 @@ while read -r line_in ; do
     fi
     
     if [ "${assmbly}" != "${old_assmbly}" ]; then
-        # A new assmbly was found. So give it new composite tracks.
+        # A new assembly was found. So give it new composite tracks.
         old_assmbly=${assmbly}
         echo "    track ${genome}_${assmbly}" >> ${out_file}
         echo "    compositeTrack on" >> ${out_file}
