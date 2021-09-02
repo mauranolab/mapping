@@ -43,6 +43,7 @@ def getValueFromLIMS(lims, bs, colname):
         return matches[0]
 
 #Pull the LIMS sheet from google using the service account secrets file and spreadsheet ID.
+#wks is the live sheet, df is a panda df, and mask permits skipping rows as appropriate
 def getLIMSsheet(sheet):
     try:
         #Read google sheets ID from the file system
@@ -212,12 +213,9 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", ru
 #Pass in a data frame containing updates to make 
 #Rows will be matched by 'Sample #', data in remaining columns will be transfered to the live copy of LIMS or Sample Sheet
 #df must be the panda df mirror of wks, used to get coords efficiently
-#TODO safer to make changes offline then sync? Not clear if this is implemented yet, unlink() seems to break get_value
-#I think you do:
-#wks.unlink()
-#...
-#wks.link(syncToCloud=True)
-def updateSheetFromTable(wks, df, updates, commit=True):
+#The paranoid option verifies the BS and value to update directly in wks rather than trusting df, mainly to guard against coordinate arithmetic errors, etc
+#TODO safer to make changes offline then sync? Looks like link()/unlink() has been deprecated
+def updateSheetFromTable(wks, df, updates, commit=True, paranoid=True):
     if any(updates['Sample #'].duplicated()):
         print("ERROR: found duplicate Sample #s in update table!")
         return
@@ -228,25 +226,32 @@ def updateSheetFromTable(wks, df, updates, commit=True):
         if re.match("^BS[0-9]+[A-Z]$", BS) is None:
             print("WARNING: empty BS provided" + BS)
             continue
-        #kind of a hassle to get column access
-        #loc = wks.find(BS, matchEntireCell=True)
         rows = df.index[df['Sample #'] == BS].values
         #I think row + 2 because of 0 -> 1 based indexing plus the header row
         for row in rows + 2:
             print("\nRow " + str(row) + ":" + BS)
-            curBS = str(wks.get_value((row, df.columns.get_loc('Sample #')+1)))
-            if BS != curBS:
-                errors += 1
-                print("ERROR: " + curBS + " does not match expected sample " + BS)
-            else:
-                for col in set(colnames).intersection(set(updates.columns.values)).difference(excludedCols):
-                    coords = (row, df.columns.get_loc(col)+1)
-                    oldvalue = wks.get_value(coords)
-                    newvalue = updates[updates['Sample #'] == BS][col].values.item()
-                    if oldvalue != newvalue:
-                        print(col + "=" + str(oldvalue) + " => " + str(newvalue))
-                        if commit:
-                            wks.update_value(coords, newvalue)
+            
+            for col in set(colnames).intersection(set(updates.columns.values)).difference(excludedCols):
+                #Need to translate row back to prior coordinates
+                oldvalue = df.iloc[row-2][col]
+                coords = (row, df.columns.get_loc(col)+1)
+                newvalue = updates[updates['Sample #'] == BS][col].values.item()
+                if oldvalue != newvalue:
+                    if paranoid:
+                        wksBS = str(wks.get_value((row, df.columns.get_loc('Sample #')+1)))
+                        if BS != wksBS:
+                            errors += 1
+                            print("ERROR: " + wksBS + " does not match expected sample " + BS)
+                        
+                        wksoldvalue = wks.get_value(coords)
+                        if oldvalue != wksoldvalue:
+                            errors += 1
+                            print("ERROR: " + BS + " wks value " + wksoldvalue + " does not match df value " + oldvalue)
+                    
+                    print(col + "=" + str(oldvalue) + " => " + str(newvalue))
+                    
+                    if commit:
+                        wks.update_value(coords, newvalue)
     if errors > 0:
         print("ERROR: "+ errors + " found!")
 
