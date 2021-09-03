@@ -77,7 +77,7 @@ annotateNearestGeneName() {
     esac
     
     if [[ "${geneAnnotationFile}" == "CEGS" ]]; then
-        cat /vol/cegs/sequences/cegsvectors/cegsvectors/cegsvectors.bed | perl -pe 's/ /_/g;' > $TMPDIR/geneAnnotationFile.${genome}.bed
+        cat /vol/cegs/sequences/cegsvectors/cegsvectors/cegsvectors.bed6 | perl -pe 's/ /_/g;' > $TMPDIR/geneAnnotationFile.${genome}.bed
     else
         #Needs prefiltering
         #Add gene name
