@@ -63,7 +63,7 @@ for(genome in unique(gc_bias$mappedgenome)) {
 		cat("Samples lost due to all bin coverage below", min_cov, "reads :", paste(lost_bs, collapse = ","), "\n")
 	}
 
-	p <- ggplot(data = subset(gc_bias, mappedgenome == genome), aes(GC, NORMALIZED_COVERAGE, group = name, label = BS, color = BS)) +
+	p <- ggplot(data = d2, aes(GC, NORMALIZED_COVERAGE, group = name, label = BS, color = BS)) +
 	geom_hline(yintercept = 1, color = "darkgray") +
 	geom_line() +
 	geom_dl(method=list("maxvar.points", cex = 0.8)) +
