@@ -95,13 +95,13 @@ for(d in c(list.dirs(path=dir, recursive=F, full.names=T))) {
 	}
 	## Read picardmetrics .gc_bias.detail_metrics
 	for (f in list.files(file.path(d, "picardmetrics"), pattern = "(hg19|hg38|mm10|rn6|talOcc4).gc_bias.detail_metrics", recursive=F, full.names=T)) {
-    cat("Reading", f, "\n")
-    data <- tryCatch(read.delim(f, comment.char = "#", stringsAsFactors = FALSE), error = function(x) NULL)
-    if (!is.null(data)) {
-      data <- data[, c("GC", "WINDOWS", "READ_STARTS", "MEAN_BASE_QUALITY", "NORMALIZED_COVERAGE", "ERROR_BAR_WIDTH")]
-      data$name <- gsub(".gc_bias.detail_metrics", "", basename(f))
-      gc_coverage <- rbind(gc_coverage, data)
-    }
+		cat("Reading", f, "\n")
+		data <- tryCatch(read.delim(f, comment.char = "#", stringsAsFactors = FALSE), error = function(x) NULL)
+		if (!is.null(data)) {
+			data <- data[, c("GC", "WINDOWS", "READ_STARTS", "MEAN_BASE_QUALITY", "NORMALIZED_COVERAGE", "ERROR_BAR_WIDTH")]
+			data$name <- gsub(".gc_bias.detail_metrics", "", basename(f))
+			gc_coverage <- rbind(gc_coverage, data)
+		}
 	}
 }
 
@@ -162,13 +162,13 @@ theme_set(old)
 ## Plotting GC graph
 for(genome in unique(gc_coverage$mappedgenome)) {
 	p <- ggplot(data = subset(gc_coverage, mappedgenome == genome), aes(GC, NORMALIZED_COVERAGE, group = name, label = BS, color = BS)) +
-    geom_hline(yintercept = 1, color = "darkgray") +
-    geom_line() +
-    geom_dl(method=list("maxvar.qp", cex=0.8)) +
-    coord_fixed(30, xlim = c(-10, 100), ylim = c(0, 3)) +
-    labs(x = "GC content (%)", y = "Normalized Coverage") +
-    guides(linetype=F) +
-    theme(legend.position = c(.85, 0.9))
+	geom_hline(yintercept = 1, color = "darkgray") +
+	geom_line() +
+	geom_dl(method=list("maxvar.qp", cex=0.8)) +
+	coord_fixed(30, xlim = c(-10, 100), ylim = c(0, 3)) +
+	labs(x = "GC content (%)", y = "Normalized Coverage") +
+	guides(linetype=F) +
+	theme(legend.position = c(.85, 0.9))
 
 	pdf(file.path(dir, sprintf("gc_bias.%s.pdf", genome)), width=7, height=5)
 	print(p)
