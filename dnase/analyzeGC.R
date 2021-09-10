@@ -56,10 +56,17 @@ save(list = c("gc_bias"), file = file.path(dir, "gc_bias.RData"), compress = "bz
 ## Plotting GC graph
 for(genome in unique(gc_bias$mappedgenome)) {
 	cat("Plotting", genome, "GC bias...\n")
+	d1 <- subset(gc_bias, mappedgenome == genome)
+	d2 <- subset(d1, READ_STARTS >= min_cov)
+	lost_bs <- setdiff(unique(d1$BS), unique(d2$BS))
+	if (length(lost_bs) > 0) {
+		cat("Samples lost due to all bin coverage below", min_cov, "reads :", paste(lost_bs, collapse = ","), "\n")
+	}
+
 	p <- ggplot(data = subset(gc_bias, mappedgenome == genome), aes(GC, NORMALIZED_COVERAGE, group = name, label = BS, color = BS)) +
 	geom_hline(yintercept = 1, color = "darkgray") +
 	geom_line() +
-	geom_dl(method=list("maxvar.qp", cex = 0.8)) +
+	geom_dl(method=list("maxvar.points", cex = 0.8)) +
 	coord_fixed(30, xlim = c(-10, 100), ylim = c(0, 3)) +
 	labs(x = "GC content (%)", y = "Normalized Coverage") +
 	guides(color = F, linetype = F) +
