@@ -75,6 +75,7 @@ if(maxlength <= 300) {
 cat("Loading insert lengths upto", maxlength, "bp\n")
 #TODO parallelize?
 results <- NULL
+gc_coverage <- NULL
 for(d in c(list.dirs(path=dir, recursive=F, full.names=T))) {
 	for(f in list.files(path=d, pattern=".insertlengths.txt.gz$", recursive=F, full.names=T)) {
 		cat("Doing", f, "\n")
@@ -92,6 +93,14 @@ for(d in c(list.dirs(path=dir, recursive=F, full.names=T))) {
 			results <- rbind(results, data.frame(name=gsub(".insertlengths.txt.gz$", "", basename(f)), x=dens$x, y=dens$y, stringsAsFactors=F))
 		}
 	}
+	## Read picardmetrics .gc_bias.detail_metrics
+	for (f in list.files = file.path(d, "picardmetrics"), pattern = ".gc_bias.detail_metrics", recursive=F, full.names=T) {
+		cat("Reading", f, "\n")
+		data <- read.delim(f, comment.char = "#", stringsAsFactors = FALSE)
+		data <- data[, c("GC", "WINDOWS", "READ_STARTS", "MEAN_BASE_QUALITY", "NORMALIZED_COVERAGE", "ERROR_BAR_WIDTH")]
+		data$name <- gsub(".gc_bias.detail_metrics", "", basename(f))
+		gc_coverage <- rbind(gc_coverage, data)
+	}
 }
 
 if(is.null(results)) {
@@ -107,9 +116,13 @@ results$sample <- factor(gsub(".(hg19|hg38|mm10|rn6|talOcc4)(_full|_noalt|_sacCe
 results$BS <- sapply(as.character(results$sample), function(x) {unlist(strsplit(x, "-"))[2]})
 results$sublibrary <- sapply(results$BS, FUN=function(x) {substr(x, 8, 8)})
 
+gc_coverage$mappedgenome <- factor(gsub("^.+\\.(hg19|hg38|mm10|rn6|talOcc4)(_full|_noalt|_sacCer3|_full_wuhCor1)?$", "\\1\\2", gc_coverage$name, perl=T))
+gc_coverage$sample <- factor(gsub(".(hg19|hg38|mm10|rn6|talOcc4)(_full|_noalt|_sacCer3|_full_wuhCor1)?$", "", gc_coverage$name))
+gc_coverage$BS <- sapply(as.character(gc_coverage$sample), function(x) {unlist(strsplit(x, "-"))[2]})
+gc_coverage$sublibrary <- sapply(gc_coverage$BS, FUN=function(x) {substr(x, 8, 8)})
 
 cat("Saving...\n")
-save(list=c("results", "breaks", "maxlength"), file=paste0(dir, "/insertlengths.RData"), compress="bzip2")
+save(list=c("results", "breaks", "maxlength", "gc_coverage"), file=paste0(dir, "/insertlengths.RData"), compress="bzip2")
 
 #For subsetting
 #results <- subset(results, BS %in% c("BS01403A", "BS01403B", "BS01403C", "BS01403D", "BS01409A", "BS01409B", "BS01409C", "BS01409D"))
@@ -141,6 +154,25 @@ png(paste0(dir, "/insertlengths.png"), width=700, height=500)
 print(p)
 dev.off()
 
+## Reset plot theme
+theme_set(old)
+## Plotting GC graph
+for(genome in unique(gc_coverage$mappedgenome)) {
+	p <- ggplot(data = subset(gc_coverage, mappedgenome == genome), ase(GC, NORMALIZED_COVERAGE, group = name)) +
+	geom_hline(yintercept = 1, color = "darkgray") +
+	geom_line() +
+	coord_fixed(ratio = 30) +
+	ylim(0, 3) +
+	labs(x = "GC content (%)", y = "Normalized Coverage")
+
+	pdf(file.path(dir, sprintf("gc_bias.%s.pdf", genome)), width=7, height=5)
+	print(p)
+	dev.off()
+
+	png(file.path(dir, sprintf("gc_bias.%s.png", genome)), width=700, height=500)
+	print(p + theme_classic(base_size=15))
+	dev.off()
+}
 
 print(date())
 cat("\ndone\n")
