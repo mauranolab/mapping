@@ -94,7 +94,7 @@ for(d in c(list.dirs(path=dir, recursive=F, full.names=T))) {
 		}
 	}
 	## Read picardmetrics .gc_bias.detail_metrics
-	for (f in list.files = file.path(d, "picardmetrics"), pattern = ".gc_bias.detail_metrics", recursive=F, full.names=T) {
+	for (f in list.files(file.path(d, "picardmetrics"), pattern = ".gc_bias.detail_metrics", recursive=F, full.names=T))) {
 		cat("Reading", f, "\n")
 		data <- read.delim(f, comment.char = "#", stringsAsFactors = FALSE)
 		data <- data[, c("GC", "WINDOWS", "READ_STARTS", "MEAN_BASE_QUALITY", "NORMALIZED_COVERAGE", "ERROR_BAR_WIDTH")]
