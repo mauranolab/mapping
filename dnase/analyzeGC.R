@@ -19,7 +19,7 @@ if (length(arg) >= 1) {
 	dir <- arg[1]
 }
 if (length(arg) >= 2) {
-  min_cov <- as.integer(arg[2])
+	min_cov <- as.integer(arg[2])
 }
 
 ## Read picardmetrics' .gc_bias.detail_metrics
@@ -38,9 +38,9 @@ for(d in c(list.dirs(path = dir, recursive = F, full.names = T))) {
 
 ## Early exit if no file found
 if (is.null(gc_bias)) {
-  cat("No `.gc_bias.detail_metrics` files were found.\n")
-  cat("\ndone\n")
-  quit(save = "no", status = 0)
+	cat("No `.gc_bias.detail_metrics` files were found.\n")
+	cat("\ndone\n")
+	quit(save = "no", status = 0)
 }
 
 ## Clean gc_bias and extract fields
@@ -55,7 +55,7 @@ save(list = c("gc_bias"), file = file.path(dir, "gc_bias.RData"), compress = "bz
 
 ## Plotting GC graph
 for(genome in unique(gc_bias$mappedgenome)) {
-  cat("Plotting", genome, "GC bias...\n")
+	cat("Plotting", genome, "GC bias...\n")
 	p <- ggplot(data = subset(gc_bias, mappedgenome == genome), aes(GC, NORMALIZED_COVERAGE, group = name, label = BS, color = BS)) +
 	geom_hline(yintercept = 1, color = "darkgray") +
 	geom_line() +
@@ -65,8 +65,8 @@ for(genome in unique(gc_bias$mappedgenome)) {
 	guides(color = F, linetype = F) +
 	theme(legend.position = c(.85, 0.9))
 
-  ggsave(file.path(dir, sprintf("gc_bias.%s.pdf", genome)), p, width = 7, height = 5)
-  ggsave(file.path(dir, sprintf("gc_bias.%s.png", genome)), p + theme_classic(base_size = 15), width = 7, height = 5, dpi = 100)
+	ggsave(file.path(dir, sprintf("gc_bias.%s.pdf", genome)), p, width = 7, height = 5)
+	ggsave(file.path(dir, sprintf("gc_bias.%s.png", genome)), p + theme_classic(base_size = 15), width = 7, height = 5, dpi = 100)
 }
 
 print(date())
