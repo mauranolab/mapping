@@ -12,9 +12,14 @@ old <- theme_update(panel.border = element_blank(), strip.background = element_b
 #Try to work around "unable to start device PNG" on ISG cluster
 options(bitmapType="cairo")
 
+arg <- commandArgs(TRUE)
 dir <- "."
-if(length(commandArgs(TRUE)) >= 1) {
-	dir <- commandArgs(TRUE)[2]
+min_cov <- 200
+if (length(arg) >= 1) {
+	dir <- arg[1]
+}
+if (length(arg) >= 2) {
+  min_cov <- as.integer(arg[2])
 }
 
 ## Read picardmetrics' .gc_bias.detail_metrics
