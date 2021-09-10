@@ -167,11 +167,12 @@ colorAssignments <- NULL
 
 
 # Initialize "data" with just column names.  We'll be adding rows to this later on in the code.
-outputCols <- c("Name", "SampleID", "Assay", "Group", "filebase", "Mapped_Genome", "Annotation_Genome", "Color", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Age", "Institution", "Replicate", "Bait_set", "Genetic_Modification")
+outputCols <- c("Name", "SampleID", "Assay", "Group", "filebase", "Mapped_Genome", "Annotation_Genome", "Color", "analyzed_reads", "Genomic_coverage", "SPOT", "Num_hotspots", "Exclude", "Age", "Institution", "Replicate", "Bait_set", "Genetic_Modification", "FlowCellID")
 if(opt$project == "CEGS_byLocus") {
     outputCols <- c(outputCols, "Study", "Project", "Assembly", "Type")
 }
 
+data_keys <- vector()
 data <- data.frame(matrix(ncol=length(outputCols), nrow=1))
 colnames(data) <- outputCols
 i <- 0 # This will be our "data" output variable index.
@@ -430,6 +431,20 @@ for(curdir in mappeddirs) {
 		}
 		
 		data$filebase[i] <- paste0(curdir, "/", paste0(unlist(strsplit(basename(analysisFile), "\\."))[2:3], collapse="."))
+		
+		# Check for duplicate analysisFiles, possibly left over from a previous run.
+		# Note:  "data$Group" does not contain flowcell ID info when opt$project=CEGS_byLocus, so we need to get it from curdir.
+		#         FlowCellID will also be used in MakeTrackhub.py to create unique byLocus tracknames.
+		data$FlowCellID[i] <- strsplit(curdir, "/", fixed=TRUE)[[1]][1]
+		data_key <- paste(data$SampleID[i], data$Mapped_Genome[i], data$FlowCellID[i], sep="")
+		if(i > 1) {
+			if(data_key %in% data_keys){
+			message("[samplesforTrackhub] ", "WARNING Possible duplicate analysis files found in ", curdir)
+			msg <- paste("See:    SampleID:", data$SampleID[i], "Mapped_Genome:", data$Mapped_Genome[i], "FlowCellID:", data$FlowCellID[i], sep=" ")
+			message("[samplesforTrackhub] ", msg)
+			}
+		}
+		data_keys[i] <- data_key
 	}
 }
 
