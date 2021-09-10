@@ -61,7 +61,7 @@ for(genome in unique(gc_bias$mappedgenome)) {
 	theme(legend.position = c(.85, 0.9))
 
   ggsave(file.path(dir, sprintf("gc_bias.%s.pdf", genome)), p, width = 7, height = 5)
-  ggsave(file.path(dir, sprintf("gc_bias.%s.png", genome)), p + theme_classic(base_size = 15), width = 7, height = 5)
+  ggsave(file.path(dir, sprintf("gc_bias.%s.png", genome)), p + theme_classic(base_size = 15), width = 7, height = 5, dpi = 100)
 }
 
 print(date())
