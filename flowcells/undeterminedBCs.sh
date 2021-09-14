@@ -30,7 +30,7 @@ Rscript --quiet --no-save - ${samplesheetfile} << 'EOF'
 samplesheetfile <- commandArgs(TRUE)[1]
 
 duplicaterows <- function(x, copies=2) {
-	x.rle <- rle(x)
+	x.rle <- rle(sort(x))
 	dupls <- x.rle$values[x.rle$lengths >= copies]
 	return(x %in% dupls)
 }

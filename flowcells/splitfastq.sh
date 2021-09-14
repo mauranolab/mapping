@@ -33,9 +33,11 @@ date
 
 
 SPLIT_COUNT=`ls ${TMPDIR}/splitfastq.${SAMPLE_NAME}/${SAMPLE_NAME}_${SUFFIX}_??? | wc -l`
+echo "Split into ${SPLIT_COUNT} files"
+
 
 orig_dir=`dirname ${FASTQ}`
-for RAW_FILE in `find ${TMPDIR}/splitfastq.${SAMPLE_NAME} -name "${SAMPLE_NAME}_${SUFFIX}_${SUFFIX}_???"`; do
+for RAW_FILE in `find ${TMPDIR}/splitfastq.${SAMPLE_NAME} -name "${SAMPLE_NAME}_${SUFFIX}_???"`; do
     FASTQ_FILENAME=`basename ${RAW_FILE}`
     if [ -e "${orig_dir}/${FASTQ_FILENAME}.fastq.gz" ]; then
         echo "ERROR: ${orig_dir}/${FASTQ_FILENAME}.fastq.gz already exists!"
