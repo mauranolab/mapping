@@ -168,34 +168,36 @@ AWK_HEREDOC_03
 ###########################################################################
 # aggregations:
 
-# Initialize aggregation output files
-for genome in "${genome_array[@]}"; do
-    cat "${TMP_OUT}/header" > "${outfile_base}_${genome}_consolidated_agg.tsv"
-done
-outfile="${outfile_base}_all_agg.tsv"
-
-# Get the names of the aggregation directories
-cd ${assemblyBaseDir}/aggregations/
-dir_names=($(ls -d */))
-
-# Get rid of trailing slashes 
-agg_names=()
-for i in "${dir_names[@]}"; do
-    x=$i
-    y=${x%/}
-    agg_names+=($y)
-done
-
-# Call samplesforTrackhub.R for each aggregation directory.
-for i in "${agg_names[@]}"; do
-    agg_pub_loop $i aggregations
-done
+if [ -d "${assemblyBaseDir}/aggregations/" ]; then
+    # Initialize aggregation output files
+    for genome in "${genome_array[@]}"; do
+        cat "${TMP_OUT}/header" > "${outfile_base}_${genome}_consolidated_agg.tsv"
+    done
+    outfile="${outfile_base}_all_agg.tsv"
+    
+    # Get the names of the aggregation directories
+    cd ${assemblyBaseDir}/aggregations/
+    dir_names=($(ls -d */))
+    
+    # Get rid of trailing slashes
+    agg_names=()
+    for i in "${dir_names[@]}"; do
+        x=$i
+        y=${x%/}
+        agg_names+=($y)
+    done
+    
+    # Call samplesforTrackhub.R for each aggregation directory.
+    for i in "${agg_names[@]}"; do
+        agg_pub_loop $i aggregations
+    done
+fi
 
 # End of the samplesforTrackhub.R section for "aggregation" samples.
 
 ###########################################################################
 # publicdata:
-if [ "${hub_type}" != "SARS" ]; then
+if [ -d "${assemblyBaseDir}/publicdata/" ]; then
     # Initialize publicdata output files
     for genome in "${genome_array[@]}"; do
         cat "${TMP_OUT}/header" > "${outfile_base}_${genome}_consolidated_pub.tsv"
@@ -235,8 +237,7 @@ make_tracks () {
     
     local infile="${TMP_OUT}/samplesforTrackhub_${mappedgenome}${consolidated_suffix}.tsv"
     
-    num_line=`(wc -l < ${infile})`
-    if [ ${num_line} -le 1 ]; then
+    if [ ! -f "${infile}" ] ||  [ `wc -l < ${infile}` -le 1 ]; then
         # There are no tracks of this type
         return 0
     fi
@@ -277,17 +278,13 @@ for genome in "${genome_array[@]}"; do
     make_tracks ${genome} "_consolidated_agg" "Aggregations"
 done
 
-if [ "${hub_type}" != "SARS" ]; then
-    for genome in "${genome_array[@]}"; do
-        make_tracks ${genome} "_consolidated_pub" "Public_Data"
-    done
-fi
+for genome in "${genome_array[@]}"; do
+    make_tracks ${genome} "_consolidated_pub" "Public_Data"
+done
 
-if [ ${hub_type} = "CEGS" ]; then
-    for genome in "${genome_array[@]}"; do
-        make_tracks ${genome} "_consolidated_locus" "By_Locus"
-    done
-fi
+for genome in "${genome_array[@]}"; do
+    make_tracks ${genome} "_consolidated_locus" "By_Locus"
+done
 
 
 echo
