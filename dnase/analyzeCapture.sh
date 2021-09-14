@@ -35,24 +35,24 @@ esac
 
 
 case "${bait}" in
-HPRT1_bait)
+HPRT1*)
     grep -w "HPRT1_assembly" /vol/cegs/sequences/hg38/HPRT1/HPRT1_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
-Piga_bait)
+Piga*)
     awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $4~/^RP23\-32H22$/' /vol/cegs/sequences/mm10/Piga/Piga_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
-Sox2_bait)
+Sox2*)
     awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $4~/^Sox2\-143kb_WT_assembly$/' /vol/cegs/sequences/mm10/Sox2/Sox2_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
-RnHoxa_bait)
+RnHoxa*)
     grep -w "RnHoxa_assembly" /vol/cegs/sequences/rn6/RnHoxa/RnHoxa_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
-HTRA1_CH17-165I6_bait)
+HTRA1_CH17-165I6*)
     grep -w "CH17-165I6" /vol/cegs/sequences/hg38/HTRA1/HTRA1_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
-LP*_bait|PL1_bait|pSpCas9_bait)
+LP*|PL1*|pSpCas9*)
     #TODO not counting backbone since we don't support multiple chromosomes
-    cat /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes | awk -v bait=${bait/_bait/} -F "\t" 'BEGIN {OFS="\t"} $1==bait {print $1, 0, $2}' > $TMPDIR/target.bed
+    cat /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes | awk -v bait=${bait} -F "\t" 'BEGIN {OFS="\t"} $1==bait {print $1, 0, $2}' > $TMPDIR/target.bed
     ;;
 *)
     echo "ERROR: Don't recognize bait ${bait}";
