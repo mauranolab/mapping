@@ -353,7 +353,7 @@ elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2)"; then
     fi
     
     cegsGenomeProjectID=`echo ${bam2genome} | cut -d "_" -f1`
-    bam1cegsvectorsAssemblyFile="/vol/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed"
+    bam1cegsvectorsAssemblyFile="/vol/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed*"
     if [ ! -f "${bam1cegsvectorsAssemblyFile}" ]; then
         echo "WARNING could not find assembly file for ${bam2genome} genome"
     else
@@ -395,7 +395,7 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
     
     
     cegsGenomeProjectID=`echo ${bam2genome} | cut -d "_" -f1`
-    bam1cegsvectorsAssemblyFile="/vol/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed"
+    bam1cegsvectorsAssemblyFile="/vol/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed*"
     if [ ! -f "${bam1cegsvectorsAssemblyFile}" ]; then
         echo "WARNING could not find assembly file for ${bam2genome} genome"
     else
