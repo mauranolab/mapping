@@ -14,7 +14,7 @@ options(bitmapType="cairo")
 
 arg <- commandArgs(TRUE)
 dir <- "."
-min_cov <- 200
+min_cov <- 500
 if (length(arg) >= 1) {
 	dir <- arg[1]
 }
