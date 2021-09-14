@@ -34,7 +34,7 @@ module load delly/0.8.7
 ###Hardcoded configuration options
 #Common
 qsubargs=""
-mapThreads=4
+mapThreads=3
 mergeThreads=3
 runBamIntersect=1
 
