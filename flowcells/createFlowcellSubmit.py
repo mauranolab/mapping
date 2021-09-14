@@ -463,7 +463,7 @@ if doBwaCleanup:
         print()
         print("#" + sampleType)
         print("qsub -b y -j y -N analyzeInserts" + sgeoutput + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(bwaPipelineFragmentLengthsMap[sampleType]) + " " + basedir + "\"")
-        print("qsub -b y -j y -N analyzeGC" + sgeoutput + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeGC.R" + basedir + "\"")
+        print("qsub -b y -j y -N analyzeGC" + sgeoutput + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeGC.R " + basedir + "\"")
         print("qsub -S /bin/bash -j y -N mapped_readcounts" + sgeoutput + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/mapped_readcounts.sh " + basedir + "\"")
     #Leave this around so the hold_jid args don't fail
     #    print("rm -f sgeid.analysis")
