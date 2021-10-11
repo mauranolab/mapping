@@ -14,6 +14,7 @@ module add bcl2fastq2/2.20
 
 
 echo
+echo "Running on $HOSTNAME"
 echo "Demultiplexing ${fc}; userDemuxOptions=${userDemuxOptions}"
 date
 

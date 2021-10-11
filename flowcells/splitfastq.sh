@@ -5,6 +5,9 @@ set -eu -o pipefail
 #Requires sequences/qualities to be on single line
 
 
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
+
+
 module add pigz
 
 

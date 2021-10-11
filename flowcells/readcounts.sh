@@ -8,7 +8,7 @@ module add pigz
 
 fc=$1
 
-
+echo "Running on $HOSTNAME"
 echo "Postprocessing ${fc}"
 
 
