@@ -273,7 +273,8 @@ def getBwaReference(species):
             "Human+SARS-Cov2": "hg38_full_wuhCor1",
             "Mole": "talOcc4",
             "Mole+yeast": "talOcc4_sacCer3",
-            "Fugu+yeast": "sacCer3", #Do not have Fugu assembly at the moment
+            "Pufferfish+yeast": "sacCer3", #Do not have Fugu assembly at the moment
+            "Pufferfish": None, #Do not have Fugu assembly at the moment
             "Plasmid": None,
             "T2T": "t2t",
         }
