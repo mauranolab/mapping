@@ -136,11 +136,10 @@ done
 echo " "
 
 # We also need to make tracks for the various assemblies. Do it here:
-echo "Starting makeAssemblyTracks.bash"
 ${src}/makeAssemblyTracks.bash ${src} ${hub_target} ${TMPDIR} ${hub_type} ${customGenomeAssembly} ${assemblyBaseDir} "${genome_array[@]}"
 
 # Now construct the "flowcell" and "aggregation" tracks in TMPDIR.
-hub_dir=`basename ${hub_target}`
+echo
 echo "Starting make_tracks.bash"
 #
 #make_tracks.bash is called only here

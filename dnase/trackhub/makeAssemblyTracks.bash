@@ -17,7 +17,6 @@ genome_array=("$@")
 # We need to make bigBED files from bed files. To do this we need 
 # chrom.sizes files. So move to the right place for downloading them.
 mkdir ${TMPDIR}/assembly_tracks
-cd ${TMPDIR}/assembly_tracks
 
 ####################################################################
 # make_bigBED  will make ".bb" files from ".bed" files.
@@ -101,13 +100,13 @@ OUTFILE="${TMPDIR}/assembly_tracks/output_full_paths"
 touch ${OUTFILE}
 
 # Initialize the error log file where bedToBigBed problems will show up.
-echo "[makeAssemblyTracks] Starting calls to bedToBigBed..."
+echo "[makeAssemblyTracks] Making annotation tracks..."
 
 # This loop generates the ".bb" files which are found in the trackhub "<genome>/data" directories.
 # genome_array just contains genomes to be included, e.g. hg38, mm10, rn6, and cegsvectors/mauranolab.
 for genome in "${genome_array[@]}"; do
     if [ ! -d "${assemblyBaseDir}/sequences/${genome}" ]; then
-        echo "[makeAssemblyTracks] Skipping ${genome} assemblies"
+        echo "[makeAssemblyTracks] Skipping ${genome} - no annotation tracks found"
         continue
     fi
     
@@ -115,7 +114,7 @@ for genome in "${genome_array[@]}"; do
     if [ "${genome}" = "${customGenomeAssembly}/" ]; then
         chrom_sizes="${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes"
         
-        cat <<- HEREDOC_02 > "${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt"
+        cat <<- HEREDOC_02 > ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
 track GC_percent
 shortLabel GC Percent
 longLabel GC Percent
@@ -153,7 +152,7 @@ HEREDOC_02
             fi
             
             # Make directories for the .bb files, as needed.
-            mkdir -p ${hub_target}/${genome}/data
+            mkdir -p ${hub_target}/${genome}data
             mkdir -p ${hub_target}/${genome}data/${assmbly}
             
             # Make the .bb files
@@ -161,14 +160,15 @@ HEREDOC_02
             
             # Move the .bb files into the appropriate directories
             mv ${out_file} ${hub_target}/${genome}data/${assmbly}
-            echo "${hub_target}/${genome}data/${assmbly}${out_file} ${bed_type}" >> ${OUTFILE}
+            echo ${hub_target}/${genome}data/${assmbly}${out_file} ${bed_type} >> ${OUTFILE}
         done
     done
 done
 # At the end of the above for loops, we're now in ${TMPDIR}/assembly_tracks
 
+
+#Now that the directory exists, can create G+C and cytoBandIdeo tracks
 if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes" ] ; then
-    # Divert here to make the cytoband file:
     cat ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes | LC_COLLATE=C sort -k1,1 -k2,2n | awk '{print $1,0,$2,$1,"gneg"}' > ${TMPDIR}/assembly_tracks/cytoBandIdeo.bed
     bedToBigBed -type=bed4 ${TMPDIR}/assembly_tracks/cytoBandIdeo.bed -as=${src}/cytoband.as ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes ${hub_target}/${customGenomeAssembly}/data/cytoBandIdeo.bb
     
@@ -178,6 +178,7 @@ if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAsse
         wigToBigWig ${TMPDIR}/assembly_tracks/${customGenomeAssembly}.wig ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes ${hub_target}/${customGenomeAssembly}/data/${customGenomeAssembly}.gc.bw
     fi
 fi
+
 
 # Sort OUTFILE (made in the above for loops), so that the lines are all grouped by:
 #      First:  genome

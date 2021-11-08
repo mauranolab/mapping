@@ -30,7 +30,11 @@ outfile="${outfile_base}_all.tsv"
 
 
 echo
+echo "[make_tracks] generating sample list"
 Rscript --vanilla ${src}/samplesforTrackhub.R --out ${outfile} --workingDir ${assemblyBaseDir}/mapped --descend --project byFC --quiet
+
+# a "header" is needed below for various aggregation output files.
+head -n 1 ${outfile} > ${TMP_OUT}/header
 
 # Split up the samplesforTrackhub.R output into separate files for each genome.
 # BUGBUG It is important that the cegsvectors assemblies do not unintentionally include standard genome names in their own names.  For example, if a Mapped_genome is cegsvectors_Myspecialmm10gene, then the track will appear in both the cegsvectors genome files and in the mm10 files.
@@ -38,17 +42,11 @@ for genome in "${genome_array[@]}"; do
     mlr --tsv filter -S "'\$Mapped_Genome =~ \".*${genome}.*\"'" ${outfile} > ${outfile_base}_${genome}_consolidated.tsv
 done
 
-# Lastly, a "header" is needed below for various aggregation output files.
-# Save it now from the Rscript outfile.
-head -n 1 ${outfile} > "${TMP_OUT}/header"
 
-# This is the end of the samplesforTrackhub.R section for "flowcell" samples.
 
-###########################################################################
-# CEGS_byLocus section:
-
+echo
+echo "[make_tracks] generating sample list for CEGS_byLocus"
 if [ ${hub_type} = "CEGS" ]; then
-    echo
     Rscript --vanilla ${src}/samplesforTrackhub.R --out ${outfile} --workingDir ${assemblyBaseDir}/mapped --descend --project CEGS_byLocus --quiet
     
     # Split up the samplesforTrackhub.R output into separate files for each genome.
@@ -57,52 +55,17 @@ if [ ${hub_type} = "CEGS" ]; then
     done
 fi
 
-# This is the end of the samplesforTrackhub.R section for making the CEGS_byLocus files.
-
-###########################################################################
-###########################################################################
-# This begins the samplesforTrackhub.R section for aggregation & publicdata
-# samples. It finds the samples within each directory, and dumps relevant
-# sample information into an output file.
 
 
-# First, obtain two parameters: "filebase_col" and "Group_col".
-# They are needed in agg_pub_loop function below.
+echo
+echo "[make_tracks] generating sample list for aggregations and public_data"
+# First, obtain number of the header column for: "filebase_col" and "group_col" for agg_pub_loop function below.
+filebase_col=$(awk -v colname="filebase" -F "\t" '{for (i=1; i<=NF; i++) {if($i == colname) {print i; exit}}}' < ${TMP_OUT}/header)
+group_col=$(awk -v colname="Group" -F "\t" '{for (i=1; i<=NF; i++) {if($i == colname) {print i; exit}}}' < ${TMP_OUT}/header)
+echo "[make_tracks] filebase_col is ${filebase_col}; group_col is ${group_col}"
 
-# Get number of the header column containing "filebase"
-filebase_col=$(awk -f <(cat << "AWK_HEREDOC_01"
-BEGIN{FS="\t"}
-{
-    for (i=1; i<=NF; i++)
-    {
-        if($i == "filebase") {print i; exit}
-    }
-}
-AWK_HEREDOC_01
-) < ${TMP_OUT}"/header")
-echo "filebase_col is ${filebase_col}"
-
-
-# Get number of the header column containing "Group"
-Group_col=$(awk -f <(cat << "AWK_HEREDOC_02"
-BEGIN{FS="\t"}
-{
-    for (i=1; i<=NF; i++)
-    {
-        if($i == "Group") {print i; exit}
-    }
-}
-AWK_HEREDOC_02
-) < ${TMP_OUT}"/header")
-echo "Group_col is ${Group_col}"
-
-###########################################################################
-# Before moving on, below we define a few functions. There will be a comment
-# when we return to the main line of code.
-###########################################################################
 # This function is called once for each aggregation/publicdata directory.
 # It calls samplesforTrackhub.R for that directory, then splits the output by genome.
-
 agg_pub_loop () {
     local dir_loop_name=$1
     
@@ -123,23 +86,14 @@ agg_pub_loop () {
     # Make some adjustments to the "outfile" columns, as the aggregations are
     # structured somewhat differently than the flowcells, and the CEGS version 
     # of samplesforTrackhub.R was written with the flowcells in mind.
-awk -v f_col=${filebase_col} \
-    -v G_col=${Group_col} \
-    -v dir_name=${dir_loop_name} \
-    -f <(cat << "AWK_HEREDOC_03"
-BEGIN{FS="\t"; OFS="\t"; dir_name2=sprintf("%s%s", dir_name, "/")}
-{
-    if(NR == 1) next;
+    cat ${outfile} | awk -v filebase_col=${filebase_col} -v group_col=${group_col} -v dir_name=${dir_loop_name} -F "\t" 'BEGIN {OFS="\t"; dir_name2=sprintf("%s%s", dir_name, "/")} \
+    NR>1 { \
+        sub(/^/, dir_name2, $filebase_col); \
+        sub(/NA/, dir_name, $group_col); \
+        print; \
+    }' | cat ${TMP_OUT}/header - > ${outfile}.new
+    mv ${outfile}.new ${outfile}
     
-    sub(/^/, dir_name2, $f_col)
-    sub(/NA/, dir_name, $G_col)
-    print
-}
-AWK_HEREDOC_03
-) < ${outfile} > "${TMP_OUT}/tmp"
-    
-    cat "${TMP_OUT}/header" "${TMP_OUT}/tmp" > ${outfile}
-    rm "${TMP_OUT}/tmp"
     # Adjustment of outfile columns complete.
     ###
     
@@ -151,85 +105,29 @@ AWK_HEREDOC_03
         # to this function. So the genome specific output files get bigger as we do more aggregation directories,
         # and call this function for each one of them.
         
-        if [ "${loop_type}" = "aggregations" ]; then
-            # aggregations
-            mlr --tsv --headerless-csv-output filter -S "'\$Mapped_Genome =~ \".*${genome}.*\"'" ${outfile} >> ${outfile_base}_${genome}_consolidated_agg.tsv
-        else
-            # publicdata
-            mlr --tsv --headerless-csv-output filter -S "'\$Mapped_Genome =~ \".*${genome}.*\"'" ${outfile} >> ${outfile_base}_${genome}_consolidated_pub.tsv
-        fi
+        mlr --tsv --headerless-csv-output filter -S "'\$Mapped_Genome =~ \".*${genome}.*\"'" ${outfile} >> ${outfile_base}_${genome}_consolidated_${loop_type}.tsv
     done
     echo
 }
-# End of the agg_pub_loop function section.
 
-###########################################################################
-# Back in the main line of code.
-###########################################################################
-# aggregations:
 
-if [ -d "${assemblyBaseDir}/aggregations/" ]; then
-    # Initialize aggregation output files
-    for genome in "${genome_array[@]}"; do
-        cat "${TMP_OUT}/header" > "${outfile_base}_${genome}_consolidated_agg.tsv"
-    done
-    outfile="${outfile_base}_all_agg.tsv"
-    
-    # Get the names of the aggregation directories
-    cd ${assemblyBaseDir}/aggregations/
-    dir_names=($(ls -d */))
-    
-    # Get rid of trailing slashes
-    agg_names=()
-    for i in "${dir_names[@]}"; do
-        x=$i
-        y=${x%/}
-        agg_names+=($y)
-    done
-    
-    # Call samplesforTrackhub.R for each aggregation directory.
-    for i in "${agg_names[@]}"; do
-        agg_pub_loop $i aggregations
-    done
-fi
+for curbase in aggregations publicdata; do
+    if [ -d "${assemblyBaseDir}/${curbase}/" ]; then
+        # Initialize aggregation output files
+        for genome in "${genome_array[@]}"; do
+            cat ${TMP_OUT}/header > ${outfile_base}_${genome}_consolidated_${curbase}.tsv
+        done
+        outfile="${outfile_base}_all_agg.tsv"
+        
+        # Call samplesforTrackhub.R for each directory.
+        for i in `find ${assemblyBaseDir}/${curbase} -mindepth 1 -maxdepth 1 -type d | xargs -I {} basename {}`; do
+            agg_pub_loop $i ${curbase}
+        done
+    fi
+done
 
-# End of the samplesforTrackhub.R section for "aggregation" samples.
 
-###########################################################################
-# publicdata:
-if [ -d "${assemblyBaseDir}/publicdata/" ]; then
-    # Initialize publicdata output files
-    for genome in "${genome_array[@]}"; do
-        cat "${TMP_OUT}/header" > "${outfile_base}_${genome}_consolidated_pub.tsv"
-    done
-    outfile="${outfile_base}_all_pub.tsv"
-    
-    # Get the names of the publicdata directories
-    cd ${assemblyBaseDir}/publicdata/
-    dir_names=($(ls -d */))
-    
-    # Get rid of trailing slashes 
-    pub_names=()
-    for i in "${dir_names[@]}"; do
-        x=$i
-        y=${x%/}
-        pub_names+=($y)
-    done
-    
-    # Call samplesforTrackhub.R for each publicdata directory.
-    for i in "${pub_names[@]}"; do
-        agg_pub_loop $i publicdata
-    done
-fi
-# End of the samplesforTrackhub.R section for "publicdata" samples.
-
-###########################################################################
-###########################################################################
-# This is the start of the MakeTrackhub.py section.
-# It calls the Daler track construction code to build the track hub.
-# All output is placed in the temporary directory.
-
-# This function will be called once for each genome.
+echo "[make_tracks] running MakeTrackhub"
 make_tracks () {
     local mappedgenome=$1
     local consolidated_suffix=$2
@@ -275,11 +173,11 @@ for genome in "${genome_array[@]}"; do
 done
 
 for genome in "${genome_array[@]}"; do
-    make_tracks ${genome} "_consolidated_agg" "Aggregations"
+    make_tracks ${genome} "_consolidated_agggregations" "Aggregations"
 done
 
 for genome in "${genome_array[@]}"; do
-    make_tracks ${genome} "_consolidated_pub" "Public_Data"
+    make_tracks ${genome} "_consolidated_publicdata" "Public_Data"
 done
 
 for genome in "${genome_array[@]}"; do
