@@ -74,8 +74,11 @@ elif [[ "${hub_type}" == "SARS" ]]; then
 elif [[ "${hub_type}" == "HOLTLAB" ]]; then
     customGenomeAssembly="NA"
     assemblyBaseDir="/vol/mauranolab/flowcells/public_html/holtlab"
+elif [[ "${hub_type}" == "CHAKRAVARTILAB" ]]; then
+    customGenomeAssembly="cegsvectors"
+    assemblyBaseDir="/vol/mauranolab/flowcells/public_html/chakravartilab"
 else
-    echo "ERROR You need to enter a valid hub type: CEGS, MAURANOLAB, HOLTLAB, SARS. Exiting..."
+    echo "ERROR You need to enter a valid hub type: CEGS, MAURANOLAB, HOLTLAB, SARS, CHAKRAVARTILAB. Exiting..."
     exit 1
 fi
 
@@ -222,9 +225,8 @@ echo "<pre>Hub was constructed at: ${time_stamp} </pre>" >> ${hub_target}/descri
 if [[ "${customGenomeAssembly}" != "NA" ]]; then
     echo "Adding chromosomes table for the description page"
     for chrom_sizes_file in `find ${assemblyBaseDir}/sequences/${customGenomeAssembly}_* -mindepth 1 -maxdepth 1 -type f -name "*.chrom.sizes"`; do
-        IFS=/ read -a get_assmbly <<< ${chrom_sizes_file}
-        
-        outputLine="${get_assmbly[4]#${customGenomeAssembly}_}|"
+        outputLine=`basename ${chrom_sizes_file} .chrom.sizes`
+        outputLine="${outputLine#${customGenomeAssembly}_}|"
         while read chromSizes_line_in; do
             read chrom all_other <<< ${chromSizes_line_in}
         outputLine="${outputLine}<a href=hgTracks?genome=${customGenomeAssembly}&position=${chrom}>${chrom}</a><br>"

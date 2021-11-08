@@ -1,0 +1,5 @@
+name cegsvectors
+label CEGS (Chakravarti Lab)
+priority 10
+defaultIsClosed 0
+

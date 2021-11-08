@@ -230,7 +230,7 @@ def checkForCEGSreferences(requestedReferencesForMapping, warn=False):
 
 
 def addCEGSgenomes(line):
-    if line["Lab"] != "CEGS":
+    if line["Lab"] not in ["CEGS", "Chakravarti"]:
         return []
     else:
         sampleName = line["#Sample Name"]
