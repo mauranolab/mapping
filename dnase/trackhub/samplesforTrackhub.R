@@ -190,10 +190,11 @@ for(curdir in mappeddirs) {
 		next # Nothing follows here except for the long 'for(analysisFile...' loop.
 	}
 	
-	#make_tracks.bash calls this R script only once when args.project equals "byFC", and only once when it equals "CEGS_byLocus". Each of the directories traversed may contain a unique sampleannotation.txt file so we need to look for it here rather than in make_tracks.bash
+	#make_tracks.bash calls this R script only once when args.project equals "byFC" or "CEGS_byLocus". Each of the directories traversed may contain a unique sampleannotation.txt file so we need to look for it here rather than in make_tracks.bash
 	if(opt$project %in% c("byFC", "CEGS_byLocus") & is.null(opt$inputfile)) {
 		inputfile <- paste0(pwd, '/', dirname(curdir), "/sampleannotation.txt")
 		if(file.exists(inputfile)){
+			#This gets called once per mappeddir, so the "Merging annotation" message might be appear multiple times for the same sampleannotation.txt
 			inputSampleIDs <- getInputSampleIDs(inputfile)
 		} else {
 			inputSampleIDs <- NULL

@@ -44,20 +44,10 @@ bed_N () {
 }
 
 make_bigBED () {
-    local myBEDfile=$1                 # This is a full path name to a bed file.
-    local chrom_sizes=$2               # This is a full path name of one of the NYU chrom.sizes files.
-    
-    local out_tmp=${myBEDfile%.bed*}        # Chops off the trailing ".bed" or ".bedN" from myBEDfile.
-    
-    local output_file="${out_tmp##*/}.bb"   # This retrieves everything after the last / in out_tmp.
-                                            # Since the previous statment chopped off the bed extension,
-                                            # this will leave only the short file name. We then add the ".bb".
-                                            # So output_file has a short form:  <name>.bb
-                                            # Note that output_file does not contain path elements.
-    
-    local expected_N=$(bed_N ${myBEDfile})  # myBEDfile is in the form <stuff>.bed or <stuff>.bedN or <stuff>.bedNN
-                                            # The function bed_N returns the N or NN from the myBEDfile name.
-                                            # If myBEDfile is in the form <stuff>.bed, then bed_N returns 3.
+    local myBEDfile=$1                # This is a full path name to a bed file.
+    local expected_N=$2              #Integer number of bed fields
+    local chrom_sizes=$3            # This is a full path name of one of the NYU chrom.sizes files.
+    local output_file=$4
     
 #    echo "[makeAssemblyTracks] ${myBEDfile} bed${expected_N}" > /dev/stderr
     
@@ -70,33 +60,20 @@ make_bigBED () {
         echo "[makeAssemblyTracks] WARNING Unexpected number of fields in ${myBEDfile}" > /dev/stderr
     fi
     
-    local base=`basename ${myBEDfile} | perl -pe 's/\.bed\d?$//g;'`
-    
-    grep -v '^#' ${myBEDfile} | sort-bed - | cut -f1-${expected_N} > $TMPDIR/${base}_sorted.bed
-    
-    if [ "${expected_N}" -ge 5 ]; then
-        # Round column 5 of the bed file to an integer.
-        # It also needs to be less than or equal to 1000.
-        cat $TMPDIR/${base}_sorted.bed | awk -F "\t" 'BEGIN {OFS="\t"} \
-        NF != 0 { \
+    grep -v '^#' ${myBEDfile} | cut -f1-${expected_N} | sort-bed - | awk -F "\t" 'BEGIN {OFS="\t"} \
+        NF >= 5 { \
            field5 = int($5 + 0.5);
            $5 = (field5 <= 1000) ? field5 : 1000; \
-           print $0; \
-        }' > $TMPDIR/${base}_sorted_awk.bed
-        mv $TMPDIR/${base}_sorted_awk.bed $TMPDIR/${base}_sorted.bed
-    fi
+        } {print}' > $TMPDIR/assembly_tracks/assembly_bed_tmp_sorted.bed
     
     # drop bigBed chatter from stderr ("pass1...", "pass2...")
-    bedToBigBed -tab -type=bed${expected_N} $TMPDIR/${base}_sorted.bed ${chrom_sizes} ${output_file} 2>&1 | grep -v "^pass[12] \- " > /dev/stderr
-    
-    # Return the output filename. Acquired by calling routine via $()
-    echo "${output_file}"
+    bedToBigBed -tab -type=bed${expected_N} $TMPDIR/assembly_tracks/assembly_bed_tmp_sorted.bed ${chrom_sizes} ${output_file} 2>&1 | grep -v "^pass[12] \- " > /dev/stderr || true  # Avoid pipefail crash since grep usually returns nothing.
 }
 
 
 ###################################################################################
 # Initialize an output file to hold paths to new bigBED files.
-OUTFILE="${TMPDIR}/assembly_tracks/output_full_paths"
+OUTFILE="${TMPDIR}/assembly_tracks/assembly_bb_files"
 touch ${OUTFILE}
 
 # Initialize the error log file where bedToBigBed problems will show up.
@@ -133,38 +110,29 @@ HEREDOC_02
     fi
     
     for f in $(find ${assemblyBaseDir}/sequences/${genome} -mindepth 1 -maxdepth 1 -type d -not -path "./bak*" -not -path "./trash*" -printf '%f/\n'); do
-        # assmbly looks like:  HPRT1/
-        assmbly=`basename ${f}`"/"
+        # assmbly looks like:  HPRT1
+        assmbly=`basename ${f}`
         
         # Create an html file for this assembly. Later it will get moved to "descriptions" subdirectory.
-        echo "<pre>" > ${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html
-        echo "Source data located in: ${assemblyBaseDir}/sequences/${genome}${assmbly%/}" >> ${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html
-        echo "</pre>" >> ${TMPDIR}/${genome%/}_assembly_${assmbly%/}_${genome%/}.html
+        echo "<pre>" > ${TMPDIR}/descriptions/${genome%/}_assembly_${assmbly}_${genome%/}.html
+        echo "Source data located in: ${assemblyBaseDir}/sequences/${genome}${assmbly}" >> ${TMPDIR}/descriptions/${genome%/}_assembly_${assmbly}_${genome%/}.html
+        echo "</pre>" >> ${TMPDIR}/descriptions/${genome%/}_assembly_${assmbly}_${genome%/}.html
+        
         
         # Note that we ignore emacs backups in the next line via the [0-9]*$
         for bed_file in $(find "${assemblyBaseDir}/sequences/${genome}${assmbly}" -mindepth 1 -maxdepth 1 -type f -regex '.*[.]bed[0-9]*$'); do
-            # 'bed_file' is in the form: <BASE><genome><assmbly><bed name>.bedN  (or ".bed" or ".bedNN")
-            
-            # Get just the bedN part
-            bed_type=${bed_file##*.}                 # This retrieves everything after the last "." in bed_file
-            if [ "${bed_type}" = "bed" ]; then
-                bed_type="bed4"
-            fi
-            
             # Make directories for the .bb files, as needed.
             mkdir -p ${hub_target}/${genome}data
             mkdir -p ${hub_target}/${genome}data/${assmbly}
             
             # Make the .bb files
-            out_file=$(make_bigBED ${bed_file} ${chrom_sizes})
-            
-            # Move the .bb files into the appropriate directories
-            mv ${out_file} ${hub_target}/${genome}data/${assmbly}
-            echo ${hub_target}/${genome}data/${assmbly}${out_file} ${bed_type} >> ${OUTFILE}
+            expected_N=$(bed_N ${bed_file})
+            out_filename=`basename ${bed_file} | perl -pe 's/\.bed\d?$//g;'`".bb"
+            make_bigBED ${bed_file} ${expected_N} ${chrom_sizes} ${hub_target}/${genome}data/${assmbly}/${out_filename}
+            echo "${genome}data/${assmbly}/${out_filename} ${expected_N}" >> ${OUTFILE}
         done
     done
 done
-# At the end of the above for loops, we're now in ${TMPDIR}/assembly_tracks
 
 
 #Now that the directory exists, can create G+C and cytoBandIdeo tracks
@@ -180,31 +148,15 @@ if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAsse
 fi
 
 
-# Sort OUTFILE (made in the above for loops), so that the lines are all grouped by:
+# Read in the lines from OUTFILE which contain the paths to the bigBED files we just made.
+#  sort OUTFILE, so that the lines are all grouped by:
 #      First:  genome
 #      Second: assmbly
 #      Last:   track names
-# This will do that:
-sort ${OUTFILE} > ${OUTFILE}_tmp
-mv ${OUTFILE}_tmp ${OUTFILE}
-
-# Clear out old track files, just in case.
-for i in "${genome_array[@]}"; do
-    [ "${i}" = "${customGenomeAssembly}" ] && continue
-    rm -f trackDb_assemblies_${i}.txt
-done
-
-# Read in the lines from OUTFILE.
-# These lines contain the paths to the bigBED files we just made.
-# Since we sorted OUTFILE above, they are already organized by genome/assmbly/trackname.
-# So we know that when we find a new genome, we must already be done with the old genome, etc.
 old_genome=""
-while read -r line_in ; do
+sort ${OUTFILE} | while read line_in; do
     # Get path to bb file and the bed_type of the file
-    read -r line_in2 bed_type <<< "${line_in}"
-    
-    # Strip out the base path
-    line=${line_in2/${hub_target}\//}
+    read -r line bed_type <<< "${line_in}"
     
     # Divide "line" into standard components. These will always have the same structure.
     # array: <genome>/data/<assmbly>/<track>.bb
@@ -286,18 +238,11 @@ while read -r line_in ; do
     echo "        visibility pack" >> ${out_file}
     echo "        longLabel ${lbl_name}" >> ${out_file}
     echo "        shortLabel ${lbl_name}" >> ${out_file}
-    echo "        bigDataUrl "${array[1]}"/"${array[2]}"/"${array[3]} >> ${out_file}
+    echo "        bigDataUrl ${array[1]}/${array[2]}/${array[3]}" >> ${out_file}
     
-    # bed_type is in the form "bedN".
-    # This cuts the text "bed" out of the bed_type variable.
-    # So it leaves just the numeric part of bedN.
-    N=${bed_type/bed/}
-    echo "        type bigBed ${N}" >> ${out_file}
-    if [ "${N}" -ge 9 ]; then
+    echo "        type bigBed ${bed_type}" >> ${out_file}
+    if [ "${bed_type}" -ge 9 ]; then
         echo "        itemRgb On" >> ${out_file}
     fi
     echo >> ${out_file}
-done < ${OUTFILE}
-
-# Clean up
-rm -f ${OUTFILE}
+done

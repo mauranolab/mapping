@@ -144,13 +144,13 @@ else:
 ########
 #Create hub file
 ########
-#The actual values here don't get used since we just print the trackDb file but are required
+#The actual values here are required but don't get used since we just print the trackDb file
 hub, genomes_file, genome, trackdb = default_hub(
     hub_name="ENCODE_DNase",
     genome=args.genome,
     short_label="ENCODE DNase-seq",
     long_label="Encode DNase-seq",
-    email="maurano@nyu.edu")
+    email="spam@mauranolab.org")
 
 
 # Initialize the supertrack
@@ -185,17 +185,12 @@ for assay_type in assays:
     if args.verbose:
         print("[MakeTrackhub.py] Processing assay", assay_type, file=sys.stderr)
     
-    ########
-    # Create composite track for major groups of samples (e.g. Duke, UW, etc.)
-    # These are flowcell IDs for assay_type == "DNA"
-    ########
+    # Create composite track for major groups of samples (e.g. Duke, UW, etc.). These are flowcell IDs for assay_type == "DNA"
     #Find all unique sampleNames and create a supertrack for each
     Group = sorted(set([line['Group'] for line in input_data]), reverse=True)
     
     for curGroup in Group:
-        ########
         #Create subgroup definitions
-        ########
         matchingSamples = [line for line in input_data if curGroup == line['Group']]
         
         if args.verbose:

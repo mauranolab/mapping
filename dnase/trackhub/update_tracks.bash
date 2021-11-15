@@ -129,16 +129,17 @@ src=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 # These are defined in the CEGS_genomes, MAURANOLAB_genomes, and SARS_genomes files.
 # Read the applicable one here:
 readarray -t genome_array < "${src}/assets/${hub_type}_genomes"
-echo " "
+echo
 echo The genomes in this hub will be:
-for i in "${genome_array[@]}"; do
+for curGenome in "${genome_array[@]}"; do
     # Make a subdirectory for each genome we are working with.
-    mkdir "${hub_target}/${i}"
-    echo ${i}
+    mkdir "${hub_target}/${curGenome}"
+    echo ${curGenome}
 done
-echo " "
+echo
 
 # We also need to make tracks for the various assemblies. Do it here:
+mkdir -p ${TMPDIR}/descriptions/
 ${src}/makeAssemblyTracks.bash ${src} ${hub_target} ${TMPDIR} ${hub_type} ${customGenomeAssembly} ${assemblyBaseDir} "${genome_array[@]}"
 
 # Now construct the "flowcell" and "aggregation" tracks in TMPDIR.
@@ -152,21 +153,21 @@ ${src}/make_tracks.bash ${TMPDIR} ${hub_type} ${src} ${assemblyBaseDir} ${hub_ta
 # Now copy the track information to the hub location.
 echo
 echo "Updating track files"
-for genome in "${genome_array[@]}"; do
-    if [ -f "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" ]; then
-        cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${genome}.txt" ${hub_target}/${genome}/trackDb.txt
+for curGenome in "${genome_array[@]}"; do
+    if [ -f "${TMPDIR}/assembly_tracks/trackDb_assemblies_${curGenome}.txt" ]; then
+        cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${curGenome}.txt" ${hub_target}/${curGenome}/trackDb.txt
     fi
     
     for curSection in Flowcells Aggregations Public_Data By_Locus; do
-        if [ -f "${hub_target}/${genome}/trackDb.${curSection}.txt" ]; then
+        if [ -f "${hub_target}/${curGenome}/trackDb.${curSection}.txt" ]; then
             #split into chunks to avoid "maxSize to udcFileReadAll is 16777216" error on hubCheck
             #like split -l 175000 -a 3 -d but takes care not to split stanzas which causes an error
-            awk -v max=160000 -v outbase="${hub_target}/${genome}/trackDb.${curSection}." 'BEGIN {wantToSplit=0; curChunk=1} {print > outbase "_" curChunk ".txt"} NR % max == 0 {wantToSplit=1} wantToSplit && $0~/^[ \t]*$/ {curChunk+=1; wantToSplit=0}' ${hub_target}/${genome}/trackDb.${curSection}.txt
+            awk -v max=160000 -v outbase="${hub_target}/${curGenome}/trackDb.${curSection}." 'BEGIN {wantToSplit=0; curChunk=1} {print > outbase "_" curChunk ".txt"} NR % max == 0 {wantToSplit=1} wantToSplit && $0~/^[ \t]*$/ {curChunk+=1; wantToSplit=0}' ${hub_target}/${curGenome}/trackDb.${curSection}.txt
             
-            rm -f ${hub_target}/${genome}/trackDb.${curSection}.txt
-            for chunk in ${hub_target}/${genome}/trackDb.${curSection}.*.txt; do
+            rm -f ${hub_target}/${curGenome}/trackDb.${curSection}.txt
+            for chunk in ${hub_target}/${curGenome}/trackDb.${curSection}.*.txt; do
                 chunkFilename=`basename ${chunk}`
-                echo -e "include ${chunkFilename}\n" >> ${hub_target}/${genome}/trackDb.txt
+                echo -e "include ${chunkFilename}\n" >> ${hub_target}/${curGenome}/trackDb.txt
             done
         fi
     done
@@ -177,8 +178,7 @@ done
 echo
 echo "Making description files"
 #TODO this seems to be pretty slow, looks like the R code is the bottleneck
-#makeDescFiles.bash is called only here
-${src}/makeDescFiles.bash ${src} ${assemblyBaseDir} ${hub_type} ${hub_target} ${TMPDIR} "${genome_array[@]}"
+${src}/makeDescFiles.bash ${src} ${assemblyBaseDir} ${hub_target} ${TMPDIR} "${genome_array[@]}"
 ######################################################################################
 # Make the hub.txt and genomes.txt files, and populate the structure with other fixed, hand made assets.
 echo
@@ -196,12 +196,12 @@ echo
 cp -R --preserve=timestamps ${src}/assets/${hub_type}/. ${hub_target}
 
 #Write out two line stanzas for genomes native to the UCSC browser
-for cur_genome in "${genome_array[@]}"; do
+for curGenome in "${genome_array[@]}"; do
     # The custom assemblies have more complicated, non-standard stanzas stored in the stub genomes.txt file in the assets/CEGS subdirectory, so skip building them in this loop.
-    [ "${cur_genome}" = "${customGenomeAssembly}" ] || [ "${cur_genome}" = "t2t" ] && continue
+    [ "${curGenome}" = "${customGenomeAssembly}" ] || [ "${curGenome}" = "t2t" ] && continue
     
-    echo "genome ${cur_genome}" >> ${hub_target}/genomes.txt
-    echo "trackDb ${cur_genome}/trackDb.txt" >> ${hub_target}/genomes.txt
+    echo "genome ${curGenome}" >> ${hub_target}/genomes.txt
+    echo "trackDb ${curGenome}/trackDb.txt" >> ${hub_target}/genomes.txt
     echo >> ${hub_target}/genomes.txt
 done
 
@@ -229,14 +229,14 @@ if [[ "${customGenomeAssembly}" != "NA" ]]; then
         outputLine="${outputLine#${customGenomeAssembly}_}|"
         while read chromSizes_line_in; do
             read chrom all_other <<< ${chromSizes_line_in}
-        outputLine="${outputLine}<a href=hgTracks?genome=${customGenomeAssembly}&position=${chrom}>${chrom}</a><br>"
+            outputLine="${outputLine}<a href=hgTracks?genome=${customGenomeAssembly}&position=${chrom}>${chrom}</a><br>"
         done < ${chrom_sizes_file}
         
         outputLine="${outputLine%<br>}"  # Delete the last instance of <br> from $outputLine
         echo "${outputLine}"
     done | sort -k1,1 > ${TMPDIR}/chroms_per_cegsvector.txt
     
-    Rscript ${src}/makeChroms_per_cegsvectorHtml.R ${TMPDIR}/chroms_per_cegsvector.txt ${TMPDIR}/chroms_per_cegsvector.html
+    Rscript --vanilla ${src}/makeChroms_per_cegsvectorHtml.R ${TMPDIR}/chroms_per_cegsvector.txt ${TMPDIR}/chroms_per_cegsvector.html
     cat ${TMPDIR}/chroms_per_cegsvector.html >> ${hub_target}/description.html
 fi
 
@@ -280,8 +280,8 @@ fi
 ######################################################################################
 # Clean out old hub and deploy
 
-for i in "${genome_array[@]}"; do
-    rm -rf "${hub_target_final}/${i}"
+for curGenome in "${genome_array[@]}"; do
+    rm -rf "${hub_target_final}/${curGenome}"
 done
 rm -f  ${hub_target_final}/genomes.txt
 rm -f  ${hub_target_final}/description.html
