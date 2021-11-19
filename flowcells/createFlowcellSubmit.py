@@ -306,6 +306,9 @@ def bwaPipeline(line):
     if len(mappedgenomes) != len(set(mappedgenomes)):
         raise Exception("Duplicate genomes specified")
     
+    if len(mappedgenomes) == 0:
+        raise Exception("No genomes specified for mapping")
+    
     if args.aggregate:
         processingCommand="aggregate"
     elif args.aggregate_sublibraries:
