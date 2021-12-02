@@ -15,6 +15,9 @@ prefix <- argv[1]
 outbase <- argv[2]
 
 
+set.seed(145689)
+
+
 #Basic filtering
 filterSampleData <- function(data, prefix="merged", useDNA=TRUE) {
 	#iPCR filters
@@ -131,37 +134,79 @@ print.data.frame(results.proxcor, row.names=F, right=F)
 write.table(results.proxcor, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.txt"), append=F, sep="\t")
 
 
-cat("\nBy NumDHS100kb.quintile\n")
-sampleData$NumDHS100kb.quintile <- factor(cut(sampleData$NumDHS100kb, breaks=unique(quantile(sampleData$NumDHS100kb, probs=seq.int(from=0, to=1, length.out=6), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,5,1))
+cat("\nCompare adjacent insertions by NumDHS5kb.quintile\n")
+sampleData$NumDHS5kb.quintile <- factor(cut(sampleData$NumDHS5kb, breaks=unique(quantile(sampleData$NumDHS5kb, probs=seq.int(from=0, to=1, length.out=6), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,5,1))
 
-ins.proximity.numDHS <- data.frame(subset(sampleData, select=c(chrom, chromStart, activity, NumDHS100kb.quintile))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, activity, NumDHS100kb.quintile))[-1,], check.names=T)
-ins.proximity.numDHS <- subset(ins.proximity.numDHS, chrom==chrom.1)
-ins.proximity.numDHS$dist <- ins.proximity.numDHS$chromStart.1 - ins.proximity.numDHS$chromStart
-ins.proximity.numDHS$dist.bin <- cut.pretty(ins.proximity.numDHS$dist, breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left") #labels=c("1 bp", "1 kbp", "10 kbp", "20 kbp", "30 kbp", "40 kbp", "50 kbp", "60 kbp", "70 kbp", "80 kbp", "90 kbp", "100 kbp")
-ins.proximity.numDHS$compartments <- apply(ins.proximity.numDHS[,c("NumDHS100kb.quintile", "NumDHS100kb.quintile.1")], MARGIN=1, FUN=max)
+ins.proximity.numDHS5kb <- data.frame(subset(sampleData, select=c(chrom, chromStart, activity, NumDHS5kb.quintile))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, activity, NumDHS5kb.quintile))[-1,], check.names=T)
+ins.proximity.numDHS5kb <- subset(ins.proximity.numDHS5kb, chrom==chrom.1)
+ins.proximity.numDHS5kb$dist <- ins.proximity.numDHS5kb$chromStart.1 - ins.proximity.numDHS5kb$chromStart
+ins.proximity.numDHS5kb$dist.bin <- cut.pretty(ins.proximity.numDHS5kb$dist, breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left") #labels=c("1 bp", "1 kbp", "10 kbp", "20 kbp", "30 kbp", "40 kbp", "50 kbp", "60 kbp", "70 kbp", "80 kbp", "90 kbp", "100 kbp")
+ins.proximity.numDHS5kb$compartments <- apply(ins.proximity.numDHS5kb[,c("NumDHS5kb.quintile", "NumDHS5kb.quintile.1")], MARGIN=1, FUN=max)
 
-results.proxcor.numDHS <- NULL
-for(curDist in levels(ins.proximity.numDHS$dist.bin)) {
-	for(curNumDHS in sort(unique(ins.proximity.numDHS$compartments))) {
-		curdata <- subset(ins.proximity.numDHS, dist.bin==curDist & compartments==curNumDHS)
+results.proxcor.numDHS5kb <- NULL
+for(curDist in levels(ins.proximity.numDHS5kb$dist.bin)) {
+	for(curnumDHS5kb in sort(unique(ins.proximity.numDHS5kb$compartments))) {
+		curdata <- subset(ins.proximity.numDHS5kb, dist.bin==curDist & compartments==curnumDHS5kb)
 		if(nrow(curdata)>2) {
 			curcor <- with(curdata, cor(activity, activity.1, use="na.or.complete", method="pearson"))
 			#cat(curRsquared, ":", curcor, "\n")
-			results.proxcor.numDHS <- rbind(results.proxcor.numDHS, data.frame(sample=prefix, dist.bin=curDist, numDHS.quintile=curNumDHS, meandist=mean.na(curdata$dist), cor=curcor, n=nrow(curdata)))
+			results.proxcor.numDHS5kb <- rbind(results.proxcor.numDHS5kb, data.frame(sample=prefix, dist.bin=curDist, numDHS5kb.quintile=curnumDHS5kb, meandist=mean.na(curdata$dist), meanactivity=mean(c(curdata$activity, curdata$activity.1)), cor=curcor, n=nrow(curdata)))
 		}
 	}
 }
-print.data.frame(results.proxcor.numDHS, row.names=F, right=F)
-write.table(results.proxcor.numDHS, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.numDHS100kb.txt"), append=F, sep="\t")
+print.data.frame(results.proxcor.numDHS5kb, row.names=F, right=F)
+write.table(results.proxcor.numDHS5kb, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.numDHS5kb.txt"), append=F, sep="\t")
 
 
-cat("\nWhether in same TAD\n")
-ins.proximity.TAD <- data.frame(subset(sampleData, select=c(chrom, chromStart, activity, TADid))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, activity, TADid))[-1,], check.names=T)
-ins.proximity.TAD <- subset(ins.proximity.TAD, chrom==chrom.1)
+cat("\nCompare adjacent insertions by NumDHS100kb.quintile\n")
+sampleData$NumDHS100kb.quintile <- factor(cut(sampleData$NumDHS100kb, breaks=unique(quantile(sampleData$NumDHS100kb, probs=seq.int(from=0, to=1, length.out=6), na.rm=T)), right=F, include.lowest=T, labels=F), ordered=T, levels=seq.int(1,5,1))
+
+ins.proximity.numDHS100kb <- data.frame(subset(sampleData, select=c(chrom, chromStart, activity, NumDHS100kb.quintile))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, activity, NumDHS100kb.quintile))[-1,], check.names=T)
+ins.proximity.numDHS100kb <- subset(ins.proximity.numDHS100kb, chrom==chrom.1)
+ins.proximity.numDHS100kb$dist <- ins.proximity.numDHS100kb$chromStart.1 - ins.proximity.numDHS100kb$chromStart
+ins.proximity.numDHS100kb$dist.bin <- cut.pretty(ins.proximity.numDHS100kb$dist, breaks=c(0, 1000, 1e4, 1e5, 5e5, Inf), right=F, include.lowest=T, pretty.labels="left") #labels=c("1 bp", "1 kbp", "10 kbp", "20 kbp", "30 kbp", "40 kbp", "50 kbp", "60 kbp", "70 kbp", "80 kbp", "90 kbp", "100 kbp")
+ins.proximity.numDHS100kb$compartments <- apply(ins.proximity.numDHS100kb[,c("NumDHS100kb.quintile", "NumDHS100kb.quintile.1")], MARGIN=1, FUN=max)
+
+results.proxcor.numDHS100kb <- NULL
+for(curDist in levels(ins.proximity.numDHS100kb$dist.bin)) {
+	for(curnumDHS100kb in sort(unique(ins.proximity.numDHS100kb$compartments))) {
+		curdata <- subset(ins.proximity.numDHS100kb, dist.bin==curDist & compartments==curnumDHS100kb)
+		if(nrow(curdata)>2) {
+			curcor <- with(curdata, cor(activity, activity.1, use="na.or.complete", method="pearson"))
+			#cat(curRsquared, ":", curcor, "\n")
+			results.proxcor.numDHS100kb <- rbind(results.proxcor.numDHS100kb, data.frame(sample=prefix, dist.bin=curDist, numDHS100kb.quintile=curnumDHS100kb, meandist=mean.na(curdata$dist), meanactivity=mean(c(curdata$activity, curdata$activity.1)), cor=curcor, n=nrow(curdata)))
+		}
+	}
+}
+print.data.frame(results.proxcor.numDHS100kb, row.names=F, right=F)
+write.table(results.proxcor.numDHS100kb, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.numDHS100kb.txt"), append=F, sep="\t")
+
+
+cat("\nCompare adjacent insertions by whether in same TAD\n")
+#old version sampling adjacent insertions
+#ins.proximity.TAD <- data.frame(subset(sampleData, select=c(chrom, chromStart, activity, TADid))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, activity, TADid))[-1,], check.names=T)
+#ins.proximity.TAD <- subset(ins.proximity.TAD, chrom==chrom.1)
+
+nsamples <- 50
+ins.proximity.TAD <- NULL
+for(curChrom in unique(sampleData$chrom)) {
+	#drop insertions without a labeled TAD entirely, matching Andre's analysis
+	curdata <- subset(sampleData, chrom==curChrom & TADid!="", select=c(chrom, chromStart, activity, TADid))
+	rownames(curdata) <- NULL
+	curins.proximity <- NULL
+	for(i in 1:nrow(curdata)) {
+		curdata.nearby <- subset(curdata, chromStart != curdata[i, "chromStart"] & abs(chromStart-curdata[i, "chromStart"])<=5e5)
+		if(nrow(curdata.nearby)>0) {
+			#Join with a permutation of insertions within 1 Mbp. Sample upto 5 points
+			curins.proximity <- rbind(curins.proximity, data.frame(curdata[rep.int(i, nsamples),], curdata.nearby[sample(nrow(curdata.nearby), size=nsamples, replace=T),], check.names=T))
+		}
+	}
+	ins.proximity.TAD <- rbind(ins.proximity.TAD, curins.proximity)
+}
+
 ins.proximity.TAD$dist <- ins.proximity.TAD$chromStart.1 - ins.proximity.TAD$chromStart
-ins.proximity.TAD$dist.bin <- cut.pretty(ins.proximity.TAD$dist, breaks=c(1, 1000, 1e4, 1e5, Inf), right=F, include.lowest=T, pretty.labels="left") #labels=c("1 bp", "1 kbp", "10 kbp", "20 kbp", "30 kbp", "40 kbp", "50 kbp", "60 kbp", "70 kbp", "80 kbp", "90 kbp", "100 kbp")
+ins.proximity.TAD$dist.bin <- cut(ins.proximity.TAD$dist, breaks=c(1, 100, 1000, 1e4, 1e5, Inf), labels=c("0+ bp", "100+ bp", "1+ kb", "10+ kb", "100+ kb"), right=F, include.lowest=T)
 ins.proximity.TAD$sameTAD <- ins.proximity.TAD$TADid==ins.proximity.TAD$TADid.1
-
 
 results.proxcor.TAD <- NULL
 for(curDist in levels(ins.proximity.TAD$dist.bin)) {
@@ -178,6 +223,81 @@ print.data.frame(results.proxcor.TAD, row.names=F, right=F)
 write.table(results.proxcor.TAD, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.TAD.txt"), append=F, sep="\t")
 
 
+cat("\nCompare adjacent insertions by strand\n")
+#old version sampling adjacent insertions
+#ins.proximity.strand <- data.frame(subset(sampleData, select=c(chrom, chromStart, activity, strand))[-nrow(sampleData),], subset(sampleData, select=c(chrom, chromStart, activity, strand))[-1,], check.names=T)
+#ins.proximity.strand <- subset(ins.proximity.strand, chrom==chrom.1)
+
+#We sample the second insertion from somewhere else on the chromosome, to reduce the relationship between insertion density and regions of high/low activity
+nsamples <- 50
+ins.proximity.strand <- NULL
+for(curChrom in unique(sampleData$chrom)) {
+	curdata <- subset(sampleData, chrom==curChrom, select=c(chrom, chromStart, activity, strand))
+	rownames(curdata) <- NULL
+	curins.proximity <- NULL
+	for(i in 1:nrow(curdata)) {
+		curdata.nearby <- subset(curdata, chromStart != curdata[i, "chromStart"] & abs(chromStart-curdata[i, "chromStart"])<=5e5)
+		if(nrow(curdata.nearby)>0) {
+			#Join with a permutation of insertions within 1 Mbp. Sample upto 5 points
+			curins.proximity <- rbind(curins.proximity, data.frame(curdata[rep.int(i, nsamples),], curdata.nearby[sample(nrow(curdata.nearby), size=nsamples, replace=T),], check.names=T))
+		}
+	}
+	ins.proximity.strand <- rbind(ins.proximity.strand, curins.proximity)
+}
+
+ins.proximity.strand$dist <- ins.proximity.strand$chromStart.1 - ins.proximity.strand$chromStart
+ins.proximity.strand$dist.bin <- cut(ins.proximity.strand$dist, breaks=c(1, 100, 1000, 1e4, 1e5, Inf), labels=c("0+ bp", "100+ bp", "1+ kb", "10+ kb", "100+ kb"), right=F, include.lowest=T, pretty.labels="left")
+
+results.proxcor.strand <- NULL
+for(sameStrand in c(T, F)) {
+	for(curDist in levels(ins.proximity.strand$dist.bin)) {
+		curdata <- subset(ins.proximity.strand, dist.bin==curDist & ((sameStrand & strand==strand.1) | (!sameStrand & strand!=strand.1)))
+		if(nrow(curdata)>2) {
+			curcor <- with(curdata, cor(activity, activity.1, use="na.or.complete", method="spearman"))
+			#cat(curRsquared, ":", curcor, "\n")
+			results.proxcor.strand <- rbind(results.proxcor.strand, data.frame(sample=prefix, dist.bin=curDist, sameStrand=sameStrand, meandist=mean.na(curdata$dist), cor=curcor, meanactivity=mean(c(curdata$activity, curdata$activity.1)), n=nrow(curdata)))
+		}
+	}
+}
+print.data.frame(results.proxcor.strand, row.names=F, right=F)
+write.table(results.proxcor.strand, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.strand.txt"), append=F, sep="\t")
+
+
+cat("\nCompare adjacent insertions using sampling\n")
+#We sample the second insertion from somewhere else on the chromosome, to reduce the relationship between insertion density and regions of high/low activity
+nsamples <- 50
+ins.proximity.sampled <- NULL
+for(curChrom in unique(sampleData$chrom)) {
+	curdata <- subset(sampleData, chrom==curChrom, select=c(chrom, chromStart, activity))
+	rownames(curdata) <- NULL
+	curins.proximity <- NULL
+	for(i in 1:nrow(curdata)) {
+		curdata.nearby <- subset(curdata, chromStart != curdata[i, "chromStart"] & abs(chromStart-curdata[i, "chromStart"])<=5e5)
+		if(nrow(curdata.nearby)>0) {
+			#Join with a permutation of insertions within 1 Mbp. Sample upto 5 points
+			curins.proximity <- rbind(curins.proximity, data.frame(curdata[rep.int(i, nsamples),], curdata.nearby[sample(nrow(curdata.nearby), size=nsamples, replace=T),], check.names=T))
+		}
+	}
+	ins.proximity.sampled <- rbind(ins.proximity.sampled, curins.proximity)
+}
+
+#use abs since for this analysis first site may not be leftmost
+ins.proximity.sampled$dist <- abs(ins.proximity.sampled$chromStart.1 - ins.proximity.sampled$chromStart)
+ins.proximity.sampled$dist.bin <- cut(ins.proximity.sampled$dist, breaks=c(1, 100, 1000, 1e4, 1e5, Inf), labels=c("0+ bp", "100+ bp", "1+ kb", "10+ kb", "100+ kb"), right=F, include.lowest=T, pretty.labels="left")
+
+results.proxcor.sampled <- NULL
+for(curDist in levels(ins.proximity.sampled$dist.bin)) {
+	curdata <- subset(ins.proximity.sampled, dist.bin==curDist)
+	if(nrow(curdata)>2) {
+		curcor <- with(curdata, cor(activity, activity.1, use="na.or.complete", method="spearman"))
+		#cat(curRsquared, ":", curcor, "\n")
+		results.proxcor.sampled <- rbind(results.proxcor.sampled, data.frame(sample=prefix, dist.bin=curDist, meandist=mean.na(curdata$dist), cor=curcor, meanactivity=mean(c(curdata$activity, curdata$activity.1)), n=nrow(curdata)))
+	}
+}
+print.data.frame(results.proxcor.sampled, row.names=F, right=F)
+write.table(results.proxcor.sampled, row.names=F, col.names=T, quote=F, file=paste0(outbase, ".proxcor.sampled.txt"), append=F, sep="\t")
+
+
 cat("\nlm\n")
 fit <- lm(activity~scale(NumDHS5kb)+scale(NumDHS100kb), data=sampleData)
 print(summary(fit))
@@ -190,7 +310,7 @@ sampleData[,"residual"] <- (sampleData[,"residual"] + 2) / 4
 
 
 cat("\nOutput for ucsc\n")
-write.table(subset(sampleData, select=c("chrom", "chromStart", "chromEnd", "BC", "activity")), file=paste0(outbase, '.activity.bed'), quote=F, sep='\t', col.names=F, row.names=F) 
+write.table(subset(sampleData, select=c("chrom", "chromStart", "chromEnd", "BC", "activity", "NumDHS5kb", "NumDHS100kb", "LADovr")), file=paste0(outbase, '.activity.bed'), quote=F, sep='\t', col.names=F, row.names=F)
 
 
 cat("\n\nActivity related to nearest TSS\n")
@@ -298,6 +418,8 @@ write.table(iPCR.overlaps.byReadDecile.long, row.names=F, col.names=T, quote=F, 
 
 cat("iPCR insertion density vs. activity\n")
 print.data.frame(cbind(prefix, summaryBy(activity~InsDens,data=sampleData, FUN=list(mean, length))), row.names=F, right=F)
+
+
 
 cat("\nDone!!!\n")
 print(date())
