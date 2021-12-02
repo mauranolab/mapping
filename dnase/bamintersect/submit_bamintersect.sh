@@ -373,7 +373,8 @@ elif [[ "${bam2genome}" == "rtTA" ]]; then
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
     HAmaskFiles="${TMPDIR}/deletion_range.bed"
 #NB masks hardcoded by payload name for now
-elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1)"; then
+#Only HPRT1 is ICE, the others are Big-In
+elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed"
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
     
