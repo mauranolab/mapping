@@ -37,6 +37,7 @@ ${src}/analyzeCombinedSignalWithInsertions.R ${PREFIX} ${OUTBASE}
 echo
 echo "Generating UCSC tracks"
 trackcolor=$(getcolor $PREFIX)
+UCSCbaseURL="https://cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
 numUCSCsites=`cat ${OUTBASE}.activity.bed | wc -l`
 echo "Num of sites in browser track: ${numUCSCsites}"
 
@@ -49,8 +50,9 @@ cat ${chromsizes} |
 awk -F "\t" 'BEGIN {OFS="\t"} $1!="chrM" && $1!="chrEBV"' |
 awk -F "\t" '{OFS="\t"; print $1, 0, $2}' | sort-bed - | cut -f1,3 | awk -v step=10000 -v binwidth=10000 'BEGIN {OFS="\t"} {for(i=0; i<=$2-binwidth; i+=step) {print $1, i, i+binwidth, "."} }' | 
 #--faster is ok since we are dealing with bins and read starts
-bedmap --faster --delim "\t" --bp-ovr 1 --echo --count - ${OUTBASE}.activity.bed | 
-perl -pe 's/NAN$/0/g;' |
+bedmap --faster --delim "\t" --bp-ovr 1 --echo --count - ${OUTBASE}.activity.bed | perl -pe 's/NAN$/0/g;' |
+#normalize to insertions per 10^6
+awk -v totalinsertions=${numUCSCsites} -F "\t" 'BEGIN {OFS="\t"} {$NF=$NF/totalinsertions*10^6; print}' |
 #resize intervals down from full bin width to step size
 #Intervals then conform to Richard's convention that the counts are reported in 20bp windows including reads +/-75 from the center of that window
 awk -v step=10000 -v binwidth=10000 -F "\t" 'BEGIN {OFS="\t"} {offset=(binwidth-step)/2 ; $2+=offset; $3-=offset; print}' |
@@ -65,14 +67,15 @@ cat $TMPDIR/${PREFIX}.insertion.density.bed | starch - > ${OUTBASE}.insertion.de
 #Kent tools can't use STDIN
 wigToBigWig $TMPDIR/${PREFIX}.insertion.density.wig ${chromsizes} ${OUTBASE}.insertion.density.bw
 
-echo "track name=${PREFIX}-insertiondens description=\"${PREFIX} insertion density (20 kb windows), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:2 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.insertion.density.bw"
+
+echo "track name=${PREFIX}-insertiondens description=\"${PREFIX} normalized insertion density (20 kb windows), ${numUCSCsites} sites\" maxHeightPixels=15 color=$trackcolor viewLimits=0:20 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.insertion.density.bw"
 
 
 echo
 echo "Generating activity UCSC track"
 cut -f1-3,5 ${OUTBASE}.activity.bed > $TMPDIR/${PREFIX}.activity.bedGraph
 bedGraphToBigWig $TMPDIR/${PREFIX}.activity.bedGraph ${chromsizes} ${OUTBASE}.activity.bw
-UCSCbaseURL="https://cascade.isg.med.nyu.edu/~mauram01/transposon/${OUTBASE}"
+
 echo "track name=${PREFIX}-activity description=\"${PREFIX} activity (log(RNA/DNA)), ${numUCSCsites} sites\" maxHeightPixels=30 color=$trackcolor viewLimits=0:4 autoScale=off visibility=full db=hg38 type=bigWig bigDataUrl=${UCSCbaseURL}.activity.bw"
 sort-bed ${OUTBASE}.activity.bed | starch - > ${OUTBASE}.activity.starch
 rm -f ${OUTBASE}.activity.bed
