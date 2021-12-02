@@ -188,6 +188,52 @@ bedmap --delim '\t' --bp-ovr 1 --echo --echo-map-id $OUTPUT /home/maagj01/scratc
 mv $OUTPUT.new $OUTPUT
 
 
+echo 'doing TSS density'
+header="$header\tNumTSS100kb"
+bedmap --delim '\t' --range 100000 --echo --count $OUTPUT /vol/isg/annotation/bed/hg38/refseq_gene/refGene.CombinedTxStarts.bed > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
+echo "doing Overlap with CGI"
+header="$header\tCGIovr"
+awk -F "\t" 'BEGIN {OFS="\t"} {$4="TRUE"; print}' /vol/isg/annotation/bed/hg38/cpg_islands/cpgIslands.bed |
+bedmap --faster --delim '\t' --echo --echo-map-id $OUTPUT - | awk -F "\t" 'BEGIN {OFS="\t"} $NF~/TRUE/ {$NF="TRUE"} $NF=="" {$NF="FALSE"} {print}' > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
+echo "doing G+C content +/-75bp"
+header="$header\tPercentGC"
+awk -F "\t" -v widen=75 'BEGIN {OFS="\t"} {$2=$2 > widen ? $2-widen : 0; $3+=widen; print;}' $OUTPUT | ~/bin/bed2fasta.pl - /vol/isg/annotation/fasta/hg38 2>/dev/null |
+grep -v -e "^>" | tr '[a-z]' '[A-Z]' | perl -ne 'chomp; print length($_) != 0 ? ($_ =~ tr/[gcGC]//) / length($_) : "NA"; print "\n"' | paste $OUTPUT - > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
+echo "doing GenicLocation.simple"
+header="$header\tGenicLocation.simple"
+gcat /vol/isg/annotation/bed/hg38/refseq_paint/refGene_hg38.bed6.starch | grep -v TxS-1000 | grep -v TxStart-10kb > $TMPDIR/refGene_hg38.simple.bed6
+bedmap --delim '\t' --echo-map-id $OUTPUT $TMPDIR/refGene_hg38.simple.bed6 | awk -F "\t" 'BEGIN {OFS="\t"} {col=NF} $col~/coding/ {$col="coding"} $col~/promoter/ {$col="promoter"} $col~/3.UTR/ {$col="3UTR"} $col~/5.UTR/ {$col="5UTR"} $col~/intron/ {$col="intron"} $col=="" || $col~/3.proximal/ {$col="intergenic"} {print;}' | paste $OUTPUT - > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
+echo "doing repeatmasker density"
+#/vol/isg/annotation/bed/hg38/repeat_masker/DNA?.bed /vol/isg/annotation/bed/hg38/repeat_masker/SINE?.bed /vol/isg/annotation/bed/hg38/repeat_masker/LTR?.bed /vol/isg/annotation/bed/hg38/repeat_masker/RC?.bed
+rmsk=" /vol/isg/annotation/bed/hg38/repeat_masker/DNA.bed /vol/isg/annotation/bed/hg38/repeat_masker/LINE.bed /vol/isg/annotation/bed/hg38/repeat_masker/Low_complexity.bed  /vol/isg/annotation/bed/hg38/repeat_masker/LTR.bed  /vol/isg/annotation/bed/hg38/repeat_masker/RC.bed /vol/isg/annotation/bed/hg38/repeat_masker/Retroposon.bed /vol/isg/annotation/bed/hg38/repeat_masker/RNA.bed /vol/isg/annotation/bed/hg38/repeat_masker/rRNA.bed /vol/isg/annotation/bed/hg38/repeat_masker/Satellite.bed /vol/isg/annotation/bed/hg38/repeat_masker/scRNA.bed /vol/isg/annotation/bed/hg38/repeat_masker/Simple_repeat.bed /vol/isg/annotation/bed/hg38/repeat_masker/SINE.bed /vol/isg/annotation/bed/hg38/repeat_masker/snRNA.bed /vol/isg/annotation/bed/hg38/repeat_masker/srpRNA.bed /vol/isg/annotation/bed/hg38/repeat_masker/tRNA.bed /vol/isg/annotation/bed/hg38/repeat_masker/Unknown.bed"
+for rmskf in ${rmsk}; do
+    base=`basename ${rmskf} .bed`
+    echo "${base}"
+    header="$header\trmsk.${base}"
+    bedmap --delim '\t' --range 100000 --echo --count $OUTPUT ${rmskf} > $OUTPUT.new
+    mv $OUTPUT.new $OUTPUT
+done
+
+
+echo "doing Overlap with LAD"
+header="$header\tLADovr"
+awk -F "\t" 'BEGIN {OFS="\t"} {$4="TRUE"; print}' /vol/mauranolab/publicdata/4DN/4DNFIT7Q8TTV.bed |
+bedmap --faster --delim '\t' --echo --echo-map-id $OUTPUT - | awk -F "\t" 'BEGIN {OFS="\t"} $NF~/TRUE/ {$NF="TRUE"} $NF=="" {$NF="FALSE"} {print}' > $OUTPUT.new
+mv $OUTPUT.new $OUTPUT
+
+
 #Print to file
 echo -e $header | cat - $OUTPUT > $OUTPUT.new
 mv $OUTPUT.new $OUTPUT
