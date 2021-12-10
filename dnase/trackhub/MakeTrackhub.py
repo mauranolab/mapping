@@ -12,6 +12,7 @@ import csv
 import os
 import urllib.parse
 ## Suppress shortName user warnings
+import trackhub
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module=trackhub.get("__name__"))
 
