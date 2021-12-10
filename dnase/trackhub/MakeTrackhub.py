@@ -11,7 +11,9 @@ import locale
 import csv
 import os
 import urllib.parse
-
+## Suppress shortName user warnings
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module=trackhub.get("__name__"))
 
 locale.setlocale(locale.LC_ALL, 'en_US')
 
