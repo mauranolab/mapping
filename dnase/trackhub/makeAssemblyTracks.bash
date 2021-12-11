@@ -154,6 +154,7 @@ fi
 #      Second: assmbly
 #      Last:   track names
 old_genome=""
+
 sort ${OUTFILE} | while read line_in; do
     # Get path to bb file and the bed_type of the file
     read -r line bed_type <<< "${line_in}"
@@ -243,6 +244,8 @@ sort ${OUTFILE} | while read line_in; do
     echo "        type bigBed ${bed_type}" >> ${out_file}
     if [ "${bed_type}" -ge 9 ]; then
         echo "        itemRgb On" >> ${out_file}
+    elif [ "${bed_type}" -ge 6 ]; then
+            echo "        colorByStrand 255,0,0 0,0,255" >> ${out_file}
     fi
     echo >> ${out_file}
 done
