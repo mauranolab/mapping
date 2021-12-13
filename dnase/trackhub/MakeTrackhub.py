@@ -12,7 +12,6 @@ import csv
 import os
 import urllib.parse
 
-
 locale.setlocale(locale.LC_ALL, 'en_US')
 
 
@@ -236,7 +235,7 @@ for assay_type in assays:
             long_label=lng_label,
             tracktype="bigBed",
             visibility="hide",
-            parentonoff="off",
+            parent="off",
             sortOrder=SortOrder,
             autoScale = "off",
             bigDataUrl ='NULL',
@@ -376,7 +375,7 @@ for assay_type in assays:
                     name="Reads_view_" + curGroup_trackname,
                     view="Reads",
                     visibility="hide",
-                    parentonoff="off",
+                    parent="off",
                     tracktype="bam",
                     short_label="Reads",
                     maxItems=50000, #Set high so that dense sequencing tracks can be displayed as this parameter can not be changed in the UI
@@ -392,7 +391,7 @@ for assay_type in assays:
                 url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.bam',
                 subgroups=sampleSubgroups,
                 tracktype='bam',
-                parentonoff="off"
+                parent="off"
             )
             Reads_view.add_tracks(track)
             
@@ -404,7 +403,7 @@ for assay_type in assays:
                             name="Coverage_view_" + curGroup_trackname,
                             view="Coverage",
                             visibility="full",
-                            parentonoff=DensCovTracksDefaultDisplayMode,
+                            parent=DensCovTracksDefaultDisplayMode,
                             tracktype="bigWig",
                             viewLimits="0:500", #Keep high since it becomes a hard limit in the UI
                             autoScale='on',
@@ -422,7 +421,7 @@ for assay_type in assays:
                         subgroups=sampleSubgroups,
                         tracktype='bigWig',
                         color=curSample['Color'],
-                        parentonoff=DensCovTracksDefaultDisplayMode
+                        parent=DensCovTracksDefaultDisplayMode
                     )
                     Coverage_view.add_tracks(track)
                 
@@ -433,7 +432,7 @@ for assay_type in assays:
                             name="Dens_view_" + curGroup_trackname,
                             view="Density",
                             visibility="full",
-                            parentonoff=DensCovTracksDefaultDisplayMode,
+                            parent=DensCovTracksDefaultDisplayMode,
                             tracktype="bigWig",
                             viewLimits="0:3",
                             autoScale="off",
@@ -450,7 +449,7 @@ for assay_type in assays:
                         subgroups=sampleSubgroups, 
                         tracktype='bigWig',
                         color=curSample['Color'],
-                        parentonoff="off" if assay_type=='ChIP-seq' and curSample['Assay']=='input' else DensCovTracksDefaultDisplayMode
+                        parent="off" if assay_type=='ChIP-seq' and curSample['Assay']=='input' else DensCovTracksDefaultDisplayMode
                     )
                     Dens_view.add_tracks(track)
                 
@@ -465,7 +464,7 @@ for assay_type in assays:
                             name="Hotspots_view_" + curGroup_trackname,
                             view="Hotspots",
                             visibility="hide",
-                            parentonoff="off",
+                            parent="off",
                             tracktype="bigBed",
                             maxItems=250,
                             short_label="Hotspots",
@@ -479,7 +478,7 @@ for assay_type in assays:
                         subgroups=sampleSubgroups,
                         tracktype='bigBed 4',
                         color=curSample['Color'],
-                        parentonoff="off"
+                        parent="off"
                     )
                     Hotspots_view.add_tracks(track)
                     
@@ -489,7 +488,7 @@ for assay_type in assays:
                             name="Peaks_view_" + curGroup_trackname,
                             view="Peaks",
                             visibility="hide",
-                            parentonoff="off",
+                            parent="off",
                             tracktype="bigBed",
                             maxItems=250,
                             short_label="Peaks",
@@ -503,7 +502,7 @@ for assay_type in assays:
                         subgroups=sampleSubgroups,
                         tracktype='bigBed 3',
                         color=curSample['Color'],
-                        parentonoff="off"
+                        parent="off"
                     )
                     Peaks_view.add_tracks(track)
                 
@@ -514,7 +513,7 @@ for assay_type in assays:
                             name="Cuts_view_" + curGroup_trackname,
                             view="Cuts",
                             visibility="hide",
-                            parentonoff="off",
+                            parent="off",
                             tracktype="bigWig",
                             viewLimits="0:2",
                             autoScale="off",
@@ -531,7 +530,7 @@ for assay_type in assays:
                         subgroups=sampleSubgroups,
                         tracktype='bigWig',
                         color=curSample['Color'],
-                        parentonoff="off"
+                        parent="off"
                     )
                     Cuts_view.add_tracks(track)
                 
@@ -542,7 +541,7 @@ for assay_type in assays:
                             name="Variants_view_" + curGroup_trackname,
                             view="Variants",
                             visibility="hide",
-                            parentonoff="off",
+                            parent="off",
                             tracktype='vcfTabix',
                             maxItems=250,
                             applyMinQual="true",
@@ -557,7 +556,7 @@ for assay_type in assays:
                         url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.filtered.vcf.gz',
                         subgroups=sampleSubgroups,
                         tracktype='vcfTabix',
-                        parentonoff="off"
+                        parent="off"
                     )
                     Variants_view.add_tracks(track)
                 
@@ -568,7 +567,7 @@ for assay_type in assays:
                             name="Genotypes_view_" + curGroup_trackname,
                             view="Genotypes",
                             visibility="dense",
-                            parentonoff="off",
+                            parent="off",
                             tracktype="bigBed",
                             maxItems=100000,
                             short_label="Genotypes",
@@ -583,7 +582,7 @@ for assay_type in assays:
                         tracktype='bigBed 9 .',
                         color=curSample['Color'],
                         itemRgb="on",
-                        parentonoff="off"
+                        parent="off"
                     )
                     Genotypes_view.add_tracks(track)
                 
@@ -594,7 +593,7 @@ for assay_type in assays:
                             name="Delly_view_" + curGroup_trackname,
                             view="DELLY",
                             visibility="pack",
-                            parentonoff="off",
+                            parent="off",
                             tracktype='vcfTabix',
                             maxItems=250,
                             applyMinQual="true",
@@ -609,7 +608,7 @@ for assay_type in assays:
                         url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.DELLY.filtered.vcf.gz',
                         subgroups=sampleSubgroups,
                         tracktype='vcfTabix',
-                        parentonoff="off"
+                        parent="off"
                     )
                     Delly_view.add_tracks(track)
         
