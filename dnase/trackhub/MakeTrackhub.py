@@ -11,9 +11,6 @@ import locale
 import csv
 import os
 import urllib.parse
-## Suppress shortName user warnings
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning)
 
 locale.setlocale(locale.LC_ALL, 'en_US')
 
