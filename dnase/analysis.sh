@@ -299,12 +299,12 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
         callHotspots1=0
         callHotspots2=0
     fi
-
+    
+    #TODO this only requires the merged .bam file be complete and so could run sooner (before bed file, or in merge.sh)
     echo
     echo "Calling SNPs"
     date
     
-    #TODO this could run sooner (before bed file)
     samtools idxstats ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' |
     #Chunk bam file based on >5M read chunks of chromosomes to reduce array job size for large runs
     awk -v maxchunksize=5000000 -v prefix="" -F "\t" 'BEGIN {OFS="\t"; chunknum=0; chroms=""; chunksize=0} {\
