@@ -283,6 +283,7 @@ def getBwaReference(species):
             "Human": "hg38_noalt",
             "Mouse": "mm10",
             "Rat": "rn6",
+            "Yeast": "sacCer3",
             "Plasmid": None,
             }
     else:
