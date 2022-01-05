@@ -245,7 +245,8 @@ sort ${OUTFILE} | while read line_in; do
     if [ "${bed_type}" -ge 9 ]; then
         echo "        itemRgb On" >> ${out_file}
     elif [ "${bed_type}" -ge 6 ]; then
-            echo "        colorByStrand 255,0,0 0,0,255" >> ${out_file}
+        #RGB is not specified manually, but a strand column is available
+        echo "        colorByStrand 0,0,255 255,0,0" >> ${out_file}
     fi
     echo >> ${out_file}
 done
