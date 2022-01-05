@@ -150,7 +150,8 @@ else
     pileupParams="--adjust-MQ 50"
 fi
 
-bcftools mpileup -r `echo ${chroms} | perl -pe 's/ /,/g;'` -f ${referencefasta} --redo-BAQ ${pileupParams} --gap-frac 0.05 --max-depth 10000 --max-idepth 200000 -a DP,AD --output-type u ${sampleOutdir}/${name}.${mappedgenome}.bam |
+#manually set --excl-flags to avoid dropping reads with QC-fail set
+bcftools mpileup -r `echo ${chroms} | perl -pe 's/ /,/g;'` -f ${referencefasta} --excl-flags UNMAP,SECONDARY,DUP --redo-BAQ ${pileupParams} --gap-frac 0.05 --max-depth 10000 --max-idepth 200000 -a DP,AD --output-type u ${sampleOutdir}/${name}.${mappedgenome}.bam |
 #NB for some reason if the intermediate file is saved instead of piped, bcftools call outputs a GQ of . for everything
 #Iyer et al PLoS Genet 2018 uses --multiallelic-caller
 #https://sourceforge.net/p/samtools/mailman/message/32931405/
