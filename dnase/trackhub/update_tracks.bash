@@ -162,7 +162,7 @@ for curGenome in "${genome_array[@]}"; do
         if [ -f "${hub_target}/${curGenome}/trackDb.${curSection}.txt" ]; then
             #split into chunks to avoid "maxSize to udcFileReadAll is 16777216" error on hubCheck
             #like split -l 175000 -a 3 -d but takes care not to split stanzas which causes an error
-            awk -v max=160000 -v outbase="${hub_target}/${curGenome}/trackDb.${curSection}." 'BEGIN {wantToSplit=0; curChunk=1} {print > outbase "_" curChunk ".txt"} NR % max == 0 {wantToSplit=1} wantToSplit && $0~/^[ \t]*$/ {curChunk+=1; wantToSplit=0}' ${hub_target}/${curGenome}/trackDb.${curSection}.txt
+            awk -v max=150000 -v outbase="${hub_target}/${curGenome}/trackDb.${curSection}." 'BEGIN {wantToSplit=0; curChunk=1} {print > outbase "_" curChunk ".txt"} NR % max == 0 {wantToSplit=1} wantToSplit && $0~/^[ \t]*$/ {curChunk+=1; wantToSplit=0}' ${hub_target}/${curGenome}/trackDb.${curSection}.txt
             
             rm -f ${hub_target}/${curGenome}/trackDb.${curSection}.txt
             for chunk in ${hub_target}/${curGenome}/trackDb.${curSection}.*.txt; do
@@ -249,6 +249,32 @@ echo
 
 
 ######################################################################################
+# Clean out old hub and deploy
+
+for curGenome in "${genome_array[@]}"; do
+    rm -rf "${hub_target_final}/${curGenome}"
+done
+rm -f  ${hub_target_final}/genomes.txt
+rm -f  ${hub_target_final}/description.html
+rm -f  ${hub_target_final}/hub.txt
+rm -f  ${hub_target_final}/publicdata
+rm -f  ${hub_target_final}/aggregations
+rm -f  ${hub_target_final}/mapped
+
+# Make sure there is no junk left in there:
+if [ "$(ls -A ${hub_target_final})" ]; then
+    echo "ERROR The final target directory is not empty.  Exiting..."
+    echo "Not updating hub. Retaining TMPDIR."
+    echo "It is: ${TMPDIR}"
+    exit 4
+fi
+
+# Replace old hub with new hub:
+echo "Deploying trackhub."
+cp -rpd ${hub_target}/* ${hub_target_final}
+
+
+######################################################################################
 # Enable BLAT for custom assemblies.
 
 if [[ "${hub_type}" == "CEGS" ]]; then
@@ -278,31 +304,9 @@ fi
 
 
 ######################################################################################
-# Clean out old hub and deploy
-
-for curGenome in "${genome_array[@]}"; do
-    rm -rf "${hub_target_final}/${curGenome}"
-done
-rm -f  ${hub_target_final}/genomes.txt
-rm -f  ${hub_target_final}/description.html
-rm -f  ${hub_target_final}/hub.txt
-rm -f  ${hub_target_final}/publicdata
-rm -f  ${hub_target_final}/aggregations
-rm -f  ${hub_target_final}/mapped
-
-# Make sure there is no junk left in there:
-if [ "$(ls -A ${hub_target_final})" ]; then
-    echo "ERROR The final target directory is not empty.  Exiting..."
-    echo "Not updating hub. Retaining TMPDIR."
-    echo "It is: ${TMPDIR}"
-    exit 4
-fi
-
-# Replace old hub with new hub:
-echo "Deploying trackhub."
-cp -rpd ${hub_target}/* ${hub_target_final}
-
 echo "Removing TMPDIR directory."
 rm -rf ${TMPDIR}
+
+
 echo "Done!"
 
