@@ -76,22 +76,21 @@ annotateNearestGeneName() {
         ;;
     esac
     
-    if [[ "${geneAnnotationFile}" == "CEGS" ]]; then
-        cat /vol/cegs/sequences/cegsvectors/cegsvectors/cegsvectors.bed6 | perl -pe 's/ /_/g;' > $TMPDIR/geneAnnotationFile.${genome}.bed
-    else
+    if [[ "${geneAnnotationFile}" != "CEGS" ]]; then
         #Needs prefiltering
         #Add gene name
         cat ${geneAnnotationFile} |
         awk -F "\t" 'BEGIN {OFS="\t"} $7=="protein_coding"' |
         #Restrict to level 1 or 2 genes if available (Sox2 is level 2 for example)
         awk -F "\t" 'BEGIN {OFS="\t"} $5<=2 || $5=="."' > $TMPDIR/geneAnnotationFile.${genome}.bed
+    else
+        cat /vol/cegs/sequences/cegsvectors/cegsvectors/cegsvectors.bed6 | perl -pe 's/ /_/g;' > $TMPDIR/geneAnnotationFile.${genome}.bed
     fi
-    geneAnnotationFile="$TMPDIR/geneAnnotationFile.${genome}.bed"
     
     cat ${inputfile} |
     #Replace main bed coordinates with the center of each element to refine annotation ID
     awk -F "\t" 'BEGIN {OFS="\t"} {width=$3-$2; center=int($2+width/2); print $1, center-1, center, $0}' | sort-bed - |
-    closest-features --delim "|" --closest --dist - ${geneAnnotationFile} |
+    closest-features --delim "|" --closest --dist - $TMPDIR/geneAnnotationFile.${genome}.bed |
     #Replace empty gene names with a dash
     #Add distance to the gene name; note distance is relative to the genomic location (+ is to the right) not the transcriptional direction
     awk -F "|" 'BEGIN {OFS="\t"} { \
