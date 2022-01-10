@@ -330,8 +330,15 @@ if echo "${bam2genome}" | egrep -q "^pSpCas9"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/pSpCas9_vs_${bam1genome}.bed"
     #Include LP mask because some components are in common (e.g. Puro)
     uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
-elif echo "${bam2genome}" | egrep -q "^LP[0-9]+$"; then
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
+elif echo "${bam2genome}" | egrep -q "^LP"; then
+    if echo "${bam2genome}" | egrep -q "^LPSwapin"; then
+        uninformativeRegionFiles="${src}/LP_uninformative_regions/LPSwapin_vs_${bam1genome}.bed"
+    elif echo "${bam2genome}" | egrep -q "^LP[0-9]+$"; then
+        uninformativeRegionFiles="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
+    else
+        echo "WARNING unrecognized LP type. Nothing to add to uninformativeRegionFiles mask."
+        uninformativeRegionFiles=""
+    fi
     #For LP integrations, put HAs in countsTableMaskFiles rather than uninformativeRegionFiles, so the latter can be used for HA analyses.
     countsTableMaskFiles="${countsTableMaskFiles} ${sampleOutdir}/log/HA_coords.${bam1genome}_vs_${bam2genome}.bed"
 elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2)"; then
@@ -371,8 +378,7 @@ elif [[ "${bam2genome}" == "rtTA" ]]; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
     HAmaskFiles="${TMPDIR}/deletion_range.bed"
-#NB masks hardcoded by payload name for now
-#Only HPRT1 is ICE, the others are Big-In
+#NB masks hardcoded by payload name for now. Perhaps add another parameter for LP type?
 elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed"
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
@@ -409,8 +415,10 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     
     #For HA, mask the deletion region since these junctions will be captured by the payload mapping
     HAmaskFiles="${TMPDIR}/deletion_range.bed"
-
-
+elif echo "${bam2genome}" | egrep -q "^(ACE2|MHC|Taf1|TMPRSS2|Trp53|TP53$)"; then
+    uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPSwapin.bed"
+    #still correct?
+    countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
 else
     uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
     if [ ! -f "${uninformativeRegionFiles}" ]; then
