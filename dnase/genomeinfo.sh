@@ -40,6 +40,11 @@ mappedgenome=${1}
 annotationgenome=`echo ${mappedgenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
 
 
+#requires delly module be loaded
+dellypath=`which delly | xargs dirname | xargs dirname`
+#default to no exclusion
+dellyexclude=""
+
 case "${mappedgenome}" in
 #Reference sequence can be .fa.gz as long as bgzip was used to compress
 hg19)
@@ -48,12 +53,14 @@ hg19)
     ploidy="--ploidy GRCh37"
     referencefasta=/vol/isg/annotation/fasta/hg19/hg19.fa
     dbsnpvcf=/vol/isg/annotation/bed/hg19/snp151/src/All_20180418.vcf.gz
+    dellyexclude="-x ${dellypath}/excludeTemplates/human.hg19.excl.tsv"
     ;;
 hg38_noalt|hg38_full|hg38_sacCer3)
     bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy GRCh38"
     referencefasta=/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/vol/isg/annotation/bed/hg38/snp151/src/All_20180418.vcf.gz
+    dellyexclude="-x ${dellypath}/excludeTemplates/human.hg38.excl.tsv"
     ;;
 mm10)
     bwaIndex=/vol/isg/annotation/bwaIndex/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set
@@ -62,12 +69,14 @@ mm10)
     #non-human accession repository has switched from NCBI/dbSNP to EVA as of 9/2017 but I can't find a VCF export, so am using the Sanger mouse genome VCF to annotate variation that segregates among their strains rather the frozen dbSNP export (which I think is here: https://ftp.ncbi.nih.gov/snp/organisms/archive/mouse_10090/VCF/)
     #the v6 genotypes have changed dramatically so stick to v5 for now
     dbsnpvcf=/vol/mauranolab/mauram01/hybridmice/genotyping/v5/mgp.v5.merged.snps.indels.dbSNP142.vcf.gz
+    dellyexclude="-x ${dellypath}/excludeTemplates/mouse.mm10.excl.tsv"
     ;;
 mm10_sacCer3)
     bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy-file /vol/isg/annotation/fasta/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set.ploidy.txt"
     referencefasta=/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/vol/mauranolab/mauram01/hybridmice/genotyping/v5/mgp.v5.merged.snps.indels.dbSNP142.vcf.gz
+    dellyexclude="-x ${dellypath}/excludeTemplates/mouse.mm10.excl.tsv"
     ;;
 rn6|rn6_sacCer3)
     bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
@@ -81,6 +90,7 @@ sacCer3)
     ploidy="--ploidy 1"
     referencefasta=/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/dev/null
+    dellyexclude="-x ${dellypath}/excludeTemplates/yeast.sacCer3.excl.tsv"
     ;;
 wuhCor1|hg38_full_wuhCor1)
     bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
@@ -123,5 +133,5 @@ else
 fi
 
 
-echo "genomeinfo for ${mappedgenome}: bwaIndex=${bwaIndex}, ploidy=${ploidy}, referencefasta=${referencefasta}, dbsnpvcf=${dbsnpvcf}, annotationgenome=${annotationgenome}, chromsizes=${chromsizes}"
+echo "genomeinfo for ${mappedgenome}: bwaIndex=${bwaIndex}, ploidy=${ploidy}, referencefasta=${referencefasta}, dbsnpvcf=${dbsnpvcf}, annotationgenome=${annotationgenome}, chromsizes=${chromsizes}, dellyexclude=${dellyexclude}"
 

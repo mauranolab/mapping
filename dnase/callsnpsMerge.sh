@@ -176,9 +176,11 @@ date
 ${src}/changeSAMflags.py --clearflag 512 ${sampleOutdir}/${name}.${mappedgenome}.bam ${TMPDIR}/${name}.${mappedgenome}.QC_OK_bamfile.bam
 samtools index ${TMPDIR}/${name}.${mappedgenome}.QC_OK_bamfile.bam
 
+
 # If there are not enough valid reads, delly returns a non-zero exit code
+#${dellyexclude} is set by genomeinfo.sh to exclude telomeric/centromeric regions (presumably more important for WGS)
 set +e
-delly call -t ALL -o ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf -g ${referencefasta} ${TMPDIR}/${name}.${mappedgenome}.QC_OK_bamfile.bam
+delly call -t ALL -o ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf ${dellyexclude} -g ${referencefasta} ${TMPDIR}/${name}.${mappedgenome}.QC_OK_bamfile.bam
 dellyExitCode=$?
 set -e
 
