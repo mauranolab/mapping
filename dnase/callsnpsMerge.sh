@@ -185,8 +185,9 @@ set -e
 # If DELLY exited with a 0 code then create the vcf
 if [ "$dellyExitCode" -eq 0 ]; then
     echo "Merging DELLY variants in to .filtered.vcf file"
-    ## Only accept variants that pass the FILTER test.
-    bcftools filter --output-type z -i 'FILTER="PASS" & PE>10' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf -o ${sampleOutdir}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
+    # Only accept variants that pass the FILTER test.
+    # Don't bother masking excluded genotypes and just straight hard drop them
+    bcftools filter --output-type z -i 'FILTER="PASS" & PE>10 & FORMAT/DV / (FORMAT/DV + FORMAT/DR) >= 0.20' ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf -o ${sampleOutdir}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
     bcftools index --tbi ${sampleOutdir}/${name}.${mappedgenome}.DELLY.filtered.vcf.gz
     
     echo "Merging DELLY VCF"
