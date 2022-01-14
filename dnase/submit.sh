@@ -100,6 +100,8 @@ if [[ "${processingCommand}" =~ ^map ]]; then
     grep ${BS} inputs.txt > ${sampleOutdir}/inputs.map.txt
     n=`cat ${sampleOutdir}/inputs.map.txt | wc -l`
     mapname="${name}."`echo ${genomesToMap} | perl -pe 's/cegsvectors_/\1/g;'`
+    #Truncate the name to fit in the 255-char limit for the SLURM output log file
+    mapname=${mapname:0:240}
     #SGE doesn't accept a -t specification with gaps, so we'll start R2 jobs that will die instantly rather than prune here
     echo
     echo "Mapping ${n} jobs"
