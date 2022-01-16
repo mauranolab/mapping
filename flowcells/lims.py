@@ -224,7 +224,7 @@ def updateSheetFromTable(wks, df, updates, commit=True, paranoid=True):
     excludedCols = ['Sample #'] #Don't update data in these columns
     for BS in updates['Sample #']:
         if re.match("^BS[0-9]+[A-Z]$", BS) is None:
-            print("WARNING: empty BS provided" + BS)
+            print("WARNING: empty or invalid BS provided '" + BS + "'")
             continue
         rows = df.index[df['Sample #'] == BS].values
         #I think row + 2 because of 0 -> 1 based indexing plus the header row
