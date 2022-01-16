@@ -16,7 +16,7 @@ import pygsheets
 import os
 import glob
 
-version="1.1"
+version="1.2"
 
 
 #https://stackoverflow.com/questions/26987222/checking-whitespace-in-a-string-python/26987329
@@ -68,10 +68,11 @@ def getLIMSsheet(sheet):
 
 #Verify consistency in common entries between Sample Sheet and LIMS sheets
 #Projects argument suppresses less important inconsistencies unless project is on that comma-separated list
-def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", runnames="", samples=""):
+def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", runnames="", sampleids="", madeby=""):
     projectList = set(filter(None, projects.split(",")))
-    sampleList = set(filter(None, samples.split(",")))
-    #Implement runname filtering by making a pass through the sequencing sheet and adding BS numbers from the specified run to sampleList
+    sampleidList = set(filter(None, sampleids.split(",")))
+    madebyList = set(filter(None, madeby.split(",")))
+    #Implement runname filtering by making a pass through the sequencing sheet and adding BS numbers from the specified run to sampleidList
     if runnames != "":
         runnameList = runnames.split(",")
         
@@ -82,9 +83,11 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", ru
             if curSeq['Sample Name']=="#Run name":
                 curRunname = curSeq['Sample #']
             elif curRunname in runnameList:
-                #Skip remaining per-FC headers
+                #Translate runnameList into sampleidList
+                #BUGBUG does union rather than intersect
+                #Skip remaining per-FC headers with leading "#"
                 if re.match("^#", curSeq['Sample Name']) is None:
-                    sampleList.add(curSeq['Sample #'])
+                    sampleidList.add(curSeq['Sample #'])
     
     
     print("Level", "Description", "Sample Name", "Sample #", "Key", "LIMS_value", "SampleSheet_value", sep="\t")
@@ -111,7 +114,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", ru
         else:
             #Exactly one LIMS entry, but curLims still needs to be accessed using .values.item():
             #Only check additional metadata for specified projects to avoid excess verbiage
-            if (len(projectList)==0 or curLims['Lab'].values.item() in projectList) and (len(sampleList)==0 or bs in sampleList):
+            if (len(projectList)==0 or curLims['Lab'].values.item() in projectList) and (len(sampleidList)==0 or bs in sampleidList) and (len(madebyList)==0 or curLims['Made By'].values.item() in madebyList):
                 for col in commonCols:
                     if curSeq[col] != curLims[col].values.item():
                         if curSeq[col] == "" or curLims[col].values.item() == "":
@@ -144,7 +147,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", ru
         lastBS=bs
         
         #Only check additional metadata for specified projects to avoid excess verbiage
-        if (len(projectList)==0 or curLims['Lab'] in projectList) and (len(sampleList)==0 or bs in sampleList):
+        if (len(projectList)==0 or curLims['Lab'] in projectList) and (len(sampleidList)==0 or bs in sampleidList) and (len(madebyList)==0 or curLims['Made By'] in madebyList):
             for col in ["Sample Name"]:
                 if re.match("[%\(\)\"\'\/\. ]", str(curLims[col])) is not None:
                     print("WARNING", "illegal characters in LIMS", SampleName, bs, col, curLims[col], "", sep="\t")
@@ -296,8 +299,9 @@ if __name__ == "__main__":
     validate_parser = parser.add_argument_group()
     validate_parser.add_argument("--validate", action = "store_true", default = False, help = "Run LIMS and Sample Sheet validation [%(default)s]")
     validate_parser.add_argument("--runnames", action = "store", type = str, default="", help = "Only process samples contained in these run names (multiple run names separated by comma, done as string matching)  [%(default)s]")
-    validate_parser.add_argument("--samples", action = "store", type = str, default="", help = "Only process samples matching this BS number (multiple samples separated by comma, done as string matching) [%(default)s]")
+    validate_parser.add_argument("--sampleids", action = "store", type = str, default="", help = "Only process samples matching this BS number (multiple samples separated by comma, done as string matching) [%(default)s]")
     validate_parser.add_argument("--projects", action = "store", type = str, default="Maurano,CEGS", help = "Only process samples in these projects (multiple projects separated by comma) [%(default)s]")
+    validate_parser.add_argument("--madeby", action = "store", type = str, default="", help = "Only process samples made by these people (multiple names separated by comma) [%(default)s]")
     
     update_parser = parser.add_argument_group()
     update_parser.add_argument("--update", action = "store", default = None, type=str, help = "Update LIMS and Sample Sheet based on tab-delimited input file [%(default)s]")
@@ -319,7 +323,7 @@ if __name__ == "__main__":
     
     #Perform work as directed on command line
     if args.validate:
-        validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects=args.projects, runnames=args.runnames, samples=args.samples)
+        validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects=args.projects, runnames=args.runnames, sampleids=args.sampleids, madeby=args.madeby)
     
     if args.update is not None:
         if args.nocommit:
