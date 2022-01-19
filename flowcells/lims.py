@@ -15,6 +15,7 @@ import pandas as pd
 import pygsheets
 import os
 import glob
+from datetime import datetime
 
 version="1.2"
 
@@ -23,6 +24,12 @@ version="1.2"
 import string
 def contains_whitespace(s):
     return True in [c in s for c in string.whitespace]
+
+
+#https://stackoverflow.com/questions/16542074/what-is-the-inverse-of-date-toordinal-in-python
+def parse_excel_date(exceldate):
+    dt = datetime.fromordinal(datetime(1899, 12, 30).toordinal() + exceldate)
+    return(dt.strftime("%Y-%m-%d"))
 
 
 #Convenience function
@@ -54,6 +61,7 @@ def getLIMSsheet(sheet):
         gc = pygsheets.authorize(service_file='/vol/mauranolab/flowcells/mauranolab.json')
         sh = gc.open_by_key(lims_gsheets_ID)
         wks = sh.worksheet_by_title(sheet)
+        #get_as_df() doesn't permit setting date_time_render_option separately, so value_render="UNFORMATTED_VALUE" seems to result in dates being output as serials. UNFORMATTED_VALUE is needed to avoid thousand separators, and decimal formatting inconsistencies.
         df = wks.get_as_df(value_render="UNFORMATTED_VALUE")
         df.fillna(value='', inplace=True) #Maybe pandas v1 problem? Or just change '' to None?
         #Mask per-FC headers and space between FCs (any row that is only empty lines)
@@ -237,6 +245,9 @@ def updateSheetFromTable(wks, df, updates, commit=True, paranoid=True):
             for col in set(colnames).intersection(set(updates.columns.values)).difference(excludedCols):
                 #Need to translate row back to prior coordinates
                 oldvalue = df.iloc[row-2][col]
+                if col in ['QC Gel Date', 'Bioanalyzer Run Date', 'Date Library Finished']:
+                    if oldvalue != "":
+                        oldvalue = parse_excel_date(oldvalue)
                 coords = (row, df.columns.get_loc(col)+1)
                 newvalue = updates[updates['Sample #'] == BS][col].values.item()
                 if oldvalue != newvalue:
