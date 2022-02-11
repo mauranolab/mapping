@@ -152,7 +152,7 @@ for(curdir in projectdirs) {
 	mappeddirs <- append(mappeddirs, thisProjectMappedDirs)
 }
 
-message("[samplesforTrackhub] ", 'Mapped directories to process: ', length(mappeddirs))
+#message("[samplesforTrackhub] ", 'Mapped directories to process: ', length(mappeddirs))
 
 
 #Initialize color palette
@@ -486,4 +486,4 @@ write.table(data, file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)
 
 # message("[samplesforTrackhub] ", warnings())
 
-message("[samplesforTrackhub] ", "Done!!!")
+#message("[samplesforTrackhub] ", "Done!!!")

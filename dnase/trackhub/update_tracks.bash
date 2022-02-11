@@ -96,18 +96,9 @@ fi
 
 echo "Building new ${hub_type} track hub in ${hub_target_final}"
 
-############################################################################
-# We need a tmp directory to store intermediate files.
-
-echo Creating a temporary directory
+##########################################################################
 TMPDIR=`mktemp -d`   # TMPDIR has no trailing slash
-echo TMPDIR is: ${TMPDIR}
-
-# For testing (remember to comment out the rm at the bottom of this script)
-# TMPDIR=/vol/cegs/src/trackhub/src_dev/myTMP
-# rm -rf ${TMPDIR}
-# mkdir ${TMPDIR}
-# echo TMPDIR is: ${TMPDIR}
+echo "Using $TMPDIR as tmp"
 
 ############################################################################
 hub_target="${TMPDIR}/trackhub"
