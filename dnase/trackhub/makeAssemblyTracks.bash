@@ -241,7 +241,12 @@ sort ${OUTFILE} | while read line_in; do
     echo "        shortLabel ${lbl_name}" >> ${out_file}
     echo "        bigDataUrl ${array[1]}/${array[2]}/${array[3]}" >> ${out_file}
     
-    echo "        type bigBed ${bed_type}" >> ${out_file}
+    echo "        type bigBed ${bed_type} ." >> ${out_file}
+    if [ "${bed_type}" -ge 4 ]; then
+        echo "        filterText.name *" >> ${out_file}
+        #Includes text filter for bigBed 4+
+    fi
+    
     if [ "${bed_type}" -ge 9 ]; then
         echo "        itemRgb On" >> ${out_file}
     elif [ "${bed_type}" -ge 6 ]; then
