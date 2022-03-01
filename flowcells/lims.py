@@ -258,16 +258,16 @@ def updateSheetFromTable(wks, df, updates, commit=True, paranoid=True):
                             print("ERROR: " + wksBS + " does not match expected sample " + BS)
                         
                         wksoldvalue = wks.get_value(coords)
+                        #BUGBUG seems to fail incorrectly when changing int fields with existing data?
                         if oldvalue != wksoldvalue:
                             errors += 1
-                            print("ERROR: " + BS + " wks value " + wksoldvalue + " does not match df value " + oldvalue)
+                            print("ERROR: " + BS + " wks value " + str(wksoldvalue) + " does not match df value " + str(oldvalue))
                     
                     print(col + "=" + str(oldvalue) + " => " + str(newvalue))
-                    
                     if commit:
                         wks.update_value(coords, newvalue)
     if errors > 0:
-        print("ERROR: "+ errors + " found!")
+        print("ERROR: "+ str(errors) + " found!")
 
 
 #Search and replace functionality for FC info
