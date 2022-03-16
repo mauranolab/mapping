@@ -137,8 +137,8 @@ samtools view -H ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -v sex=${sex}
 ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
 
 #TODO --max-depth 10000 was carried over from 2015 nat genet paper -- still useful? Handling of the latter changed in samtools 1.9
-#from Iyer et al PLoS Genet 2018
-#-C50 -pm2 -F0.05 -d10000
+#from Iyer et al PLoS Genet 2018: -C50 -pm2 -F0.05 -d10000
+#(explanation of selected options)
 #  -C, --adjust-MQ INT     adjust mapping quality; recommended:50, disable:0 [0]
 #  -F, --gap-frac FLOAT    minimum fraction of gapped reads [0.002]
 #2020mar21 raised max-idepth to permit calling indels from samples with high coverage (i.e. capture)
@@ -169,9 +169,12 @@ date
 #Normalize and split multiallelics
 bcftools norm --threads $NSLOTS --check-ref w -m - --fasta-ref ${referencefasta} --output-type u ${sampleOutdir}/${name}.${mappedgenome}.${jobname}.bcf |
 #Single ampersand requires all filters to be met in the same sample, FORMAT/DP checks per-sample depth, and --set-GTs masks genotypes failing filters. It doesn't usually matter here since there's only one sample, but it does if this code gets applied to multisample VCF file
-bcftools filter -i "QUAL>=${minSNPQ} & GQ>=${minGQ} & FORMAT/DP>=${minDP}" --SnpGap 3 --IndelGap 10 --set-GTs . --output-type u |
+bcftools filter -i "QUAL>=${minSNPQ} & GQ>=${minGQ} & FORMAT/DP>=${minDP}" --set-GTs . --output-type u |
 #Keep only SNPs with a nonref genotype. --trim-alt-alleles cleans up after --keep-alts above
-bcftools view -i 'GT="alt"' --trim-alt-alleles --output-type z - > $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
+bcftools view -i 'GT="alt"' --trim-alt-alleles --output-type u - |
+#Apply SnpGap/IndelGap after all other filters (particularly --trim-alt-alleles which, in conjunction with bcftools norm -m, can lead to suppression of multiallelic sites otherwise).
+#TODO not clear these filters are relevant to certain engineered variants; the main argument for keeping them is that illumina may have poor sensitivity regardless.
+bcftools filter --SnpGap 3 --IndelGap 10 --set-GTs . --output-type z > $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 bcftools index --tbi $TMPDIR/${name}.${mappedgenome}.${jobname}.filtered.vcf.gz
 
 
