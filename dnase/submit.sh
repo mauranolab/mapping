@@ -142,7 +142,15 @@ function getIntegrationSite {
     
     #Parse out integration site. If we can't find it for whatever reason, use null
     #Parse each genetic modification on separate line, and move part in [] to $2
-    echo "${sampleAnnotationGeneticModification}" | perl -pe 's/,/\n/g;' | perl -pe 's/\[/\t/g;' -e 's/\]/\t/g;' | awk -v entry=${entry} -F "\t" 'BEGIN {integrationsite="null"} $1==entry {integrationsite=$2} END {print integrationsite}'
+    integrationsite=`echo "${sampleAnnotationGeneticModification}" | perl -pe 's/,/\n/g;' | perl -pe 's/\[/\t/g;' -e 's/\]/\t/g;' | awk -v entry=${entry} -F "\t" 'BEGIN {integrationsite="null"} $1==entry {integrationsite=$2} END {print integrationsite}'`
+    
+    #null is valid for transient transfections, so can not throw an error
+    if [[ "${integrationsite}" == "" ]]; then
+        echo "ERROR: invalid integration site ${integrationsite}" >> /dev/stderr
+        exit 4
+    fi
+    
+    echo "${integrationsite}"
 }
 
 
