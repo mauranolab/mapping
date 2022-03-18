@@ -181,41 +181,41 @@ eval set -- "${options}"
 
 
 # Extract options and their arguments into variables.
-while true ; do
+while true; do
     case "$1" in
         --sample_name)
-            sample_name=$2 ; shift 1 ; rqd_arg_status[sample_name]="1" ;;
+            sample_name=$2; shift 1; rqd_arg_status[sample_name]="1";;
         --integrationsite)
-            integrationsite=$2 ; shift 1 ; rqd_arg_status[integrationsite]="1" ;;
+            integrationsite=$2; shift 1; rqd_arg_status[integrationsite]="1";;
         --outdir)
-            sampleOutdir=$2 ; shift 1 ; rqd_arg_status[outdir]="1" ;;
+            sampleOutdir=$2; shift 1; rqd_arg_status[outdir]="1";;
         --bam1)
-            bam1=$2 ; shift 1 ; rqd_arg_status[bam1]="1" ;;
+            bam1=$2; shift 1; rqd_arg_status[bam1]="1";;
         --bam1genome)
-            bam1genome=$2 ; shift 1 ; rqd_arg_status[bam1genome]="1" ;;
+            bam1genome=$2; shift 1; rqd_arg_status[bam1genome]="1";;
         --bam1_keep_flags)
-            bam1_keep_flags=$2 ; shift 1 ;;
+            bam1_keep_flags=$2; shift 1;;
         --bam1_exclude_flags)
-            bam1_exclude_flags=$2 ; shift 1 ;;
+            bam1_exclude_flags=$2; shift 1;;
         --bam2)
-            bam2=$2 ; shift 1 ; rqd_arg_status[bam2]="1" ;;
+            bam2=$2; shift 1; rqd_arg_status[bam2]="1";;
         --bam2genome)
-            bam2genome=$2 ; shift 1 ; rqd_arg_status[bam2genome]="1" ;;
+            bam2genome=$2; shift 1; rqd_arg_status[bam2genome]="1";;
         --bam2_keep_flags)
-            bam2_keep_flags=$2 ; shift 1 ;;
+            bam2_keep_flags=$2; shift 1;;
         --bam2_exclude_flags)
-            bam2_exclude_flags=$2 ; shift 1 ;;
+            bam2_exclude_flags=$2; shift 1;;
         --max_mismatches)
-            max_mismatches=$2 ; shift 1 ;;
+            max_mismatches=$2; shift 1;;
         --reads_match)
-            reads_match="--reads_match" ;;
+            reads_match="--reads_match";;
         --normbam)
-            normbam=$2 ; shift 1 ;;
+            normbam=$2; shift 1;;
         --verbose)
-            verbose=True ;;
-        -h|--help) usage; exit 0 ;;
-        --) shift ; break ;;
-        *) echo "ERROR getopt internal error $1!" ; exit 1 ;;
+            verbose=True;;
+        -h|--help) usage; exit 0;;
+        --) shift; break;;
+        *) echo "ERROR getopt internal error $1!"; exit 1;;
     esac
     shift
 done
