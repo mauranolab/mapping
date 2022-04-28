@@ -12,3 +12,11 @@ Sox2_Sox2_46kb_dDistalLCR_marker	1474	2653	EF1a_promoter
 chr2	74590910	74592246
 #From Raquel: region with high homology (>92%) with a region in Igf2 locus (chr7   42668710 142669090)
 chrX	36347350	36347716
+
+#Sox2 frequent calls
+#Ly6c2
+chr15	75085536	75086989
+#Pdzrn4
+chr15	92439867	92440123
+#Gm29554
+chrY	11857696	11858502
