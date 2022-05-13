@@ -77,6 +77,9 @@ elif [[ "${hub_type}" == "HOLTLAB" ]]; then
 elif [[ "${hub_type}" == "CHAKRAVARTILAB" ]]; then
     customGenomeAssembly="cegsvectors"
     assemblyBaseDir="/vol/mauranolab/flowcells/public_html/chakravartilab"
+elif [[ "${hub_type}" == "LIONNETLAB" ]]; then
+    customGenomeAssembly="cegsvectors"
+    assemblyBaseDir="/vol/mauranolab/flowcells/public_html/lionnetlab"
 else
     echo "ERROR You need to enter a valid hub type: CEGS, MAURANOLAB, HOLTLAB, SARS, CHAKRAVARTILAB. Exiting..."
     exit 1

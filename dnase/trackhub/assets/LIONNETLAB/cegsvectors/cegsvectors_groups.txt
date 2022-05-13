@@ -1,0 +1,5 @@
+name cegsvectors
+label CEGS (Lionnet Lab)
+priority 10
+defaultIsClosed 0
+

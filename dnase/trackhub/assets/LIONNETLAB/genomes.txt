@@ -1,0 +1,10 @@
+genome cegsvectors
+trackDb cegsvectors/trackDb.txt
+description CEGS annotation and sequencing data
+groups cegsvectors/cegsvectors_groups.txt
+twoBitPath cegsvectors/data/cegsvectors.2bit
+organism CEGS (Lionnet Lab)
+scientificName .
+defaultPos RET_ICE_80kb_S:1-89597
+htmlPath description.html
+
