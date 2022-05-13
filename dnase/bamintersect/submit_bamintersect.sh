@@ -225,7 +225,7 @@ done
 ierr=0
 for i in "${rqd_arg_names[@]}"; do
     if [ ${rqd_arg_status["${i}"]} != "1" ]; then
-        echo "ERROR Missing required arg to submit_bamintersect.sh :  ${i}"
+        echo "ERROR Missing required arg to submit_bamintersect.sh: ${i}"
         ierr=1
     fi
 done
@@ -323,6 +323,9 @@ echo "Building uninformative regions and counts table mask"
 #1) uninformative regions files are generally for elements present in genomic locations (e.g. endogenous genomic elements used ectopically). This mask is additionally applied within the same reference before running bamintersect across references (in sort_bamintersect.sh), so that both mates will be removed if one overlaps the mask by a single bp
 #2) counts table mask is additionally applied to bamintersect results (not HA or assemblyBackbone)
 #3) HA mask is used specifically for HA tables
+
+#NB payload masks below hardcoded by payload name for now. Perhaps add another parameter for LP type / delivery method?
+
 HAmaskFiles=""
 countsTableMaskFiles=""
 if echo "${bam2genome}" | egrep -q "^pSpCas9"; then
@@ -330,6 +333,7 @@ if echo "${bam2genome}" | egrep -q "^pSpCas9"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/pSpCas9_vs_${bam1genome}.bed"
     #Include LP mask because some components are in common (e.g. Puro)
     uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
+#Big-IN/mSwAP-In LP
 elif echo "${bam2genome}" | egrep -q "^LP"; then
     if echo "${bam2genome}" | egrep -q "^LPSwapin"; then
         uninformativeRegionFiles="${src}/LP_uninformative_regions/LPSwapin_vs_${bam1genome}.bed"
@@ -341,6 +345,7 @@ elif echo "${bam2genome}" | egrep -q "^LP"; then
     fi
     #For LP integrations, put HAs in countsTableMaskFiles rather than uninformativeRegionFiles, so the latter can be used for HA analyses.
     countsTableMaskFiles="${countsTableMaskFiles} ${sampleOutdir}/log/HA_coords.${bam1genome}_vs_${bam2genome}.bed"
+#Big-IN payload
 elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed"
     if [[ ! "${bam1genome}" =~ ^LP ]]; then
@@ -350,7 +355,7 @@ elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2)"; then
     
     bam2cegsvectorsFile="/vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed"
     if [ ! -f "${bam2cegsvectorsFile}" ]; then
-        echo "WARNING could not find bed file to mask lox sites in ${bam2genome} genome"
+        echo "WARNING could not find ${bam2cegsvectorsFile} to mask lox sites in ${bam2genome} genome"
     else
         awk -F "\t" '$4~/^lox/' ${bam2cegsvectorsFile} > $TMPDIR/loxSites.bed
         nLoxSites=`cat $TMPDIR/loxSites.bed | wc -l`
@@ -361,7 +366,7 @@ elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2)"; then
     cegsGenomeProjectID=`echo ${bam2genome} | cut -d "_" -f1`
     bam1cegsvectorsAssemblyFile="/vol/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed*"
     if [ ! -f "${bam1cegsvectorsAssemblyFile}" ]; then
-        echo "WARNING could not find assembly file for ${bam2genome} genome"
+        echo "WARNING could not find assembly file ${bam1cegsvectorsAssemblyFile} for ${bam2genome} genome in ${bam1genome}"
     else
         awk -v cegsGenomeAssemblyName=`echo ${bam2genome} | cut -d "_" -f1-3` -F "\t" '$4==cegsGenomeAssemblyName' ${bam1cegsvectorsAssemblyFile} > $TMPDIR/assembly.${bam1genome}.bed
         assemblyLen=`awk -F "\t" 'BEGIN {sum=0} {sum+=$3-$2} END {print sum}' $TMPDIR/assembly.${bam1genome}.bed`
@@ -372,20 +377,21 @@ elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2)"; then
     
     #For HA, mask the deletion region since these junctions will be captured by the payload mapping
     HAmaskFiles="${TMPDIR}/deletion_range.bed"
+#ICE
 elif [[ "${bam2genome}" == "rtTA" ]]; then
     #TODO confirm this is working properly
     #Include Rosa26 deleted sequence
     uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
     HAmaskFiles="${TMPDIR}/deletion_range.bed"
-#NB masks hardcoded by payload name for now. Perhaps add another parameter for LP type?
+#ICE payload
 elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed"
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
     
     bam2cegsvectorsFile="/vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed"
     if [ ! -f "${bam2cegsvectorsFile}" ]; then
-        echo "WARNING could not find bed file to mask lox sites and SV40 poly(A) signal in ${bam2genome} genome"
+        echo "WARNING could not find ${bam2cegsvectorsFile} to mask lox sites and SV40 poly(A) signal in ${bam2genome} genome"
     else
         if [[ "${bam1genome}" == "LPICE" ]]; then
             #Need also to mask the SV40pA on the assembly
@@ -403,7 +409,7 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     cegsGenomeProjectID=`echo ${bam2genome} | cut -d "_" -f1`
     bam1cegsvectorsAssemblyFile="/vol/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed*"
     if [ ! -f "${bam1cegsvectorsAssemblyFile}" ]; then
-        echo "WARNING could not find assembly file for ${bam2genome} genome"
+        echo "WARNING could not find assembly file ${bam1cegsvectorsAssemblyFile} for ${bam2genome} genome in ${bam1genome}"
     else
         #TODO hardcode to maximal size for now since we don't have specific coords
         cat ${bam1cegsvectorsAssemblyFile} > $TMPDIR/assembly.${bam1genome}.bed
@@ -415,6 +421,7 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     
     #For HA, mask the deletion region since these junctions will be captured by the payload mapping
     HAmaskFiles="${TMPDIR}/deletion_range.bed"
+#mSwAP-In payload
 elif echo "${bam2genome}" | egrep -q "^(ACE2|MHC|Taf1|TMPRSS2|Trp53|TP53$)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPSwapin.bed"
     #still correct?
