@@ -223,7 +223,7 @@ def checkForCEGSreferences(requestedReferencesForMapping, warn=False):
                 #Add the genome including the cegsvectors_ prefix
                 genomesToMap.append("cegsvectors_" + curRequestedReference)
             else:
-                suppressWarningsForMissingReference = ['dHprt', 'dIgf2', 'dSox2', 'loxP', 'dPiga', 'dHoxa', 'dH2k', 'dB2m', 'dHba', 'dPigaExon2', 'dLsp1', 'dSyt8', 'dHIDAD']
+                suppressWarningsForMissingReference = ['dHprt', 'dIgf2', 'dSox2', 'loxP', 'dPiga', 'dHoxa', 'dH2k', 'dB2m', 'dHba', 'dPigaExon2', 'dLsp1', 'dSyt8', 'dHIDAD', 'dRet']
                 if curRequestedReference not in suppressWarningsForMissingReference:
                     print("WARNING could not find reference for '" + curRequestedReference, "'", sep="", file=sys.stderr)
     return(genomesToMap)
