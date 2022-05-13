@@ -570,7 +570,7 @@ for assay_type in assays:
                             parent="off",
                             tracktype="bigBed",
                             maxItems=100000,
-                            scoreFilter="0", scoreFilterLimits="0:250",
+#                            scoreFilter="0", scoreFilterLimits="0:250",
                             short_label="Genotypes",
                             long_label="Genotypes")
                         composite.add_view(Genotypes_view)
