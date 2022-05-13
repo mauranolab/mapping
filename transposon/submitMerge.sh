@@ -15,7 +15,7 @@ module load bedtools
 module load ucsckentutils/379
 module load miller
 module load pigz
-module load samtools/1.12
+module load samtools/1.14
 
 src=$( dirname "${BASH_SOURCE[0]}" )
 
