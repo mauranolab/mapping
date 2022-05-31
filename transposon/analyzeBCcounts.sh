@@ -6,6 +6,7 @@ src=$( dirname "${BASH_SOURCE[0]}" )
 #TODO inconsistently applied
 minReadCutoff=$1
 sample=$2
+analyzeBCargs=$3
 
 
 OUTDIR=${sample}
@@ -21,7 +22,7 @@ echo "Analyzing data for ${sample} (minReadCutoff=${minReadCutoff})"
 date
 
 echo
-zcat ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz | ${src}/removeOverrepresentedBCs.py --col 1 --maskcols 3,4 --freq 0.01 -o ${TMPDIR}/${sample}.barcodes.txt -
+zcat ${OUTDIR}/${sample}.barcodes.preFilter.txt.gz | ${src}/removeOverrepresentedBCs.py --col 1 --maskcols 3,4 ${analyzeBCargs} -o ${TMPDIR}/${sample}.barcodes.txt -
 
 
 #Doesn't count length if the BC has been masked to ""

@@ -52,8 +52,9 @@ bclen=$6
 BCreadSeq=$7
 plasmidSeq=$8
 extractBCargs=$9
+analyzeBCargs=$10
 
-shift 9
+shift 10
 basedir=$@
 echo "Looking for files in ${basedir}"
 f1=`find ${basedir}/ -maxdepth 1 -name "*_R1_*.fastq.gz" | sort`
@@ -297,7 +298,7 @@ fi
 #-o ${OUTDIR} breaks Jesper's Flowcell_Info.sh
 cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -terse ${analysisHold} # | perl -pe 's/[^\d].+$//g;' > sgeid.analysis
 set -eu -o pipefail
-${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
+${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample} ${analyzeBCargs}
 
 if [[ ${sampleType} == "iPCR" ]]; then
     ${src}/analyzeIntegrations.sh ${sample}
