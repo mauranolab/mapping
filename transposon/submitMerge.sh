@@ -24,7 +24,8 @@ runMerge=1
 
 ###Parse command line args
 sample=$1
-shift
+analyzeBCargs=$2
+shift 2
 indivsamples=$@
 
 
@@ -91,7 +92,7 @@ fi
 cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -terse ${analysisHold} | perl -pe 's/[^\d].+$//g;'  #> sgeid.analysis
 set -eu -o pipefail
 
-${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
+${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample} ${analyzeBCargs}
 if [[ ${sampleType} == "iPCR" ]]; then
     ${src}/analyzeIntegrations.sh ${sample}
 fi
