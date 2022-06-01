@@ -6,8 +6,10 @@ src=$( dirname "${BASH_SOURCE[0]}" )
 #TODO inconsistently applied
 minReadCutoff=$1
 sample=$2
-analyzeBCargs=$3
 
+#Just take the rest to simplify passing multiple arguments for removeOverrepresentedBCs.py
+shift 2
+analyzeBCargs=$@
 
 OUTDIR=${sample}
 
