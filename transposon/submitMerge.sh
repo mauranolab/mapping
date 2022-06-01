@@ -24,8 +24,16 @@ runMerge=1
 
 ###Parse command line args
 sample=$1
-analyzeBCargs=$2
-shift 2
+analyzeBCargs=""
+shift 1
+
+while getopts ':b:' opt; do
+    case $opt in
+    b) analyzeBCargs="$OPTARG";;
+    esac
+done
+shift $((OPTIND-1))
+
 indivsamples=$@
 
 

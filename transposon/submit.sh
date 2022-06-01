@@ -52,14 +52,20 @@ bclen=$6
 BCreadSeq=$7
 plasmidSeq=$8
 extractBCargs=$9
-analyzeBCargs=$10
+analyzeBCargs=""
+shift 9
 
-shift 10
+while getopts ':b:' opt; do
+    case $opt in
+    b) analyzeBCargs="$OPTARG";;
+    esac
+done
+shift $((OPTIND-1))
+
 basedir=$@
 echo "Looking for files in ${basedir}"
 f1=`find ${basedir}/ -maxdepth 1 -name "*_R1_*.fastq.gz" | sort`
 f2=`find ${basedir}/ -maxdepth 1 -name "*_R2_*.fastq.gz" | sort`
-
 
 if [[ "${sampleType}" != "DNA" ]] && [[ "${sampleType}" != "10xRNA" ]] && [[ "${sampleType}" != "RNA" ]] && [[ "${sampleType}" != "iPCR" ]]; then
     echo "ERROR submit: unknown sample type ${sampleType}"
