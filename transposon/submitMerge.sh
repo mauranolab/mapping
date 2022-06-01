@@ -30,6 +30,8 @@ shift 1
 while getopts ':b:' opt; do
     case $opt in
     b) analyzeBCargs="$OPTARG";;
+    ?) echo "ERROR submit: unrecognize flag '-$OPTARG'"
+       exit 2;;
     esac
 done
 shift $((OPTIND-1))
