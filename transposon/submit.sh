@@ -60,6 +60,8 @@ while getopts ':b:' opt; do
     b) analyzeBCargs="$OPTARG";;
     ?) echo "ERROR submit: unrecognize flag '-$OPTARG'"
        exit 2;;
+    *) echo "ERROR submit: impossible!"
+       exit 2;;
     esac
 done
 shift $((OPTIND-1))
