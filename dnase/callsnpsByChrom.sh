@@ -120,7 +120,7 @@ minSNPQ=10
 minGQ=99
 minDP=10
 
-#Set up ploidy
+#Set up bcftools call --ploidy argument. ${ploidy} is initialized in genomeinfo.sh based on mappedgenome. For most mamalian genomes, --ploidy is set to depend on sample sex. For cegsvectors_*, it is fixed at 1.
 sampleAnnotationSex=`echo "${sampleAnnotation}" | awk -v key="Sex" -F ";" '{for(i=1; i<=NF; i++) { split($i, cur, "="); if(cur[1]==key) {print cur[2]; exit}}}'`
 case "${sampleAnnotationSex}" in
 Male)
