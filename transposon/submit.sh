@@ -52,7 +52,7 @@ bclen=$6
 BCreadSeq=$7
 plasmidSeq=$8
 extractBCargs=$9
-analyzeBCargs=""
+analyzeBCargs="--freq 0.01"
 shift 9
 
 while getopts ':b:' opt; do

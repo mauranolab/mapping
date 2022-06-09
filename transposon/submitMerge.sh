@@ -24,7 +24,7 @@ runMerge=1
 
 ###Parse command line args
 sample=$1
-analyzeBCargs=""
+analyzeBCargs="--freq 0.01"
 shift 1
 
 while getopts ':b:' opt; do
