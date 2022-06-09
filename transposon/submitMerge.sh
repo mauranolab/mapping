@@ -24,7 +24,20 @@ runMerge=1
 
 ###Parse command line args
 sample=$1
-shift
+analyzeBCargs="--freq 0.01"
+shift 1
+
+while getopts ':b:' opt; do
+    case $opt in
+    b) analyzeBCargs="$OPTARG";;
+    ?) echo "ERROR submit: unrecognize flag '-$OPTARG'"
+       exit 2;;
+    *) echo "ERROR submit: impossible!"
+       exit 2;;
+    esac
+done
+shift $((OPTIND-1))
+
 indivsamples=$@
 
 
@@ -91,7 +104,7 @@ fi
 cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -terse ${analysisHold} | perl -pe 's/[^\d].+$//g;'  #> sgeid.analysis
 set -eu -o pipefail
 
-${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
+${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample} ${analyzeBCargs}
 if [[ ${sampleType} == "iPCR" ]]; then
     ${src}/analyzeIntegrations.sh ${sample}
 fi

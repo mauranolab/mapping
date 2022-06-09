@@ -52,8 +52,20 @@ bclen=$6
 BCreadSeq=$7
 plasmidSeq=$8
 extractBCargs=$9
-
+analyzeBCargs="--freq 0.01"
 shift 9
+
+while getopts ':b:' opt; do
+    case $opt in
+    b) analyzeBCargs="$OPTARG";;
+    ?) echo "ERROR submit: unrecognize flag '-$OPTARG'"
+       exit 2;;
+    *) echo "ERROR submit: impossible!"
+       exit 2;;
+    esac
+done
+shift $((OPTIND-1))
+
 basedir=$@
 echo "Looking for files in ${basedir}"
 f1=`find ${basedir}/ -maxdepth 1 -name "*_R1_*.fastq.gz" | sort`
@@ -297,7 +309,7 @@ fi
 #-o ${OUTDIR} breaks Jesper's Flowcell_Info.sh
 cat <<EOF | qsub -S /bin/bash -j y -b y -N ${sample} -terse ${analysisHold} # | perl -pe 's/[^\d].+$//g;' > sgeid.analysis
 set -eu -o pipefail
-${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample}
+${src}/analyzeBCcounts.sh ${minReadCutoff} ${sample} ${analyzeBCargs}
 
 if [[ ${sampleType} == "iPCR" ]]; then
     ${src}/analyzeIntegrations.sh ${sample}
