@@ -39,6 +39,7 @@ mappedgenome=${1}
 #NB this will call hotspots, etc. only on the first mammalian genome for the *_sacCer3 hybrid indices
 annotationgenome=`echo ${mappedgenome} | perl -pe 's/_.+$//g;' -e 's/all$//g;'`
 
+chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
 
 #requires delly module be loaded
 dellypath=`which delly | xargs dirname | xargs dirname`
@@ -78,6 +79,14 @@ mm10_sacCer3)
     dbsnpvcf=/vol/mauranolab/mauram01/hybridmice/genotyping/v5/mgp.v5.merged.snps.indels.dbSNP142.vcf.gz
     dellyexclude="-x ${dellypath}/excludeTemplates/mouse.mm10.excl.tsv"
     ;;
+mm10all_CASTEiJ_female)
+    bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
+    ploidy="--ploidy-file /vol/isg/annotation/fasta/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set.ploidy.txt"
+    referencefasta=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}.fa.gz
+    dbsnpvcf=/dev/null
+    #BUGBUG no dellyexclude for strain-specific references
+    chromsizes="/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}.chrom.sizes"
+    ;;
 rn6|rn6_sacCer3)
     bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy-file /vol/isg/annotation/fasta/rn6/rn6.ploidy.txt"
@@ -108,6 +117,8 @@ cegsvectors*)
     #If this genome is an symlink, then substitute it with its target for the purposes of looking up bwa index and fasta file
     bwagenome=`readlink -f /vol/cegs/sequences/${mappedgenome} | xargs basename`
     bwaIndex=/vol/cegs/sequences/${bwagenome}/${bwagenome}
+    #In case this genome is an symlink,  use its target name to get the right chrom.sizes name
+    chromsizes="/vol/cegs/sequences/${bwagenome}/${bwagenome}.chrom.sizes"
     ploidy="--ploidy 1"
     #Tried using the full cegsvectors.fa.gz but picard (esp CollectMultipleMetrics) has trouble with it)
     referencefasta=/vol/cegs/sequences/${bwagenome}/${bwagenome}.fa.gz
@@ -125,13 +136,24 @@ t2t)
 esac
 
 
-if [[ "${mappedgenome}" =~ ^cegsvectors ]]; then
-    #In case this genome is an symlink,  use its target name (determined above) to get the right chrom.sizes name
-    chromsizes="/vol/cegs/sequences/${bwagenome}/${bwagenome}.chrom.sizes"
-else
-    chromsizes="/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.chrom.sizes"
-fi
-
-
 echo "genomeinfo for ${mappedgenome}: bwaIndex=${bwaIndex}, ploidy=${ploidy}, referencefasta=${referencefasta}, dbsnpvcf=${dbsnpvcf}, annotationgenome=${annotationgenome}, chromsizes=${chromsizes}, dellyexclude=${dellyexclude}"
 
+if [[ ! -d `dirname "${bwaIndex}"` ]]; then
+    echo "ERROR could not find required files for ${bwaIndex}!"
+    exit 1
+fi
+
+if [[ ! -s "${referencefasta}" ]]; then
+    echo "ERROR could not find required file ${referencefasta}!"
+    exit 2
+fi
+
+if [[ "${dbsnpvcf}" != "/dev/null" ]] && [[ ! -s "${dbsnpvcf}" ]]; then
+    echo "ERROR could not find required file ${dbsnpvcf}!"
+    exit 3
+fi
+
+if [[ ! -s "${chromsizes}" ]]; then
+    echo "ERROR could not find required file ${chromsizes}!"
+    exit 4
+fi
