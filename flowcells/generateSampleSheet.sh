@@ -72,6 +72,11 @@ fi
 
 #TODO check read count total
 #TODO Better to use pool counts?
+awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $1!="" && $5!="Pool" && ($6=="" || $7=="" ) {\
+    print "WARNING: No BC specified for sample " $2 \
+}' info.txt
+
+
 awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Expected reads" {expectedReads=$2; programmedReads=0} \
 $0!~/^#/ && $1!="" && $5!="Pool" { programmedReads+= $13 } \
 END { if(programmedReads != expectedReads) { \
