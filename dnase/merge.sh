@@ -61,7 +61,7 @@ if [[ "${processingCommand}" =~ ^map ]]; then
         fi
     done
 elif [[ "${processingCommand}" =~ ^aggregate ]]; then
-    for curOutputFile in `grep ${BS} inputs.txt | grep ${mappedgenome}`; do
+    for curOutputFile in `grep ${BS} inputs.txt | grep .${mappedgenome}.bam`; do
         if [[ -f "${curOutputFile}" ]]; then
             if [[ "${processingCommand}" == "aggregateRemarkDups" ]]; then
                 curOutputFileBase=`basename ${curOutputFile} .bam`
