@@ -264,7 +264,7 @@ if [ "$(ls -A ${hub_target_final})" ]; then
 fi
 
 # Replace old hub with new hub:
-echo "Deploying trackhub."
+echo "Deploying trackhub"
 cp -rpd ${hub_target}/* ${hub_target_final}
 
 
