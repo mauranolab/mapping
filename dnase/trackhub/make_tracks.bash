@@ -120,12 +120,13 @@ make_tracks () {
     local includeSampleIDinSampleCol=""
     subgroupprefix="--subgroupnames Replicate"
     if [ ${supertrack_name} = "By_Locus" ]; then
-        tracknameprefix="--tracknameprefix byLocus"
+        tracknameprefix="--tracknameprefix Locus"
         subgroupprefix="--subgroupnames Project,Assembly,Type"
         generateHTMLdescription=""
         supertrackPriority=20
         URLbase="../mapped/"
     elif [ ${supertrack_name} = "Aggregations" ]; then
+        tracknameprefix="--tracknameprefix Agg"
         supertrackPriority=30
         URLbase="../aggregations/"
     elif [ ${supertrack_name} = "Public_Data" ]; then

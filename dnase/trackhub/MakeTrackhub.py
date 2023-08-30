@@ -307,7 +307,7 @@ for assay_type in assays:
             # So sampleName_trackname is increased by 4+8+9=21 characters.
             # If sampleName_trackname starts with 107 characters, then 128 characters get sent to the server.  This causes an error.
             # So sampleName_trackname needs to be 106 characters or less. 
-            sampleName_trackname = cleanTrackName(sampleNameGenome + "_" + curGroup + "_" + curSample['SampleID'])
+            sampleName_trackname = cleanTrackName(sampleNameGenome + args.tracknameprefix + "_" + curGroup + "_" + curSample['SampleID'])
             
             
             # Make sure there are no duplicate track names.
