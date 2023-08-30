@@ -203,14 +203,19 @@ sort ${OUTFILE} | while read line_in; do
         # A new assembly was found. So give it new composite tracks.
         old_assmbly=${assmbly}
         echo "    track ${genome}_${assmbly}" >> ${out_file}
-        echo "    compositeTrack on" >> ${out_file}
+        # Display custom assembly composite tracks (e.g. the "cegsvectors" under Assemblies on the Configure page) by default; otherwise not.
+        if [[ "${genome}" == "${customGenomeAssembly}" ]]; then
+            echo "    compositeTrack on" >> ${out_file}
+        else
+            echo "    compositeTrack off" >> ${out_file}
+        fi
         echo "    visibility pack" >> ${out_file}
         echo "    type bigBed" >> ${out_file}
         echo "    html descriptions/${genome}_assembly_${assmbly}.html" >> ${out_file}
         echo "    shortLabel ${assmbly}" >> ${out_file}
         echo "    longLabel ${assmbly}" >> ${out_file}
         
-        # Display assembly tracks by default if genome=${customGenomeAssembly}. Otherwise not.
+        # Display custom assembly tracks (e.g. the "cegsvectors" track within the cegsvectors composite track) by default; otherwise not.
         if [[ "${genome}" == "${customGenomeAssembly}" ]]; then
             # This does not work with the supertrack:  echo "    parent ${genome}_Assemblies on" >> ${out_file}
             echo "    parent ${genome}_Assemblies" >> ${out_file}
