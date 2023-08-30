@@ -340,6 +340,7 @@ for(curdir in mappeddirs) {
 					#Find samples based on Genetic_Modification
 					#Samples with a Big-IN assemblon at a landing pad
 					Genetic_Modification <- strsplit(data$Genetic_Modification[i], ",")[[1]]
+					#TODO try to support mSwAP-IN, but LPregex <- "LP([0-9]+|ICE|RMGR[0-9]+|Swapin)" but not enough, see note in final else clause
 					LPregex <- "LP([0-9]+|ICE|RMGR[0-9]+)"
 					if(any(sapply(Genetic_Modification, grepl, pattern=paste0("\\[", LPregex, "\\]$"), perl=T))) {
 						#mSwap-IN may have multiple payloads, and they are delivered to HA coords rather than LPs
@@ -350,6 +351,7 @@ for(curdir in mappeddirs) {
 					# Samples that have a LP but no assemblon
 					# BUGBUG using "$" to find LP lines fails as a heuristic if there are further non-delivery modifications
 					} else if(any(sapply(Genetic_Modification, grepl, pattern="", paste0(LPregex, "\\[(.+)\\]$"), perl=T))) {
+						#LandingPads_DNA Capture is getting to be a mess-remove rows/samples as an axis in chooser?
 						LP <- Genetic_Modification[sapply(Genetic_Modification, grepl, pattern=paste0(LPregex, "\\[(.+)\\]$"), perl=T)]
 						integrationsite <- gsub(paste0(LPregex, "\\[(.+)\\]$"), "\\2", LP, perl=T)
 						LP <- gsub("\\[.+\\]$", "", LP, perl=T)
