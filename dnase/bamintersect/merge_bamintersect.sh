@@ -163,11 +163,12 @@ subsetBamFileToInformativeReads()
     inbed=$1
     inbam=$2
     outbam=$3
+    excludeFlags=$4
     base=`basename $1 .bed`
     
     cut -f4 ${inbed} > ${TMPDIR}/${base}.readNames.txt
     if [ -s "${TMPDIR}/${base}.readNames.txt" ]; then
-        ${src}/subsetBAM.py --exclude_flags ${HAExcludeFlags} --include_readnames ${TMPDIR}/${base}.readNames.txt ${inbam} - |
+        ${src}/subsetBAM.py --exclude_flags ${excludeFlags} --include_readnames ${TMPDIR}/${base}.readNames.txt ${inbam} - |
         samtools sort -@ $NSLOTS -O bam -m 4000M -T $TMPDIR/${base}.sort -l 9 -o ${outbam}
         samtools index ${outbam}
     fi
@@ -178,7 +179,7 @@ echo
 echo "Merging bam files"
 bamfiles=`cat ${INTERMEDIATEDIR}/inputs.bamintersect.txt | cut -f3 | perl -pe 's/\.bed$/.bam1.bam/g;'; cat ${INTERMEDIATEDIR}/inputs.bamintersect.txt | cut -f3 | perl -pe 's/\.bed$/.bam2.bam/g;'`
 samtools merge -@ $NSLOTS -c -p -O bam -l 1 $TMPDIR/${sample_name}.bam ${bamfiles}
-subsetBamFileToInformativeReads ${sampleOutdir}/${sample_name}.bed $TMPDIR/${sample_name}.bam ${sampleOutdir}/${sample_name}.bam
+subsetBamFileToInformativeReads ${sampleOutdir}/${sample_name}.bed $TMPDIR/${sample_name}.bam ${sampleOutdir}/${sample_name}.bam 0
 
 #Prep for UCSC track links
 #Remove "new" from the end of path so that we can reprocess data without affecting live data
@@ -195,12 +196,12 @@ echo "track name=\"${sample_name}\" description=\"${sample_name} Reads\" visibil
 
 
 echo "Subset bam files for HA"
-subsetBamFileToInformativeReads ${sampleOutdir}/${sample_name}.HA.bed ${bam1} ${sampleOutdir}/${sample_name}.HA.bam
+subsetBamFileToInformativeReads ${sampleOutdir}/${sample_name}.HA.bed ${bam1} ${sampleOutdir}/${sample_name}.HA.bam ${HAExcludeFlags}
 echo
 
 
 echo "Subset bam files for assemblyBackbone"
-subsetBamFileToInformativeReads ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${bam2} ${sampleOutdir}/${sample_name}.assemblyBackbone.bam
+subsetBamFileToInformativeReads ${sampleOutdir}/${sample_name}.assemblyBackbone.bed ${bam2} ${sampleOutdir}/${sample_name}.assemblyBackbone.bam ${assemblyBackboneExcludeFlags}
 echo
 
 
