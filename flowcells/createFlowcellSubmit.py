@@ -70,7 +70,7 @@ else:
 
 ###Utility functions
 def quoteStringsWithSpaces(str):
-    if " " in str:
+    if " " in str or "&" in str:
         str = "\"" + str + "\""
     return str
 
