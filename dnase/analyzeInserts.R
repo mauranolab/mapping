@@ -22,6 +22,7 @@ read <- function(filename, nrows=100, header=F, col.classes=NULL, stringsAsFacto
 	#TODO can't use a pipe or specify which columns to use
 	#BUGBUG when the first column is all characters, R tries to use it as row names. But this goofs up my hardcoded colClasses. row.names=NULL doesn't work in the function, though it works interactively.
 	
+	#BUGBUG shell globbing causes problems with square brackets in file names
 	filename <- Sys.glob(filename)
 	if(length(filename) == 0 || !file.exists(filename)) {
 		stop("ERROR read() -- ", filename, " does not exist!\n")
@@ -129,7 +130,7 @@ scale_y_continuous(labels = function(x) {scales::scientific(x, digits=1)}) +
 guides(color=F, linetype=F) +
 theme(legend.position = c(.85, 0.9)) +
 geom_dl(method=list("top.points", cex=0.8))
-#theme(plot.margin=unit(c(0,0,0,0), "lines"))) #NB top, rt, bot, left
+#theme(plot.margin=unit(c(0,0,0,0), "lines")) #NB top, rt, bot, left
 
 pdf(paste0(dir, "/insertlengths.pdf"), width=7, height=5)
 print(p)
