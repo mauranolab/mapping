@@ -394,6 +394,7 @@ elif [[ "${sampleType}" == "dnase" ]] || [[ "${sampleType}" == "atac" ]] || [[ "
     #Intervals then conform to Richard's convention that the counts are reported in 20bp windows including reads +/-75 from the center of that window
     awk -v step=20 -v binwidth=150 -F "\t" 'BEGIN {OFS="\t"} {offset=(binwidth-step)/2 ; $2+=offset; $3-=offset; print}' |
     #Normalizes the density to 1M reads
+    #BUGBUG gives bad results for cegsvectors tracks since they only contain reads mapping to the custom reference
     awk -v analyzedReads=${analyzedReads} -F "\t" 'BEGIN {OFS="\t"} analyzedReads>0 {$5=$5/analyzedReads*1000000; print}' |
     tee $TMPDIR/${name}.${mappedgenome}.density.bed |
     #Remember wig is 1-indexed
