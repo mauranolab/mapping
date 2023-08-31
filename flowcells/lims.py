@@ -76,7 +76,7 @@ def getLIMSsheet(sheet):
 
 #Verify consistency in common entries between Sample Sheet and LIMS sheets
 #Projects argument suppresses less important inconsistencies unless project is on that comma-separated list
-def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", runnames="", sampleids="", madeby=""):
+def validateSampleSheetAndLIMS(lims, seq, limsMask, seqMask, projects="", runnames="", sampleids="", madeby=""):
     projectList = set(filter(None, projects.split(",")))
     sampleidList = set(filter(None, sampleids.split(",")))
     madebyList = set(filter(None, madeby.split(",")))
@@ -88,7 +88,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", ru
         #Mask space between FCs (any row that is only empty lines)
         for seqRow in seq.index.values[(seq!="").any(1)]:
             curSeq = seq.iloc[seqRow]
-            if curSeq['Sample Name']=="#Run name":
+            if curSeq['Sample Name'] == "#Run name":
                 curRunname = curSeq['Sample #']
             elif curRunname in runnameList:
                 #Translate runnameList into sampleidList
@@ -100,7 +100,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", ru
     
     print("Level", "Description", "Sample Name", "Sample #", "Key", "LIMS_value", "SampleSheet_value", sep="\t")
     
-    print("#Check sequencing sheet for consistency with LIMS. Projects=", projects, sep="")
+    print("#Check sequencing sheet for consistency with LIMS. Projects=", projects, sep="", file=sys.stderr)
     commonCols = set(lims.columns.values).intersection(set(seq.columns.values))
     numMissingSamples = 0
     numMultipleSamples = 0
@@ -125,6 +125,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", ru
             if (len(projectList)==0 or curLims['Lab'].values.item() in projectList) and (len(sampleidList)==0 or bs in sampleidList) and (len(madebyList)==0 or curLims['Made By'].values.item() in madebyList):
                 for col in commonCols:
                     if curSeq[col] != curLims[col].values.item():
+                        #BUGBUG I tried switching to "".__eq__(myString) but somehow it always evaluates to true. https://stackoverflow.com/questions/9573244/how-to-check-if-the-string-is-empty#
                         if curSeq[col] == "" or curLims[col].values.item() == "":
                             print("WARNING", "missing info", SampleName, bs, col, curLims[col].values.item(), curSeq[col], sep="\t")
                         else:
@@ -141,7 +142,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", ru
         print("ERROR", "duplicate BS number", SampleName, bs, "", "", "", sep="\t")
         numDuplicateSamples += 1
     
-    print("#Check LIMS for integrity. Projects=", projects, sep="")
+    print("#Check LIMS for integrity. Projects=", projects, sep="", file=sys.stderr)
     #Iterate through LIMS
     #This validation applies to all samples in LIMS
     lastBS = None
@@ -154,7 +155,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", ru
             print("ERROR", "sample out of order", SampleName, bs, "Sample #", "", "", sep="\t")
         lastBS=bs
         
-        #Only check additional metadata for specified projects to avoid excess verbiage
+        #Only check certain metadata for specified projects to avoid excess verbiage
         if (len(projectList)==0 or curLims['Lab'] in projectList) and (len(sampleidList)==0 or bs in sampleidList) and (len(madebyList)==0 or curLims['Made By'] in madebyList):
             for col in ["Sample Name"]:
                 if re.match("[%\(\)\"\'\/\. ]", str(curLims[col])) is not None:
@@ -186,7 +187,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", ru
                 geneticModifications = set([ re.sub(r"\[.+\]$", "", cur) for cur in curLims["Genetic Modification"].split(",") ])
                 customReferences = set(curLims["Custom Reference"].split(","))
                 if geneticModifications & customReferences:
-                    print("ERROR", "duplicate custom reference", SampleName, bs, "Genetic Modification/Custom Reference", geneticModifications & customReferences, "", sep="\t")
+                    print("ERROR", "duplicate custom reference", SampleName, bs, "Genetic Modification/Custom Reference", sorted(geneticModifications & customReferences), "", sep="\t")
             
             requiredColsBySampleType = { "DNA Capture": ["Parent Library", "Bait set", "Pool ID"] }
             for sampleType in requiredColsBySampleType:
@@ -203,7 +204,7 @@ def validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects="", ru
     
     
     print("", file=sys.stderr)
-    print("#Clone info")
+    print("#Clone info", file=sys.stderr)
     #Leave out "Species" right now since it is mainly for mappings
     clones = lims[["Clone ID", "Genetic background / Individual", "Sex", "Genetic Modification"]].drop_duplicates()
     clones = clones[clones["Clone ID"] != ""]
@@ -277,10 +278,10 @@ def replaceFCinfo(seqWks, seq, key, value, newvalue, commit=False):
     curFC = None
     for seqRow in seq.index.values[fcMask]:
         curSeq = seq.iloc[seqRow]
-        if curSeq['Sample Name']=="#Barcode":
+        if curSeq['Sample Name'] == "#Barcode":
             #BUGBUG FC is customarily after run name, so it won't be set for the first line
             curFC = curSeq['Sample #']
-        elif curSeq['Sample Name']=="#"+key:
+        elif curSeq['Sample Name'] == "#"+key:
             #I think row + 2 because of 0 -> 1 based indexing plus the header row
             coords = (seqRow+2, seq.columns.get_loc('Sample #')+1)
             oldvalue = seqWks.get_value(coords)
@@ -334,7 +335,7 @@ if __name__ == "__main__":
     
     #Perform work as directed on command line
     if args.validate:
-        validateSampleSheetAgainstLIMS(lims, seq, limsMask, seqMask, projects=args.projects, runnames=args.runnames, sampleids=args.sampleids, madeby=args.madeby)
+        validateSampleSheetAndLIMS(lims, seq, limsMask, seqMask, projects=args.projects, runnames=args.runnames, sampleids=args.sampleids, madeby=args.madeby)
     
     if args.update is not None:
         if args.nocommit:
