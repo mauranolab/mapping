@@ -335,6 +335,7 @@ if echo "${bam2genome}" | egrep -q "^pSpCas9"; then
     uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
 #Big-IN/mSwAP-In LP
 elif echo "${bam2genome}" | egrep -q "^LP"; then
+    #BUGBUG this does not recognize mSwAP-In deliveries to LP400
     if echo "${bam2genome}" | egrep -q "^LPSwapin"; then
         uninformativeRegionFiles="${src}/LP_uninformative_regions/LPSwapin_vs_${bam1genome}.bed"
     elif echo "${bam2genome}" | egrep -q "^LP[0-9]+$"; then
@@ -346,7 +347,8 @@ elif echo "${bam2genome}" | egrep -q "^LP"; then
     #For LP integrations, put HAs in countsTableMaskFiles rather than uninformativeRegionFiles, so the latter can be used for HA analyses.
     countsTableMaskFiles="${countsTableMaskFiles} ${sampleOutdir}/log/HA_coords.${bam1genome}_vs_${bam2genome}.bed"
 #Big-IN payload
-elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2)"; then
+#BUGBUG add other Big-IN payloads
+elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2|Cacna1c)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed"
     if [[ ! "${bam1genome}" =~ ^LP ]]; then
         #Include LP mask for failed clones and also because some components are in common
@@ -385,6 +387,7 @@ elif [[ "${bam2genome}" == "rtTA" ]]; then
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
     HAmaskFiles="${TMPDIR}/deletion_range.bed"
 #ICE payload
+#BUGBUG Some Hoxa payloads to Big-IN now
 elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed"
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
@@ -422,7 +425,7 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     #For HA, mask the deletion region since these junctions will be captured by the payload mapping
     HAmaskFiles="${TMPDIR}/deletion_range.bed"
 #mSwAP-In payload
-elif echo "${bam2genome}" | egrep -q "^(ACE2|MHC|Taf1|TMPRSS2|Trp53|TP53$)"; then
+elif echo "${bam2genome}" | egrep -q "^(ABCB7|ACE2|ANK1|APOBEC3|IL1RN|MHC|OSTN|PAX6|SLFN11|Taf1|TMPRSS2|TP53|Trp53$)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPSwapin.bed"
     #still correct?
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
