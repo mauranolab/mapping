@@ -601,7 +601,7 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
                     hotspot2mappableFileArg=""
                 fi
                 
-                hotspot2.sh -c /vol/isg/annotation/bed/${annotationgenome}/hotspots2/${annotationgenome}.chrom.sizes -C ${hotspot2centersites} -F ${FDRhot2} -f ${FDRhot2} ${hotspot2mappableFileArg} ${hotspotBAM} ${sampleOutdir}/hotspot2 > ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log 2>&1
+                hotspot2.sh -c ${hotspot2chromsizes} -C ${hotspot2centersites} -F ${FDRhot2} -f ${FDRhot2} ${hotspot2mappableFileArg} ${hotspotBAM} ${sampleOutdir}/hotspot2 > ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log 2>&1
                 
                 #Check for results first to avoid nonzero exit code
                 if grep -q -i -E "(error)" ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log; then
@@ -616,8 +616,8 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
                 
                 echo "Hotspots for UCSC browser"
                 #Hotspots
-                hotspot2file=${sampleOutdir}/hotspot2/${name}.${mappedgenome}.hotspots.fdr0.01.starch
-                hotspot2fileFDR05=${sampleOutdir}/hotspot2/${name}.${mappedgenome}.hotspots.fdr0.05.starch
+                hotspot2file="${sampleOutdir}/hotspot2/${name}.${mappedgenome}.hotspots.fdr0.01.starch"
+                hotspot2fileFDR05="${sampleOutdir}/hotspot2/${name}.${mappedgenome}.hotspots.fdr0.05.starch"
                 if [ -s "${hotspot2fileFDR05}" ] && [ `unstarch --elements ${hotspot2fileFDR05}` -gt 0 ]; then
                     unstarch ${hotspot2fileFDR05} | cut -f1-4 > $TMPDIR/${name}.${mappedgenome}.hotspots.fdr0.05.bed
                     bedToBigBed -type=bed4 $TMPDIR/${name}.${mappedgenome}.hotspots.fdr0.05.bed ${chromsizes} ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.hotspots.fdr0.05.bb
@@ -628,7 +628,7 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
                 #Peaks
                 #NB peaks have "i" in col 4 instead of id-# identifier
                 #NB hotspot2 also generates a .peaks.narrowpeaks.starch which is the same, except columns altered to meet the narrowpeak format
-                hotspot2peakfile=${sampleOutdir}/hotspot2/${name}.${mappedgenome}.peaks.starch
+                hotspot2peakfile="${sampleOutdir}/hotspot2/${name}.${mappedgenome}.peaks.starch"
                 if [ -s "${hotspot2peakfile}" ] && [ `unstarch --elements ${hotspot2peakfile}` -gt 0 ]; then
                     unstarch ${hotspot2peakfile} | cut -f1-3 > $TMPDIR/${name}.${mappedgenome}.peaks.bed
                     bedToBigBed -type=bed3 $TMPDIR/${name}.${mappedgenome}.peaks.bed ${chromsizes} ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.peaks.bb
