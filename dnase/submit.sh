@@ -24,7 +24,7 @@ module load R/3.5.2
 module load samblaster/0.1.24
 module load ucsckentutils/379
 module load hotspot/4.1
-module load hotspot2/2.1.1
+module load hotspot2/2.1.2
 module load pigz
 module load primerclip/0.3.8
 module load delly/0.8.7
