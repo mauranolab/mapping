@@ -54,7 +54,7 @@ else
     #Dummy value to preserve argument position
     sampleAnnotation="NULL"
 fi
-#Files for a given sample will be output to a folder named "${samplePrefix}-${BS}" (samplePrefix may include subsequent subdirectories)
+#Files for a given sample will be output to a folder named "${samplePrefix}-${BS}" (samplePrefix may include subsequent subdirectories; BS will be set to BSmany for aggregations across BS numbers)
 
 
 processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
@@ -70,8 +70,15 @@ if [[ "${sampleType}" != "atac" ]] && [[ "${sampleType}" != "dnase" ]] && [[ "${
     exit 2
 fi
 
-if ! grep -q ${BS} inputs.txt; then
-    echo "ERROR submit: Can't find ${BS}"
+if [[ "${processingCommand}" =~ ^map ]] && [[ "${BS}" =~ , ]]; then
+    echo "ERROR submit: Mapping multiple BS numbers is not supported: ${BS}"
+    exit 4
+fi
+
+sampleIDs=`echo "${BS}" | perl -pe 's/,/\\\\|/g;'`
+if ! grep -q "${sampleIDs}" inputs.txt; then
+    #BUGBUG does not check that there is a file for each BS number in case of aggregations across BS numbers
+    echo "ERROR submit: Can't find ${sampleIDs}"
     exit 3
 fi
 
@@ -80,7 +87,11 @@ echo "Submitting jobs for ${samplePrefix} (${BS})"
 echo "Pipeline: ${analysisType}"
 echo "Genomes ${genomesToMap}"
 
-sampleOutdir="${samplePrefix}-${BS}"
+if [[ "${BS}" =~ , ]]; then
+    sampleOutdir="${samplePrefix}-BSmany"
+else
+    sampleOutdir="${samplePrefix}-${BS}"
+fi
 name=`basename ${sampleOutdir}`
 mkdir -p ${sampleOutdir}
 
@@ -97,7 +108,7 @@ cp -rp ${srcbase}/bamintersect ${src}
 
 ###Map
 if [[ "${processingCommand}" =~ ^map ]]; then
-    grep ${BS} inputs.txt > ${sampleOutdir}/inputs.map.txt
+    grep "${sampleIDs}" inputs.txt > ${sampleOutdir}/inputs.map.txt
     n=`cat ${sampleOutdir}/inputs.map.txt | wc -l`
     mapname="${name}."`echo ${genomesToMap} | perl -pe 's/cegsvectors_/\1/g;'`
     #Truncate the name to fit in the 255-char limit for the SLURM output log file
@@ -107,7 +118,7 @@ if [[ "${processingCommand}" =~ ^map ]]; then
     echo "Mapping ${n} jobs"
     echo "+ ${mapname}"
     #NB running many jobs with threads < 4 can sometimes get memory errors, not quite sure of the culprit
-    qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mapThreads} -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sampleOutdir} ${BS} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
+    qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mapThreads} -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sampleOutdir} '${sampleIDs}' ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
 fi
 
 
@@ -125,7 +136,7 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggrega
         mergename="${name}.${curGenome}"
         echo "+ ${mergename}"
         #NB compression threads are multithreaded. However, samblaster and index are not; former is ~1/4 of time and latter is trivial
-        qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mergeThreads} -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sampleOutdir} ${BS} ${curGenome} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
+        qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mergeThreads} -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sampleOutdir} '${sampleIDs}' ${curGenome} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
     done
 fi
 #Clean up sgeid even if we don't run merge
@@ -225,7 +236,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         fi
         
         echo "+ ${analysisname}"
-        qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sampleOutdir} ${BS} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
+        qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sampleOutdir} '${sampleIDs}' \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
         
         cat ${sampleOutdir}/sgeid.analysis.${analysisname} >> `dirname ${sampleOutdir}`/sgeid.analysis
         

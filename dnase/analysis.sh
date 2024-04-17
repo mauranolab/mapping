@@ -11,7 +11,7 @@ alias closest-features='closest-features --header'
 mappedgenome=${1}
 analysisType=${2}
 sampleOutdir=${3}
-BS=${4}
+sampleIDs=${4}
 sampleAnnotation=${5}
 src=${6}
 
@@ -100,7 +100,7 @@ getcolor () {
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
 name=`basename ${sampleOutdir}`
-echo "Running ${analysisType} analysis for sample ${name} (${BS}) against genome ${mappedgenome} (aka ${annotationgenome})"
+echo "Running ${analysisType} analysis for sample ${name} (${sampleIDs}) against genome ${mappedgenome} (aka ${annotationgenome})"
 echo -e "SampleAnnotation\t${sampleAnnotation}"
 
 
@@ -116,13 +116,13 @@ if [ ! -s "${sampleOutdir}/${name}.${mappedgenome}.bam.bai" ]; then
 fi
 
 
-if grep ${BS} inputs.txt | grep -q .fastq; then
-    sequencedReads=`cat inputs.txt | grep ${BS} | grep .fastq | sort | uniq | xargs pigz -dc -f | awk 'END {print NR/4}'`
-elif grep ${BS} inputs.txt | grep ${mappedgenome} | grep -q .bam; then
+if grep "${sampleIDs}" inputs.txt | grep -q .fastq; then
+    sequencedReads=`cat inputs.txt | grep ${sampleIDs} | grep .fastq | sort | uniq | xargs pigz -dc -f | awk 'END {print NR/4}'`
+elif grep "${sampleIDs}" inputs.txt | grep ${mappedgenome} | grep -q .bam; then
     #Look for inputs.txt one directory up from the bam files and get fastq files from there
     #Re-counting fastq files really too slow for large jobs so try to grab the counts from the individual analysis logfiles
     #BUGBUG how robust is this in the presence of missing files? Looks to me like it won't give an error
-    sequencedReads=`cat inputs.txt | grep ${BS} | grep .bam | grep ${mappedgenome} | xargs -I {} dirname {} | xargs -I {} find {} -name "analysis*.${mappedgenome}.o*" | xargs awk -F "\t" 'BEGIN {OFS="\t"; sum=0} $1== "Num_sequenced_reads" {sum+=$2} END {print sum}'`
+    sequencedReads=`cat inputs.txt | grep "${sampleIDs}" | grep .bam | grep ${mappedgenome} | xargs -I {} dirname {} | xargs -I {} find {} -name "analysis*.${mappedgenome}.o*" | xargs awk -F "\t" 'BEGIN {OFS="\t"; sum=0} $1== "Num_sequenced_reads" {sum+=$2} END {print sum}'`
 else
     echo "Couldn't identify source of .fastq files; unable to count total number of sequenced reads"
     sequencedReads="NA"
