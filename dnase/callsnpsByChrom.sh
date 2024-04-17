@@ -57,6 +57,7 @@ echo
 echo "Making coverage track"
 date
 #This track excludes PCR duplicates, unmapped segments, and QC fail reads
+#BUGBUG does this really exclude QC fail reads? I only see -F 1028 above
 #N.B. bedops --chop is only run at locations covered by 1+ read, therefore there will be no entries for bases with 0 coverage
 bedops --chop 1 ${TMPDIR}/${name}.${mappedgenome}.${jobname}.reads.passed.bed |
 bedmap --delim "\t" --bp-ovr 1 --echo --bases - ${TMPDIR}/${name}.${mappedgenome}.${jobname}.reads.passed.bed |
@@ -101,6 +102,7 @@ echo "Making windowed coverage track"
 date
 #Make windowed coverage track of number of overlapping reads per fixed 100-bp window
 #This track excludes PCR duplicates, unmapped segments, and QC fail reads
+#BUGBUG does this really exclude QC fail reads? I only see -F 1028 above
 for chrom in ${chroms}; do
     awk -v chrom=${chrom} -F "\t" 'BEGIN {OFS="\t"} $1==chrom' ${chromsizes}
 done |
