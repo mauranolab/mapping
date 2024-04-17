@@ -271,6 +271,34 @@ def updateSheetFromTable(wks, df, updates, commit=True, paranoid=True):
         print("ERROR: "+ str(errors) + " found!")
 
 
+#Identify FCs that contain a given list of samples
+#NB does not actually check whether changes were made
+#TODO could be done with less validation using indices
+def findFCsForSamples(seq, updates):
+    affectedFCs = []
+    curFC = None
+    numEmptyLines = 0
+    for seqRow in seq.index.values:
+        curSeq = seq.iloc[seqRow]
+        if (curSeq == "").all():
+            numEmptyLines += 1
+            #clear curFC if we pass two newlines
+            if numEmptyLines >= 2:
+                curFC = None
+            continue
+        else:
+            numEmptyLines = 0
+            if curSeq['Sample Name'] == "#Barcode":
+                curFC = curSeq['Sample #']
+            elif re.match("^#", curSeq['Sample Name']) is None:
+#                print(curSeq['Sample #'], curFC)
+                if curSeq['Sample #'] in updates['Sample #'].values:
+                    if curFC is not None:
+                        affectedFCs.append(curFC)
+#                    print("Found:", curSeq['Sample #'], "on FC", curFC)
+    print(set(affectedFCs), sep=",")
+
+
 #Search and replace functionality for FC info
 #BUGBUG I don't think this is safe to run twice in a given session
 def replaceFCinfo(seqWks, seq, key, value, newvalue, commit=False):
@@ -297,7 +325,7 @@ def removeEmptyFCinfo(seqWks, seq, key, commit=True):
     #Iterate in reverse order since updating row index to account for deleted rows does not seem to work
     for seqRow in reversed(seq.index.values[fcMask]):
         curSeq = seq.iloc[seqRow]
-        if curSeq['Sample Name']=="#"+key and curSeq['Sample #']=="":
+        if curSeq['Sample Name'] == "#"+key and "".__eq__(curSeq['Sample #']):
             print("Removing row ", seqRow, ": ", curSeq['Sample Name'], sep="")
             if commit:
                 #I think row + 2 because of 0 -> 1 based indexing plus the header row
@@ -352,4 +380,8 @@ if __name__ == "__main__":
         print()
         print("Updating Sequencing Sheet:")
         updateSheetFromTable(seqWks, seq, updates, commit=not args.nocommit)
+        
+        print()
+        print("FCs containing the samples in this update")
+        findFCsForSamples(seq, updates)
 
