@@ -205,6 +205,10 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
                 #Hardcode the bamfile used to determine read counts for normalization
                 if [[ "${mammalianGenome}" == "cegsvectors_LPICE" ]] || [[ "${mammalianGenome}" == "cegsvectors_LP305" ]]; then
                     normbam="--normbam ${sampleOutdir}/${name}.mm10.bam"
+                    if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggregate ]]; then
+                        #$bamIntersectHold from above ends in a trailing comma
+                        bamIntersectHold="${bamIntersectHold}`cat ${sampleOutdir}/sgeid.merge.${name}.mm10 | perl -pe 's/\n/,/g;'`"
+                    fi
                 else
                     normbam=""
                 fi
