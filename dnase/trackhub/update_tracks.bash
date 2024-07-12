@@ -124,11 +124,11 @@ src=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 # Read the applicable one here:
 readarray -t genome_array < "${src}/assets/${hub_type}_genomes"
 echo
-echo The genomes in this hub will be:
+echo "The genomes in this hub will be:"
 for curGenome in "${genome_array[@]}"; do
     # Make a subdirectory for each genome we are working with.
+    echo "${curGenome}"
     mkdir "${hub_target}/${curGenome}"
-    echo ${curGenome}
 done
 echo
 
