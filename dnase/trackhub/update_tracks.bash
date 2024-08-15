@@ -13,18 +13,12 @@ set -eu -o pipefail
 #
 # Standard execution of this script:
 #    For development:
-#        /vol/cegs/src/trackhub/src_dev/update_tracks.bash CEGS /vol/cegs/public_html/trackhub_dev "CEGS Dev" "CEGS Development Hub"
-#        /vol/cegs/src/trackhub/src_dev/update_tracks.bash SARS /home/cadlej01/public_html/trackhub_sars "SARS" "SARS Hub"
+#        update_tracks.bash CEGS /vol/cegs/public_html/trackhub_dev "CEGS Dev" "CEGS Development Hub"
 #
 #    For production:
-#        /vol/cegs/src/trackhub/src_prod/update_tracks.bash CEGS /vol/cegs/public_html/trackhub "CEGS" "CEGS Hub"
-#        /vol/cegs/src/trackhub/src_prod/update_tracks.bash MAURANOLAB /home/cadlej01/public_html/trackhub "Maurano Lab" "Maurano Lab Hub"
-#        /vol/mauranolab/mapped/src/dnase/trackhub/update_tracks.bash SARS /vol/sars/public_html/trackhub "SARS-CoV2" "SARS-CoV2 Hub"
+#        update_tracks.bash CEGS /vol/cegs/public_html/trackhub "CEGS" "CEGS Hub"
+#        update_tracks.bash MAURANOLAB /home/mauram01/public_html/trackhub "Maurano Lab" "Maurano Lab Hub"
 #
-# There are two sets of code, defined as development and production.
-# They are located here:
-#     /vol/cegs/src/trackhub/src_dev
-#     /vol/cegs/src/trackhub/src_prod
 #
 ############################################################################
 #
@@ -270,6 +264,11 @@ cp -rpd ${hub_target}/* ${hub_target_final}
 
 ######################################################################################
 # Enable BLAT for custom assemblies.
+# A good test sequence:
+# cggtaaactgcccacttggcagtacatcaagtgtatcatatgccaagtacgccccctattgacgtcaatgacggtaaatg
+#
+# See: Troubleshooting BLAT servers for your hub
+#    http://genomewiki.ucsc.edu/index.php/Assembly_Hubs
 
 if [[ "${hub_type}" == "CEGS" ]]; then
     blatport=17779
@@ -292,8 +291,8 @@ if [ "${blatport}" != "0" ]; then
     
     #NB requires password-less access via ssh
     echo "Restarting gfServer..."
-    ssh isglcdcpvm001.nyumc.org "/usr/local/bin/blat/gfServer stop localhost ${blatport} -log=/vol/isg/blat_data/stop_gfServer_VM_${hub_type}.log; cd /vol/isg/blat_data; /usr/local/bin/blat/gfServer start localhost ${blatport} ${twoBitFiles} -canStop -log=/vol/isg/blat_data/start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
-    echo "Finished restart of gfServer."
+    ssh isglcdcpvm001.nyumc.org "cd /vol/isg/blat_data; /usr/local/bin/blat/gfServer stop localhost ${blatport} -log=stop_gfServer_VM_${hub_type}.log; /usr/local/bin/blat/gfServer start localhost ${blatport} ${twoBitFiles} -canStop -log=start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
+    echo "Restarted gfServer."
 fi
 
 
