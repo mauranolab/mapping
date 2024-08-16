@@ -40,6 +40,8 @@ module load miller/5.10.3
 
 qsubargs=""
 
+annotationBase="/vol/isg/annotation/bed"
+
 
 ###################
 # Start of "getopt" section
@@ -438,7 +440,6 @@ else
 fi
 
 #Genomic repeat annotation
-annotationBase="/vol/isg/annotation/bed"
 if [ -f "${annotationBase}/${bam1genome}/repeat_masker/Satellite.bed" ]; then
     countsTableMaskFiles="${countsTableMaskFiles} ${annotationBase}/${bam1genome}/repeat_masker/Satellite.bed"
 fi

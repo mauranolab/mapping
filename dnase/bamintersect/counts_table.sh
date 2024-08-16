@@ -25,6 +25,8 @@ module load miller/5.10.3
 #
 #####################################################################################
 
+annotationBase="/vol/isg/annotation/bed"
+
 bamintersectBED12=${1}
 bam1genome=${2}
 bam2genome=${3}
@@ -59,17 +61,16 @@ annotateNearestGeneName() {
     
     # Set the appropriate gene annotation file.
     # Note that hg38_full, etc. was converted to just "hg38" prior to calling bamintersect.
-    local annotationBase="/vol/isg/annotation/bed"
     local geneAnnotationFile=""
     case "${genome}" in
     mm10)
-        geneAnnotationFile=${annotationBase}/mm10/gencodev23/GencodevM23.gene.bed
+        geneAnnotationFile="${annotationBase}/mm10/gencodev23/GencodevM23.gene.bed"
         ;;
     rn6)
-        geneAnnotationFile=${annotationBase}/rn6/ensembl96/Ensemblv96_Rnor.gene.bed
+        geneAnnotationFile="${annotationBase}/rn6/ensembl96/Ensemblv96_Rnor.gene.bed"
         ;;
     hg38)
-        geneAnnotationFile=${annotationBase}/hg38/gencodev31/Gencodev31.gene.bed
+        geneAnnotationFile="${annotationBase}/hg38/gencodev31/Gencodev31.gene.bed"
         ;;
     *)
         geneAnnotationFile="CEGS"
