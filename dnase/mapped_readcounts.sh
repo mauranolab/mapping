@@ -10,11 +10,6 @@ echo
 echo "Errors in log files"
 find . -regextype posix-awk -maxdepth 2 -regex ".+\/[^\/]+(BS|SRR|GSM|ENCL)[^\/]+\/.+" -and -name "*.o*" | xargs grep -i error
 
-echo
-echo "UCSC track links"
-projectdir=`pwd | perl -pe 's/^\/vol\/mauranolab\/mapped\///g;'`
-projectdir=${projectdir//\//\\/}
-
 echo "Density tracks"
 grep -h "Making density track" -A 1 ${dir}/*/analysis.* | grep -v cegsvectors | grep -v "Making density track" | awk '$0!="--"'
 
