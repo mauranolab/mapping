@@ -86,6 +86,8 @@ mm10all_CASTEiJ_female)
     dbsnpvcf=/dev/null
     #BUGBUG no dellyexclude for strain-specific references
     chromsizes="/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}.chrom.sizes"
+    #BUGBUG mm10 annotation is wrong here since these assemblies reflect CAST indels. Using mappedgenome is a dead end but helps distinguish these tracks from mm10.
+    annotationgenome="${mappedgenome}"
     ;;
 rn6|rn6_sacCer3)
     bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
@@ -130,6 +132,11 @@ t2t)
     referencefasta=/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/dev/null
     ;;
+#dm6)
+#    bwaIndex=/vol/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome} BUGBUG
+#    ploidy="--ploidy 2" BUGBUG
+#    referencefasta=/vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
+#    dbsnpvcf=/dev/null
 *)
     echo "ERROR: Don't recognize genome ${mappedgenome}";
     exit 1;;

@@ -32,6 +32,8 @@ Rscript --vanilla ${src}/samplesforTrackhub.R --out ${outfile_Flowcells} --worki
 
 # Split up the samplesforTrackhub.R output into separate files for each genome.
 # BUGBUG It is important that the cegsvectors assemblies do not unintentionally include standard genome names in their own names.  For example, if a Mapped_genome is cegsvectors_Myspecialmm10gene, then the track will appear in both the cegsvectors genome files and in the mm10 files.
+# BUGBUG mm10all_CASTEiJ_female tracks show up in mm10
+#See Commit #195
 for curGenome in "${genome_array[@]}"; do
     mlr --tsv filter -S "'\$Mapped_Genome =~ \".*${curGenome}.*\"'" ${outfile_Flowcells} > ${TMP_OUT}/samplesforTrackhub_${curGenome}_Flowcells.tsv
 done
