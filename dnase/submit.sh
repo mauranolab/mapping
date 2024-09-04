@@ -9,7 +9,7 @@ export OPENBLAS_NUM_THREADS=1
 
 
 #Load modules
-module load picard/2.22.1
+module load picard/2.26.10
 module load FastQC/0.11.4
 module load bedtools/2.29.2
 module load bedops/2.4.40

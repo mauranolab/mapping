@@ -121,7 +121,7 @@ if [[ "${sampleType}" == "amplicon" ]]; then
     #Needs to be sorted by coordinate
     java -XX:ParallelGCThreads=1 -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar FixMateInformation -INPUT $TMPDIR/${name}.${mappedgenome}.sorted.bam -OUTPUT $TMPDIR/${name}.${mappedgenome}.fixedMC.bam -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 1
     
-    java -XX:ParallelGCThreads=1 -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar SetNmMdAndUqTags -INPUT=$TMPDIR/${name}.${mappedgenome}.fixedMC.bam -OUTPUT=${sampleOutdir}/${name}.${mappedgenome}.new.bam -REFERENCE_SEQUENCE=${referencefasta} -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 9
+    java -XX:ParallelGCThreads=1 -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar SetNmMdAndUqTags -INPUT $TMPDIR/${name}.${mappedgenome}.fixedMC.bam -OUTPUT ${sampleOutdir}/${name}.${mappedgenome}.new.bam -REFERENCE_SEQUENCE ${referencefasta} -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 9
     
     mv ${sampleOutdir}/${name}.${mappedgenome}.new.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
 elif [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggregateRemarkDups" ]]; then

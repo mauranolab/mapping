@@ -338,7 +338,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
     #Need to make second pass as CollectWgsMetrics can't be run by CollectMultipleMetrics
     #Exclude flag 512 rather than it's default MAPQ/BQ filters
     #NB I often see this using 4-5% of memory, about twice the available per-job average
-    samtools view -h -u ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | java -XX:ParallelGCThreads=1 -Xmx11g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectWgsMetrics -INPUT /dev/stdin -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics -VERBOSITY WARNING -COUNT_UNPAIRED=true
+    samtools view -h -u ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | java -XX:ParallelGCThreads=1 -Xmx11g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectWgsMetrics -INPUT /dev/stdin -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics -VERBOSITY WARNING -COUNT_UNPAIRED true
     
     #NB included reads don't exactly match our -F 512 or duplicates
     #but aren't generating a binned coverage track

@@ -419,7 +419,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     
     #Not populating -SPECIES=Human
     #ParallelGCThreads is for java.lang.OutOfMemoryError: unable to create new native thread
-    java -XX:ParallelGCThreads=1 -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CreateSequenceDictionary -O=$TMPDIR/${curfile}.${curGenome}.dict -R=${referencefasta} -GENOME_ASSEMBLY=${annotationgenome}
+    java -XX:ParallelGCThreads=1 -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CreateSequenceDictionary -O $TMPDIR/${curfile}.${curGenome}.dict -R ${referencefasta} -GENOME_ASSEMBLY ${annotationgenome}
     
     samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${curfile}.sortbyname -l 1 -n $TMPDIR/${curfile}.${curGenome}.bwaout.bam |
     #not much gain other than avoiding disk IO doing this in a pipe as I don't think sort prints any intermediate results. Perhaps sorting fastq before mapping would be faster? https://www.biostars.org/p/15011/
