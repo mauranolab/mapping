@@ -131,10 +131,10 @@ echo
 echo "Configuring trimming parameters"
 #Trimmomatic options
 if [[ "${sampleType}" == "atac" ]]; then 
-    illuminaAdapters="/cm/shared/apps/trimmomatic/0.39/adapters/NexteraPE-PE.fa"
+    illuminaAdapters="${TRIMMOMATIC_DIR}/adapters/NexteraPE-PE.fa"
 else 
     #TODO Probably need different sequences per barcode. Note this fa file has 2 ident copies of left adapter and none of right adapter (with barcode).
-    illuminaAdapters="/cm/shared/apps/trimmomatic/0.39/adapters/TruSeq3-PE-2.fa"
+    illuminaAdapters="${TRIMMOMATIC_DIR}/adapters/TruSeq3-PE-2.fa"
 fi
 
 seedmis=2
@@ -216,7 +216,7 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     
     #seems to have fairly heavy memory requirements
     #java.lang.OutOfMemoryError: unable to create new native thread if run with just 2 threads
-    java -XX:ParallelGCThreads=2 org.usadellab.trimmomatic.TrimmomaticPE ${trimmomaticBaseOpts} $TMPDIR/${sample1}.pretrim.fastq.gz $TMPDIR/${sample2}.pretrim.fastq.gz $TMPDIR/${sample1}.fastq.gz $TMPDIR/${sample1}.unpaired.fastq.gz $TMPDIR/${sample2}.fastq.gz $TMPDIR/${sample2}.unpaired.fastq.gz ${trimmomaticSteps}
+    java -XX:ParallelGCThreads=2 -jar $TRIMMOMATIC_DIR/trimmomatic-0.39.jar PE ${trimmomaticBaseOpts} $TMPDIR/${sample1}.pretrim.fastq.gz $TMPDIR/${sample2}.pretrim.fastq.gz $TMPDIR/${sample1}.fastq.gz $TMPDIR/${sample1}.unpaired.fastq.gz $TMPDIR/${sample2}.fastq.gz $TMPDIR/${sample2}.unpaired.fastq.gz ${trimmomaticSteps}
     #BUGBUG java doesn't set nonzero exit code on trimmomatic exception
     
     rm -f $TMPDIR/${sample1}.pretrim.fastq.gz $TMPDIR/${sample2}.pretrim.fastq.gz
@@ -264,7 +264,7 @@ else
     
     #BUGBUG missing filterNextSeqReadsForPolyG.py for SE data
     #BUGBUG wrong adapter files
-    java -XX:ParallelGCThreads=2 org.usadellab.trimmomatic.TrimmomaticSE ${trimmomaticBaseOpts} ${readsFq} $TMPDIR/${sample1}.fastq.gz ${trimmomaticSteps}
+    java -XX:ParallelGCThreads=2 -jar $TRIMMOMATIC_DIR/trimmomatic-0.39.jar SE ${trimmomaticBaseOpts} ${readsFq} $TMPDIR/${sample1}.fastq.gz ${trimmomaticSteps}
     #BUGBUG java doesn't set nonzero exit code on trimmomatic exception
     
     
