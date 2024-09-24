@@ -65,7 +65,7 @@ def getLIMSsheet(sheet):
         df = wks.get_as_df(value_render="UNFORMATTED_VALUE")
         df.fillna(value='', inplace=True) #Maybe pandas v1 problem? Or just change '' to None?
         #Mask per-FC headers and space between FCs (any row that is only empty lines)
-        mask = ~df['Sample Name'].str.startswith('#') & (df!="").any(1)
+        mask = ~df['Sample Name'].astype(str).str.startswith('#') & (df!="").any(1)
     except Exception as e:
         #Doesn't print exception name right, e.g. if header is corrupted in google docs: "AttributeError: 'KeyError' object has no attribute 'argument'"
         print("WARNING could not load sheet " + sheet + " from google sheets: ", e.message, '\n', e.argument)
@@ -158,7 +158,7 @@ def validateSampleSheetAndLIMS(lims, seq, limsMask, seqMask, projects="", runnam
         #Only check certain metadata for specified projects to avoid excess verbiage
         if (len(projectList)==0 or curLims['Lab'] in projectList) and (len(sampleidList)==0 or bs in sampleidList) and (len(madebyList)==0 or curLims['Made By'] in madebyList):
             for col in ["Sample Name"]:
-                if re.match("[%\(\)\"\'\/\. ]", str(curLims[col])) is not None:
+                if re.match("[\+%\(\)\"\'\/\. ]", str(curLims[col])) is not None:
                     print("WARNING", "illegal characters in LIMS", SampleName, bs, col, curLims[col], "", sep="\t")
                 #Hyphens are only allowed for ChIP-seq samples, where 1 is required
                 samplename_hyphen_re = re.findall("\-", str(curLims[col]))
@@ -259,7 +259,7 @@ def updateSheetFromTable(wks, df, updates, commit=True, paranoid=True):
                             print("ERROR: " + wksBS + " does not match expected sample " + BS)
                         
                         wksoldvalue = wks.get_value(coords)
-                        #BUGBUG seems to fail incorrectly when changing int fields with existing data?
+                        #BUGBUG seems to fail incorrectly when changing int fields with existing data? Also confused by date format mismatch.
                         if oldvalue != wksoldvalue:
                             errors += 1
                             print("ERROR: " + BS + " wks value " + str(wksoldvalue) + " does not match df value " + str(oldvalue))
@@ -302,7 +302,7 @@ def findFCsForSamples(seq, updates):
 #Search and replace functionality for FC info
 #BUGBUG I don't think this is safe to run twice in a given session
 def replaceFCinfo(seqWks, seq, key, value, newvalue, commit=False):
-    fcMask = seq['Sample Name'].str.startswith('#')
+    fcMask = seq['Sample Name'].astype(str).str.startswith('#')
     curFC = None
     for seqRow in seq.index.values[fcMask]:
         curSeq = seq.iloc[seqRow]
@@ -321,7 +321,7 @@ def replaceFCinfo(seqWks, seq, key, value, newvalue, commit=False):
 
 #Remove empty FC info records matching a given key
 def removeEmptyFCinfo(seqWks, seq, key, commit=True):
-    fcMask = seq['Sample Name'].str.startswith('#')
+    fcMask = seq['Sample Name'].astype(str).str.startswith('#')
     #Iterate in reverse order since updating row index to account for deleted rows does not seem to work
     for seqRow in reversed(seq.index.values[fcMask]):
         curSeq = seq.iloc[seqRow]
