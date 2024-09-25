@@ -94,7 +94,7 @@ def validateSampleSheetAndLIMS(lims, seq, limsMask, seqMask, projects="", runnam
                 #Translate runnameList into sampleidList
                 #BUGBUG does union rather than intersect
                 #Skip remaining per-FC headers with leading "#"
-                if re.match("^#", curSeq['Sample Name']) is None:
+                if re.match("^#", str(curSeq['Sample Name'])) is None:
                     sampleidList.add(curSeq['Sample #'])
     
     
@@ -290,7 +290,7 @@ def findFCsForSamples(seq, updates):
             numEmptyLines = 0
             if curSeq['Sample Name'] == "#Barcode":
                 curFC = curSeq['Sample #']
-            elif re.match("^#", curSeq['Sample Name']) is None:
+            elif re.match("^#", str(curSeq['Sample Name'])) is None:
 #                print(curSeq['Sample #'], curFC)
                 if curSeq['Sample #'] in updates['Sample #'].values:
                     if curFC is not None:
