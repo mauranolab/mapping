@@ -276,6 +276,7 @@ def getBwaReference(species):
             "Pufferfish+yeast": "sacCer3", #Do not have Fugu assembly at the moment
             "Pufferfish": None, #Do not have Fugu assembly at the moment
             "Plasmid": None,
+            "Fly": None, #Do not have Drosophila assembly at the moment
             "T2T": "t2t",
         }
     elif sampleType in ["Nano-DNase", "ChIP-seq", "CUT&RUN", "DNase-seq", "ATAC-seq"]:
