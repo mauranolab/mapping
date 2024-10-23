@@ -87,6 +87,9 @@ for d in `find ${basedir}  -maxdepth 1 -name "Project_*" -type d | grep -v Proje
     echo
     echo "Your data are available at (user:sequencing, password:moretags)"
     echo "https://sequencing:moretags@cascade.isg.med.nyu.edu/flowcells/${base}_fastq.tar"
+    echo
+    echo "The link to your sequencing data is only guaranteed to work for 30 days,"
+    echo "so be sure to download it and store it yourself ASAP."
     
     echo
     awk -v project=${project} -F "\t" 'BEGIN {OFS="\t"} NR==1 || $1==project' ${basedir}/readcounts.txt
