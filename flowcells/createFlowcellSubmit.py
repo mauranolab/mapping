@@ -155,7 +155,7 @@ def transposonSamples(line):
         elif sampleType == "Transposon RNA":
             bcread = "R1"
         else:
-            raise Exception("ERROR: IMPOSSIBLE")
+            raise Exception("IMPOSSIBLE")
     elif sampleType == "Transposon iPCR":
         bcread = "R1"
         BCreadSeq = "CCTTTCTAGGCAATTAGGBBBBBBBBBBBBBBBBGCTAGTTGTGGGATC" #Shorter sequence ends at the DpnII site
@@ -307,7 +307,7 @@ def bwaPipeline(line):
     mappedgenomes += addCEGSgenomes(line)
     
     if len(mappedgenomes) != len(set(mappedgenomes)):
-        raise Exception("Duplicate genomes specified")
+        print("WARNING Duplicate genomes specified: " + str(mappedgenomes), sep="", file=sys.stderr)
     
     if len(mappedgenomes) == 0:
         raise Exception("No genomes specified for mapping")
@@ -454,7 +454,7 @@ for index, line in flowcellFile.iterrows():
         #We have successfully generated the command line
         print(qsubLine)
     except Exception as e:
-        print("WARNING for sample ", sampleName, ":", e, sep="", file=sys.stderr)
+        print("ERROR for sample ", sampleName, ":", e, sep="", file=sys.stderr)
         print("#Couldn't process " + sampleName + "-" + sampleID)
 
 
