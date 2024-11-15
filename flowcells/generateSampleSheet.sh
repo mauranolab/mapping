@@ -8,7 +8,7 @@ else
     printPairs="FALSE"
 fi
 
-src="/vol/mauranolab/mapped/src"
+src="/gpfs/data/mauranolab/mapped/src"
 
 TMPDIR=`mktemp -d`
 

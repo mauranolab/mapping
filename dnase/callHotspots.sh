@@ -38,7 +38,7 @@ if [ ! -e "${mappableFile}" ]; then
     mappableFile="${chromFile}"
 fi
 
-omit_satellite="/vol/isg/annotation/bed/${mappedgenome}/repeat_masker/Satellite.bed"
+omit_satellite="/gpfs/data/isg/annotation/bed/${mappedgenome}/repeat_masker/Satellite.bed"
 if [ ! -e "${omit_satellite}" ]; then
     echo "WARNING can not find ${omit_satellite}"
     omit_satellite=""
@@ -97,11 +97,11 @@ _GENOME_ = $mappedgenome
 ## Tag length
 _K_ = $Kreads
 ## Chromosome coordinates, bed format.
-#$HOTSPOT_DISTR/hotspot-deploy/bin/writeChromInfoBed.pl /vol/isg/annotation/fasta/${mappedgenome}/${mappedgenome}all.fa && cat $TMPDIR/chromInfo.bed | grep -v hap | grep -v random | grep -v chrUn | grep -v alt | grep -v scaffold > $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed && rm -f $TMPDIR/chromInfo.bed
+#$HOTSPOT_DISTR/hotspot-deploy/bin/writeChromInfoBed.pl /gpfs/data/isg/annotation/fasta/${mappedgenome}/${mappedgenome}all.fa && cat $TMPDIR/chromInfo.bed | grep -v hap | grep -v random | grep -v chrUn | grep -v alt | grep -v scaffold > $TMPDIR/hotspots.${mappedgenome}.chromInfo.bed && rm -f $TMPDIR/chromInfo.bed
 _CHROM_FILE_ = $chromFile
 ## Location of uniquely mappable positions in the genome for this tag length.
 _MAPPABLE_FILE_ = $mappableFile
-#_MAPPABLE_FILE_ = /vol/isg/annotation/bed/%(_GENOME_)s/mappability/%(_GENOME_)s.K%(_K_)s.mappable_only.bed
+#_MAPPABLE_FILE_ = /gpfs/data/isg/annotation/bed/%(_GENOME_)s/mappability/%(_GENOME_)s.K%(_K_)s.mappable_only.bed
 
 ## Set DUPOK to T for DNaseI data, F for ChIP-seq data (DUPOK = T means allow duplicate reads)
 _DUPOK_ = T
@@ -131,7 +131,7 @@ _RANDIR_ = $outdir
 ## If there are any regions from which tags should be automatically
 ## omitted, include those here (only if you use run_badspot). May be
 ## left blank.
-_OMIT_REGIONS_: "${omit_satellite} /vol/mauranolab/mapped/src/dnase/hotspots.omit.chrM.bed"
+_OMIT_REGIONS_: "${omit_satellite} /gpfs/data/mauranolab/mapped/src/dnase/hotspots.omit.chrM.bed"
 
 ## Set to T if you want scripts to skip steps that have already been done.
 _CHECK_ = ${check}

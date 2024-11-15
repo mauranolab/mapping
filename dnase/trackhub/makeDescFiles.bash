@@ -46,7 +46,7 @@ find_readcounts () {
         
         # Find a date to associate with the flowcell from the info.txt file
         flowcell=`basename ${flowcelldir}`
-        info_file="/vol/mauranolab/flowcells/data/${flowcell}/info.txt"
+        info_file="/gpfs/data/isg_sequencing/data/${flowcell}/info.txt"
         # Make sure the file is there:
         local yyyymmdd="00000000"
         partialHtmlName="/${flowcell}"             # partialHtmlName will be used in the for loop below.

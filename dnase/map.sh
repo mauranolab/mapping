@@ -68,12 +68,12 @@ getReadgroup()
     
     local BS_nosuffix=`echo "${BS}" | perl -pe 's/[A-Z]$//g;'`
     local readgroup="@RG\\tID:${fc}${BS}\\tLB:${BS}\\tSM:${BS_nosuffix}\\tPL:ILLUMINA"
-    if [ -s "/vol/mauranolab/flowcells/data/${fc/./}/info.txt" ]; then
-        local readgroup_instrument=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Instrument" {print $2}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
+    if [ -s "/gpfs/data/isg_sequencing/data/${fc/./}/info.txt" ]; then
+        local readgroup_instrument=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Instrument" {print $2}' /gpfs/data/isg_sequencing/data/${fc/./}/info.txt`
         
-        local readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"; loaddate="NA"} $1=="#Load date" && $2!="" {loaddate=$2} END {print loaddate}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
+        local readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"; loaddate="NA"} $1=="#Load date" && $2!="" {loaddate=$2} END {print loaddate}' /gpfs/data/isg_sequencing/data/${fc/./}/info.txt`
         #BUGBUG hardcoded column numbers
-        local readgroup_bcs=`awk -v ds=${BS} -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && 0!="" && $2==ds {split($6, bc1, "_"); split($7, bc2, "_"); print bc1[2] "-" bc2[2]}' /vol/mauranolab/flowcells/data/${fc/./}/info.txt`
+        local readgroup_bcs=`awk -v ds=${BS} -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && 0!="" && $2==ds {split($6, bc1, "_"); split($7, bc2, "_"); print bc1[2] "-" bc2[2]}' /gpfs/data/isg_sequencing/data/${fc/./}/info.txt`
         #BUGBUG BC: shows up in bwa command line but at some point disappears from the bam header
         readgroup="${readgroup}\\tDT:${readgroup_date}\\tBC:${readgroup_bcs}\\tPU:${fc/./}-${readgroup_bcs}"
         
@@ -237,13 +237,13 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     mkdir -p ${sampleOutdir}/fastqc
     fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample1}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
-        #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz"
+        #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc --time 12:00:00 --mem-per-cpu 8G -j y -b y -S /bin/bash -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz"
         mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz
     fi
     
     fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample2}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
-        #qsub -cwd -V -N ${sample2}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq.gz"
+        #qsub -cwd -V -N ${sample2}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc --time 12:00:00 --mem-per-cpu 8G -j y -b y -S /bin/bash -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq.gz"
         mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq.gz
     fi
     
@@ -279,7 +279,7 @@ else
     mkdir -p ${sampleOutdir}/fastqc
     fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample1}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
-        #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc -S /bin/bash -j y -b y -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz"
+        #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc --time 12:00:00 --mem-per-cpu 8G -j y -b y -S /bin/bash -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz"
         mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz
     fi
     
@@ -419,7 +419,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     
     #Not populating -SPECIES=Human
     #ParallelGCThreads is for java.lang.OutOfMemoryError: unable to create new native thread
-    java -XX:ParallelGCThreads=1 -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CreateSequenceDictionary -O $TMPDIR/${curfile}.${curGenome}.dict -R ${referencefasta} -GENOME_ASSEMBLY ${annotationgenome}
+    java -XX:ParallelGCThreads=1 -Dpicard.useLegacyParser=false -jar ${PICARD_ROOT}/libs/picard.jar CreateSequenceDictionary -O $TMPDIR/${curfile}.${curGenome}.dict -R ${referencefasta} -GENOME_ASSEMBLY ${annotationgenome}
     
     samtools sort -@ $NSLOTS -m 1750M -O bam -T $TMPDIR/${curfile}.sortbyname -l 1 -n $TMPDIR/${curfile}.${curGenome}.bwaout.bam |
     #not much gain other than avoiding disk IO doing this in a pipe as I don't think sort prints any intermediate results. Perhaps sorting fastq before mapping would be faster? https://www.biostars.org/p/15011/
@@ -439,7 +439,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         #BUGBUG can't stream to stdout; passes log output through stdout?
         #BUGBUG does not update TLEN, MC, NM(?)
         #BUGBUG does not back up original CIGAR in OC tag (we have to do this above)
-        primerclip /vol/sars/sequences/wuhCor1/Swift_Amplicons/sarscov2_masterfile.txt /dev/stdin  $TMPDIR/${curfile}.${curGenome}.sam
+        primerclip /gpfs/data/mauranolab/sars/sequences/wuhCor1/Swift_Amplicons/sarscov2_masterfile.txt /dev/stdin  $TMPDIR/${curfile}.${curGenome}.sam
         
         samtools view -@ $NSLOTS -O bam -1 $TMPDIR/${curfile}.${curGenome}.sam |
         #Need to re-run filter to fail any reads that drop below the minReferenceLength
@@ -456,14 +456,14 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     #Add MC tag containing mate CIGAR
     #Used to do this for all datasets before switching to samblaster. However, samblaster seems to miss some?
     #Needs to be sorted by coordinate
-    #java -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar FixMateInformation -INPUT ${TMPDIR}/${curfile}.${curGenome}.bwaout.bam -OUTPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 1
+    #java -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARD_ROOT}/libs/picard.jar FixMateInformation -INPUT ${TMPDIR}/${curfile}.${curGenome}.bwaout.bam -OUTPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 1
     
 #    echo
 #    echo "Cleanup"
 #    date
 #    cp ${curfile}.${curGenome}.bam $TMPDIR/${curfile}.${curGenome}.unclean.bam
 #    #BUGBUG Should fix the ERROR... read errors, but doesn't do anything to first 100000 lines of test case except increment version to 1.4 "@HD   VN:1.4"
-#    java -Xmx2g -jar ${PICARDPATH}/picard.jar/ CleanSam INPUT=${curfile}.${curGenome}.bam OUTPUT=${curfile}.${curGenome}.clean.bam COMPRESSION_LEVEL=1 && mv ${curfile}.${curGenome}.clean.bam ${curfile}.${curGenome}.bam
+#    java -Xmx2g -jar ${PICARD_ROOT}/libs/picard.jar/ CleanSam INPUT=${curfile}.${curGenome}.bam OUTPUT=${curfile}.${curGenome}.clean.bam COMPRESSION_LEVEL=1 && mv ${curfile}.${curGenome}.clean.bam ${curfile}.${curGenome}.bam
     
     
     echo
@@ -480,7 +480,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
     echo "Mean quality by cycle"
     #BUGBUG performs badly for SRR jobs -- some assumption not met?
     #BUGBUG reports "WARNING   2019-12-17 09:08:12     SinglePassSamProgram    File reports sort order 'queryname', assuming it's coordinate sorted anyway." mainly on cegsvectors? baseq still seems to be output. Not sure why it cares about sort order.
-    java -XX:ParallelGCThreads=2 -Xmx3g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MeanQualityByCycle -INPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -OUTPUT $TMPDIR/${curfile}.baseQ.txt -CHART_OUTPUT $TMPDIR/${curfile}.baseQ.pdf -VALIDATION_STRINGENCY LENIENT
+    java -XX:ParallelGCThreads=2 -Xmx3g -Dpicard.useLegacyParser=false -jar ${PICARD_ROOT}/libs/picard.jar MeanQualityByCycle -INPUT ${sampleOutdir}/${curfile}.${curGenome}.bam -OUTPUT $TMPDIR/${curfile}.baseQ.txt -CHART_OUTPUT $TMPDIR/${curfile}.baseQ.pdf -VALIDATION_STRINGENCY LENIENT
     
     instrument=`bam2instrument ${sampleOutdir}/${curfile}.${curGenome}.bam | uniq | awk 'values[$0] != 1 {print; values[$0]=1}' | perl -pe 's/\n$//g;' | perl -pe 's/\n/;/g;'`
     awk -v instrument=${instrument} -v fc="${fc}" -v sample=${curfile} -v bs="${BS}" -v genome=${curGenome} -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $0!="" {if($1=="CYCLE") {$0=tolower($0); $(NF+1)="instrument\tfc\tsample\tBS\tgenome"} else {$(NF+1)=instrument "\t" fc "\t" sample "\t" bs "\t" genome;} print}' $TMPDIR/${curfile}.baseQ.txt > ${sampleOutdir}/${curfile}.${curGenome}.baseQ.txt

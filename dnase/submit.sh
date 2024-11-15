@@ -10,19 +10,19 @@ export OPENBLAS_NUM_THREADS=1
 
 #Load modules
 module load picard/2.26.10
-module load FastQC/0.11.4
-module load bedtools/2.29.2
-module load bedops/2.4.40
+module load fastqc/0.11.7
+module load bedtools/2.30.0
+module load bedops/2.4.41
 module load bwa/0.7.17
-module load minimap2/2.17
-module load htslib/1.14
-module load samtools/1.14
+module load minimap2/2.28
+module load htslib/1.20
+module load samtools/1.20
 module load bcftools/1.20
 module load trimmomatic/0.39
-module load python/3.8.1
-module load R/3.5.2
-module load samblaster/0.1.24
-module load ucsckentutils/379
+module load python/cpu/3.10.6
+module load r/4.4.1
+module load samblaster/0.1.26
+module load ucscutils/398
 module load hotspot/4.1
 module load hotspot2/2.1.2
 module load pigz
@@ -33,7 +33,7 @@ module load delly/0.8.7
 ###Hardcoded configuration options
 #Common
 qsubargs=""
-mapThreads=3
+mapThreads=4
 mergeThreads=3
 runBamIntersect=1
 
@@ -118,7 +118,7 @@ if [[ "${processingCommand}" =~ ^map ]]; then
     echo "Mapping ${n} jobs"
     echo "+ ${mapname}"
     #NB running many jobs with threads < 4 can sometimes get memory errors, not quite sure of the culprit
-    qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mapThreads} -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sampleOutdir} '${sampleIDs}' ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
+    qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mapThreads} --time 5-0:00:00 --mem-per-cpu 12G -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sampleOutdir} '${sampleIDs}' ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
 fi
 
 
@@ -136,7 +136,7 @@ if [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" =~ ^aggrega
         mergename="${name}.${curGenome}"
         echo "+ ${mergename}"
         #NB compression threads are multithreaded. However, samblaster and index are not; former is ~1/4 of time and latter is trivial
-        qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mergeThreads} -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sampleOutdir} '${sampleIDs}' ${curGenome} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
+        qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mergeThreads} --time 12:00:00 --mem-per-cpu 8G -terse -j y -b y ${mergeHold} -o ${sampleOutdir} -N merge.${mergename} "${src}/merge.sh ${analysisType} ${sampleOutdir} '${sampleIDs}' ${curGenome} ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.merge.${mergename}
     done
 fi
 #Clean up sgeid even if we don't run merge
@@ -214,7 +214,7 @@ if [ "${runBamIntersect}" -eq 1 ] && ([[ "${processingCommand}" == "bamintersect
                 fi
                 
                 mkdir -p ${sampleOutdir}/bamintersect/log
-                qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${bamIntersectHold} -o ${sampleOutdir}/bamintersect/log -N submit_bamintersect.${name}.${mammalianAnnotationGenome}_vs_${cegsGenomeShort} "${src}/bamintersect/submit_bamintersect.sh --sample_name ${name} --outdir ${sampleOutdir}/bamintersect --bam1 ${sampleOutdir}/${name}.${mammalianGenome}.bam --bam1genome ${mammalianAnnotationGenome} --bam2 ${sampleOutdir}/${name}.${cegsGenome}.bam --bam2genome ${cegsGenomeShort} --integrationsite ${integrationsite} ${normbam}" > /dev/null
+                qsub -S /bin/bash -cwd -V ${qsubargs} --time 4:00:00 --mem-per-cpu 2G -terse -j y -b y ${bamIntersectHold} -o ${sampleOutdir}/bamintersect/log -N submit_bamintersect.${name}.${mammalianAnnotationGenome}_vs_${cegsGenomeShort} "${src}/bamintersect/submit_bamintersect.sh --sample_name ${name} --outdir ${sampleOutdir}/bamintersect --bam1 ${sampleOutdir}/${name}.${mammalianGenome}.bam --bam1genome ${mammalianAnnotationGenome} --bam2 ${sampleOutdir}/${name}.${cegsGenome}.bam --bam2genome ${cegsGenomeShort} --integrationsite ${integrationsite} ${normbam}" > /dev/null
             fi
         done
     done
@@ -240,7 +240,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         fi
         
         echo "+ ${analysisname}"
-        qsub -S /bin/bash -cwd -V ${qsubargs} -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sampleOutdir} '${sampleIDs}' \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
+        qsub -S /bin/bash -cwd -V ${qsubargs} --time 12:00:00 --mem-per-cpu 8G -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sampleOutdir} '${sampleIDs}' \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
         
         cat ${sampleOutdir}/sgeid.analysis.${analysisname} >> `dirname ${sampleOutdir}`/sgeid.analysis
         

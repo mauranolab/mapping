@@ -106,7 +106,7 @@ priority 1
 
 HEREDOC_02
     else
-        chrom_sizes="/vol/isg/annotation/fasta/${genome/\//}/${genome/\//}.chrom.sizes"
+        chrom_sizes="/gpfs/data/isg/annotation/fasta/${genome/\//}/${genome/\//}.chrom.sizes"
     fi
     
     for f in $(find ${assemblyBaseDir}/sequences/${genome} -mindepth 1 -maxdepth 1 -type d -not -path "./bak*" -not -path "./trash*" -printf '%f/\n'); do

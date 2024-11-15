@@ -17,7 +17,7 @@ import os
 import glob
 from datetime import datetime
 
-version="1.2"
+version="1.3"
 
 
 #https://stackoverflow.com/questions/26987222/checking-whitespace-in-a-string-python/26987329
@@ -54,18 +54,18 @@ def getValueFromLIMS(lims, bs, colname):
 def getLIMSsheet(sheet):
     try:
         #Read google sheets ID from the file system
-        lims_gsheets_ID_file = open('/vol/mauranolab/flowcells/LIMS.gsheets_ID.txt', 'r')
+        lims_gsheets_ID_file = open('/gpfs/data/isg_sequencing/LIMS.gsheets_ID.txt', 'r')
         lims_gsheets_ID = lims_gsheets_ID_file.readlines()[0].rstrip("\n")
         lims_gsheets_ID_file.close()
         
-        gc = pygsheets.authorize(service_file='/vol/mauranolab/flowcells/mauranolab.json')
+        gc = pygsheets.authorize(service_file='/gpfs/data/isg_sequencing/mauranolab.json')
         sh = gc.open_by_key(lims_gsheets_ID)
         wks = sh.worksheet_by_title(sheet)
         #get_as_df() doesn't permit setting date_time_render_option separately, so value_render="UNFORMATTED_VALUE" seems to result in dates being output as serials. UNFORMATTED_VALUE is needed to avoid thousand separators, and decimal formatting inconsistencies.
         df = wks.get_as_df(value_render="UNFORMATTED_VALUE")
         df.fillna(value='', inplace=True) #Maybe pandas v1 problem? Or just change '' to None?
         #Mask per-FC headers and space between FCs (any row that is only empty lines)
-        mask = ~df['Sample Name'].astype(str).str.startswith('#') & (df!="").any(1)
+        mask = ~df['Sample Name'].astype(str).str.startswith('#') & (df!="").any(axis=1)
     except Exception as e:
         #Doesn't print exception name right, e.g. if header is corrupted in google docs: "AttributeError: 'KeyError' object has no attribute 'argument'"
         print("WARNING could not load sheet " + sheet + " from google sheets: ", e.message, '\n', e.argument)
@@ -86,7 +86,7 @@ def validateSampleSheetAndLIMS(lims, seq, limsMask, seqMask, projects="", runnam
         
         curRunname = None
         #Mask space between FCs (any row that is only empty lines)
-        for seqRow in seq.index.values[(seq!="").any(1)]:
+        for seqRow in seq.index.values[(seq!="").any(axis=1)]:
             curSeq = seq.iloc[seqRow]
             if curSeq['Sample Name'] == "#Run name":
                 curRunname = curSeq['Sample #']
@@ -241,8 +241,8 @@ def updateSheetFromTable(wks, df, updates, commit=True, paranoid=True):
         rows = df.index[df['Sample #'] == BS].values
         #I think row + 2 because of 0 -> 1 based indexing plus the header row
         for row in rows + 2:
+            row = int(row) #Needed to explicitly cast to int after 2024 bigpurple migration
             print("\nRow " + str(row) + ":" + BS)
-            
             for col in set(colnames).intersection(set(updates.columns.values)).difference(excludedCols):
                 #Need to translate row back to prior coordinates
                 oldvalue = df.iloc[row-2][col]

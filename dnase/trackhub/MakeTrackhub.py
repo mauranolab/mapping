@@ -110,7 +110,7 @@ if args.Input=="-":
     inputfile = sys.stdin
 else:
     inputfile = open(args.Input, 'r') 
-#inputfile = open('/vol/isg/encode/dnase/SamplesForTrackhub.tsv', 'r') 
+#inputfile = open('/gpfs/data/isg/encode/dnase/SamplesForTrackhub.tsv', 'r') 
 
 inputfile_reader = csv.DictReader(inputfile, delimiter='\t')
 input_data_all = []

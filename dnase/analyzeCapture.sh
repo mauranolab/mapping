@@ -14,11 +14,11 @@ dirs=$@
 case "${mappedgenome}" in
 hg38_full)
     annotationgenome="hg38"
-    mappableFile="/vol/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K36.mappable_only.starch"
+    mappableFile="/gpfs/data/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K36.mappable_only.starch"
     ;;
 mm10)
     annotationgenome="mm10"
-    mappableFile="/vol/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K36.mappable_only.starch"
+    mappableFile="/gpfs/data/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K36.mappable_only.starch"
     ;;
 cegsvectors*)
     annotationgenome="cegsvectors"
@@ -36,23 +36,23 @@ esac
 
 case "${bait}" in
 HPRT1*)
-    grep -w "HPRT1_assembly" /vol/cegs/sequences/hg38/HPRT1/HPRT1_assembly.bed | bedops -m - > $TMPDIR/target.bed
+    grep -w "HPRT1_assembly" /gpfs/data/cegs/sequences/hg38/HPRT1/HPRT1_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
 Piga*)
-    awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $4~/^RP23\-32H22$/' /vol/cegs/sequences/mm10/Piga/Piga_assembly.bed | bedops -m - > $TMPDIR/target.bed
+    awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $4~/^RP23\-32H22$/' /gpfs/data/cegs/sequences/mm10/Piga/Piga_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
 Sox2*)
-    awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $4~/^Sox2\-143kb_WT_assembly$/' /vol/cegs/sequences/mm10/Sox2/Sox2_assembly.bed | bedops -m - > $TMPDIR/target.bed
+    awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $4~/^Sox2\-143kb_WT_assembly$/' /gpfs/data/cegs/sequences/mm10/Sox2/Sox2_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
 RnHoxa*)
-    grep -w "RnHoxa_assembly" /vol/cegs/sequences/rn6/RnHoxa/RnHoxa_assembly.bed | bedops -m - > $TMPDIR/target.bed
+    grep -w "RnHoxa_assembly" /gpfs/data/cegs/sequences/rn6/RnHoxa/RnHoxa_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
 HTRA1_CH17-165I6*)
-    grep -w "CH17-165I6" /vol/cegs/sequences/hg38/HTRA1/HTRA1_assembly.bed | bedops -m - > $TMPDIR/target.bed
+    grep -w "CH17-165I6" /gpfs/data/cegs/sequences/hg38/HTRA1/HTRA1_assembly.bed | bedops -m - > $TMPDIR/target.bed
     ;;
 LP*|PL1*|pSpCas9*)
     #TODO not counting backbone since we don't support multiple chromosomes
-    cat /vol/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes | awk -v bait=${bait} -F "\t" 'BEGIN {OFS="\t"} $1==bait {print $1, 0, $2}' > $TMPDIR/target.bed
+    cat /gpfs/data/cegs/sequences/cegsvectors/cegsvectors.chrom.sizes | awk -v bait=${bait} -F "\t" 'BEGIN {OFS="\t"} $1==bait {print $1, 0, $2}' > $TMPDIR/target.bed
     ;;
 *)
     echo "ERROR: Don't recognize bait ${bait}";

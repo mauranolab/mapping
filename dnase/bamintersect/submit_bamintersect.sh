@@ -32,15 +32,15 @@ if [ ${TMPDIR} = "/tmp" ]; then
 fi
 #####################################################################################
 
-module load samtools/1.14
-module load bedops/2.4.40
-module load python/3.8.1
-module load miller/5.10.3
+module load samtools/1.20
+module load bedops/2.4.41
+module load python/cpu/3.10.6
+module load miller/6.11.0
 
 
 qsubargs=""
 
-annotationBase="/vol/isg/annotation/bed"
+annotationBase="/gpfs/data/isg/annotation/bed"
 
 
 ###################
@@ -292,7 +292,7 @@ if [ "${integrationsite}" != "null" ]; then
     IFS='_' read integrationSiteName HA1 HA2 <<< "${integrationsite}"
     echo
     echo "Looking up HA coordinates for ${integrationsite}:"
-    HA_file="/vol/cegs/sequences/${bam1genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
+    HA_file="/gpfs/data/cegs/sequences/${bam1genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
     
     if [ -s "${HA_file}" ]; then
         if grep -q "${integrationSiteName}_${HA1}$" ${HA_file} && grep -q "${integrationSiteName}_${HA2}$" ${HA_file}; then
@@ -357,7 +357,7 @@ elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2|Cacna1c)"; then
         uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
     fi
     
-    bam2cegsvectorsFile="/vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed"
+    bam2cegsvectorsFile="/gpfs/data/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed"
     if [ ! -f "${bam2cegsvectorsFile}" ]; then
         echo "WARNING could not find ${bam2cegsvectorsFile} to mask lox sites in ${bam2genome} genome"
     else
@@ -368,7 +368,7 @@ elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2|Cacna1c)"; then
     fi
     
     cegsGenomeProjectID=`echo ${bam2genome} | cut -d "_" -f1`
-    bam1cegsvectorsAssemblyFile="/vol/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed*"
+    bam1cegsvectorsAssemblyFile="/gpfs/data/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed*"
     if [ ! -f "${bam1cegsvectorsAssemblyFile}" ]; then
         echo "WARNING could not find assembly file ${bam1cegsvectorsAssemblyFile} for ${bam2genome} genome in ${bam1genome}"
     else
@@ -394,7 +394,7 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed"
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
     
-    bam2cegsvectorsFile="/vol/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed"
+    bam2cegsvectorsFile="/gpfs/data/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed"
     if [ ! -f "${bam2cegsvectorsFile}" ]; then
         echo "WARNING could not find ${bam2cegsvectorsFile} to mask lox sites and SV40 poly(A) signal in ${bam2genome} genome"
     else
@@ -412,7 +412,7 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     
     
     cegsGenomeProjectID=`echo ${bam2genome} | cut -d "_" -f1`
-    bam1cegsvectorsAssemblyFile="/vol/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed*"
+    bam1cegsvectorsAssemblyFile="/gpfs/data/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed*"
     if [ ! -f "${bam1cegsvectorsAssemblyFile}" ]; then
         echo "WARNING could not find assembly file ${bam1cegsvectorsAssemblyFile} for ${bam2genome} genome in ${bam1genome}"
     else
@@ -519,10 +519,10 @@ fi
 
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam1.txt)
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${bam1} ${INTERMEDIATEDIR}/inputs.sort.bam1.txt ${bam1_keep_flags} ${bam1_exclude_flags} ${sampleOutdir}/log/uninformativeRegionFile.${bam1genome}_vs_${bam2genome}.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} --time 12:00:00 --mem-per-cpu 8G -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${bam1} ${INTERMEDIATEDIR}/inputs.sort.bam1.txt ${bam1_keep_flags} ${bam1_exclude_flags} ${sampleOutdir}/log/uninformativeRegionFile.${bam1genome}_vs_${bam2genome}.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam2.txt)
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${bam2} ${INTERMEDIATEDIR}/inputs.sort.bam2.txt ${bam2_keep_flags} ${bam2_exclude_flags} ${sampleOutdir}/log/uninformativeRegionFile.${bam1genome}_vs_${bam2genome}.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} --time 12:00:00 --mem-per-cpu 8G -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${bam2} ${INTERMEDIATEDIR}/inputs.sort.bam2.txt ${bam2_keep_flags} ${bam2_exclude_flags} ${sampleOutdir}/log/uninformativeRegionFile.${bam1genome}_vs_${bam2genome}.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
 ################################################
@@ -538,7 +538,7 @@ done
 
 
 n=$(wc -l < ${INTERMEDIATEDIR}/inputs.bamintersect.txt)
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${max_mismatches} ${INTERMEDIATEDIR} ${src} ${reads_match}" > ${sampleOutdir}/sgeid.bamintersect.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} --time 12:00:00 --mem-per-cpu 8G -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name} | perl -pe 's/\n/,/g;'` -N bamintersect.${sample_name} -o ${sampleOutdir}/log -t 1-${n} "${src}/bamintersect.sh ${max_mismatches} ${INTERMEDIATEDIR} ${src} ${reads_match}" > ${sampleOutdir}/sgeid.bamintersect.${sample_name}
 rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
@@ -547,7 +547,7 @@ rm -f ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name} ${sampleOutdir}/s
 # Merge output from the array jobs.
 echo
 echo "merge_bamintersect"
-qsub -S /bin/bash -cwd ${qsubargs} -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${bam1} ${bam1genome} ${bam2} ${bam2genome} ${num_bam1_reads} ${sampleOutdir} ${sample_name} ${verbose} ${INTERMEDIATEDIR} ${src}" > /dev/null
+qsub -S /bin/bash -cwd ${qsubargs} --time 12:00:00 --mem-per-cpu 4G -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.bamintersect.${sample_name}` -N merge_bamintersect.${sample_name} -o ${sampleOutdir}/log "${src}/merge_bamintersect.sh ${bam1} ${bam1genome} ${bam2} ${bam2genome} ${num_bam1_reads} ${sampleOutdir} ${sample_name} ${verbose} ${INTERMEDIATEDIR} ${src}" > /dev/null
 rm -f ${sampleOutdir}/sgeid.bamintersect.${sample_name}
 
 echo

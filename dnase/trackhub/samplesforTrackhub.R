@@ -96,8 +96,8 @@ message("[samplesforTrackhub] ", 'Working Directory: ', pwd, "; Project: ", opt$
 #Begin processing
 
 #for debug
-#opt=list(file="/vol/isg/encode/dnase/SampleIDs.tsv", out="/vol/isg/encode/dnase/SamplesForTrackhub.tsv")
-#opt=list(file="/vol/isg/encode/mouseencode_chipseq_2018/SampleIDs.tsv",out="/vol/isg/encode/mouseencode_chipseq_2018/SamplesForTrackhub.tsv")
+#opt=list(file="/gpfs/data/isg/encode/dnase/SampleIDs.tsv", out="/gpfs/data/isg/encode/dnase/SamplesForTrackhub.tsv")
+#opt=list(file="/gpfs/data/isg/encode/mouseencode_chipseq_2018/SampleIDs.tsv",out="/gpfs/data/isg/encode/mouseencode_chipseq_2018/SamplesForTrackhub.tsv")
 
 
 if(!is.null(opt$inputfile)) {
@@ -127,7 +127,7 @@ if("descend" %in% names(opt)) {
 		
 		if(opt$project=="byFC") {
 			# Get flowcell date
-			infofile <- paste('/vol/mauranolab/flowcells/data/', flowcell, '/info.txt', sep="")
+			infofile <- paste('/gpfs/data/isg_sequencing/data/', flowcell, '/info.txt', sep="")
 			if(file.exists(infofile)) {
 				infofile_lines <- readLines(infofile)
 				flowcell_dates[[flowcell]] <- gsub(unlist(strsplit(infofile_lines[grep("#Load date", infofile_lines)], '\t'))[2], pattern='-', replacement='')

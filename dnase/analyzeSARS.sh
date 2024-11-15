@@ -26,7 +26,7 @@ for bamfile in `find ${dir} -mindepth 2 -name "*.bam" -not -name "*R1R2*" -not -
     samtools view -F 1024 -c ${bamfile} | perl -pe 's/\n/\t/g;'
     
     coveragefile=`echo ${bamfile} | perl -pe 's/.bam/.coverage.starch/g;'`
-    awk -F "\t" '{OFS="\t"; print $1, 0, $2}' /vol/isg/annotation/fasta/wuhCor1/wuhCor1.chrom.sizes | bedmap --prec 0 --wmean - ${coveragefile} | perl -pe 's/NAN$/0/g;' | perl -pe 's/\n/\t/g;'
+    awk -F "\t" '{OFS="\t"; print $1, 0, $2}' /gpfs/data/isg/annotation/fasta/wuhCor1/wuhCor1.chrom.sizes | bedmap --prec 0 --wmean - ${coveragefile} | perl -pe 's/NAN$/0/g;' | perl -pe 's/\n/\t/g;'
     
     unstarch NC_045512v2 ${coveragefile} | awk '$5>=20' | awk -F "\t" 'BEGIN {sum=0} {sum+=$3-$2} END {print sum}'
 done >> ${dir}/viralcoverage.txt

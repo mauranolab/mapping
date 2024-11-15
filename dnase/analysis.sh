@@ -7,6 +7,7 @@ alias bedmap='bedmap --ec --header --sweep-all'
 #alias starch='starch --header'
 alias closest-features='closest-features --header'
 
+
 ###Parameters
 mappedgenome=${1}
 analysisType=${2}
@@ -321,8 +322,8 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
     }\
     END {if(chunksize>0 || (chunksize==0 && chunknum==0)) {chunknum+=1; print prefix chunknum, chroms}}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
     n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
-    qsub -S /bin/bash -cwd -V -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
-    qsub -S /bin/bash -cwd -V -terse -j y -b y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;'
+    qsub -S /bin/bash -cwd -V -b y --time 12:00:00 --mem-per-cpu 8G -terse -j y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
+    qsub -S /bin/bash -cwd -V -b y --time 12:00:00 --mem-per-cpu 8G -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;'
     rm -f ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
     
     
@@ -334,7 +335,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
     touch ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.alignment_summary_metrics
     set +e
     #TODO should we exclude flag 512 like for CollectWgsMetrics?
-    java -XX:ParallelGCThreads=1 -Xmx5g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectMultipleMetrics -INPUT ${sampleOutdir}/${name}.${mappedgenome}.bam -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome} -PROGRAM CollectGcBiasMetrics -VERBOSITY WARNING
+    java -XX:ParallelGCThreads=1 -Xmx5g -Dpicard.useLegacyParser=false -jar ${PICARD_ROOT}/libs/picard.jar CollectMultipleMetrics -INPUT ${sampleOutdir}/${name}.${mappedgenome}.bam -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome} -PROGRAM CollectGcBiasMetrics -VERBOSITY WARNING
     
     set -e
     
@@ -347,7 +348,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
     #Need to make second pass as CollectWgsMetrics can't be run by CollectMultipleMetrics
     #Exclude flag 512 rather than it's default MAPQ/BQ filters
     #NB I often see this using 4-5% of memory, about twice the available per-job average
-    samtools view -h -u ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | java -XX:ParallelGCThreads=1 -Xmx11g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar CollectWgsMetrics -INPUT /dev/stdin -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics -VERBOSITY WARNING -COUNT_UNPAIRED true
+    samtools view -h -u ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | java -XX:ParallelGCThreads=1 -Xmx11g -Dpicard.useLegacyParser=false -jar ${PICARD_ROOT}/libs/picard.jar CollectWgsMetrics -INPUT /dev/stdin -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.wgsmetrics -VERBOSITY WARNING -COUNT_UNPAIRED true
     
     #NB included reads don't exactly match our -F 512 or duplicates
     #but aren't generating a binned coverage track
@@ -481,10 +482,10 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
     echo "Will call hotspots"
     date
     
-    mappableFile="/vol/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K36.mappable_only.starch"
+    mappableFile="/gpfs/data/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K36.mappable_only.starch"
     #NB this will call hotspots only on the mammalian genome for the *_sacCer3 hybrid indices
     #For shorter old Duke data
-    #mappableFile="/vol/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K20.mappable_only.starch"
+    #mappableFile="/gpfs/data/isg/annotation/bed/${annotationgenome}/mappability/${annotationgenome}.K20.mappable_only.starch"
     
     #Neither hotspot filters out reads for -F 512
     hotspotBAM=$TMPDIR/${name}.${mappedgenome}.bam
@@ -583,9 +584,9 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
     
     
     if [ "${callHotspots2}" == 1 ]; then
-        hotspot2centersites="/vol/isg/annotation/bed/${annotationgenome}/hotspots2/${annotationgenome}.CenterSites.starch"
+        hotspot2centersites="/gpfs/data/isg/annotation/bed/${annotationgenome}/hotspots2/${annotationgenome}.CenterSites.starch"
         #hotspot2.sh seems to require a 0 in column 2, unlike the UCSC standard
-        hotspot2chromsizes="/vol/isg/annotation/bed/${annotationgenome}/hotspots2/${annotationgenome}.chrom.sizes"
+        hotspot2chromsizes="/gpfs/data/isg/annotation/bed/${annotationgenome}/hotspots2/${annotationgenome}.chrom.sizes"
         
         if [[ ! -s "${hotspot2centersites}" ]]; then
             echo "WARNING: could not find CenterSites file for genome ${mappedgenome}. Skipping hotspot2"

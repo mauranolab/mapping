@@ -64,9 +64,9 @@ for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="
         f2=`echo $f1 | perl -pe 's/_R1_/_R2_/g;'`
         echo "$f1 $f2"
         #add ${project}/Sample_${bs}/bak.fastq to make backup
-        qsub -S /bin/bash -j y -N split.${bs}.R1 ${qsubargs} "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f1} R1 ${splitreads}"
+        qsub -S /bin/bash ${qsubargs} --time 4:00:00 --mem-per-cpu 2G -j y -N split.${bs}.R1 "/gpfs/data/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f1} R1 ${splitreads}"
         if [ -s "$f2" ]; then
-            qsub -S /bin/bash -j y -N split.${bs}.R2 ${qsubargs} "/vol/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f2} R2 ${splitreads}"
+            qsub -S /bin/bash --time 4:00:00 --mem-per-cpu 2G -j y -N split.${bs}.R2 ${qsubargs} "/gpfs/data/mauranolab/mapped/src/flowcells/splitfastq.sh ${bs} ${f2} R2 ${splitreads}"
         fi
     done
 done
@@ -82,7 +82,7 @@ for d in `find ${basedir}  -maxdepth 1 -name "Project_*" -type d | grep -v Proje
     echo "${project}"
     base="${project}_${fc}_"`date +%Y%b%d`
     cd $d
-    tar cvf /vol/mauranolab/flowcells/public_html/${base}_fastq.tar .
+    tar cvf /gpfs/data/isg_sequencing/public_html/${base}_fastq.tar .
     
     echo
     echo "Your data are available at (user:sequencing, password:moretags)"
@@ -97,10 +97,10 @@ done
 
 #echo "Tarballing flowcell data directory"
 #base="${fc}_"`date +%Y%b%d`
-#cd /vol/mauranolab/flowcells/data/$fc/
+#cd /gpfs/data/isg_sequencing/data/$fc/
 #echo "Your data are available at (user:sequencing, password:moretags)"
 #echo "https://sequencing:moretags@cascade.isg.med.nyu.edu/flowcells/${base}_data.tar"
-#tar cvf /vol/mauranolab/flowcells/public_html/${base}_data.tar .
+#tar cvf /gpfs/data/isg_sequencing/public_html/${base}_data.tar .
 
 
 echo

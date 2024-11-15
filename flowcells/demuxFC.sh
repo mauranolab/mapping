@@ -10,7 +10,7 @@ userDemuxOptions=$@
 #--use-bases-mask Y*,I*,n*,Y* demuxes on BC1 alone for all samples
 
 
-module add bcl2fastq2/2.20
+module add bcl2fastq/2.2.0
 
 
 echo

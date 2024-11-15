@@ -8,16 +8,16 @@ import os
 import glob
 
 #Get LIMS info
-sys.path.append("/vol/mauranolab/mapped/src/flowcells")
+sys.path.append("/gpfs/data/mauranolab/mapped/src/flowcells")
 from lims import getLIMSsheet, getValueFromLIMS
 
 
 ###Argument parsing
-version="1.5"
+version="1.6"
 
 parser = argparse.ArgumentParser(prog = "createFlowcellSubmit", description = "Outputs submit commands for all samples from the info.txt located in the flowcell data folder", allow_abbrev=False)
 
-parser.add_argument("--flowcellIDs", action="store", type = str, help="Flowcell IDs (will look for /vol/mauranolab/flowcells/FCxxx/info.txt, multiple FCs separated by comma) [%(default)s]", required=True)
+parser.add_argument("--flowcellIDs", action="store", type = str, help="Flowcell IDs (will look for /gpfs/data/isg_sequencing/FCxxx/info.txt, multiple FCs separated by comma) [%(default)s]", required=True)
 parser.add_argument("--samplenames", action="store", type = str, help="Only process samples with matching names (multiple samples separated by comma, done as string matching) [%(default)s]", required=False)
 parser.add_argument("--samples", action="store", type = str, help="Only process samples matching this BS number (multiple samples separated by comma, done as string matching) [%(default)s]", required=False)
 parser.add_argument("--projects", action="store", type = str, help="Only process samples in these projects (multiple projects separated by comma) [%(default)s]", required=False)
@@ -80,29 +80,29 @@ def getBasedir(lab, sampleType, fc):
     if args.aggregate or args.aggregate_sublibraries:
         if sampleType in bwaPipelineAnalysisCommandMap.keys():
             if lab == "Maurano":
-                basedir = "/vol/mauranolab/mapped/"
+                basedir = "/gpfs/data/mauranolab/mapped/"
             elif lab == "SARS":
-                basedir = "/vol/sars/mapped/"
+                basedir = "/gpfs/data/mauranolab/sars/mapped/"
             elif lab == "CEGS":
-                basedir = "/vol/cegs/mapped/"
+                basedir = "/gpfs/data/cegs/mapped/"
             else:
                 raise Exception("Don't know how to aggregate data from " + lab)
             basedir += fc + "/" + bwaPipelineAnalysisCommandMap[sampleType] + "/"
         elif sampleType in ["Transposon DNA", "Transposon RNA", "Transposon 10xRNA", "Transposon iPCR", "Transposon iPCR Capture"]:
-           basedir = "/vol/mauranolab/transposon/" + fc
+           basedir = "/gpfs/data/mauranolab/transposon/" + fc
         else:
             raise Exception("Don't know how to aggregate data for " + sampleType) 
     else:
-        basedir="/vol/mauranolab/flowcells/fastq/" + fc + "/Project_" + lab + "/"
+        basedir="/gpfs/data/isg_sequencing/fastq/" + fc + "/Project_" + lab + "/"
     return basedir
 
 
 ###FC loading
 def getFlowcellInfoFromFile(flowcellID):
-    flowcellInfoFileName = "/vol/mauranolab/flowcells/data/" + flowcellID + "/info.txt"
+    flowcellInfoFileName = "/gpfs/data/isg_sequencing/data/" + flowcellID + "/info.txt"
     
     flowcellInfoFile = open(flowcellInfoFileName, "r")
-    #flowcellInfoFile = open("/vol/mauranolab/flowcells/data/FCHM2LKBGX9/info.txt", "r")
+    #flowcellInfoFile = open("/gpfs/data/isg_sequencing/data/FCHM2LKBGX9/info.txt", "r")
     flowcellInfoFileContent = flowcellInfoFile.readlines()
     
     flowcellInfoFile.close()
@@ -126,7 +126,7 @@ def getFlowcellInfoFromFile(flowcellID):
 #Each function takes dict representing a single row from the FC file iterator and returns the processing command line
 #Transposon pipeline
 def aggregateTransposonSamples(lines):
-    return "/vol/mauranolab/mapped/src/transposon/submitMerge.sh " + lines.iloc[0]["Sample #"] + "-" + lines.iloc[0]["#Sample Name"] + " " + " ".join([ getBasedir(None, line["Sample Type"], line["FC"]) + "/" + line["Original Sample #"] + "-" + line["#Sample Name"] + "/" for index, line in lines.iterrows() ])
+    return "/gpfs/data/mauranolab/mapped/src/transposon/submitMerge.sh " + lines.iloc[0]["Sample #"] + "-" + lines.iloc[0]["#Sample Name"] + " " + " ".join([ getBasedir(None, line["Sample Type"], line["FC"]) + "/" + line["Original Sample #"] + "-" + line["#Sample Name"] + "/" for index, line in lines.iterrows() ])
 
 
 def transposonSamples(line):
@@ -135,7 +135,7 @@ def transposonSamples(line):
     sampleTypeShort= sampleType.split(" ")[1]
     
     #Might like to put submit logfile in sample directory but would need to mkdir first, or change qsub to do mkdir on -o: ' -o ' + fullSampleName + 
-    qsub = "qsub -S /bin/bash -j y -b y -N submit." + fullSampleName + ' "/vol/mauranolab/mapped/src/transposon/submit.sh '
+    qsub = "qsub --time 4:00:00 --mem-per-cpu 4G -j y -S /bin/bash -N submit." + fullSampleName + ' "/gpfs/data/mauranolab/mapped/src/transposon/submit.sh '
     
     fileLocation = getBasedir(line["Lab"], sampleType, line["FC"]) + "Sample_" + line["Sample #"] + '/"'
     
@@ -188,8 +188,7 @@ def chromConfCapture(line):
     organism = "hg38" 
     fullSampleName = line["Sample #"] + "-" + line["#Sample Name"]
     
-    qsub = "qsub -S /bin/bash -j y -N submit." + fullSampleName + \
-    ' -b y "/home/maagj01/scratch/transposon/src/submitHiC.sh ' +fullSampleName 
+    qsub = "qsub --time 4:00:00 --mem-per-cpu 4G -j y -N submit." + fullSampleName + ' -b y -S /bin/bash "/home/maagj01/scratch/transposon/src/submitHiC.sh ' +fullSampleName
     
     sampleUnique = "/home/maagj01/scratch/transposon/captureC/config/config_Dpn.txt  /home/maagj01/scratch/transposon/captureC/genomeFrag/hg38_dpnii.bed K562_Dpn " + organism
     
@@ -343,7 +342,7 @@ def bwaPipeline(line):
     if geneticModification != "":
         sampleAnnotation.append("Genetic_Modification=" + geneticModification)
     
-    submitCommand = "/vol/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(mappedgenomes)) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["#Sample Name"] + " " + line["Sample #"]
+    submitCommand = "/gpfs/data/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(set(mappedgenomes))) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["#Sample Name"] + " " + line["Sample #"]
     if len(sampleAnnotation) > 0:
         submitCommand += " \"" + ";".join(sampleAnnotation) + "\""
     
@@ -419,7 +418,7 @@ if args.aggregate or args.aggregate_sublibraries:
 
 ###Dispatch appropriate function handler per sample line
 #Will map to these custom genomes when specified, stored as they appear in LIMS (without cegsvectors_ prefix)
-cegsGenomes = [ re.sub(r"^cegsvectors_", "", os.path.basename(x)) for x in glob.glob("/vol/cegs/sequences/cegsvectors_*") ]
+cegsGenomes = [ re.sub(r"^cegsvectors_", "", os.path.basename(x)) for x in glob.glob("/gpfs/data/cegs/sequences/cegsvectors_*") ]
 if args.verbose:
     print("\nFound custom references:" + ",".join(cegsGenomes), file=sys.stderr)
 
@@ -469,9 +468,9 @@ if doBwaCleanup:
         
         print()
         print("#" + sampleType)
-        print("qsub -b y -j y -N analyzeInserts" + sgeoutput + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(bwaPipelineFragmentLengthsMap[sampleType]) + " " + basedir + "\"")
-        print("qsub -b y -j y -N analyzeGC" + sgeoutput + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeGC.R " + basedir + "\"")
-        print("qsub -S /bin/bash -j y -N mapped_readcounts" + sgeoutput + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/mapped_readcounts.sh " + basedir + "\"")
+        print("qsub --time 4:00:00 --mem-per-cpu 4G -j y -b y -N analyzeInserts" + sgeoutput + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/gpfs/data/mauranolab/mapped/src/dnase/analyzeInserts.R " + str(bwaPipelineFragmentLengthsMap[sampleType]) + " " + basedir + "\"")
+        print("qsub --time 4:00:00 --mem-per-cpu 4G -j y -b y -N analyzeGC" + sgeoutput + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/gpfs/data/mauranolab/mapped/src/dnase/analyzeGC.R " + basedir + "\"")
+        print("qsub --time 4:00:00 --mem-per-cpu 4G -S /bin/bash -j y -N mapped_readcounts" + sgeoutput + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/gpfs/data/mauranolab/mapped/src/dnase/mapped_readcounts.sh " + basedir + "\"")
     #Leave this around so the hold_jid args don't fail
     #    print("rm -f sgeid.analysis")
 
@@ -481,18 +480,18 @@ if doSARScleanup:
     print("SARS")
     for sampleType in flowcellFile["Sample Type"][flowcellFile["Sample Type"].isin(bwaPipelineAnalysisCommandMap.keys())].unique():
         basedir = getBwaPipelineOutdir(sampleType)
-        print("qsub -b y -S /bin/bash -j y -N analyzeSARS -o " + basedir + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeSARS.sh " + basedir + "\"")
+        print("qsub --time 4:00:00 --mem-per-cpu 4G -b y -S /bin/bash -j y -N analyzeSARS -o " + basedir + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/gpfs/data/mauranolab/mapped/src/dnase/analyzeSARS.sh " + basedir + "\"")
 
 
 #TODO placeholder for now
 if doDNACaptureCleanup:
     print()
     basedir=getBwaPipelineOutdir("DNA Capture")
-    print("#qsub -b y -S /bin/bash -j y -N analyzeCapture -o " + basedir + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/dnase/analyzeCapture.sh mappedgenome bait dirs\"")
+    print("#qsub --time 4:00:00 --mem-per-cpu 4G -j y -b y -S /bin/bash -N analyzeCapture -o " + basedir + " -hold_jid `cat " + basedir + "sgeid.analysis | perl -pe 's/\\n/,/g;'` \"/gpfs/data/mauranolab/mapped/src/dnase/analyzeCapture.sh mappedgenome bait dirs\"")
 
 
 #BUGBUG doesn't work since we don't have the pid of the final job at submission time
 #if doTransposonCleanup:
 #    print()
-#    print("qsub -S /bin/bash -b y -j y -N transposon_info -hold_jid `cat sgeid.merge | perl -pe 's/\\n/,/g;'` \"/vol/mauranolab/mapped/src/transposon/Flowcell_Info.sh /home/mauram01/public_html/flowcellInfo/\"")
+#    print("qsub --time 4:00:00 --mem-per-cpu 4G -j y -S /bin/bash -b y -N transposon_info -hold_jid `cat sgeid.merge | perl -pe 's/\\n/,/g;'` \"/gpfs/data/mauranolab/mapped/src/transposon/Flowcell_Info.sh /home/mauram01/public_html/flowcellInfo/\"")
 #    print("rm -f sgeid.merge")

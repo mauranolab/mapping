@@ -119,9 +119,9 @@ if [[ "${sampleType}" == "amplicon" ]]; then
     
     #Fix MC tag containing mate CIGAR
     #Needs to be sorted by coordinate
-    java -XX:ParallelGCThreads=1 -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar FixMateInformation -INPUT $TMPDIR/${name}.${mappedgenome}.sorted.bam -OUTPUT $TMPDIR/${name}.${mappedgenome}.fixedMC.bam -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 1
+    java -XX:ParallelGCThreads=1 -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARD_ROOT}/libs/picard.jar FixMateInformation -INPUT $TMPDIR/${name}.${mappedgenome}.sorted.bam -OUTPUT $TMPDIR/${name}.${mappedgenome}.fixedMC.bam -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 1
     
-    java -XX:ParallelGCThreads=1 -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar SetNmMdAndUqTags -INPUT $TMPDIR/${name}.${mappedgenome}.fixedMC.bam -OUTPUT ${sampleOutdir}/${name}.${mappedgenome}.new.bam -REFERENCE_SEQUENCE ${referencefasta} -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 9
+    java -XX:ParallelGCThreads=1 -Xmx2g -Dpicard.useLegacyParser=false -jar ${PICARD_ROOT}/libs/picard.jar SetNmMdAndUqTags -INPUT $TMPDIR/${name}.${mappedgenome}.fixedMC.bam -OUTPUT ${sampleOutdir}/${name}.${mappedgenome}.new.bam -REFERENCE_SEQUENCE ${referencefasta} -VERBOSITY ERROR -QUIET TRUE -COMPRESSION_LEVEL 9
     
     mv ${sampleOutdir}/${name}.${mappedgenome}.new.bam ${sampleOutdir}/${name}.${mappedgenome}.bam
 elif [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggregateRemarkDups" ]]; then
@@ -133,11 +133,11 @@ elif [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggre
     #http://seqanswers.com/forums/showthread.php?t=4246
     #BUGBUG Can make huge log files despite these options
     #http://sourceforge.net/p/samtools/mailman/message/32910359/
-    #java -XX:ParallelGCThreads=2 -Xmx6g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MarkDuplicates -INPUT=${sampleOutdir}/${name}.${mappedgenome}.bam -OUTPUT=$TMPDIR/${name}.${mappedgenome}.markedDups.bam -METRICS_FILE=$TMPDIR/${name}.picardDups.txt -QUIET=TRUE -VERBOSITY=ERROR -COMPRESSION_LEVEL=9 -ASSUME_SORTED=TRUE && mv ${name}.markedDups.bam ${name}.${mappedgenome}.bam
+    #java -XX:ParallelGCThreads=2 -Xmx6g -Dpicard.useLegacyParser=false -jar ${PICARD_ROOT}/libs/picard.jar MarkDuplicates -INPUT=${sampleOutdir}/${name}.${mappedgenome}.bam -OUTPUT=$TMPDIR/${name}.${mappedgenome}.markedDups.bam -METRICS_FILE=$TMPDIR/${name}.picardDups.txt -QUIET=TRUE -VERBOSITY=ERROR -COMPRESSION_LEVEL=9 -ASSUME_SORTED=TRUE && mv ${name}.markedDups.bam ${name}.${mappedgenome}.bam
     
     #Picard version -- sorted by read name
     #BUGBUG might require Picard sort? got "Exception in thread "main" java.lang.IllegalArgumentException: Alignments added out of order in SAMFileWriterImpl.addAlignment for file:///tmp/slurm.tmp.merge.V20_0052-BS04590.hg38_full_wuhCor1.3667928/V20_0052-BS04590.hg38_full_wuhCor1.markedDups.bam. Sort order is queryname. Offending records are at [A00975:129:HJWL5DRXX:1:2101:1063:9972] and [A00975:129:HJWL5DRXX:1:2101:1063:10066]" error
-#    java -XX:ParallelGCThreads=2 -Xmx6g -Dpicard.useLegacyParser=false -jar ${PICARDPATH}/picard.jar MarkDuplicates -INPUT=${sampleOutdir}/${name}.${mappedgenome}.bam -OUTPUT=$TMPDIR/${name}.${mappedgenome}.markedDups.bam -METRICS_FILE=$TMPDIR/${name}.picardDups.txt -QUIET=TRUE -VERBOSITY=ERROR -COMPRESSION_LEVEL=0
+#    java -XX:ParallelGCThreads=2 -Xmx6g -Dpicard.useLegacyParser=false -jar ${PICARD_ROOT}/libs/picard.jar MarkDuplicates -INPUT=${sampleOutdir}/${name}.${mappedgenome}.bam -OUTPUT=$TMPDIR/${name}.${mappedgenome}.markedDups.bam -METRICS_FILE=$TMPDIR/${name}.picardDups.txt -QUIET=TRUE -VERBOSITY=ERROR -COMPRESSION_LEVEL=0
     #Doesn't seem needed, doesn't reduce memory usage
     # -ASSUME_SORT_ORDER=queryname
     

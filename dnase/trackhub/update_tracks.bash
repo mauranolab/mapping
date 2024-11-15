@@ -13,10 +13,10 @@ set -eu -o pipefail
 #
 # Standard execution of this script:
 #    For development:
-#        update_tracks.bash CEGS /vol/cegs/public_html/trackhub_dev "CEGS Dev" "CEGS Development Hub"
+#        update_tracks.bash CEGS /gpfs/data/cegs/public_html/trackhub_dev "CEGS Dev" "CEGS Development Hub"
 #
 #    For production:
-#        update_tracks.bash CEGS /vol/cegs/public_html/trackhub "CEGS" "CEGS Hub"
+#        update_tracks.bash CEGS /gpfs/data/cegs/public_html/trackhub "CEGS" "CEGS Hub"
 #        update_tracks.bash MAURANOLAB /home/mauram01/public_html/trackhub "Maurano Lab" "Maurano Lab Hub"
 #
 #
@@ -43,11 +43,11 @@ set -eu -o pipefail
 #                          - Creates html files from simple data tables.
 #
 ############################################################################
-module load ucsckentutils/379
-module load bedops/2.4.40
-module load R/3.5.2
-module load python/3.8.1
-module load miller/5.10.3
+module load ucscutils/398
+module load bedops/2.4.41
+module load r/4.4.1
+module load python/cpu/3.10.6
+module load miller/6.11.0
 ############################################################################
 
 hub_type=$1
@@ -58,22 +58,22 @@ long_label=$4
 # Check the inputs:
 if [[ "${hub_type}" == "CEGS" ]]; then
     customGenomeAssembly="cegsvectors"
-    assemblyBaseDir="/vol/cegs"
+    assemblyBaseDir="/gpfs/data/cegs"
 elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
     customGenomeAssembly="mauranolab"
-    assemblyBaseDir="/vol/mauranolab"
+    assemblyBaseDir="/gpfs/data/mauranolab"
 elif [[ "${hub_type}" == "SARS" ]]; then
     customGenomeAssembly="NA"
-    assemblyBaseDir="/vol/sars"
+    assemblyBaseDir="/gpfs/data/mauranolab/sars"
 elif [[ "${hub_type}" == "HOLTLAB" ]]; then
     customGenomeAssembly="NA"
-    assemblyBaseDir="/vol/mauranolab/flowcells/public_html/holtlab"
+    assemblyBaseDir="/gpfs/data/isg_sequencing/public_html/holtlab"
 elif [[ "${hub_type}" == "CHAKRAVARTILAB" ]]; then
     customGenomeAssembly="cegsvectors"
-    assemblyBaseDir="/vol/mauranolab/flowcells/public_html/chakravartilab"
+    assemblyBaseDir="/gpfs/data/isg_sequencing/public_html/chakravartilab"
 elif [[ "${hub_type}" == "LIONNETLAB" ]]; then
     customGenomeAssembly="cegsvectors"
-    assemblyBaseDir="/vol/mauranolab/flowcells/public_html/lionnetlab"
+    assemblyBaseDir="/gpfs/data/isg_sequencing/public_html/lionnetlab"
 else
     echo "ERROR You need to enter a valid hub type: CEGS, MAURANOLAB, HOLTLAB, SARS, CHAKRAVARTILAB. Exiting..."
     exit 1
@@ -199,7 +199,7 @@ fi
 
 if [[ "${hub_type}" == "CEGS" ]]; then
     mkdir "${hub_target}/t2t/data"
-    cp --preserve=timestamps /vol/isg/annotation/fasta/t2t/t2t.2bit ${hub_target}/t2t/data/t2t.2bit
+    cp --preserve=timestamps /gpfs/data/isg/annotation/fasta/t2t/t2t.2bit ${hub_target}/t2t/data/t2t.2bit
 fi
 
 
@@ -263,6 +263,11 @@ cp -rpd ${hub_target}/* ${hub_target_final}
 
 
 ######################################################################################
+echo "Removing TMPDIR directory."
+rm -rf ${TMPDIR}
+
+
+######################################################################################
 # Enable BLAT for custom assemblies.
 # A good test sequence:
 # cggtaaactgcccacttggcagtacatcaagtgtatcatatgccaagtacgccccctattgacgtcaatgacggtaaatg
@@ -270,6 +275,7 @@ cp -rpd ${hub_target}/* ${hub_target_final}
 # See: Troubleshooting BLAT servers for your hub
 #    http://genomewiki.ucsc.edu/index.php/Assembly_Hubs
 
+#These are also hardcoded along with the hostname in the genomes.txt file
 if [[ "${hub_type}" == "CEGS" ]]; then
     blatport=17779
 elif [[ "${hub_type}" == "MAURANOLAB" ]]; then
@@ -280,25 +286,20 @@ fi
 
 if [ "${blatport}" != "0" ]; then
     echo "Copying ${customGenomeAssembly}.2bit to shared directory for blat..."
-    cp --preserve=timestamps ${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit /vol/isg/blat_data
+    cp --preserve=timestamps ${hub_target_final}/${customGenomeAssembly}/data/${customGenomeAssembly}.2bit /gpfs/data/isg/blat_data
     twoBitFiles="${customGenomeAssembly}.2bit"
     
     if [[ "${hub_type}" == "CEGS" ]]; then
         echo "Copying t2t.2bit to shared directory for blat..."
-        cp --preserve=timestamps ${hub_target}/t2t/data/t2t.2bit /vol/isg/blat_data
+        cp --preserve=timestamps ${hub_target}/t2t/data/t2t.2bit /gpfs/data/isg/blat_data
         twoBitFiles="${twoBitFiles} t2t.2bit"
     fi
     
     #NB requires password-less access via ssh
     echo "Restarting gfServer..."
-    ssh isglcdcpvm001.nyumc.org "cd /vol/isg/blat_data; /usr/local/bin/blat/gfServer stop localhost ${blatport} -log=stop_gfServer_VM_${hub_type}.log; /usr/local/bin/blat/gfServer start localhost ${blatport} ${twoBitFiles} -canStop -log=start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
+    ssh genome.isg.med.nyu.edu "cd /gpfs/data/isg/blat_data; /usr/local/bin/blat/gfServer stop localhost ${blatport} -log=stop_gfServer_VM_${hub_type}.log; /usr/local/bin/blat/gfServer start localhost ${blatport} ${twoBitFiles} -canStop -log=start_gfServer_VM_${hub_type}.log -stepSize=5 > /dev/null &"
     echo "Restarted gfServer."
 fi
-
-
-######################################################################################
-echo "Removing TMPDIR directory."
-rm -rf ${TMPDIR}
 
 
 echo "Done!"
