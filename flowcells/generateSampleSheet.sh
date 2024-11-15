@@ -72,8 +72,18 @@ fi
 
 #TODO check read count total
 #TODO Better to use pool counts?
-awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $1!="" && $5!="Pool" && ($6=="" || $7=="" ) {\
-    print "WARNING: No BC specified for sample " $2 \
+awk -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && $1!="" && $5!="Pool" { \
+    if ($6=="" || $7=="" ) { \
+        print "WARNING: No BC specified for sample " $2; \
+    } \
+    split($6, bc1, "_"); \
+    if(bc1[1]=="" || bc1[2]=="") { \
+        print "WARNING: Incomplete BC1 for sample " $2; \
+    } \
+    split($7, bc2, "_"); \
+    if(bc2[1]=="" || bc2[2]=="") { \
+        print "WARNING: Incomplete BC2 for sample " $2; \
+    } \
 }' info.txt
 
 
