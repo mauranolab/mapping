@@ -9,7 +9,7 @@ old <- theme_set(theme_classic(base_size=8)) #pdf
 old <- theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
 old <- theme_update(panel.border = element_blank(), strip.background = element_blank()) #remove facet panel border
 
-#Try to work around "unable to start device PNG" on ISG cluster
+#Try to work around "unable to start device PNG" on cluster
 options(bitmapType="cairo")
 
 arg <- commandArgs(TRUE)
