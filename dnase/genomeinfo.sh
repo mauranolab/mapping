@@ -54,14 +54,14 @@ hg19)
     ploidy="--ploidy GRCh37"
     referencefasta=/gpfs/data/isg/annotation/fasta/hg19/hg19.fa
     dbsnpvcf=/gpfs/data/isg/annotation/bed/hg19/snp151/src/All_20180418.vcf.gz
-    dellyexclude="-x ${dellypath}/excludeTemplates/human.hg19.excl.tsv"
+    dellyexclude="-x ${dellypath}/raw/delly-0.8.7/excludeTemplates/human.hg19.excl.tsv"
     ;;
 hg38_noalt|hg38_full|hg38_sacCer3)
     bwaIndex=/gpfs/data/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy GRCh38"
     referencefasta=/gpfs/data/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/gpfs/data/isg/annotation/bed/hg38/snp151/src/All_20180418.vcf.gz
-    dellyexclude="-x ${dellypath}/excludeTemplates/human.hg38.excl.tsv"
+    dellyexclude="-x ${dellypath}/raw/delly-0.8.7/excludeTemplates/human.hg38.excl.tsv"
     ;;
 mm10)
     bwaIndex=/gpfs/data/isg/annotation/bwaIndex/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set
@@ -70,14 +70,14 @@ mm10)
     #non-human accession repository has switched from NCBI/dbSNP to EVA as of 9/2017 but I can't find a VCF export, so am using the Sanger mouse genome VCF to annotate variation that segregates among their strains rather the frozen dbSNP export (which I think is here: https://ftp.ncbi.nih.gov/snp/organisms/archive/mouse_10090/VCF/)
     #the v6 genotypes have changed dramatically so stick to v5 for now
     dbsnpvcf=/gpfs/data/mauranolab/mauram01/hybridmice/genotyping/v5/mgp.v5.merged.snps.indels.dbSNP142.vcf.gz
-    dellyexclude="-x ${dellypath}/excludeTemplates/mouse.mm10.excl.tsv"
+    dellyexclude="-x ${dellypath}/raw/delly-0.8.7/excludeTemplates/mouse.mm10.excl.tsv"
     ;;
 mm10_sacCer3)
     bwaIndex=/gpfs/data/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy-file /gpfs/data/isg/annotation/fasta/mm10_no_alt_analysis_set/mm10_no_alt_analysis_set.ploidy.txt"
     referencefasta=/gpfs/data/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/gpfs/data/mauranolab/mauram01/hybridmice/genotyping/v5/mgp.v5.merged.snps.indels.dbSNP142.vcf.gz
-    dellyexclude="-x ${dellypath}/excludeTemplates/mouse.mm10.excl.tsv"
+    dellyexclude="-x ${dellypath}/raw/delly-0.8.7/excludeTemplates/mouse.mm10.excl.tsv"
     ;;
 mm10all_CASTEiJ_female)
     bwaIndex=/gpfs/data/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
@@ -101,7 +101,7 @@ sacCer3)
     ploidy="--ploidy 1"
     referencefasta=/gpfs/data/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/dev/null
-    dellyexclude="-x ${dellypath}/excludeTemplates/yeast.sacCer3.excl.tsv"
+    dellyexclude="-x ${dellypath}/raw/delly-0.8.7/excludeTemplates/yeast.sacCer3.excl.tsv"
     ;;
 wuhCor1|hg38_full_wuhCor1)
     bwaIndex=/gpfs/data/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
