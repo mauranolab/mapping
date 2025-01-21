@@ -183,8 +183,8 @@ subsetBamFileToInformativeReads ${sampleOutdir}/${sample_name}.bed $TMPDIR/${sam
 
 #Prep for UCSC track links
 #Remove "new" from the end of path so that we can reprocess data without affecting live data
-projectdir=`pwd | perl -pe 's/^\/vol\/(cegs|mauranolab|isg\/encode)\///g;' | perl -pe 's/\/new$//g;'`
-if [[ `pwd` =~ ^\/vol\/cegs\/ ]]; then
+projectdir=`pwd | perl -pe 's/^\/gpfs\/data\/(cegs|mauranolab|isg\/encode)\///g;' | perl -pe 's/\/new$//g;'`
+if [[ `pwd` =~ ^\/gpfs\/data\/cegs\/ ]]; then
     UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/cegs/trackhub/${projectdir}/${sampleOutdir}"
 else
     UCSCbase="bigDataUrl=https://cascade.isg.med.nyu.edu/~mauram01/${projectdir}/${sampleOutdir}"
