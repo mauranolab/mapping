@@ -41,7 +41,7 @@ date
 
 
 
-#TMPDIR=`pwd`/tmp.makeTracks.${name}
+#TMPDIR=`pwd`/tmp.callsnpsMerge.${name}
 #mkdir -p $TMPDIR
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 date

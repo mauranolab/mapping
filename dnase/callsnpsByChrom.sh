@@ -31,7 +31,7 @@ echo -e "SampleAnnotation\t${sampleAnnotation}"
 date
 
 
-#TMPDIR=`pwd`/tmp.makeTracks.${name}
+#TMPDIR=`pwd`/tmp.callsnpsByChrom.${name}
 #mkdir -p $TMPDIR
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
