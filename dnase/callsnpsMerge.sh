@@ -34,6 +34,8 @@ src=${5}
 source ${src}/genomeinfo.sh ${mappedgenome}
 
 
+echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
+
 name=`basename ${sampleOutdir}`
 echo "Merging ${analysisType} analysis for of sample ${name} against genome ${mappedgenome}"
 echo -e "SampleAnnotation\t${sampleAnnotation}"
