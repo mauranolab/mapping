@@ -118,7 +118,7 @@ if [[ "${processingCommand}" =~ ^map ]]; then
     echo "Mapping ${n} jobs"
     echo "+ ${mapname}"
     #NB running many jobs with threads < 4 can sometimes get memory errors, not quite sure of the culprit
-    qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mapThreads} --time 5-0:00:00 --mem-per-cpu 12G -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sampleOutdir} '${sampleIDs}' ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
+    qsub -S /bin/bash -cwd -V ${qsubargs} -pe threads ${mapThreads} --time 5-0:00:00 --mem-per-cpu 14G -terse -j y -b y -t 1-${n} -o ${sampleOutdir} -N map.${mapname} "${src}/map.sh ${genomesToMap} ${analysisType} ${sampleOutdir} '${sampleIDs}' ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.map.${mapname}
 fi
 
 
