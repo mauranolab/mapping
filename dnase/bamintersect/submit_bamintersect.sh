@@ -350,7 +350,7 @@ elif echo "${bam2genome}" | egrep -q "^LP"; then
     countsTableMaskFiles="${countsTableMaskFiles} ${sampleOutdir}/log/HA_coords.${bam1genome}_vs_${bam2genome}.bed"
 #Big-IN payload
 #BUGBUG add other Big-IN payloads
-elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2|Cacna1c)"; then
+elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2|Cacna1c|EnhancerCluster)"; then
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed"
     if [[ ! "${bam1genome}" =~ ^LP ]]; then
         #Include LP mask for failed clones and also because some components are in common
