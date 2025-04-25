@@ -12,7 +12,7 @@ export OPENBLAS_NUM_THREADS=1
 module load picard/2.26.10
 module load fastqc/0.11.7
 module load bedtools/2.30.0
-module load bedops/2.4.41
+module load bedops/2.4.42
 module load bwa/0.7.17
 module load minimap2/2.28
 module load htslib/1.20
