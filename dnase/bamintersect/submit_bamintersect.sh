@@ -432,6 +432,7 @@ elif echo "${bam2genome}" | egrep -q "^(ABCB7|ACE2|ANK1|APOBEC3|IL1RN|MHC|OSTN|P
     #still correct?
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
 else
+    #Doesn't fit any other case so try for a payload/genome-specific mask file
     uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
     if [ ! -f "${uninformativeRegionFiles}" ]; then
         echo "WARNING Can't find uninformative regions file ${uninformativeRegionFiles}"
