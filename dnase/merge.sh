@@ -161,6 +161,12 @@ date
 samtools index ${sampleOutdir}/${name}.${mappedgenome}.bam
 
 
+echo
+echo "Computing SHA checksum"
+date
+shasum -U -a 512 ${sampleOutdir}/${name}.${mappedgenome}.bam > ${sampleOutdir}/${name}.${mappedgenome}.bam.sha.txt
+
+
 if [[ "${processingCommand}" =~ ^map ]]; then
     echo "Removing source files"
     rm -f ${files}
