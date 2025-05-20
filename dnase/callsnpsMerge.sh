@@ -203,6 +203,7 @@ else
     echo "WARNING: DELLY Failed"
 fi
 bcftools index --tbi ${sampleOutdir}/${name}.${mappedgenome}.filtered.vcf.gz
+#BUGBUG naming of "DELLY.filtered.vcf.gz" and "DELLY.filtered.vcf.gz.tbi" does not match ".delly.bcf" and ".delly.bcf.csi"
 
 
 echo
