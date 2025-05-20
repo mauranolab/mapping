@@ -169,7 +169,7 @@ rm -f ${fltvcffiles}
 
 
 # DELLY does not have a --regions flag to allow for specific regions to be matched.
-# this makes it difficult to parralelize by chromosome like the bcftools call command
+# this makes it difficult to parallelize by chromosome like the bcftools call command
 echo
 echo "Running DELLY"
 date
