@@ -317,7 +317,8 @@ for(curdir in mappeddirs) {
 			#Note that color has already been established and won't be redone if sample name changes
 			
 			#Matching the DS number from the analysis file to inputSampleIDs can give multiple results, so just pick the first
-			inputSampleIDrow <- which(inputSampleIDs[,"DS"] == data[i, "SampleID"])[1]
+			# data.table[x, y] returns a list and needs to be indexed to extract the value
+			inputSampleIDrow <- which(inputSampleIDs[,"DS"] == data[i, "SampleID"][[1]])[1]
 			
 			#Take all columns to be taken from inputSampleIDs
 			for(curCol in intersect(outputCols, setdiff(colnames(inputSampleIDs), "DS"))) {
