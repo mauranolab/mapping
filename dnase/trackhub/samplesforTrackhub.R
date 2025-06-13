@@ -455,7 +455,6 @@ for(curdir in mappeddirs) {
 
 
 #Convert the data.table to a data.frame
-#TODO: Update the statements to use data.table style assignments and skip the conversion
 setDF(data)
 if(opt$project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipseq", "mouseENCODEchipseq")) {
 	#Fix sample age. 
