@@ -495,7 +495,7 @@ if(opt$project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipse
 
 if(opt$project=="CEGS_byLocus") {
 	# Delete line items not associated with one of the enumerated "CEGSsampleType" sample types.
-	data <- data[!is.na(data$Group),]
+	data <- data[!data$Group == "NA",]
 }
 
 #Output file:
