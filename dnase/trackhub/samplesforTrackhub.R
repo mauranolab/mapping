@@ -181,8 +181,11 @@ if(opt$project == "CEGS_byLocus") {
     outputCols <- c(outputCols, "Study", "Project", "Assembly", "Type")
 }
 
-#Fill the data table with "NA" values so that missing values are NA in the final output
-data <- data.table(matrix("NA", ncol=length(outputCols), nrow=analysis_file_count))
+#Fill the data table with NA values so that missing values are NA in the final output
+data <- data.table(matrix(NA, ncol=length(outputCols), nrow=analysis_file_count))
+# Initializing the values as NA makes the columns default to logical type
+# This converts the columns to character type, but maintains the NA values
+data <- data[, lapply(.SD, as.character), .SDcols = names(data)]
 colnames(data) <- outputCols
 i <- 0L # This will be our "data" output variable index.
 for(curdir in mappeddirs) {
@@ -340,7 +343,7 @@ for(curdir in mappeddirs) {
 			} else if(opt$project=="CEGS_byLocus") {
 				#Group values will be in the form of Study ID
 				
-				if(data$Genetic_Modification[i] == "NA") {
+				if(is.na(data$Genetic_Modification[i])) {
 					#Based on sample name
 					SampleNameSplit <- unlist(strsplit(data$Name[i], "_"))
 					CEGSsampleType <- SampleNameSplit[length(SampleNameSplit)]
@@ -407,12 +410,12 @@ for(curdir in mappeddirs) {
 				}
 				
 				#Collect Duke samples and remaining UW samples into groups
-				if(data$Group[i] == "NA" || data$Institution[i] == "Duke") {
+				if(is.na(data$Group[i]) || data$Institution[i] == "Duke") {
 					set(data, i, "Group", data$Institution[i])
 				}
 			} else if(opt$project %in% c("mouseENCODEdnase", "mouseENCODEchipseq", "humanENCODEchipseq")) {
 				if(opt$project =="humanENCODEchipseq" && data$Name[i]=="GM12878") { data$Group[i] <- "Tier_1" }
-				if(data$Group[i] == "NA") {
+				if(is.na(data$Group[i])) {
 					set(data, i, "Group", "Cell lines")
 					if(opt$project =="humanENCODEchipseq") {
 						if(data$Name[i] %in% c("K562", "GM12878")) {
@@ -495,7 +498,7 @@ if(opt$project %in% c("humanENCODEdnase", "mouseENCODEdnase", "humanENCODEchipse
 
 if(opt$project=="CEGS_byLocus") {
 	# Delete line items not associated with one of the enumerated "CEGSsampleType" sample types.
-	data <- data[!data$Group == "NA",]
+	data <- data[!is.na(data$Group),]
 }
 
 #Output file:
