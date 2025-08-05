@@ -81,6 +81,9 @@ getReadgroup()
         Balin)
             readgroup="${readgroup}\\tCN:Maurano_Lab\\tPM:NextSeq_500"
             ;;
+        Gandalf)
+            readgroup="${readgroup}\\tCN:Maurano_Lab\\tPM:NextSeq_2000"
+            ;;
         GTC_NovaSeq)
             readgroup="${readgroup}\\tCN:NYUMC_GTC\\tPM:NovaSeq_6000"
             ;;
