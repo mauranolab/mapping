@@ -169,7 +169,7 @@ if args.supertrack is not None:
 
 
 # Now build the composites, and add them all to the supertrack.
-for assay_type in assays:
+for assay_type in sorted(assays):
     #Matches the options allowed in submit.sh and createFlowcellSubmit.py
     bwaPipelineAnalysisCommandMap = { "DNase-seq": "dnase", "Nano-DNase": "dnase", "ATAC-seq":"atac", "ChIP-seq": "chipseq", "DNA": "dna", "DNA Capture": "capture", "Amplicon": "amplicon" }
     assay_suffix = bwaPipelineAnalysisCommandMap[assay_type] if assay_type in bwaPipelineAnalysisCommandMap else "none"
