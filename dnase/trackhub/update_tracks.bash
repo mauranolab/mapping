@@ -133,6 +133,7 @@ ${src}/makeAssemblyTracks.bash ${src} ${hub_target} ${TMPDIR} ${hub_type} ${cust
 # Now construct the "flowcell" and "aggregation" tracks in TMPDIR.
 echo
 echo "Starting make_tracks.bash"
+date
 #
 #make_tracks.bash is called only here
 ${src}/make_tracks.bash ${TMPDIR} ${hub_type} ${src} ${assemblyBaseDir} ${hub_target} "${genome_array[@]}"
@@ -141,6 +142,7 @@ ${src}/make_tracks.bash ${TMPDIR} ${hub_type} ${src} ${assemblyBaseDir} ${hub_ta
 # Now copy the track information to the hub location.
 echo
 echo "Updating track files"
+date
 for curGenome in "${genome_array[@]}"; do
     if [ -f "${TMPDIR}/assembly_tracks/trackDb_assemblies_${curGenome}.txt" ]; then
         cp "${TMPDIR}/assembly_tracks/trackDb_assemblies_${curGenome}.txt" ${hub_target}/${curGenome}/trackDb.txt
@@ -165,12 +167,14 @@ done
 ######################################################################################
 echo
 echo "Making description files"
+date
 #TODO this seems to be pretty slow, looks like the R code is the bottleneck
 ${src}/makeDescFiles.bash ${src} ${assemblyBaseDir} ${hub_target} ${TMPDIR} "${genome_array[@]}"
 ######################################################################################
 # Make the hub.txt and genomes.txt files, and populate the structure with other fixed, hand made assets.
 echo
 echo "Finalizing trackhub"
+date
 
 echo "hub hub_id_${short_label// /_}" > ${hub_target}/hub.txt
 echo "shortLabel ${short_label}" >> ${hub_target}/hub.txt
@@ -232,6 +236,7 @@ fi
 # Check for hub errors.
 echo
 echo "Running hubCheck"
+date
 hubCheck -noTracks -udcDir=${TMPDIR} ${hub_target}/hub.txt
 echo
 
@@ -303,4 +308,5 @@ fi
 
 
 echo "Done!"
+date
 
