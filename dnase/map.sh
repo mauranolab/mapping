@@ -109,6 +109,7 @@ fi
 echo "Will process reads file ${readsFq}"
 
 
+#What is this? Is this a historical way I encoded PE data? Is this used anymore?
 sample1=`echo ${readsFq} | awk '{print $2}'`
 if [[ "${sample1}" == "" ]] ; then
     sample1=`basename ${readsFq} | perl -pe 's/.fa(stq)?(.gz)?$//g;'`
