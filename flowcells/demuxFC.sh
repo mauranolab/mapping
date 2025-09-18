@@ -39,6 +39,15 @@ echo "Restricting permissions on non-mauranolab/CEGS/SARS projects"
 find ../../fastq/${fc}  -maxdepth 1 -name "Project_*" -type d -not -name "Project_Maurano" -not -name "Project_CEGS" -not -name "Project_SARS" -print0 | xargs -0 --no-run-if-empty echo chgrp mauranolab-seq
 
 
+echo
+echo "Computing SHA checksums"
+find . -not -name "all.sha.txt.gz" -type f -exec shasum -U -a 512 {} \; | gzip -9 -c > all.sha.txt.gz
+
+#To check:
+#zcat all.sha.txt.gz | shasum -c -q
+
+
+
 #Running fastqc
 #cd ../../fastq/${fc}
 #mkdir -p fastqc
