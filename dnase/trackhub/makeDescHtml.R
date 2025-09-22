@@ -28,6 +28,7 @@ for (i in 1:ncol(desc_text)) {
 colnames(desc_text) <- chartr(old="_", new=" ", colnames(desc_text))
 
 # Make the html version
+# Manually Setting class prevents a random class ID being generated for each table
 desc_HTML <- tableHTML(desc_text, rownames=FALSE, class='description__table') %>%
 add_css_row(css = list('background-color', 'lightblue'), rows = odd(1:(1+nrow(desc_text)))) %>%
 add_css_row(css = list('background-color', 'white'), rows = even(1:(1+nrow(desc_text))))
