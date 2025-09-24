@@ -331,12 +331,14 @@ echo "Building uninformative regions and counts table mask"
 HAmaskFiles=""
 countsTableMaskFiles=""
 if echo "${bam2genome}" | egrep -q "^pSpCas9"; then
+    echo "Recognized pSpCas9"
     #These files mask just mm10/hg38 right now, so ok to use the same for all the pSpCas9 derivative constructs
     uninformativeRegionFiles="${src}/LP_uninformative_regions/pSpCas9_vs_${bam1genome}.bed"
     #Include LP mask because some components are in common (e.g. Puro)
     uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
 #Big-IN/mSwAP-In LP
 elif echo "${bam2genome}" | egrep -q "^LP"; then
+    echo "Recognized Big-IN/mSwAP-In LP"
     #BUGBUG this does not recognize mSwAP-In deliveries to LP400
     if echo "${bam2genome}" | egrep -q "^LPSwapin"; then
         uninformativeRegionFiles="${src}/LP_uninformative_regions/LPSwapin_vs_${bam1genome}.bed"
@@ -351,6 +353,7 @@ elif echo "${bam2genome}" | egrep -q "^LP"; then
 #Big-IN payload
 #BUGBUG add other Big-IN payloads
 elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2|Cacna1c|EnhancerCluster)"; then
+    echo "Recognized Big-IN delivery"
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed"
     if [[ ! "${bam1genome}" =~ ^LP ]]; then
         #Include LP mask for failed clones and also because some components are in common
@@ -374,7 +377,7 @@ elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2|Cacna1c|EnhancerCluster)"
     else
         awk -v cegsGenomeAssemblyName=`echo ${bam2genome} | cut -d "_" -f1-3` -F "\t" '$4==cegsGenomeAssemblyName' ${bam1cegsvectorsAssemblyFile} > $TMPDIR/assembly.${bam1genome}.bed
         assemblyLen=`awk -F "\t" 'BEGIN {sum=0} {sum+=$3-$2} END {print sum}' $TMPDIR/assembly.${bam1genome}.bed`
-        echo "Masking ${assemblyLen} bp in ${bam1genome} matching ${bam2genome} payload assembly"
+        echo "Assembly file exists. Masking ${assemblyLen} bp in ${bam1genome} matching ${bam2genome} payload assembly"
         #Filter out genomic region represented by the custom PL assembly
         countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/assembly.${bam1genome}.bed"
     fi
@@ -391,6 +394,7 @@ elif [[ "${bam2genome}" == "rtTA" ]]; then
 #ICE payload
 #BUGBUG Some Hoxa payloads to Big-IN now
 elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
+    echo "Recognized ICE delivery"
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed"
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
     
@@ -428,6 +432,7 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     HAmaskFiles="${TMPDIR}/deletion_range.bed"
 #mSwAP-In payload
 elif echo "${bam2genome}" | egrep -q "^(ABCB7|ACE2|ANK1|APOBEC3|IL1RN|MHC|OSTN|PAX6|SLFN11|Taf1|TMPRSS2|TP53|Trp53|PLXNA1|NEUROD6|LINC00473$)"; then
+    echo "Recognized mSwAP-In delivery"
     uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPSwapin.bed"
     #still correct?
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
@@ -448,12 +453,13 @@ if [ -f "${annotationBase}/${bam2genome}/repeat_masker/Satellite.bed" ]; then
     countsTableMaskFiles="${countsTableMaskFiles} ${annotationBase}/${bam2genome}/repeat_masker/Satellite.bed"
 fi
 
+echo "Confirming presence of uninformative regions and counts table mask files:"
 for curfile in ${uninformativeRegionFiles} ${countsTableMaskFiles}; do
     if [ ! -f "${curfile}" ]; then
         echo "ERROR: Can't find uninformative regions or counts table mask file ${curfile}"
         exit 5
     else
-        echo "Found $(basename ${curfile}) [${curfile}]"
+        echo "  Found $(basename ${curfile}) [${curfile}]"
     fi
 done
 
@@ -462,6 +468,8 @@ cat ${uninformativeRegionFiles} | awk '$0 !~ /^#/' | sort-bed - > ${sampleOutdir
 #uninformativeRegionFiles needs to be repeated below since they operate off raw bam1/bam2
 cat ${uninformativeRegionFiles} ${countsTableMaskFiles} | awk '$0 !~ /^#/' | sort-bed - > ${sampleOutdir}/log/countsTableMaskFile.${bam1genome}_vs_${bam2genome}.bed
 cat ${uninformativeRegionFiles} ${HAmaskFiles} | awk '$0 !~ /^#/' | sort-bed - > ${sampleOutdir}/log/HAmaskFile.${bam1genome}_vs_${bam2genome}.bed
+
+echo "Finished identifying uninformative regions and counts table mask files"
 
 
 echo
