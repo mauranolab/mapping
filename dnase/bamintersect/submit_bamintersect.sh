@@ -329,11 +329,12 @@ echo "Building uninformative regions and counts table mask"
 #NB payload masks below hardcoded by payload name for now. Perhaps add another parameter for LP type / delivery method?
 
 HAmaskFiles=""
+uninformativeRegionFiles=""
 countsTableMaskFiles=""
 if echo "${bam2genome}" | egrep -q "^pSpCas9"; then
     echo "Recognized pSpCas9"
     #These files mask just mm10/hg38 right now, so ok to use the same for all the pSpCas9 derivative constructs
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/pSpCas9_vs_${bam1genome}.bed"
+    uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/pSpCas9_vs_${bam1genome}.bed"
     #Include LP mask because some components are in common (e.g. Puro)
     uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
 #Big-IN/mSwAP-In LP
@@ -341,12 +342,11 @@ elif echo "${bam2genome}" | egrep -q "^LP"; then
     echo "Recognized Big-IN/mSwAP-In LP"
     #BUGBUG this does not recognize mSwAP-In deliveries to LP400
     if echo "${bam2genome}" | egrep -q "^LPSwapin"; then
-        uninformativeRegionFiles="${src}/LP_uninformative_regions/LPSwapin_vs_${bam1genome}.bed"
+        uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LPSwapin_vs_${bam1genome}.bed"
     elif echo "${bam2genome}" | egrep -q "^LP[0-9]+$"; then
-        uninformativeRegionFiles="${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
+        uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
     else
         echo "WARNING unrecognized LP type. Nothing to add to uninformativeRegionFiles mask."
-        uninformativeRegionFiles=""
     fi
     #For LP integrations, put HAs in countsTableMaskFiles rather than uninformativeRegionFiles, so the latter can be used for HA analyses.
     countsTableMaskFiles="${countsTableMaskFiles} ${sampleOutdir}/log/HA_coords.${bam1genome}_vs_${bam2genome}.bed"
@@ -354,7 +354,7 @@ elif echo "${bam2genome}" | egrep -q "^LP"; then
 #BUGBUG add other Big-IN payloads
 elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2|Cacna1c|EnhancerCluster|Prdm14)"; then
     echo "Recognized Big-IN delivery"
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LP.bed"
+    uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/PL_vs_LP.bed"
     if [[ ! "${bam1genome}" =~ ^LP ]]; then
         #Include LP mask for failed clones and also because some components are in common
         uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/LP_vs_${bam1genome}.bed"
@@ -388,14 +388,14 @@ elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2|Cacna1c|EnhancerCluster|P
 elif [[ "${bam2genome}" == "rtTA" ]]; then
     #TODO confirm this is working properly
     #Include Rosa26 deleted sequence
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
+    uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
     HAmaskFiles="${TMPDIR}/deletion_range.bed"
 #ICE payload
 #BUGBUG Some Hoxa payloads to Big-IN now
 elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     echo "Recognized ICE delivery"
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPICE.bed"
+    uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/PL_vs_LPICE.bed"
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
     
     bam2cegsvectorsFile="/gpfs/data/cegs/sequences/cegsvectors_${bam2genome}/cegsvectors_${bam2genome}.bed"
@@ -433,15 +433,14 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
 #mSwAP-In payload
 elif echo "${bam2genome}" | egrep -q "^(ABCB7|ACE2|ANK1|APOBEC3|IL1RN|MHC|OSTN|PAX6|SLFN11|Taf1|TMPRSS2|TP53|Trp53|PLXNA1|NEUROD6|LINC00473$)"; then
     echo "Recognized mSwAP-In delivery"
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/PL_vs_LPSwapin.bed"
+    uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/PL_vs_LPSwapin.bed"
     #still correct?
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
 else
     #Doesn't fit any other case so try for a payload/genome-specific mask file
-    uninformativeRegionFiles="${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
+    uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
     if [ ! -f "${uninformativeRegionFiles}" ]; then
         echo "WARNING Can't find uninformative regions file ${uninformativeRegionFiles}"
-        uninformativeRegionFiles=""
     fi
 fi
 
