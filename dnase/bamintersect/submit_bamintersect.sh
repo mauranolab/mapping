@@ -369,7 +369,7 @@ elif echo "${bam2genome}" | egrep -q "^(Sox2_|PL1|Igf2|Cacna1c|EnhancerCluster)"
     
     cegsGenomeProjectID=`echo ${bam2genome} | cut -d "_" -f1`
     bam1cegsvectorsAssemblyFile="/gpfs/data/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed*"
-    if [ ! -f "${bam1cegsvectorsAssemblyFile}" ]; then
+    if [ ! -f ${bam1cegsvectorsAssemblyFile} ]; then
         echo "WARNING could not find assembly file ${bam1cegsvectorsAssemblyFile} for ${bam2genome} genome in ${bam1genome}"
     else
         awk -v cegsGenomeAssemblyName=`echo ${bam2genome} | cut -d "_" -f1-3` -F "\t" '$4==cegsGenomeAssemblyName' ${bam1cegsvectorsAssemblyFile} > $TMPDIR/assembly.${bam1genome}.bed
@@ -413,7 +413,7 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     
     cegsGenomeProjectID=`echo ${bam2genome} | cut -d "_" -f1`
     bam1cegsvectorsAssemblyFile="/gpfs/data/cegs/sequences/${bam1genome}/${cegsGenomeProjectID}/${cegsGenomeProjectID}_assembly.bed*"
-    if [ ! -f "${bam1cegsvectorsAssemblyFile}" ]; then
+    if [ ! -f ${bam1cegsvectorsAssemblyFile} ]; then
         echo "WARNING could not find assembly file ${bam1cegsvectorsAssemblyFile} for ${bam2genome} genome in ${bam1genome}"
     else
         #TODO hardcode to maximal size for now since we don't have specific coords
