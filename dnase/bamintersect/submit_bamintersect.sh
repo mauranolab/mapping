@@ -37,8 +37,15 @@ module load bedops/2.4.42
 module load python/cpu/3.10.6
 module load miller/6.11.0
 
-
+###Hardcoded configuration options
+#Common
 qsubargs=""
+
+sortThreads=1
+
+##Former from ISG cluster
+#sortThreads=2
+
 
 annotationBase="/gpfs/data/isg/annotation/bed"
 
@@ -491,8 +498,8 @@ function make_chrom_inputfile {
     samtools idxstats ${bamfile} | awk -F "\t" 'BEGIN {OFS="\t"} $1!="*"' > ${TMPDIR}/idxstats.txt
     n=$(wc -l < ${TMPDIR}/idxstats.txt)
     
-    #Chunk bam file based on >10M read chunks of chromosomes to reduce array job size for large runs
-    cat ${TMPDIR}/idxstats.txt | awk -v maxchunksize=10000000 -v prefix=${prefix} -F "\t" 'BEGIN {OFS="\t"; chunknum=0; chroms=""; chunksize=0} {\
+    #Chunk bam file based on >20M read chunks of chromosomes to reduce array job size for large runs
+    cat ${TMPDIR}/idxstats.txt | awk -v maxchunksize=20000000 -v prefix=${prefix} -F "\t" 'BEGIN {OFS="\t"; chunknum=0; chroms=""; chunksize=0} {\
         #Check if adding current line would make the chunk too big
         if(NR >1 && chunksize + $3+$4 > maxchunksize) {\
             chunknum+=1;\
@@ -527,10 +534,10 @@ fi
 
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam1.txt)
-qsub -S /bin/bash -cwd ${qsubargs} --time 12:00:00 --mem-per-cpu 8G -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${bam1} ${INTERMEDIATEDIR}/inputs.sort.bam1.txt ${bam1_keep_flags} ${bam1_exclude_flags} ${sampleOutdir}/log/uninformativeRegionFile.${bam1genome}_vs_${bam2genome}.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} --time 12:00:00 --mem-per-cpu 8G -terse -j y -N sort_bamintersect_1.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads ${sortThreads} "${src}/sort_bamintersect.sh ${bam1} ${INTERMEDIATEDIR}/inputs.sort.bam1.txt ${bam1_keep_flags} ${bam1_exclude_flags} ${sampleOutdir}/log/uninformativeRegionFile.${bam1genome}_vs_${bam2genome}.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_1.${sample_name}
 
 num_lines=$(wc -l < ${INTERMEDIATEDIR}/inputs.sort.bam2.txt)
-qsub -S /bin/bash -cwd ${qsubargs} --time 12:00:00 --mem-per-cpu 8G -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads 2 "${src}/sort_bamintersect.sh ${bam2} ${INTERMEDIATEDIR}/inputs.sort.bam2.txt ${bam2_keep_flags} ${bam2_exclude_flags} ${sampleOutdir}/log/uninformativeRegionFile.${bam1genome}_vs_${bam2genome}.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
+qsub -S /bin/bash -cwd ${qsubargs} --time 12:00:00 --mem-per-cpu 8G -terse -j y -N sort_bamintersect_2.${sample_name} -o ${sampleOutdir}/log -t 1-${num_lines} --qos normal -pe threads ${sortThreads} "${src}/sort_bamintersect.sh ${bam2} ${INTERMEDIATEDIR}/inputs.sort.bam2.txt ${bam2_keep_flags} ${bam2_exclude_flags} ${sampleOutdir}/log/uninformativeRegionFile.${bam1genome}_vs_${bam2genome}.bed ${INTERMEDIATEDIR}/sorted_bams/${sample_name} ${src}" > ${sampleOutdir}/sgeid.sort_bamintersect_2.${sample_name}
 
 
 ################################################
