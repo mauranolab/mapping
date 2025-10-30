@@ -307,6 +307,8 @@ if [ "${blatport}" != "0" ]; then
 fi
 
 
+echo
+date
 echo "Done!"
 date
 
