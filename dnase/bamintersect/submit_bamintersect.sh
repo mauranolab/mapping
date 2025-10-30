@@ -444,11 +444,13 @@ elif echo "${bam2genome}" | egrep -q "^(ABCB7|ACE2|ANK1|APOBEC3|IL1RN|MHC|OSTN|P
     #still correct?
     countsTableMaskFiles="${countsTableMaskFiles} ${TMPDIR}/deletion_range.bed"
 else
-    #Doesn't fit any other case so try for a payload/genome-specific mask file
+    echo "WARNING Can't find uninformative regions file."
+fi
+
+#Try for a payload/genome-specific mask file. This is rare so check specifically here rather than always triggering an error below.
+if [ -f "${uninformativeRegionFiles}" ]; then
+    echo "Found PL-specific uninformative regions file."
     uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/${bam2genome}_vs_${bam1genome}.bed"
-    if [ ! -f "${uninformativeRegionFiles}" ]; then
-        echo "WARNING Can't find uninformative regions file ${uninformativeRegionFiles}"
-    fi
 fi
 
 #Genomic repeat annotation
