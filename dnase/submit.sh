@@ -33,9 +33,14 @@ module load delly/0.8.7
 ###Hardcoded configuration options
 #Common
 qsubargs=""
-mapThreads=4
-mergeThreads=3
+#2 hits memory issues
+mapThreads=3
+mergeThreads=1
 runBamIntersect=1
+
+#Former from ISG cluster
+#mapThreads=4
+#mergeThreads=3
 
 #For big jobs:
 #qsubargs="--qos normal -p -500"
