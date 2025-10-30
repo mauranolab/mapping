@@ -112,6 +112,8 @@ if(!is.null(opt$inputfile)) {
 }
 
 
+#Returns a list of directories each containing individual sample dirs.
+#For example: each projectdir is FC/dnase|dna|capture|chipseq in the case of byFC
 if("descend" %in% names(opt)) {
 	projectdirs <- NULL
 	
@@ -120,9 +122,6 @@ if("descend" %in% names(opt)) {
 	for(flowcell in getFilteredDirs(pwd)) {
 		if(flowcell=='src') next;
 		if(flowcell=='trackhub') next;
-		
-		# To temporarily skip flowcell directories which are incomplete.
-		# if(flowcell=='FCH2NNMBBXY') next;
 		
 		projectdirs <- append(projectdirs, paste0(flowcell, "/", getFilteredDirs(paste0(pwd, "/", flowcell, "/"))))
 		
@@ -143,7 +142,7 @@ if("descend" %in% names(opt)) {
 }
 
 
-# Get paths of sample directories relative to pwd
+# mappeddirs represent paths to a single sample directory relative to pwd
 mappeddirs <- NULL
 for(curdir in projectdirs) {
 	thisProjectMappedDirs <- getFilteredDirs(paste0(pwd, "/", curdir))
@@ -153,7 +152,7 @@ for(curdir in projectdirs) {
 	mappeddirs <- append(mappeddirs, thisProjectMappedDirs)
 }
 
-#message("[samplesforTrackhub] ", 'Mapped directories to process: ', length(mappeddirs))
+message("[samplesforTrackhub] ", 'Mapped directories to process: ', length(mappeddirs))
 
 
 #Initialize color palette
@@ -506,6 +505,6 @@ if(opt$project=="CEGS_byLocus") {
 data <- data[order(data$SampleID),]
 write.table(data, file=opt$out, sep='\t', col.names=T, row.names=F, quote=F)
 
-# message("[samplesforTrackhub] ", warnings())
+#message("[samplesforTrackhub] ", warnings())
 
 #message("[samplesforTrackhub] ", "Done!!!")
