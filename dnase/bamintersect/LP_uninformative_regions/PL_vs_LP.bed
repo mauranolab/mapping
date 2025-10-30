@@ -7,8 +7,9 @@ Sox2_Sox2_46kb_dDistalLCR_marker	1474	2653	EF1a_promoter
 #Sox2_Sox2_143kb_markerFrt
 #Sox2_Sox2_46kb_dDistalLCR_markerFrt
 #Sox2_Sox2_46kb_dDistalLCR_marker_Puro
-#
-#From ran: retro-transposition event of the Mrpl23 gene, which sits right inside the H19 enhancer region. The chr2 region has 99.9% homology to chr7's Mrpl23's exons
+
+#Igf2 frequent calls
+#From Ran: retro-transposition event of the Mrpl23 gene, which sits right inside the H19 enhancer region. The chr2 region has 99.9% homology to chr7's Mrpl23's exons
 chr2	74590910	74592246
 #From Raquel: region with high homology (>92%) with a region in Igf2 locus (chr7   42668710 142669090)
 chrX	36347350	36347716
@@ -20,3 +21,13 @@ chr15	75085536	75086989
 chr15	92439867	92440123
 #Gm29554
 chrY	11857696	11858502
+
+#Each of these matches to many genomic regions
+Prdm14_Prdm14_DHS66dnToDHS22dn	3031	3531
+EnhancerCluster_Nanog_DHS20upToDHS3up	9475	10368
+EnhancerCluster_Nanog_DHS20upToDHS3up	11864	12474
+
+
+#FP hits originating from Prdm14_Prdm14_DHS66dnToDHS22dn	16550	17558
+chr14	63513270	63514138
+chr14	63508842	63508969
