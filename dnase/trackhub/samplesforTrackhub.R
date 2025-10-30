@@ -31,6 +31,7 @@ getFilteredDirs <- function(path) {
 	# Prune unwanted directories
 	dirs <- dirs[grep('^new', sapply(dirs, basename), invert=TRUE)]
 	dirs <- dirs[grep('^bak', sapply(dirs, basename), invert=TRUE)]
+	dirs <- dirs[grep('^tmp.', sapply(dirs, basename), invert=TRUE)]
 	dirs <- dirs[grep('^trash', sapply(dirs, basename), invert=TRUE)]
 	dirs <- dirs[grep('^unused$', sapply(dirs, basename), invert=TRUE)]
 	dirs <- dirs[grep('^fastq$', sapply(dirs, basename), invert=TRUE)]
