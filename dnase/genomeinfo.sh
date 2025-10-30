@@ -138,7 +138,7 @@ t2t)
 #    referencefasta=/gpfs/data/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
 #    dbsnpvcf=/dev/null
 *)
-    echo "ERROR: Don't recognize genome ${mappedgenome}";
+    echo "ERROR: [genomeinfo.sh] Don't recognize genome ${mappedgenome}";
     exit 1;;
 esac
 
@@ -146,21 +146,21 @@ esac
 echo "genomeinfo for ${mappedgenome}: bwaIndex=${bwaIndex}, ploidy=${ploidy}, referencefasta=${referencefasta}, dbsnpvcf=${dbsnpvcf}, annotationgenome=${annotationgenome}, chromsizes=${chromsizes}, dellyexclude=${dellyexclude}"
 
 if [[ ! -d `dirname "${bwaIndex}"` ]]; then
-    echo "ERROR could not find required files for ${bwaIndex}!"
+    echo "ERROR: [genomeinfo.sh] could not find required files for ${bwaIndex}!"
     exit 1
 fi
 
 if [[ ! -s "${referencefasta}" ]]; then
-    echo "ERROR could not find required file ${referencefasta}!"
+    echo "ERROR: [genomeinfo.sh] could not find required file ${referencefasta}!"
     exit 2
 fi
 
 if [[ "${dbsnpvcf}" != "/dev/null" ]] && [[ ! -s "${dbsnpvcf}" ]]; then
-    echo "ERROR could not find required file ${dbsnpvcf}!"
+    echo "ERROR: [genomeinfo.sh] could not find required file ${dbsnpvcf}!"
     exit 3
 fi
 
 if [[ ! -s "${chromsizes}" ]]; then
-    echo "ERROR could not find required file ${chromsizes}!"
+    echo "ERROR: [genomeinfo.sh] could not find required file ${chromsizes}!"
     exit 4
 fi
