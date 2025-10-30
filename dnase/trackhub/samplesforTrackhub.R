@@ -120,7 +120,6 @@ if("descend" %in% names(opt)) {
 	# Loop over all the flowcells to find sample directories.
 	flowcell_dates = list()
 	for(flowcell in getFilteredDirs(pwd)) {
-		if(flowcell=='src') next;
 		if(flowcell=='trackhub') next;
 		
 		projectdirs <- append(projectdirs, paste0(flowcell, "/", getFilteredDirs(paste0(pwd, "/", flowcell, "/"))))
