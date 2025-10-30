@@ -165,12 +165,13 @@ nextColorFromPalette <- 0
 colorAssignments <- NULL
 
 #Count the number of analysis files to initialize the output data table
+analysisFiles <- list()
 analysis_file_count <- 0
 for(curdir in mappeddirs) {
-  analysisFiles <- list.files(path=paste0(pwd, '/', curdir), pattern="^(makeTracks|analysis).*")
-  analysis_file_count <- analysis_file_count + length(analysisFiles)
+  #NB makeTracks is obsolete naming convention
+  analysisFiles[[curdir]] <- list.files(path=paste0(pwd, '/', curdir), pattern="^(makeTracks|analysis).*")
+  analysis_file_count <- analysis_file_count + length(analysisFiles[[curdir]])
 }
-
 message("[samplesforTrackhub] ", "Analysis file count: ", analysis_file_count)
 
 
@@ -194,10 +195,8 @@ for(curdir in mappeddirs) {
 	SampleID <- basename(curdir)
 	SampleIDsplit <- unlist(strsplit(SampleID, "-"))
 	
-	#NB makeTracks is obsolete naming convention
-	analysisFiles <- list.files(path=paste0(pwd, '/', curdir), pattern="^(makeTracks|analysis).*")
 	
-	if(length(analysisFiles)==0) {
+	if(length(analysisFiles[[curdir]])==0) {
 		message("[samplesforTrackhub] ", "WARNING No analysis files found in ", curdir)
 		next # Nothing follows here except for the long 'for(analysisFile...' loop.
 	}
@@ -213,13 +212,14 @@ for(curdir in mappeddirs) {
 		}
 	}
 	
-	for(analysisFile in analysisFiles) {
+	for(analysisFile in analysisFiles[[curdir]]) {
+		i <- i+1L
+		
 		analysisFileContents <- readLines(paste0(pwd, '/', curdir, '/', analysisFile), n=2000)
 		
 		if(tail(analysisFileContents, 2)[1] != "Done!"){
 			message("[samplesforTrackhub] ", "WARNING ", analysisFile, " appears not to have completed successfully")
 		}
-		i <- i+1L
 		
 		pipelineParameters <- analysisFileContents[grep('^Running [^,]+,[^,]+ analysis', analysisFileContents, perl=T)]
 		if(length(pipelineParameters)>0) {
