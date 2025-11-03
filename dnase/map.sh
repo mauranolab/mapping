@@ -24,11 +24,7 @@ sampleOutdir=${3}
 BS=${4}
 src=${5}
 
-shift
-shift
-shift
-shift
-shift
+shift 5
 userAlnOptions=$@
 
 
