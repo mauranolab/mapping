@@ -438,7 +438,7 @@ elif echo "${bam2genome}" | egrep -q "^(Hoxa_|HPRT1$)"; then
     #For HA, mask the deletion region since these junctions will be captured by the payload mapping
     HAmaskFiles="${TMPDIR}/deletion_range.bed"
 #mSwAP-In payload
-elif echo "${bam2genome}" | egrep -q "^(ABCB7|ACE2|ANK1|APOBEC3|IL1RN|MHC|OSTN|PAX6|SLFN11|Taf1|TMPRSS2|TP53|Trp53|PLXNA1|NEUROD6|LINC00473$)"; then
+elif echo "${bam2genome}" | egrep -q "^(ABCB7|ACE2|ANK1|APOBEC3|IL1RN|MHC|OSTN|PAX6|SLFN11|Taf1|TMPRSS2|TP53|Trp53|PLXNA1|NEUROD6|LINC00473|Uba1$)"; then
     echo "Recognized mSwAP-In delivery"
     uninformativeRegionFiles="${uninformativeRegionFiles} ${src}/LP_uninformative_regions/PL_vs_LPSwapin.bed"
     #still correct?
