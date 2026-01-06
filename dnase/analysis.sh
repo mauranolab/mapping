@@ -331,12 +331,11 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
     echo "Collecting picard metrics"
     mkdir -p ${sampleOutdir}/picardmetrics
     
-    # If there are not enough valid reads, Java fails with a NullPointerException and returns a non-zero exit code
+    # If there are not enough valid reads, Java fails with a picard.PicardException: Input file contains no PF_READS and returns a non-zero exit code
     touch ${sampleOutdir}/picardmetrics/${name}.${mappedgenome}.alignment_summary_metrics
     set +e
     #TODO should we exclude flag 512 like for CollectWgsMetrics?
     java -XX:ParallelGCThreads=1 -Xmx5g -Dpicard.useLegacyParser=false -jar ${PICARD_ROOT}/libs/picard.jar CollectMultipleMetrics -INPUT ${sampleOutdir}/${name}.${mappedgenome}.bam -REFERENCE_SEQUENCE ${referencefasta} -OUTPUT ${sampleOutdir}/picardmetrics/${name}.${mappedgenome} -PROGRAM CollectGcBiasMetrics -VERBOSITY WARNING
-    
     set -e
     
     
