@@ -33,7 +33,7 @@ module load delly/0.8.7
 ###Hardcoded configuration options
 #Common
 qsubargs=""
-#2 hits memory issues
+#Going down to 2 hits memory issues
 mapThreads=3
 mergeThreads=1
 runBamIntersect=1
