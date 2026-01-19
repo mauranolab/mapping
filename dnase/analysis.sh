@@ -600,8 +600,6 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
                 date
                 mkdir -p ${sampleOutdir}/hotspot2
                 
-                set +e
-                
                 
                 if [ -s "${mappableFile}" ];then
                     hotspot2mappableFileArg="-M ${mappableFile}"
@@ -610,7 +608,9 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
                     hotspot2mappableFileArg=""
                 fi
                 
+                set +e
                 hotspot2.sh -c ${hotspot2chromsizes} -C ${hotspot2centersites} -F ${FDRhot2} -f ${FDRhot2} ${hotspot2mappableFileArg} ${hotspotBAM} ${sampleOutdir}/hotspot2 > ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log 2>&1
+                set -e
                 
                 #Check for results first to avoid nonzero exit code
                 if grep -q -i -E "(error)" ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.log; then
@@ -644,8 +644,6 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
                 else
                     echo "WARNING could not find ${hotspot2peakfile} to make bigBed"
                 fi
-                
-                set -e
                 
                 #hotspot2 generates a series of files redundant with our own tracks:
                 #   density - bins start at 0 instead of 65, counts raw tags, includes 0 bins
