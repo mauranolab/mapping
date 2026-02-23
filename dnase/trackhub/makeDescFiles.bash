@@ -122,7 +122,7 @@ done
 
 
 ###########################################################################
-# Move the html files to trackhub_dev, and rename them.
+# Cat the html together by genome into the trackhub
 # Ultimate file names are in the form:  <date>_<flowcell>.html
 # Files reside in:  .../trackhub_dev/<genome>_descriptions/
 echo "[makeDescFiles] Combining descriptions by genome"
