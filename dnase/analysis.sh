@@ -8,6 +8,10 @@ alias bedmap='bedmap --ec --header --sweep-all'
 alias closest-features='closest-features --header'
 
 
+###Hardcoded configuration options
+qsubargs=""
+
+
 ###Parameters
 mappedgenome=${1}
 analysisType=${2}
@@ -322,8 +326,8 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
     }\
     END {if(chunksize>0 || (chunksize==0 && chunknum==0)) {chunknum+=1; print prefix chunknum, chroms}}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
     n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
-    qsub -S /bin/bash -cwd -V -b y --time 12:00:00 --mem-per-cpu 8G -terse -j y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
-    qsub -S /bin/bash -cwd -V -b y --time 12:00:00 --mem-per-cpu 8G -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;'
+    qsub -S /bin/bash -cwd -V ${qsubargs} -b y --time 12:00:00 --mem-per-cpu 8G -terse -j y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
+    qsub -S /bin/bash -cwd -V ${qsubargs} -b y --time 12:00:00 --mem-per-cpu 8G -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;'
     rm -f ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
     
     
