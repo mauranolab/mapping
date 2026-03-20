@@ -538,7 +538,7 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
         echo "Hotspots for UCSC browser"
         if [ -s "${hotspotfile}" ]; then
             unstarch ${hotspotfile} | cut -f1-3 > $TMPDIR/${name}.${mappedgenome}.fdr0.01.hot.bed
-            bedToBigBed -type=bed3 $TMPDIR/${name}.${mappedgenome}.fdr0.01.hot.bed ${chromsizes} ${sampleOutdir}/hotspots/${name}.${mappedgenome}.fdr0.01.hot.bb
+            bedToBigBed -tab -type=bed3 $TMPDIR/${name}.${mappedgenome}.fdr0.01.hot.bed ${chromsizes} ${sampleOutdir}/hotspots/${name}.${mappedgenome}.fdr0.01.hot.bb
         else
             echo "WARNING could not find ${hotspotfile} to make bigBed"
         fi
@@ -546,7 +546,7 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
         peakfile=${sampleOutdir}/hotspots/${name}.${mappedgenome}-final/${name}.${mappedgenome}.fdr0.01.pks.starch
         if [ -s "${peakfile}" ]; then
             unstarch ${peakfile} | cut -f1-3 > $TMPDIR/${name}.${mappedgenome}.fdr0.01.pks.bed
-            bedToBigBed -type=bed3 $TMPDIR/${name}.${mappedgenome}.fdr0.01.pks.bed ${chromsizes} ${sampleOutdir}/hotspots/${name}.${mappedgenome}.fdr0.01.pks.bb
+            bedToBigBed -tab -type=bed3 $TMPDIR/${name}.${mappedgenome}.fdr0.01.pks.bed ${chromsizes} ${sampleOutdir}/hotspots/${name}.${mappedgenome}.fdr0.01.pks.bb
         else
             echo "WARNING could not find ${peakfile} to make bigBed"
         fi
@@ -633,7 +633,7 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
                 hotspot2fileFDR05="${sampleOutdir}/hotspot2/${name}.${mappedgenome}.hotspots.fdr0.05.starch"
                 if [ -s "${hotspot2fileFDR05}" ] && [ `unstarch --elements ${hotspot2fileFDR05}` -gt 0 ]; then
                     unstarch ${hotspot2fileFDR05} | cut -f1-4 > $TMPDIR/${name}.${mappedgenome}.hotspots.fdr0.05.bed
-                    bedToBigBed -type=bed4 $TMPDIR/${name}.${mappedgenome}.hotspots.fdr0.05.bed ${chromsizes} ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.hotspots.fdr0.05.bb
+                    bedToBigBed -tab -type=bed4 $TMPDIR/${name}.${mappedgenome}.hotspots.fdr0.05.bed ${chromsizes} ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.hotspots.fdr0.05.bb
                 else
                     echo "WARNING could not find ${hotspot2fileFDR05} to make bigBed"
                 fi
@@ -644,7 +644,7 @@ if [ "${callHotspots1}" == 1 ] || [ "${callHotspots2}" == 1 ]; then
                 hotspot2peakfile="${sampleOutdir}/hotspot2/${name}.${mappedgenome}.peaks.fdr${FDRhot2}.starch"
                 if [ -s "${hotspot2peakfile}" ] && [ `unstarch --elements ${hotspot2peakfile}` -gt 0 ]; then
                     unstarch ${hotspot2peakfile} | cut -f1-3 > $TMPDIR/${name}.${mappedgenome}.peaks.bed
-                    bedToBigBed -type=bed3 $TMPDIR/${name}.${mappedgenome}.peaks.bed ${chromsizes} ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.peaks.bb
+                    bedToBigBed -tab -type=bed3 $TMPDIR/${name}.${mappedgenome}.peaks.bed ${chromsizes} ${sampleOutdir}/hotspot2/${name}.${mappedgenome}.peaks.bb
                 else
                     echo "WARNING could not find ${hotspot2peakfile} to make bigBed"
                 fi

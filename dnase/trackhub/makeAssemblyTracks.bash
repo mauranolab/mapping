@@ -137,8 +137,8 @@ done
 
 #Now that the directory exists, can create G+C and cytoBandIdeo tracks
 if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes" ] ; then
-    cat ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes | LC_COLLATE=C sort -k1,1 -k2,2n | awk '{print $1,0,$2,$1,"gneg"}' > ${TMPDIR}/assembly_tracks/cytoBandIdeo.bed
-    bedToBigBed -type=bed4 ${TMPDIR}/assembly_tracks/cytoBandIdeo.bed -as=${src}/cytoband.as ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes ${hub_target}/${customGenomeAssembly}/data/cytoBandIdeo.bb
+    cat ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes | LC_COLLATE=C sort -k1,1 -k2,2n | awk 'BEGIN {OFS="\t"} {print $1, 0, $2, $1, "gneg"}' > ${TMPDIR}/assembly_tracks/cytoBandIdeo.bed
+    bedToBigBed -tab -type=bed4 ${TMPDIR}/assembly_tracks/cytoBandIdeo.bed -as=${src}/cytoband.as ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes ${hub_target}/${customGenomeAssembly}/data/cytoBandIdeo.bb
     
     if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.2bit" ]; then
         # Divert again to make the GC percentage file:
