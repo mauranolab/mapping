@@ -132,6 +132,17 @@ t2t)
     referencefasta=/gpfs/data/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
     dbsnpvcf=/dev/null
     ;;
+enhancercluster*)
+    #If this genome is an symlink, then substitute it with its target for the purposes of looking up bwa index and fasta file
+    bwagenome=`readlink -f /gpfs/data/mauranolab/mauram01/DAFseq/sequences/${mappedgenome} | xargs basename`
+    bwaIndex=""
+    #In case this genome is an symlink,  use its target name to get the right chrom.sizes name
+    chromsizes="/gpfs/data/mauranolab/mauram01/DAFseq/sequences/${bwagenome}/${bwagenome}.chrom.sizes"
+    ploidy="--ploidy 1"
+    referencefasta=/gpfs/data/mauranolab/mauram01/DAFseq/sequences/${bwagenome}/${bwagenome}.fa.gz
+    dbsnpvcf=/dev/null
+    ;;
+
 #dm6)
 #    bwaIndex=/gpfs/data/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome} BUGBUG
 #    ploidy="--ploidy 2" BUGBUG
