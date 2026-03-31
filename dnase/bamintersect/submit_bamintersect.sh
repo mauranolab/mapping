@@ -300,6 +300,12 @@ if [ "${integrationsite}" != "null" ]; then
     echo
     echo "Looking up HA coordinates for ${integrationsite}:"
     HA_file="/gpfs/data/cegs/sequences/${bam1genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
+    if [ ! -s "${HA_file}" ]; then
+        HA_file="/gpfs/data/mauranolab/sequences/${bam1genome}/${integrationSiteName}/${integrationSiteName}_HomologyArms.bed"
+        if [ ! -s "${HA_file}" ]; then
+            echo "WARNING HA file ${HA_file} does not exist so there is no deletion_range"
+        fi
+    fi
     
     if [ -s "${HA_file}" ]; then
         if grep -q "${integrationSiteName}_${HA1}$" ${HA_file} && grep -q "${integrationSiteName}_${HA2}$" ${HA_file}; then
@@ -319,8 +325,6 @@ if [ "${integrationsite}" != "null" ]; then
         else
             echo "WARNING could not find homology arm coordinates for ${integrationSiteName}_${HA1} or ${integrationSiteName}_${HA2} in ${HA_file}"
         fi
-    else
-        echo "WARNING HA file ${HA_file} does not exist so there is no deletion_range"
     fi
 else
     echo "No integration site was provided, and so there is no deletion_range."
