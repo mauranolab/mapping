@@ -9,7 +9,7 @@ import glob
 
 #Get LIMS info
 sys.path.append("/gpfs/data/mauranolab/mapped/src/flowcells")
-from lims import getLIMSsheet, getValueFromLIMS
+from lims import getLIMSsheet, getValueFromLIMS, getFlowcellInfofromLIMS
 
 
 ###Argument parsing
@@ -117,6 +117,10 @@ def getFlowcellInfoFromFile(flowcellID):
         print("Reading", flowcellInfoFileName, "starting at line", startRow, file=sys.stderr)
     
     curFlowcellFile = pd.DataFrame(flowcellInfoFileContent[startRow:], columns = flowcellInfoFileContent[startRow]).iloc[1:]
+    
+    #Rename first column label (#Sample Name), which is commented in info.txt but not in the Sequencing Sheet
+    #BUGBUG done by position
+    curFlowcellFile = curFlowcellFile.rename(columns={curFlowcellFile.columns[0]: 'Sample Name'})
     curFlowcellFile["FC"] = flowcellID
     
     return curFlowcellFile
@@ -126,11 +130,11 @@ def getFlowcellInfoFromFile(flowcellID):
 #Each function takes dict representing a single row from the FC file iterator and returns the processing command line
 #Transposon pipeline
 def aggregateTransposonSamples(lines):
-    return "/gpfs/data/mauranolab/mapped/src/transposon/submitMerge.sh " + lines.iloc[0]["Sample #"] + "-" + lines.iloc[0]["#Sample Name"] + " " + " ".join([ getBasedir(None, line["Sample Type"], line["FC"]) + "/" + line["Original Sample #"] + "-" + line["#Sample Name"] + "/" for index, line in lines.iterrows() ])
+    return "/gpfs/data/mauranolab/mapped/src/transposon/submitMerge.sh " + lines.iloc[0]["Sample #"] + "-" + lines.iloc[0]["Sample Name"] + " " + " ".join([ getBasedir(None, line["Sample Type"], line["FC"]) + "/" + line["Original Sample #"] + "-" + line["Sample Name"] + "/" for index, line in lines.iterrows() ])
 
 
 def transposonSamples(line):
-    fullSampleName = line["Sample #"] + "-" + line["#Sample Name"]
+    fullSampleName = line["Sample #"] + "-" + line["Sample Name"]
     sampleType = line["Sample Type"]
     sampleTypeShort= sampleType.split(" ")[1]
     
@@ -186,7 +190,7 @@ def transposonSamples(line):
 #TODO fix organism
 def chromConfCapture(line):
     organism = "hg38" 
-    fullSampleName = line["Sample #"] + "-" + line["#Sample Name"]
+    fullSampleName = line["Sample #"] + "-" + line["Sample Name"]
     
     qsub = "qsub --time 4:00:00 --mem-per-cpu 4G -j y -N submit." + fullSampleName + ' -b y -S /bin/bash "/home/maagj01/scratch/transposon/src/submitHiC.sh ' +fullSampleName
     
@@ -231,7 +235,7 @@ def addCEGSgenomes(line):
     if line["Lab"] not in ["CEGS", "Chakravarti"]:
         return []
     else:
-        sampleName = line["#Sample Name"]
+        sampleName = line["Sample Name"]
         
 #        Disable finding reference from name -- only support getting it through LIMS annotation
 #        if re.search(r'_(Amplicon|BAC|Yeast)$', sampleName) is not None:
@@ -342,7 +346,7 @@ def bwaPipeline(line):
     if geneticModification != "":
         sampleAnnotation.append("Genetic_Modification=" + geneticModification)
     
-    submitCommand = "/gpfs/data/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(set(mappedgenomes))) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["#Sample Name"] + " " + line["Sample #"]
+    submitCommand = "/gpfs/data/mauranolab/mapped/src/dnase/submit.sh " + ",".join(sorted(set(mappedgenomes))) + " " + processingCommand + "," + bwaPipelineAnalysisCommandMap[sampleType] + " " + getBwaPipelineOutdir(sampleType) + line["Sample Name"] + " " + line["Sample #"]
     if len(sampleAnnotation) > 0:
         submitCommand += " \"" + ";".join(sampleAnnotation) + "\""
     
@@ -357,11 +361,20 @@ def bwaPipeline(line):
 ####
 
 ###Parse flowcell info
+getFCfromLIMS = False
+
 limsWks, lims, limsMask = getLIMSsheet("LIMS")
+if getFCfromLIMS:
+    seqWks, seq, seqMask = getLIMSsheet("Sequencing Sheet")
 
 flowcellFile = pd.DataFrame()
 for flowcellID in flowcellIDs:
-    flowcellFile = pd.concat([flowcellFile, getFlowcellInfoFromFile(flowcellID)])
+    if args.verbose:
+        print("Looking for FC:" + flowcellID, file=sys.stderr)
+    if getFCfromLIMS:
+        flowcellFile = pd.concat([flowcellFile, getFlowcellInfofromLIMS(seq, seqMask, flowcellID)])
+    else:
+        flowcellFile = pd.concat([flowcellFile, getFlowcellInfoFromFile(flowcellID)])
 
 ###Pre-processing
 print("#", " ".join([ quoteStringsWithSpaces(arg) for arg in sys.argv ]), sep="")
@@ -380,7 +393,7 @@ if samples is not None:
     flowcellFile = flowcellFile[flowcellFile["Sample #"].apply(lambda bs: any([s in bs for s in samples]))]
 if samplenames is not None:
     #Do partial string matching rather than exact equality to allow flexible subsetting of certain sublibraries or of all sublibraries for a given BS number
-    flowcellFile = flowcellFile[flowcellFile["#Sample Name"].apply(lambda bs: any([s in bs for s in samplenames]))]
+    flowcellFile = flowcellFile[flowcellFile["Sample Name"].apply(lambda bs: any([s in bs for s in samplenames]))]
 
 
 #Initialize inputs.txt - must be done before we drop duplicate sample rows
@@ -431,7 +444,7 @@ doTransposonCleanup = False
 for index, line in flowcellFile.iterrows():
     if args.verbose:
         print("\nParsing:\n" + str(line), file=sys.stderr)
-    sampleName = line["#Sample Name"]
+    sampleName = line["Sample Name"]
     sampleID = line["Sample #"]
     sampleType = line["Sample Type"]
     

@@ -89,8 +89,14 @@ def getFlowcellInfofromLIMS(seq, seqMask, flowcellID, printInfo=False):
         curSeq = seq.iloc[seqRow]
         if curSeq['Sample Name'] == "#Run name":
             #1st line of new FC entry
-            curRunname = curSeq['Sample #']
+            #If the last FC was our match, then close it out now that we have reached the next FC
+            if curflowcellID==flowcellID:
+                endRow = seqRow - 2
             curflowcellID = None
+            
+            curRunname = curSeq['Sample #']
+            
+            #Save this row in case we need to print it on the next line once we know the FC ID
             runnameSeq = curSeq
         elif curSeq['Sample Name'] == "#Barcode":
             #2nd line of new FC entry
@@ -98,23 +104,22 @@ def getFlowcellInfofromLIMS(seq, seqMask, flowcellID, printInfo=False):
             if curflowcellID==flowcellID:
                 if printInfo:
                     print('\t'.join(map(str, runnameSeq.values)))
-            else:
-                endRow = seqRow - 3
         elif curflowcellID==flowcellID and re.match("^#", str(curSeq['Sample Name'])) is not None:
             #Continue through FC header, incrementing startRow to point to the beginning of the sample entries
             startRow = seqRow + 2
         elif curSeq['Sample Name'] == "Scratch":
-            #Terminate the last FC entry when we reach the Scratch section
+            #If the last FC was our match, then close it out now that we have reached the Scratch section
+            if curflowcellID==flowcellID:
+                endRow = seqRow - 2
             curflowcellID = None
             curRunname = None
-            endRow = seqRow - 2
         
         if curflowcellID==flowcellID:
             if printInfo:
                 print('\t'.join(map(str, curSeq.values)))
                 #BUGBUG prints last empty line
     
-    #print("Get ", startRow, " to ", endRow)
+    #print("getFlowcellInfofromLIMS: Get ", startRow, " to ", endRow)
     
     if startRow is None or endRow is None:
         print("WARNING: Found no Sequencing Sheet entries for " + flowcellID, file=sys.stderr)
