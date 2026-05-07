@@ -17,7 +17,7 @@ import os
 import glob
 from datetime import datetime
 
-version="1.3"
+version="1.4"
 
 
 #https://stackoverflow.com/questions/26987222/checking-whitespace-in-a-string-python/26987329
@@ -72,6 +72,57 @@ def getLIMSsheet(sheet):
         wks = None
         df = None
     return wks, df, mask
+
+
+#Get FC info from Sequencing Sheet.
+#Return sample info as pandas dataframe, including a new FC column
+#Optionally prints full entry tab-delimited to stdout.
+#BUGBUG hardcoded to require #Run name then #Barcode
+def getFlowcellInfofromLIMS(seq, seqMask, flowcellID, printInfo=False):
+    curRunname = None
+    curflowcellID = None
+    runnameSeq = None
+    startRow = None
+    endRow = None
+    
+    for seqRow in seq.index.values:
+        curSeq = seq.iloc[seqRow]
+        if curSeq['Sample Name'] == "#Run name":
+            #1st line of new FC entry
+            curRunname = curSeq['Sample #']
+            curflowcellID = None
+            runnameSeq = curSeq
+        elif curSeq['Sample Name'] == "#Barcode":
+            #2nd line of new FC entry
+            curflowcellID = curSeq['Sample #']
+            if curflowcellID==flowcellID:
+                if printInfo:
+                    print('\t'.join(map(str, runnameSeq.values)))
+            else:
+                endRow = seqRow - 3
+        elif curflowcellID==flowcellID and re.match("^#", str(curSeq['Sample Name'])) is not None:
+            #Continue through FC header, incrementing startRow to point to the beginning of the sample entries
+            startRow = seqRow + 2
+        elif curSeq['Sample Name'] == "Scratch":
+            #Terminate the last FC entry when we reach the Scratch section
+            curflowcellID = None
+            curRunname = None
+            endRow = seqRow - 2
+        
+        if curflowcellID==flowcellID:
+            if printInfo:
+                print('\t'.join(map(str, curSeq.values)))
+                #BUGBUG prints last empty line
+    
+    #print("Get ", startRow, " to ", endRow)
+    
+    if startRow is None or endRow is None:
+        print("WARNING: Found no Sequencing Sheet entries for " + flowcellID, file=sys.stderr)
+        return None
+    
+    curFlowcellFile = seq.iloc[startRow:endRow].copy()
+    curFlowcellFile["FC"] = flowcellID
+    return curFlowcellFile
 
 
 #Verify consistency in common entries between Sample Sheet and LIMS sheets
@@ -347,6 +398,8 @@ if __name__ == "__main__":
     update_parser.add_argument("--update", action = "store", default = None, type=str, help = "Update LIMS and Sample Sheet based on tab-delimited input file [%(default)s]")
     update_parser.add_argument("--nocommit", action = "store_true", default = False, help = "Perform update but do not commit any differences [%(default)s]")
     
+    update_parser.add_argument("--getFCinfo", action = "store", default = None, help = "Get info for FC, specify single FC ID [%(default)s]")
+    
     parser.add_argument('--version', action='version', version='%(prog)s ' + version)
     
     #argparse does not set an exit code upon this error
@@ -384,4 +437,7 @@ if __name__ == "__main__":
         print()
         print("FCs containing the samples in this update")
         findFCsForSamples(seq, updates)
+    
+    if args.getFCinfo is not None:
+        getFlowcellInfofromLIMS(seq, seqMask, args.getFCinfo, printInfo=True)
 

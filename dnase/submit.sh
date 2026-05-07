@@ -109,6 +109,8 @@ mkdir -p ${src}
 find ${srcbase} -maxdepth 1 -type f | xargs -I {} cp -p {} ${src}
 #Only subdir we need is bamintersect
 cp -rp ${srcbase}/bamintersect ${src}
+#Needed to get info.txt from live google sheet
+cp -p ${srcbase}/../flowcells/lims.py ${src}
 
 
 ###Map

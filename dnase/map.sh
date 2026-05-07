@@ -58,43 +58,6 @@ bam2instrument()
 }
 
 
-getReadgroup()
-{
-    local BS=$1
-    
-    local BS_nosuffix=`echo "${BS}" | perl -pe 's/[A-Z]$//g;'`
-    local readgroup="@RG\\tID:${fc}${BS}\\tLB:${BS}\\tSM:${BS_nosuffix}\\tPL:ILLUMINA"
-    if [ -s "/gpfs/data/isg_sequencing/data/${fc/./}/info.txt" ]; then
-        local readgroup_instrument=`awk -F "\t" 'BEGIN {OFS="\t"} $1=="#Instrument" {print $2}' /gpfs/data/isg_sequencing/data/${fc/./}/info.txt`
-        
-        local readgroup_date=`awk -F "\t" 'BEGIN {OFS="\t"; loaddate="NA"} $1=="#Load date" && $2!="" {loaddate=$2} END {print loaddate}' /gpfs/data/isg_sequencing/data/${fc/./}/info.txt`
-        #BUGBUG hardcoded column numbers
-        local readgroup_bcs=`awk -v ds=${BS} -F "\t" 'BEGIN {OFS="\t"} $0!~/^#/ && 0!="" && $2==ds {split($6, bc1, "_"); split($7, bc2, "_"); print bc1[2] "-" bc2[2]}' /gpfs/data/isg_sequencing/data/${fc/./}/info.txt`
-        #BUGBUG BC: shows up in bwa command line but at some point disappears from the bam header
-        readgroup="${readgroup}\\tDT:${readgroup_date}\\tBC:${readgroup_bcs}\\tPU:${fc/./}-${readgroup_bcs}"
-        
-        case "${readgroup_instrument}" in
-        Balin)
-            readgroup="${readgroup}\\tCN:Maurano_Lab\\tPM:NextSeq_500"
-            ;;
-        Gandalf)
-            readgroup="${readgroup}\\tCN:Maurano_Lab\\tPM:NextSeq_2000"
-            ;;
-        GTC_NovaSeq)
-            readgroup="${readgroup}\\tCN:NYUMC_GTC\\tPM:NovaSeq_6000"
-            ;;
-        GTC_NextSeq)
-            readgroup="${readgroup}\\tCN:NYUMC_GTC\\tPM:NextSeq_500"
-            ;;
-        GTC_MiSeq)
-            readgroup="${readgroup}\\tCN:NYUMC_GTC\\tPM:MiSeq"
-            ;;
-        esac
-    fi
-    
-    echo "${readgroup}"
-}
-
 
 jobid=$SGE_TASK_ID
 readsFq=`awk -v jobid=$jobid 'NR==jobid' ${sampleOutdir}/inputs.map.txt`
@@ -178,14 +141,16 @@ fi
 #BUGBUG a bit fragile
 fc=`readlink -f ${readsFq} | xargs dirname | xargs dirname | xargs dirname | xargs basename`
 if [[ ! "${fc}" =~ ^FC ]] ; then
-    fc=""
+    #This is an Illumina pipeline, so if the FC doesn't start with FC, something is wrong
+    fcprefix=""
 else
     echo "Flowcell ${fc}"
-    fc="${fc}."
+    fcprefix="${fc}."
+    
+    #Sets ${readgroup}
+    #lims.py must be present in src, which submit.sh normally does (but note lims.py is in flowcells not dnase)
+    source ${src}/getReadgroup.sh "${BS}" "${fc}" "${src}"
 fi
-
-
-readgroup=$(getReadgroup ${BS})
 
 sample2=`echo ${sample1} | perl -pe 's/_R1(_\d+)?$/_R2$1/g;'`
 if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "${sample2}" ${sampleOutdir}/inputs.map.txt | grep -q "${fc}" ; then
@@ -205,7 +170,7 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     
     PErun="TRUE"
     curfile=`echo ${sample1} | perl -pe 's/_R1(_\d+)?/_R1R2\1/g;'`
-    curfile="${fc}${curfile}"
+    curfile="${fcprefix}${curfile}"
     
     
     echo "Filtering out reads with >75% G content"
@@ -235,13 +200,13 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     
     
     mkdir -p ${sampleOutdir}/fastqc
-    fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample1}_qc"
+    fastQcOutdir="${sampleOutdir}/fastqc/${fcprefix}${sample1}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
         #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc --time 12:00:00 --mem-per-cpu 8G -j y -b y -S /bin/bash -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz"
         mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz
     fi
     
-    fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample2}_qc"
+    fastQcOutdir="${sampleOutdir}/fastqc/${fcprefix}${sample2}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
         #qsub -cwd -V -N ${sample2}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc --time 12:00:00 --mem-per-cpu 8G -j y -b y -S /bin/bash -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq.gz"
         mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample2}.fastq.gz
@@ -260,7 +225,7 @@ if echo "${sample1}" | grep -q _R1 && echo "${sample2}" | grep -q _R2 && grep "$
     zcat $TMPDIR/${curfile}.unpaired.fastq.gz | awk 'NR%4 == 2 {lengths[length($0)]++} END {for (l in lengths) {print l, lengths[l]}}' | sort -k1,1n
 else
     PErun="FALSE"
-    curfile="${fc}${sample1}"
+    curfile="${fcprefix}${sample1}"
     
     #BUGBUG missing filterNextSeqReadsForPolyG.py for SE data
     #BUGBUG wrong adapter files
@@ -277,7 +242,7 @@ else
     echo "Running fastqc"
     date
     mkdir -p ${sampleOutdir}/fastqc
-    fastQcOutdir="${sampleOutdir}/fastqc/${fc}${sample1}_qc"
+    fastQcOutdir="${sampleOutdir}/fastqc/${fcprefix}${sample1}_qc"
     if [ ! -d "${fastQcOutdir}" ]; then
         #qsub -cwd -V -N ${sample1}.qc -o ${sampleOutdir}/fastqc/${sample1}.qc --time 12:00:00 --mem-per-cpu 8G -j y -b y -S /bin/bash -p -500 "mkdir -p ${fastQcOutdir}; fastqc --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz"
         mkdir -p ${fastQcOutdir}; fastqc -t ${NSLOTS} --outdir ${fastQcOutdir} $TMPDIR/${sample1}.fastq.gz
