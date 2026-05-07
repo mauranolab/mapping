@@ -42,10 +42,10 @@ def getValueFromLIMS(lims, bs, colname):
         matches = lims[lims['Sample #'] == bs][colname].unique()
         if len(matches) == 0:
             #Multiple matches should never occur if BS numbers are unique
-            raise Exception("Found no LIMS entries for " + bs)
+            raise Exception("ERROR: Found no LIMS entries for " + bs)
         if len(matches) > 1:
             #Multiple matches should never occur if BS numbers are unique
-            raise Exception("Found multiple LIMS entries for " + bs)
+            raise Exception("ERROR: Found multiple LIMS entries for " + bs)
 #        print('LIMS: ', bs, ":", colname, '=>', matches[0], ".", sep="")
         return matches[0]
 
