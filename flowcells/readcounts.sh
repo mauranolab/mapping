@@ -71,8 +71,9 @@ for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="
     done
 done
 
+
 echo
-echo "Tarballing collaborator projects"
+echo "Tarballing and computing SHA for collaborator projects"
 date
 basedir=`pwd`
 #Rarely in a hurry for this so might as well do in serial to simpify
@@ -82,6 +83,9 @@ for d in `find ${basedir}  -maxdepth 1 -name "Project_*" -type d | grep -v Proje
     echo "${project}"
     base="${project}_${fc}_"`date +%Y%b%d`
     cd $d
+    
+    find . -name "*.fastq.gz" -type f -exec shasum -U -a 512 {} \; | gzip -9 -c > all.sha.txt.gz
+    
     tar cvf /gpfs/data/isg_sequencing/public_html/${base}_fastq.tar .
     
     echo
@@ -94,6 +98,21 @@ for d in `find ${basedir}  -maxdepth 1 -name "Project_*" -type d | grep -v Proje
     echo
     awk -v project=${project} -F "\t" 'BEGIN {OFS="\t"} NR==1 || $1==project' ${basedir}/readcounts.txt
 done
+
+
+#BUGBUG must wait for split jobs to finish
+#echo
+#echo "Computing SHA for non-collaborator projects"
+#date
+#for d in `find ${basedir}  -maxdepth 1 -name "Project_*" -type d | egrep "(Project_CEGS|Project_Maurano|Project_SARS)"`; do
+#    project=`basename $d`
+#    echo
+#    echo "${project}"
+#    cd $d
+#    
+#    find . -name "*.fastq.gz" -type f -exec shasum -U -a 512 {} \; | gzip -9 -c > all.sha.txt.gz
+#done
+
 
 #echo "Tarballing flowcell data directory"
 #base="${fc}_"`date +%Y%b%d`
