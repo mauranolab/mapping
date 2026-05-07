@@ -27,8 +27,9 @@ alias closest-features='closest-features --header'
 mappedgenome=${1}
 analysisType=${2}
 sampleOutdir=${3}
-sampleAnnotation=${4}
-src=${5}
+BS=${4}
+sampleAnnotation=${5}
+src=${6}
 
 
 source ${src}/genomeinfo.sh ${mappedgenome}
@@ -171,16 +172,18 @@ rm -f ${fltvcffiles}
 # DELLY does not have a --regions flag to allow for specific regions to be matched.
 # this makes it difficult to parallelize by chromosome like the bcftools call command
 echo
-echo "Running DELLY"
+echo "DELLY"
 date
 
+echo "Preparing .bam file"
 ## DELLY is hardcoded to skip reads with qcfail flag set, so generate new bam file with 512 cleared
 ${src}/changeSAMflags.py --clearflag 512 ${sampleOutdir}/${name}.${mappedgenome}.bam ${TMPDIR}/${name}.${mappedgenome}.QC_OK_bamfile.bam
 samtools index ${TMPDIR}/${name}.${mappedgenome}.QC_OK_bamfile.bam
 
 
-# If there are not enough valid reads, delly returns a non-zero exit code
+# If there are not enough valid reads, DELLY returns a non-zero exit code
 #${dellyexclude} is set by genomeinfo.sh to exclude telomeric/centromeric regions (presumably more important for WGS)
+echo "Running DELLY"
 set +e
 delly call -t ALL -o ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf ${dellyexclude} -g ${referencefasta} ${TMPDIR}/${name}.${mappedgenome}.QC_OK_bamfile.bam
 dellyExitCode=$?
@@ -188,6 +191,15 @@ set -e
 
 # If DELLY exited with a 0 code then create the vcf
 if [ "$dellyExitCode" -eq 0 ]; then
+    if [[ "${BS}" =~ , ]]; then
+        #DELLY seems to use the first BS number when processing a bam file with multiple RGs, so rewrite it with the BS numbers for BSmany samples
+        #Could also use Picard AddOrReplaceReadGroups above to squash RGs prior to calling DELY
+        echo "Overwriting sample name in DELLY bcf file with ${BS}"
+        echo -e "${BS}" > $TMPDIR/samplesfile.txt
+        bcftools reheader --samples $TMPDIR/samplesfile.txt ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf > ${sampleOutdir}/${name}.${mappedgenome}.delly.new.bcf
+        mv ${sampleOutdir}/${name}.${mappedgenome}.delly.new.bcf ${sampleOutdir}/${name}.${mappedgenome}.delly.bcf
+    fi
+    
     echo "Merging DELLY variants in to .filtered.vcf file"
     # Only accept variants that pass the FILTER test.
     # Don't bother masking excluded genotypes and just straight hard drop them

@@ -142,7 +142,7 @@ pileupParams=""
 ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.sex.txt"
 if [[ "${BS}" =~ , ]]; then
     #Perform single-sample calling in BSmany aggregations, otherwise pileup contains multiple samples that causes problems further on in our parsing
-    echo "Squashing multiple RG in bam file to one"
+    echo "Squashing multiple RG in bam file to ${BS}"
     pileupParams="${pileupParams} --ignore-RG"
     echo -e "${BS}\t${sex}" > $TMPDIR/samplesfile.sex.txt
 else
