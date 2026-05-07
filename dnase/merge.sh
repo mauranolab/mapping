@@ -9,9 +9,11 @@ alias closest-features='closest-features --header'
 
 analysisType=${1}
 sampleOutdir=${2}
-sampleIDs=${3}
+BS=${3}
 mappedgenome=${4}
 src=${5}
+
+sampleIDs=`echo "${BS}" | perl -pe 's/,/\\\\|/g;'`
 
 source ${src}/genomeinfo.sh ${mappedgenome}
 
@@ -21,7 +23,7 @@ sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 name=`basename ${sampleOutdir}`
 
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
-echo "Merging bams (${processingCommand} analysis); output name ${name} (${sampleIDs}) against genome ${mappedgenome}"
+echo "Merging bams (${processingCommand} analysis); output name ${name} (${BS}) against genome ${mappedgenome}"
 date
 
 

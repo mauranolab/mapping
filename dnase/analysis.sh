@@ -16,10 +16,11 @@ qsubargs=""
 mappedgenome=${1}
 analysisType=${2}
 sampleOutdir=${3}
-sampleIDs=${4}
+BS=${4}
 sampleAnnotation=${5}
 src=${6}
 
+sampleIDs=`echo "${BS}" | perl -pe 's/,/\\\\|/g;'`
 
 #processingCommand=`echo "${analysisType}" | awk -F "," '{print $1}'`
 sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
@@ -105,7 +106,7 @@ getcolor () {
 echo "Running on $HOSTNAME. Using $TMPDIR as tmp"
 
 name=`basename ${sampleOutdir}`
-echo "Running ${analysisType} analysis for sample ${name} (${sampleIDs}) against genome ${mappedgenome} (aka ${annotationgenome})"
+echo "Running ${analysisType} analysis for sample ${name} (${BS}) against genome ${mappedgenome} (aka ${annotationgenome})"
 echo -e "SampleAnnotation\t${sampleAnnotation}"
 
 
@@ -326,7 +327,7 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
     }\
     END {if(chunksize>0 || (chunksize==0 && chunknum==0)) {chunknum+=1; print prefix chunknum, chroms}}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
     n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
-    qsub -S /bin/bash -cwd -V ${qsubargs} -b y --time 12:00:00 --mem-per-cpu 8G -terse -j y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
+    qsub -S /bin/bash -cwd -V ${qsubargs} -b y --time 12:00:00 --mem-per-cpu 8G -terse -j y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${BS} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
     qsub -S /bin/bash -cwd -V ${qsubargs} -b y --time 12:00:00 --mem-per-cpu 8G -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;'
     rm -f ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
     

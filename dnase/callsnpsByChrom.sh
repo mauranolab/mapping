@@ -12,8 +12,9 @@ alias closest-features='closest-features --header'
 mappedgenome=${1}
 analysisType=${2}
 sampleOutdir=${3}
-sampleAnnotation=${4}
-src=${5}
+BS=${4}
+sampleAnnotation=${5}
+src=${6}
 
 sampleType=`echo "${analysisType}" | awk -F "," '{print $2}'`
 
@@ -135,8 +136,27 @@ Female)
     ;;
 esac
 
-samtools view -H ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -v sex=${sex} -F "\t" 'BEGIN {OFS="\t"} $1=="@RG" {for(i=2; i<=NF; i++) {split($i, tag, ":"); if (tag[1]=="SM") {print tag[2], sex}}}' > $TMPDIR/samplesfile.txt
-ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
+
+#NB in this pipeline we could just switch to --ignore-RG for everything, since we only ever want a single set of variant calls. I left like this to preserve generalizability when run manually for multisample calling.
+pileupParams=""
+ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.sex.txt"
+if [[ "${BS}" =~ , ]]; then
+    #Perform single-sample calling in BSmany aggregations, otherwise pileup contains multiple samples that causes problems further on in our parsing
+    echo "Squashing multiple RG in bam file to one"
+    pileupParams="${pileupParams} --ignore-RG"
+    echo -e "${BS}\t${sex}" > $TMPDIR/samplesfile.sex.txt
+else
+    #Will output a line for each RG, even though the bam file must only have one at this point
+    samtools view -H ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -v sex="${sex}" -F "\t" 'BEGIN {OFS="\t"} $1=="@RG" {for(i=2; i<=NF; i++) {split($i, tag, ":"); if (tag[1]=="SM") {print tag[2], sex}}}' > $TMPDIR/samplesfile.sex.txt
+fi
+cut -f1 $TMPDIR/samplesfile.sex.txt > $TMPDIR/samplesfile.txt
+
+#Not sure why but bcftools throws away regions completely with higher threshold for swift amplicon data
+#https://www.biostars.org/p/384808/
+#So avoid using --adjust-MQ 50 in this case
+if [[ "${sampleType}" != "amplicon" ]]; then
+    pileupParams="${pileupParams} --adjust-MQ 50"
+fi
 
 #TODO --max-depth 10000 was carried over from 2015 nat genet paper -- still useful? Handling of the latter changed in samtools 1.9
 #from Iyer et al PLoS Genet 2018: -C50 -pm2 -F0.05 -d10000
@@ -144,16 +164,10 @@ ploidy="${ploidy} --samples-file $TMPDIR/samplesfile.txt"
 #  -C, --adjust-MQ INT     adjust mapping quality; recommended:50, disable:0 [0]
 #  -F, --gap-frac FLOAT    minimum fraction of gapped reads [0.002]
 #2020mar21 raised max-idepth to permit calling indels from samples with high coverage (i.e. capture)
-if [[ "${sampleType}" == "amplicon" ]]; then
-    #Not sure why but bcftools throws away regions completely with higher threshold for swift amplicon data
-    #https://www.biostars.org/p/384808/
-    pileupParams=""
-else
-    pileupParams="--adjust-MQ 50"
-fi
-
 #manually set --ns to avoid dropping reads with QC-fail set
 bcftools mpileup -r `echo ${chroms} | perl -pe 's/ /,/g;'` -f ${referencefasta} --ns UNMAP,SECONDARY,DUP --redo-BAQ ${pileupParams} --gap-frac 0.05 --max-depth 10000 --max-idepth 200000 -a DP,AD --output-type u ${sampleOutdir}/${name}.${mappedgenome}.bam |
+#This should be a nullop for most cases, but will rename BSmany samples from the default "${name}.${mappedgenome}.bam" to the comma-separated BS numbers. The former seems to cause problems when the sample names contain square brackets.
+bcftools reheader --samples $TMPDIR/samplesfile.txt |
 #NB for some reason if the intermediate file is saved instead of piped, bcftools call outputs a GQ of . for everything
 #Iyer et al PLoS Genet 2018 uses --multiallelic-caller
 #https://sourceforge.net/p/samtools/mailman/message/32931405/
