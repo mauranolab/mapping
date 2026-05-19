@@ -581,7 +581,6 @@ for assay_type in sorted(assays):
                         url=args.URLbase + urllib.parse.quote(curSample['filebase']) + '.genotypes.bb',
                         subgroups=sampleSubgroups,
                         tracktype='bigBed 9 .',
-                        color=curSample['Color'],
                         itemRgb="on",
                         parent="off"
                     )
