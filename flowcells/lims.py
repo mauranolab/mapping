@@ -214,7 +214,7 @@ def validateSampleSheetAndLIMS(lims, seq, limsMask, seqMask, projects="", runnam
         #Only check certain metadata for specified projects to avoid excess verbiage
         if (len(projectList)==0 or curLims['Lab'] in projectList) and (len(sampleidList)==0 or bs in sampleidList) and (len(madebyList)==0 or curLims['Made By'] in madebyList):
             for col in ["Sample Name"]:
-                if re.match("[\+%\(\)\"\'\/\. ]", str(curLims[col])) is not None:
+                if re.search("[\+%\(\)\"\'\/\. ]", str(curLims[col])) is not None:
                     print("WARNING", "illegal characters in LIMS", SampleName, bs, col, curLims[col], "", sep="\t")
                 #Hyphens are only allowed for ChIP-seq samples, where 1 is required
                 samplename_hyphen_re = re.findall("\-", str(curLims[col]))
