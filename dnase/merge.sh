@@ -146,6 +146,7 @@ elif [[ "${processingCommand}" =~ ^map ]] || [[ "${processingCommand}" == "aggre
     ###Samblaster
     samtools view -h ${sampleOutdir}/${name}.${mappedgenome}.bam |
     #NB bwa bwa/0.7.17 adds MC but not MQ tags. samblaster --addMateTags then adds its own. Since I don't see us using MQ anywhere, we'll remove the samblaster option and let bwa generate MC
+    #BUGBUG fails on SE run. Would need to specify --ignoreUnmated. map.sh job has PErun flag but it's not propagated here.
     samblaster |
     #samblaster does not add a PP field in its @PG tag; when we are merging after map PP should just be bwa, but would be the prior tag SAMBLASTER when doing aggregateRemarkDups
     #samblaster blindly adds new @PG     ID:SAMBLASTER record even if it exists, causing strict (picard) validation errors
