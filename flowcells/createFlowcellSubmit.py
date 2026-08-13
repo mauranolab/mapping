@@ -31,7 +31,7 @@ parser.add_argument("--version", action="version", version="%(prog)s " + version
 try:
     args = parser.parse_args()
 except argparse.ArgumentError as exc:
-    print(exc.message, "\n", exc.argument)
+    print(exc.message, "\n", exc.argument, file=sys.stderr)
     sys.exit(2)
 
 if args.verbose:

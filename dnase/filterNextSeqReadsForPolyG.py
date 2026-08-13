@@ -33,11 +33,11 @@ parser.add_argument('--version', action='version', version='%(prog)s ' + version
 try:
     args = parser.parse_args()
 except argparse.ArgumentError as exc:
-    print(exc.message, '\n', exc.argument)
+    print(exc.message, '\n', exc.argument, file=sys.stderr)
     sys.exit(1)
 
 
-print("Extracting polyG reads.\nParameters:", file=sys.stderr)
+print("[filterNextSeqReadsForPolyG] Parameters:", file=sys.stderr)
 print(args, file=sys.stderr)
 
 

@@ -412,7 +412,7 @@ if __name__ == "__main__":
     try:
         args = parser.parse_args()
     except argparse.ArgumentError as exc:
-        print(exc.message, '\n', exc.argument)
+        print(exc.message, '\n', exc.argument, file=sys.stderr)
         sys.exit(2)
     
     #Load google sheets
