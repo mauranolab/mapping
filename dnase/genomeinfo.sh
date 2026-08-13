@@ -126,7 +126,7 @@ cegsvectors*)
     referencefasta=/gpfs/data/cegs/sequences/${bwagenome}/${bwagenome}.fa.gz
     dbsnpvcf=/dev/null
     ;;
-t2t)
+t2t*)
     bwaIndex=/gpfs/data/isg/annotation/bwaIndex/${mappedgenome}/${mappedgenome}
     ploidy="--ploidy GRCh38"
     referencefasta=/gpfs/data/isg/annotation/fasta/${mappedgenome}/${mappedgenome}.fa.gz
