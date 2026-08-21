@@ -235,9 +235,21 @@ def validateSampleSheetAndLIMS(lims, seq, limsMask, seqMask, projects="", runnam
             
             for col in ["Parent Library", "Pool ID"]:
                 if curLims[col] != "":
-                    #Require exactly 1 match in LIMS
+                    #Require exactly 1 match exist in LIMS
                     if lims[limsMask & lims['Sample #'].isin([curLims[col]])].shape[0] != 1:
                         print("ERROR", "invalid " + col, SampleName, bs, col, curLims[col], "", sep="\t")
+            
+            #Check consistency for some fields with the Parent Library record
+            if curLims["Parent Library"] != "":
+                #Only check consistency for items with a unique Parent Library
+                #Leave out "Species" right now since it is mainly for mappings
+                if lims[limsMask & lims['Sample #'].isin([curLims["Parent Library"]])].shape[0] == 1:
+                    parentLims = lims[limsMask & lims['Sample #'].isin([curLims["Parent Library"]])]
+                    for col in ["Barcode 1 (i7)", "Barcode 2 (i5)", "R1 Trim (P5)", "R2 Trim (P7)", "Sequencing primers (R1,BC1,BC2,R2)", "Cell Type", "Genetic background / Individual", "Sex", "Genetic Modification", "# Cells (M)", "Units DNaseI", "Clone ID"]:
+                        if curLims[col] != parentLims[col].values.item():
+                            #It would be more convenient to print the Parent Library BS, which occurs in both entries, but that would leave ambiguity in the case of multiple child libraries.
+                            #Note the parent value (last field) is technically the "SampleSheet_value" column
+                            print("ERROR", "Mismatch with Parent Library " + col, SampleName, bs, col, curLims[col], parentLims[col].values.item(), sep="\t")
             
             if curLims["Genetic Modification"] != "" and curLims["Custom Reference"] != "":
                 geneticModifications = set([ re.sub(r"\[.+\]$", "", cur) for cur in curLims["Genetic Modification"].split(",") ])
