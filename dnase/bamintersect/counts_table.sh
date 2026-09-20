@@ -70,7 +70,7 @@ annotateNearestGeneName() {
         geneAnnotationFile="${annotationBase}/rn6/ensembl96/Ensemblv96_Rnor.gene.bed"
         ;;
     hg38)
-        geneAnnotationFile="${annotationBase}/hg38/gencodev31/Gencodev31.gene.bed"
+        geneAnnotationFile="${annotationBase}/hg38/gencodev49/Gencodev49.gene.bed"
         ;;
     *)
         geneAnnotationFile="CEGS"
