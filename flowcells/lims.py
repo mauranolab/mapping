@@ -224,6 +224,26 @@ def validateSampleSheetAndLIMS(lims, seq, limsMask, seqMask, projects="", runnam
                 else:
                     if len(samplename_hyphen_re) !=0:
                         print("WARNING", "illegal characters in LIMS", SampleName, bs, col, curLims[col], "", sep="\t")
+                
+                for col in ["Barcode 1 (i7)", "Barcode 2 (i5)"]:
+                    #BUGBUG this doesn't work using double quotes ""
+                    if "".__eq__(curLims[col]) and curLims["Sample Type"] not in ["Pool", "Fiber-seq"]:
+                        print("ERROR", col + " column is required", SampleName, bs, col, curLims[col], "", sep="\t")
+                
+                #Tried also including "Date Library Finished" but disabled because too many failures
+                requiredCols=["Sample Name", "Sample #", "Lab", "Made By", "Sample Type"]
+                for col in requiredCols:
+                    if curLims[col] == "":
+                        print("WARNING", col + " column is required", SampleName, bs, col, curLims[col], "", sep="\t")
+                
+                requiredColsBySampleType = { "DNA Capture": ["Parent Library", "Bait set", "Pool ID"] }
+                #More stringent configuration but very chatty
+                #requiredColsBySampleType = { "ATAC-seq": ["Input Amount (ng)", "Library Method", "PCR cycles"], "DNase-seq": ["Input Amount (ng)", "Library Method", "PCR cycles"], "Nano-DNase": ["Library Method", "PCR cycles"], "ChIP-seq": ["Input Amount (ng)", "Library Method", "PCR cycles"], "CUT&RUN": ["Input Amount (ng)", "Library Method", "PCR cycles"], "DNA": ["Library Method", "PCR cycles"], "DNA Capture": ["PCR cycles", "Parent Library", "Bait set", "Pool ID"] }
+                for sampleType in requiredColsBySampleType:
+                    for col in requiredColsBySampleType[sampleType]:
+                        if curLims["Sample Type"] in [sampleType]:
+                            if curLims[col] == "":
+                                print("WARNING", col + " column is required for sample type " + sampleType, SampleName, bs, col, curLims[col], "", sep="\t")
             
             for col in set(lims.columns.values):
                 if str(curLims[col]) != str(curLims[col]).strip():
@@ -256,13 +276,6 @@ def validateSampleSheetAndLIMS(lims, seq, limsMask, seqMask, projects="", runnam
                 customReferences = set(curLims["Custom Reference"].split(","))
                 if geneticModifications & customReferences:
                     print("ERROR", "duplicate custom reference", SampleName, bs, "Genetic Modification/Custom Reference", sorted(geneticModifications & customReferences), "", sep="\t")
-            
-            requiredColsBySampleType = { "DNA Capture": ["Parent Library", "Bait set", "Pool ID"] }
-            for sampleType in requiredColsBySampleType:
-                for col in requiredColsBySampleType[sampleType]:
-                    if curLims["Sample Type"] in [sampleType]:
-                        if curLims[col] == "":
-                            print("WARNING", col + " column is required for sample type " + sampleType, SampleName, bs, col, curLims[col], "", sep="\t")
             
             colsSpecificToSampleType = { "R1 Trim (P5)": ["Amplicon", "Transposon DNA", "Transposon RNA", "Transposon iPCR", "Transposon 10xRNA"], "R2 Trim (P7)": ["Amplicon", "Transposon DNA", "Transposon RNA", "Transposon iPCR", "Transposon 10xRNA"], "Bait set" : ["DNA Capture", "Amplicon", "Pool", "Fiber-seq", "DAF-seq"] }
             for col in colsSpecificToSampleType:
