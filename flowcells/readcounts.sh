@@ -49,12 +49,13 @@ for base in `cat readcounts.txt | perl -pe 's/,//g;' | awk -F "\t" 'BEGIN {OFS="
     bs=`echo ${base} | cut -d ";" -f2`
     numreads=`echo ${base} | cut -d ";" -f3`
     
+    qsubargs=""
     if [[ "${numreads}" -lt 150000000 ]]; then
         #slightly lower priority so that big jobs start first if possible
-        qsubargs="-pe threads 8 -p -1"
+        qsubargs="${qsubargs} -pe threads 8 -p -1"
     else
         #There can't be too many samples this large per FC, so safe to use a lot of threads
-        qsubargs="-pe threads 24"
+        qsubargs="${qsubargs} -pe threads 24"
     fi
     
     echo
