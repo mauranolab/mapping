@@ -428,8 +428,7 @@ if __name__ == "__main__":
     update_parser.add_argument("--update", action = "store", default = None, type=str, help = "Update LIMS and Sample Sheet based on tab-delimited input file [%(default)s]")
     update_parser.add_argument("--nocommit", action = "store_true", default = False, help = "Perform update but do not commit any differences [%(default)s]")
     
-    update_parser.add_argument("--getFCinfo", action = "store", default = None, help = "Get info for FC, specify single FC ID [%(default)s]")
-    
+    parser.add_argument("--getFCinfo", action = "store", default = None, help = "Get info for FC, specify single FC ID [%(default)s]")
     parser.add_argument('--version', action='version', version='%(prog)s ' + version)
     
     #argparse does not set an exit code upon this error
