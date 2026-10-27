@@ -247,6 +247,7 @@ for curGenome in `echo ${genomesToMap} | perl -pe 's/,/ /g;'`; do
         fi
         
         echo "+ ${analysisname}"
+        #--time 4-12:00:00 for large (WGS) jobs
         qsub -S /bin/bash -cwd -V ${qsubargs} --time 12:00:00 --mem-per-cpu 8G -terse -j y -b y ${analysisHold} -o ${sampleOutdir} -N analysis.${analysisname} "${src}/analysis.sh ${curGenome} ${analysisType} ${sampleOutdir} '${BS}' \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.analysis.${analysisname}
         
         cat ${sampleOutdir}/sgeid.analysis.${analysisname} >> `dirname ${sampleOutdir}`/sgeid.analysis

@@ -327,7 +327,9 @@ if [[ "${sampleType}" == "dna" ]] || [[ "${sampleType}" == "capture" ]] || [[ "$
     }\
     END {if(chunksize>0 || (chunksize==0 && chunknum==0)) {chunknum+=1; print prefix chunknum, chroms}}' > ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt
     n=`cat ${sampleOutdir}/inputs.callsnps.${mappedgenome}.txt | wc -l`
+    #--mem-per-cpu 48G for large (WGS) jobs
     qsub -S /bin/bash -cwd -V ${qsubargs} -b y --time 12:00:00 --mem-per-cpu 8G -terse -j y -t 1-${n} -o ${sampleOutdir} -N callsnps.${name}.${mappedgenome} "${src}/callsnpsByChrom.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${BS} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;' > ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
+    #--time 4-12:00:00 --mem-per-cpu 32G for large (WGS) jobs
     qsub -S /bin/bash -cwd -V ${qsubargs} -b y --time 12:00:00 --mem-per-cpu 8G -terse -j y -hold_jid `cat ${sampleOutdir}/sgeid.callsnps.${mappedgenome}` -o ${sampleOutdir} -N callsnpsMerge.${name}.${mappedgenome} "${src}/callsnpsMerge.sh ${mappedgenome} ${analysisType} ${sampleOutdir} ${BS} \"${sampleAnnotation}\" ${src}" | perl -pe 's/[^\d].+$//g;'
     rm -f ${sampleOutdir}/sgeid.callsnps.${mappedgenome}
     
@@ -767,19 +769,28 @@ PEreads=`cat $TMPDIR/${name}.${mappedgenome}.flagstat.txt | grep "paired in sequ
 if [[ "${PEreads}" -gt 0 ]] && [[ ! "${mappedgenome}" =~ ^cegsvectors ]]; then
     echo
     echo "Template lengths"
-    samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrM"' | awk -F "\t" 'BEGIN {OFS="\t"} $9>0 {print $9}' | sort -k2,2n | tee ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt |
+    samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk -F "\t" 'BEGIN {OFS="\t"} $3!="chrM"' | awk -F "\t" 'BEGIN {OFS="\t"} $9>0 {print $9}' |
+    #Cap at 50M reads -- which is still in vast excess of what is needed -- to avoid OOM errors
+    awk 'NR<=50000000' |
+    sort -k2,2n | tee ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt |
     awk -F "\t" 'BEGIN {OFS="\t"} NR==1 {print "Minimum: " $0} {cum+=$0; lengths[NR]=$0; if($0<125) {lastLineUnder125=NR}} END {print "Number of reads: " NR; if(NR>0) {print "25th percentile: " lengths[int(NR*0.25)]; print "50th percentile: " lengths[int(NR*0.5)]; print "75th percentile: " lengths[int(NR*0.75)]; print "95th percentile: " lengths[int(NR*0.95)]; print "99th percentile: " lengths[int(NR*0.99)]; print "Maximum: " $0; print "Mean: " cum/NR; print "Prop. reads under 125 bp: " lastLineUnder125/NR}}'
     pigz -9 -p ${NSLOTS} -f ${sampleOutdir}/${name}.${mappedgenome}.insertlengths.txt
-
+    
     echo
     echo "read lengths:"
-    samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | cut -f10 | awk '{lengths[length($0)]++} END {for (l in lengths) {print lengths[l], l}}' | sort -k2,2g
-
-
+    samtools view ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | cut -f10 | 
+    #Cap at 50M reads -- which is still in vast excess of what is needed -- to avoid OOM errors
+    awk 'NR<=50000000' |
+    awk '{lengths[length($0)]++} END {for (l in lengths) {print lengths[l], l}}' | sort -k2,2g
+    
+    
     echo
     echo "read count by sequencing instrument"
     #The sort -k1,1nr | head -100 caps the number of unique entries (taking the most common), helpful if we have not parsed the read name accurately
-    bam2instrument ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk '{names[$0]++} END {for (cur in names) {print names[cur], cur}}' | sort -k1,1nr | head -100 | sort -k2,2
+    bam2instrument ${samflags} ${sampleOutdir}/${name}.${mappedgenome}.bam | awk '{names[$0]++} END {for (cur in names) {print names[cur], cur}}' | 
+    #Cap at 50M reads -- which is still in vast excess of what is needed -- to avoid OOM errors
+    awk 'NR<=50000000' |
+    sort -k1,1nr | head -100 | sort -k2,2
 fi
 
 
