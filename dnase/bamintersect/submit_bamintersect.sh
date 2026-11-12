@@ -34,7 +34,7 @@ fi
 
 module load samtools/1.20
 module load bedops/2.4.42
-module load python/cpu/3.10.6
+module load python/cpu/3.14.10
 module load miller/6.11.0
 
 ###Hardcoded configuration options

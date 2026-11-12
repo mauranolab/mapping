@@ -19,7 +19,7 @@ module load htslib/1.20
 module load samtools/1.20
 module load bcftools/1.20
 module load trimmomatic/0.39
-module load python/cpu/3.10.6
+module load python/cpu/3.14.10
 module load r/4.4.1
 module load samblaster/0.1.26
 module load ucscutils/398

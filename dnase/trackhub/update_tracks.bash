@@ -46,7 +46,7 @@ set -eu -o pipefail
 module load ucscutils/398
 module load bedops/2.4.42
 module load r/4.4.1
-module load python/cpu/3.10.6
+module load python/cpu/3.14.10
 module load miller/6.11.0
 ############################################################################
 
