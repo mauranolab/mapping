@@ -89,6 +89,7 @@ for genome in "${genome_array[@]}"; do
     
     genome="${genome}/"
     if [ "${genome}" = "${customGenomeAssembly}/" ]; then
+        #Special contents for cegsvectors etc. genomes
         chrom_sizes="${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes"
         
         cat <<- HEREDOC_02 > ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
@@ -146,6 +147,26 @@ if [ -f "${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAsse
         wigToBigWig ${TMPDIR}/assembly_tracks/${customGenomeAssembly}.wig ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}.chrom.sizes ${hub_target}/${customGenomeAssembly}/data/${customGenomeAssembly}.gc.bw
     fi
 fi
+
+
+#Generate per-nucleotide tracks
+for f in $(find ${assemblyBaseDir}/sequences/${customGenomeAssembly}/${customGenomeAssembly}/ -name "${customGenomeAssembly}.nucleotides.*.starch"); do
+    nucleotideBase=`basename ${f} .starch`
+    unstarch $f > ${TMPDIR}/${nucleotideBase}.bed6
+    make_bigBED ${TMPDIR}/${nucleotideBase}.bed6 6 ${chrom_sizes} ${hub_target}/${customGenomeAssembly}/data/${nucleotideBase}.bb
+    nucleotideTrackShortName=${nucleotideBase/${customGenomeAssembly}\./}
+    cat <<- HEREDOC_03 >> ${TMPDIR}/assembly_tracks/trackDb_assemblies_${customGenomeAssembly}.txt
+track ${nucleotideTrackShortName}
+shortLabel ${nucleotideTrackShortName}
+longLabel ${nucleotideTrackShortName} (di)nucleotide occurrence (both strands)
+group cegsvectors
+visibility dense
+type bigBed 6 .
+bigDataUrl data/${nucleotideBase}.bb
+priority 10
+
+HEREDOC_03
+done
 
 
 # Read in the lines from OUTFILE which contain the paths to the bigBED files we just made.
